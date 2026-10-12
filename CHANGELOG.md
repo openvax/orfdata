@@ -1,3 +1,14 @@
+# 0.8.0
+
+- Compact new quantitative datasets with integer reference/target/assay keys
+  and lossless reconstruction of repeated measurement fields (storage v4).
+  Python/CLI records and scoped identities remain unchanged.
+- Keep published storage v1/v2/v3 readable; validate against databases created
+  by the corresponding released versions, including censoring and input lineage.
+- Populate index statistics so narrow target queries use the target index.
+- On a real 100,000-row RNA slice, reduce installed size from 121.6 to 38.6 MB
+  and preserve every observation field. Existing data artifacts are unchanged.
+
 # 0.7.0
 
 - Import CoPY yeast SRM protein/peptide quantities, distinct label-free estimates,

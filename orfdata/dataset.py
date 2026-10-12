@@ -5,6 +5,8 @@ import json
 import os
 import sqlite3
 from contextlib import closing
+from dataclasses import MISSING, fields
+from functools import lru_cache
 from pathlib import Path
 
 from .measurements import (
@@ -16,6 +18,7 @@ from .measurements import (
     MeasurementReference,
     Sample,
     TargetMapping,
+    _plain,
 )
 from .pairing import (
     PAIRING_BASES,
@@ -30,38 +33,50 @@ from .reference_mapping import MappedMeasurement, ReferenceMapping
 
 _SCHEMA = """
 CREATE TABLE metadata (name TEXT PRIMARY KEY, value TEXT NOT NULL);
-CREATE TABLE reference (key TEXT PRIMARY KEY, record TEXT NOT NULL);
+CREATE TABLE reference (i INTEGER PRIMARY KEY, key TEXT UNIQUE NOT NULL,
+    record TEXT NOT NULL, UNIQUE(key, i));
 CREATE TABLE target (
-    reference_key TEXT NOT NULL REFERENCES reference(key),
+    i INTEGER PRIMARY KEY, reference_i INTEGER NOT NULL,
+    reference_key TEXT NOT NULL,
     key TEXT NOT NULL, kind TEXT NOT NULL, namespace TEXT NOT NULL,
-    identifier TEXT NOT NULL, PRIMARY KEY(reference_key, key));
+    identifier TEXT NOT NULL, UNIQUE(reference_key, key), UNIQUE(reference_i, i),
+    FOREIGN KEY(reference_key, reference_i) REFERENCES reference(key, i));
 CREATE TABLE sample (
     reference_key TEXT NOT NULL REFERENCES reference(key),
     id TEXT NOT NULL, record TEXT NOT NULL, PRIMARY KEY(reference_key, id));
 CREATE TABLE assay (
+    i INTEGER PRIMARY KEY, reference_i INTEGER NOT NULL,
     reference_key TEXT NOT NULL, id TEXT NOT NULL, sample_id TEXT NOT NULL,
-    record TEXT NOT NULL, PRIMARY KEY(reference_key, id),
+    record TEXT NOT NULL, UNIQUE(reference_key, id), UNIQUE(reference_i, i),
     UNIQUE(reference_key, id, sample_id),
+    FOREIGN KEY(reference_key, reference_i) REFERENCES reference(key, i),
     FOREIGN KEY(reference_key, sample_id) REFERENCES sample(reference_key, id));
 CREATE TABLE mapping (
     reference_key TEXT NOT NULL REFERENCES reference(key),
     id TEXT NOT NULL, record TEXT NOT NULL, PRIMARY KEY(reference_key, id));
-CREATE TABLE measurement (
-    reference_key TEXT NOT NULL, id TEXT NOT NULL, target_key TEXT NOT NULL,
-    sample_id TEXT NOT NULL, assay_id TEXT NOT NULL, quantity TEXT NOT NULL,
-    status TEXT NOT NULL, record TEXT NOT NULL, PRIMARY KEY(reference_key, id),
-    FOREIGN KEY(reference_key, target_key) REFERENCES target(reference_key, key),
-    FOREIGN KEY(reference_key, assay_id, sample_id)
-        REFERENCES assay(reference_key, id, sample_id));
-CREATE TABLE input_measurement (
-    reference_key TEXT NOT NULL, output_id TEXT NOT NULL,
-    input_reference_key TEXT NOT NULL, input_id TEXT NOT NULL,
-    PRIMARY KEY(reference_key, output_id, input_reference_key, input_id),
-    FOREIGN KEY(reference_key, output_id) REFERENCES measurement(reference_key, id),
-    FOREIGN KEY(input_reference_key, input_id) REFERENCES measurement(reference_key, id));
+CREATE TABLE observation (
+    i INTEGER PRIMARY KEY, reference_i INTEGER NOT NULL,
+    id TEXT NOT NULL, target_i INTEGER NOT NULL, assay_i INTEGER NOT NULL,
+    quantity TEXT NOT NULL, status TEXT NOT NULL, record TEXT NOT NULL,
+    UNIQUE(reference_i, id),
+    FOREIGN KEY(reference_i, target_i) REFERENCES target(reference_i, i),
+    FOREIGN KEY(reference_i, assay_i) REFERENCES assay(reference_i, i));
+CREATE TABLE observation_input (
+    output_i INTEGER NOT NULL REFERENCES observation(i),
+    input_i INTEGER NOT NULL REFERENCES observation(i), PRIMARY KEY(output_i, input_i));
+CREATE VIEW measurement AS
+    SELECT r.key reference_key, m.id, t.key target_key, a.sample_id,
+           a.id assay_id, m.quantity, m.status, m.record
+    FROM observation m JOIN reference r ON r.i=m.reference_i
+    JOIN target t ON t.i=m.target_i JOIN assay a ON a.i=m.assay_i;
+CREATE VIEW input_measurement AS
+    SELECT r.key reference_key, o.id output_id, s.key input_reference_key, i.id input_id
+    FROM observation_input p JOIN observation o ON o.i=p.output_i
+    JOIN observation i ON i.i=p.input_i JOIN reference r ON r.i=o.reference_i
+    JOIN reference s ON s.i=i.reference_i;
 CREATE INDEX target_lookup ON target(reference_key, namespace, kind, identifier);
-CREATE INDEX observation_lookup ON measurement(reference_key, target_key, sample_id, assay_id);
-CREATE INDEX assay_lookup ON measurement(reference_key, assay_id, quantity, status);
+CREATE INDEX observation_lookup ON observation(reference_i, target_i, assay_i);
+CREATE INDEX assay_lookup ON observation(reference_i, assay_i, quantity, status);
 CREATE TABLE assay_pair (
     reference_key TEXT NOT NULL REFERENCES reference(key), id TEXT NOT NULL,
     right_reference_key TEXT NOT NULL REFERENCES reference(key),
@@ -100,6 +115,29 @@ def _target_key(target):
     return hashlib.sha256(_json(target.key).encode()).hexdigest()
 
 
+_STORED_FIELDS = tuple(f for f in fields(Measurement) if f.name not in {
+    "measurement_id", "target", "sample_id", "assay_id", "quantity", "status",
+    "dataset_id", "dataset_version"})
+_V4_DEFAULTS = {
+    "origin": "observed", "scale": "linear", "log_base": None,
+    "uncertainty": None, "uncertainty_type": None, "detection_limit": None,
+    "input_measurements": (), "input_references": (), "derivation": {}, "provenance": {},
+}
+
+
+def _measurement_record(observation):
+    # Schema defaults are fixed here, independent of future model defaults.
+    # Do not serialize the target
+    # and then discard it: its full reference is already stored once.
+    result = {}
+    for field in _STORED_FIELDS:
+        value = getattr(observation, field.name)
+        default = _V4_DEFAULTS.get(field.name, MISSING)
+        if default is MISSING or value != default:
+            result[field.name] = _plain(value)
+    return result
+
+
 class QuantitativeDataset:
     """A read-only release. Constructing or querying it never downloads data.
 
@@ -112,7 +150,7 @@ class QuantitativeDataset:
         self.path = Path(path).resolve()
         with closing(self._connect()) as connection:
             self._storage_version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if self._storage_version not in (1, 2, 3):
+            if self._storage_version not in (1, 2, 3, 4):
                 raise ValueError("Unsupported quantitative database schema")
             row = connection.execute("SELECT value FROM metadata WHERE name='manifest'").fetchone()
             if row is None:
@@ -146,25 +184,46 @@ class QuantitativeDataset:
             connection = sqlite3.connect(path)
             connection.execute("PRAGMA foreign_keys=ON")
             connection.executescript(_SCHEMA)
-            connection.execute("PRAGMA user_version=3")
+            connection.execute("PRAGMA user_version=4")
             connection.execute("INSERT INTO metadata VALUES ('manifest', ?)",
                                (_json(manifest.to_dict()),))
+            reference_ids = {}
             for reference in manifest.references:
-                connection.execute("INSERT INTO reference VALUES (?, ?)",
-                                   (reference.key, _json(reference.to_dict())))
+                cursor = connection.execute("INSERT INTO reference (key, record) VALUES (?, ?)",
+                                            (reference.key, _json(reference.to_dict())))
+                reference_ids[reference.key] = cursor.lastrowid
+
+            @lru_cache(maxsize=131072)
+            def insert_target(target):
+                reference_key = target.reference.key
+                if reference_key not in reference_ids:
+                    raise sqlite3.IntegrityError("Target reference absent from dataset")
+                reference_i = reference_ids[reference_key]
+                key = _target_key(target)
+                connection.execute("INSERT OR IGNORE INTO target "
+                                   "(reference_i, reference_key, key, kind, namespace, identifier) "
+                                   "VALUES (?, ?, ?, ?, ?, ?)",
+                                   (reference_i, reference_key, key, target.kind, target.namespace, target.identifier))
+                target_i = connection.execute("SELECT i FROM target WHERE reference_key=? AND key=?",
+                                              (reference_key, key)).fetchone()[0]
+                return reference_i, target_i, key
             for sample in samples:
                 if not isinstance(sample, Sample):
                     raise TypeError("samples must contain Samples")
                 connection.execute("INSERT INTO sample VALUES (?, ?, ?)",
                                    (sample.reference.key, sample.sample_id, _json(sample.to_dict())))
+            assay_ids = {}
             for assay in assays:
                 if not isinstance(assay, Assay):
                     raise TypeError("assays must contain Assays")
                 if assay.kind not in manifest.assay_kinds:
                     raise ValueError("Assay kind absent from manifest coverage")
-                connection.execute("INSERT INTO assay VALUES (?, ?, ?, ?)",
-                                   (assay.reference.key, assay.assay_id, assay.sample_id,
-                                    _json(assay.to_dict())))
+                reference_i = reference_ids.get(assay.reference.key)
+                cursor = connection.execute("INSERT INTO assay "
+                                            "(reference_i, reference_key, id, sample_id, record) VALUES (?, ?, ?, ?, ?)",
+                                            (reference_i, assay.reference.key, assay.assay_id, assay.sample_id,
+                                             _json(assay.to_dict())))
+                assay_ids[(reference_i, assay.assay_id, assay.sample_id)] = cursor.lastrowid
             for pair in pairings:
                 if not isinstance(pair, AssayPair):
                     raise TypeError("pairings must contain AssayPairs")
@@ -194,9 +253,7 @@ class QuantitativeDataset:
                 if (relation.dataset_id, relation.dataset_version) != (manifest.dataset_id, manifest.version):
                     raise ValueError("Target relation belongs to a different dataset release")
                 for target in (relation.left, relation.right):
-                    connection.execute("INSERT OR IGNORE INTO target VALUES (?, ?, ?, ?, ?)",
-                                       (target.reference.key, _target_key(target), target.kind,
-                                        target.namespace, target.identifier))
+                    insert_target(target)
                 for index, (first, second) in enumerate(((relation.left, relation.right), (relation.right, relation.left))):
                     _check_one_to_one(relation_links[index],
                                       (relation.relation, first.key, second.reference.key, second.kind, second.namespace), second.key,
@@ -218,9 +275,7 @@ class QuantitativeDataset:
                 if (mapping.dataset_id, mapping.dataset_version) != (manifest.dataset_id, manifest.version):
                     raise ValueError("Reference mapping belongs to a different dataset release")
                 for target in (mapping.source, *mapping.targets):
-                    connection.execute("INSERT OR IGNORE INTO target VALUES (?, ?, ?, ?, ?)",
-                                       (target.reference.key, _target_key(target), target.kind,
-                                        target.namespace, target.identifier))
+                    insert_target(target)
                 connection.execute("INSERT INTO reference_mapping VALUES (?, ?, ?, ?, ?)",
                                    (mapping.source.reference.key, mapping.mapping_id, _target_key(mapping.source),
                                     mapping.target_reference.key, _json(mapping.to_dict())))
@@ -238,33 +293,39 @@ class QuantitativeDataset:
                     raise ValueError("Measurement provenance names an unknown source asset")
                 if source is None and not (observation.input_measurements or observation.input_references):
                     raise ValueError("Measurement requires a source_asset or input measurements")
-                reference_key = observation.target.reference.key
-                inputs = [(reference_key, identifier) for identifier in observation.input_measurements]
-                inputs.extend((value.reference.key, value.measurement_id) for value in observation.input_references)
+                reference_i, target_i, _ = insert_target(observation.target)
+                inputs = [(reference_i, identifier) for identifier in observation.input_measurements]
+                inputs.extend((reference_ids.get(value.reference.key), value.measurement_id)
+                              for value in observation.input_references)
+                input_ids = []
                 for input_reference, identifier in inputs:
-                    if connection.execute(
-                        "SELECT 1 FROM measurement WHERE reference_key=? AND id=?",
+                    found = connection.execute(
+                        "SELECT i FROM observation WHERE reference_i=? AND id=?",
                         (input_reference, identifier),
-                    ).fetchone() is None:
+                    ).fetchone()
+                    if found is None:
                         raise ValueError("Derived inputs must precede outputs in their declared reference contexts")
-                target = observation.target
-                target_key = _target_key(target)
-                connection.execute("INSERT OR IGNORE INTO target VALUES (?, ?, ?, ?, ?)",
-                                   (reference_key, target_key, target.kind,
-                                    target.namespace, target.identifier))
-                record = observation.to_dict()
-                record.pop("target")
-                connection.execute("INSERT INTO measurement VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                                   (reference_key, observation.measurement_id, target_key,
-                                    observation.sample_id, observation.assay_id,
-                                    observation.quantity, observation.status, _json(record)))
-                connection.executemany("INSERT INTO input_measurement VALUES (?, ?, ?, ?)",
-                                       ((reference_key, observation.measurement_id, input_reference, identifier)
-                                        for input_reference, identifier in inputs))
-            counts = {table: connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+                    input_ids.append(found[0])
+                assay_i = assay_ids.get((reference_i, observation.assay_id, observation.sample_id))
+                if assay_i is None:
+                    raise sqlite3.IntegrityError("Observation assay/sample absent from its reference context")
+                cursor = connection.execute("INSERT INTO observation "
+                                            "(reference_i, id, target_i, assay_i, quantity, status, record) "
+                                            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                            (reference_i, observation.measurement_id, target_i, assay_i,
+                                             observation.quantity, observation.status,
+                                             _json(_measurement_record(observation))))
+                connection.executemany("INSERT INTO observation_input VALUES (?, ?)",
+                                       ((cursor.lastrowid, input_i) for input_i in input_ids))
+            insert_target.cache_clear()
+            counts = {table: connection.execute(
+                f"SELECT count(*) FROM {'observation' if table == 'measurement' else table}").fetchone()[0]
                       for table in ("sample", "assay", "mapping", "target", "measurement",
                                     "assay_pair", "target_relation", "reference_mapping")}
             connection.execute("INSERT INTO metadata VALUES ('counts', ?)", (_json(counts),))
+            # Real cardinalities prevent the planner from scanning a whole
+            # reference in ID order for a narrow target query.
+            connection.execute("ANALYZE")
             connection.commit()
             connection.close()
             connection = None
@@ -430,7 +491,8 @@ class QuantitativeDataset:
         filters = dict(reference_key=scope, target_key=_target_key(target) if target else None,
                        sample_id=sample_id, assay_id=assay_id, quantity=quantity, status=status)
         selected = [(key, value) for key, value in filters.items() if value is not None]
-        query = ("SELECT m.record, m.reference_key, t.kind, t.namespace, t.identifier "
+        query = ("SELECT m.record, m.reference_key, t.kind, t.namespace, t.identifier, "
+                 "m.id, m.sample_id, m.assay_id, m.quantity, m.status "
                  "FROM measurement m JOIN target t ON m.reference_key=t.reference_key "
                  "AND m.target_key=t.key")
         if selected:
@@ -439,6 +501,11 @@ class QuantitativeDataset:
         with closing(self._connect()) as connection:
             for row in connection.execute(query, [value for _, value in selected]):
                 values = json.loads(row[0])
+                if self._storage_version == 4:
+                    values = dict(_V4_DEFAULTS, **values)
+                    values.update(measurement_id=row[5], sample_id=row[6], assay_id=row[7],
+                                  quantity=row[8], status=row[9], dataset_id=self.manifest.dataset_id,
+                                  dataset_version=self.manifest.version)
                 values["target"] = ScopedTarget(self._references[row[1]], row[2], row[4], row[3])
                 if "input_references" in values:
                     values["input_references"] = tuple(MeasurementReference.from_dict(value)

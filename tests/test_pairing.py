@@ -3,6 +3,7 @@
 import json
 import sqlite3
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -210,16 +211,11 @@ def test_same_target_across_samples_stays_a_separate_comparison(tmp_path, paired
     assert match.left[0].sample_id != match.right[0].sample_id
 
 
-def test_old_storage_has_no_inferred_relationships(tmp_path, paired):
-    dataset = create(tmp_path, paired)
-    with sqlite3.connect(dataset.path) as connection:
-        connection.execute("DROP TABLE assay_pair")
-        connection.execute("DROP TABLE target_relation")
-        connection.execute("PRAGMA user_version=1")
-    old = QuantitativeDataset(dataset.path)
+def test_old_storage_has_no_inferred_relationships():
+    old = QuantitativeDataset(Path(__file__).parent / "data/storage/v1.sqlite")
     assert list(old.pairings()) == list(old.relations()) == []
     assert list(old.matched_measurements(allowed_bases=PAIRING_BASES)) == []
-    assert len(list(old.measurements())) == 8
+    assert len(list(old.measurements())) == 12
 
 
 def test_orthology_keeps_both_species_and_never_transfers_abundance(tmp_path, paired):
