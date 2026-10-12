@@ -1,3 +1,15 @@
+# 0.3.0
+
+- Add immutable quantitative manifests, samples, assays, measurements and target
+  mappings, with native units, missingness, provenance and explicit derivations.
+- Store streaming datasets in reference-partitioned SQLite tables with validated
+  sample/assay/target relationships; species and dataset releases never share IDs.
+- Add optional DataCache downloads and source-pinned import materialization,
+  offline discovery/inspection/query APIs and `orfdata datasets` commands.
+- Add exact target construction from bound reference ORFs and PyEnsembl features,
+  and an optional Parquet export. The initial quantitative registry is empty;
+  source-specific data releases follow separately in the roadmap.
+
 # 0.2.0
 
 - Add explicit taxonomy, strain, assembly and annotation contexts and scoped

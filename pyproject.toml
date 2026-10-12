@@ -15,7 +15,9 @@ dependencies = []
 [project.optional-dependencies]
 pyensembl = ["pyensembl>=2.27.2"]
 build-data = ["openpyxl>=3.1"]
-dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "pyensembl>=2.27.2"]
+data = ["datacache>=1.25.1,<2"]
+columnar = ["pyarrow>=14"]
+dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "pyensembl>=2.27.2", "datacache>=1.25.1,<2"]
 
 [project.scripts]
 orfdata = "orfdata.cli:run"
@@ -27,7 +29,7 @@ version = {attr = "orfdata.version.__version__"}
 include = ["orfdata*"]
 
 [tool.setuptools.package-data]
-orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*"]
+orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/datasets.json"]
 
 [tool.ruff]
 target-version = "py39"

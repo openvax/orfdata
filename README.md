@@ -73,5 +73,7 @@ bind real human, mouse, dog and yeast reference slices; those fixtures are not
 new experimental ORF catalogues. [Species and reference identity](docs/species.md).
 
 Install with `pip install orfdata[pyensembl]`. See the
+[measurement API](docs/measurements.md) for native units, explicit samples and
+assays, and DataCache-managed downloads, and the
 [quantitative, multispecies data roadmap](https://github.com/openvax/orfdata/issues/3)
-for planned RNA abundance, ribosome occupancy and protein measurements.
+for upcoming RNA abundance, ribosome occupancy and protein data releases.

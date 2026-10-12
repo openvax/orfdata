@@ -12,7 +12,10 @@ from .catalog import (
     load_catalog,
     load_uorf_catalog,
 )
+from .dataset import QuantitativeDataset
+from .datasets import DatasetRegistry, build_dataset
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
+from .measurements import Assay, DatasetManifest, Measurement, Sample, SourceAsset, TargetMapping
 from .model import ORFModel, ReferenceORF
 from .reference import ReferenceContext, ScopedTarget
 from .version import __version__
@@ -28,6 +31,15 @@ __all__ = [
     "ReferenceORF",
     "ReferenceContext",
     "ScopedTarget",
+    "QuantitativeDataset",
+    "DatasetRegistry",
+    "build_dataset",
+    "DatasetManifest",
+    "SourceAsset",
+    "Sample",
+    "Assay",
+    "Measurement",
+    "TargetMapping",
     "load_catalog",
     "UORFCatalog",
     "UORFRecord",

@@ -11,7 +11,14 @@ from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     """Export reference records as JSON, TSV or FASTA."""
-    parser = argparse.ArgumentParser(description=__doc__, prog=prog)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "datasets":
+        from .dataset_cli import run as dataset_run
+
+        return dataset_run(argv[1:], prog=(prog or "orfdata") + " datasets")
+    parser = argparse.ArgumentParser(
+        description=__doc__, prog=prog,
+        epilog="For quantitative data management, use 'orfdata datasets --help'.")
     parser.add_argument("--catalog", help="Use a compatible local JSON/JSON.gz catalogue")
     parser.add_argument("--gene", help="Exact gene symbol or Ensembl gene ID")
     parser.add_argument("--transcript", help="Exact source transcript ID (unversioned)")
