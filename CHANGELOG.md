@@ -1,3 +1,16 @@
+# 0.4.0
+
+- Add explicit assay pairings and within-reference target relationships,
+  including missing mates, temporal metadata and source-backed attribution.
+- Query paired RNA, ribosome and protein measurements with caller-selected
+  pairing bases, preserving native values and technical/quantity multiplicity.
+  Parent RNA and shared groups cannot become ORF-specific ratios.
+- Add named native-unit ratios with input lineage and explicit unresolved zero
+  or censored denominators, plus opt-in pinned orthology comparisons that retain
+  both species' original observations.
+- Extend SQLite storage to version 2 for relationships while reading original
+  version 1 datasets without inferring pairings. Add `orfdata datasets pairs`.
+
 # 0.3.0
 
 - Add immutable quantitative manifests, samples, assays, measurements and target

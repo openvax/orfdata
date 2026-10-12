@@ -80,9 +80,9 @@ records technical replicates, runs, fractions, TMT plex/channel/bridge,
 normalization and calibration. A sample's strain/breed belongs in its attributes;
 it need not be the strain used to assemble its reference genome. `TargetMapping`
 retains all candidate assignments or an unmapped reason. A protein-group
-representative does not become a uniquely measured protein. Explicit sample
-pairing and orthology comparisons follow in
-[issue #6](https://github.com/openvax/orfdata/issues/6).
+representative does not become a uniquely measured protein. See
+[pairing and orthology comparisons](pairing.md) for explicit experimental
+relationships and derived RNA/protein ratios.
 
 ## Importing a source
 
