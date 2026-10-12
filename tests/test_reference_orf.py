@@ -154,3 +154,19 @@ def test_generic_cli_exports_noncoding_models_and_species(capsys):
     assert output["schema"] == "orfdata.query.v1"
     assert output["records"]
     assert all(row["biotype"] == "lncRNA" and row["taxon_id"] == 9606 for row in output["records"])
+
+
+def test_unmodelled_initiation_is_not_silently_a_reference_start(mouse_transcript):
+    from types import SimpleNamespace
+
+    transcript = SimpleNamespace(
+        id=mouse_transcript.id,
+        genome=mouse_transcript.genome,
+        contig=mouse_transcript.contig,
+        strand=mouse_transcript.strand,
+        exons=mouse_transcript.exons,
+        sequence=mouse_transcript.sequence[:3] + "GTG" + mouse_transcript.sequence[6:],
+    )
+    record = ORFRecord.from_model(model(protein_sequence="VKPG"))
+    with pytest.raises(ValueError, match="initiation codon"):
+        record.bind(transcript)

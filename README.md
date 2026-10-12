@@ -97,7 +97,9 @@ conventions before importing observations. No OpenProt importer or mouse evidenc
 bundle is claimed here. Tests exercise two synthetic mouse ORFs on one real
 PyEnsembl lncRNA transcript; fixture sequences are explicitly not biological data.
 
-The initial sequence binder supports complete stopped ORFs using NCBI table 1.
+The initial sequence binder supports complete stopped ORFs using NCBI table 1
+and its ATG/CTG/TTG initiation convention (all bundled models start at ATG).
+Other near-cognate initiation conventions require explicit future support.
 Other genetic codes and incomplete ORFs fail explicitly. ORF discovery, inferred
 initiation efficiency and downstream CDS regulation are separate future work.
 

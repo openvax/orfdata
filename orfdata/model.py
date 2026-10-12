@@ -138,6 +138,10 @@ class ReferenceORF:
         coding = sequence[start : start + len(wanted)]
         if any(b not in "ACGT" for b in coding):
             raise ValueError("ORF reference sequence is ambiguous")
+        if coding[:3] not in ("ATG", "CTG", "TTG"):
+            raise ValueError(
+                "Unsupported ORF initiation codon; an explicit initiation model is required"
+            )
         translated = "".join(CODONS[coding[i : i + 3]] for i in range(0, len(coding), 3))
         if coding[:3] in ("ATG", "CTG", "TTG"):
             translated = "M" + translated[1:]

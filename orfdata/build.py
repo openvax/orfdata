@@ -1,6 +1,6 @@
 """Rebuild the offline uORF reference from checksum-pinned public source data.
 
-Run as ``python -m examples.build_uorf_catalog --help`` from the checkout.
+Run as ``python -m orfdata.build --help`` from the checkout.
 Only building needs openpyxl; preparing the author's Rdata also needs Rscript.
 The installed catalogue and query API need neither, and never access the network.
 """
