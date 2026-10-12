@@ -384,5 +384,364 @@
         }
       }
     }
+  },
+  "copy-yeast-abundance": {
+    "default_version": "2026-10-12.1",
+    "versions": {
+      "2026-10-12.1": {
+        "manifest": {
+          "dataset_id": "copy-yeast-abundance",
+          "version": "2026-10-12.1",
+          "title": "CoPY yeast calibrated SRM protein/peptide abundance and source-cohort RNA",
+          "references": [
+            {
+              "taxon_id": 4932,
+              "species": "yeast",
+              "genome_build": null,
+              "annotation_name": "sgd",
+              "annotation_version": null,
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "22fa0a6143fb2f0d1fc350d63988b47cc5b62608839a5af3408201589b9329f8"
+            },
+            {
+              "taxon_id": 4932,
+              "species": "yeast",
+              "genome_build": null,
+              "annotation_name": "sgd",
+              "annotation_version": null,
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "94c41f50b5d90255d10d47a567febc8011fde72dcd851003127082ac2ea92b69"
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "workbook.xlsx",
+              "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC4824857.1/10.1074_M115.054288_mcp.M115.054288-4.xlsx",
+              "sha256": "22fa0a6143fb2f0d1fc350d63988b47cc5b62608839a5af3408201589b9329f8",
+              "size": 1236663,
+              "access_terms": "Lawless et al. 2016, CC-BY-4.0",
+              "license_url": "https://creativecommons.org/licenses/by/4.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016; PMC4824857 version 1",
+                "source_name": "10.1074_M115.054288_mcp.M115.054288-4.xlsx"
+              }
+            },
+            {
+              "asset_id": "qconcat.fasta",
+              "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC4824857.1/10.1074_M115.054288_mcp.M115.054288-5.txt",
+              "sha256": "347300954d2ef7562f4999609f64e901d52b67a4bc09329b67db0b6b4248c522",
+              "size": 65604,
+              "access_terms": "Lawless et al. 2016, CC-BY-4.0",
+              "license_url": "https://creativecommons.org/licenses/by/4.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016; PMC4824857 version 1",
+                "source_name": "10.1074_M115.054288_mcp.M115.054288-5.txt"
+              }
+            },
+            {
+              "asset_id": "pmc-metadata.json",
+              "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC4824857.1/PMC4824857.1.json",
+              "sha256": "dd095a4246992ecd39ea9a85fd2b5be85c80d21af272af1fdbc7cc1e8f2b0136",
+              "size": 1997,
+              "access_terms": "Lawless et al. 2016, CC-BY-4.0",
+              "license_url": "https://creativecommons.org/licenses/by/4.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016; PMC4824857 version 1",
+                "source_name": "PMC4824857.1.json"
+              }
+            },
+            {
+              "asset_id": "paper.xml",
+              "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC4824857.1/PMC4824857.1.xml",
+              "sha256": "d43c143a3fcefe24b78855c47a7024f168a18d24e064c07cf2892ed9f69e4a04",
+              "size": 170874,
+              "access_terms": "Lawless et al. 2016, CC-BY-4.0",
+              "license_url": "https://creativecommons.org/licenses/by/4.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016; PMC4824857 version 1",
+                "source_name": "PMC4824857.1.xml"
+              }
+            },
+            {
+              "asset_id": "methods.pdf",
+              "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC4824857.1/10.1074_M115.054288_mcp.M115.054288-1.pdf",
+              "sha256": "72e35534874e24cbc5af698dfac79032211de9873680e3d86e92e3667d9432d4",
+              "size": 11078018,
+              "access_terms": "Lawless et al. 2016, CC-BY-4.0",
+              "license_url": "https://creativecommons.org/licenses/by/4.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016; PMC4824857 version 1",
+                "source_name": "10.1074_M115.054288_mcp.M115.054288-1.pdf"
+              }
+            },
+            {
+              "asset_id": "geo-series.soft",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE73898&targ=self&form=text&view=full",
+              "sha256": "94c41f50b5d90255d10d47a567febc8011fde72dcd851003127082ac2ea92b69",
+              "size": 2321,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905474_KL9_fpkm.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM1905nnn/GSM1905474/suppl/GSM1905474_KL9_fpkm.txt.gz",
+              "sha256": "eefad9dd94eb1c23822151fc5c13622850f827219e5324527de848e9bb893735",
+              "size": 251872,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905474.soft",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1905474&targ=self&form=text&view=full",
+              "sha256": "74bfa86c8dd2451e378197e60bdb56a5fb1e231f6414719c737ff49823a82340",
+              "size": 4229,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905476_KL10_fpkm.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM1905nnn/GSM1905476/suppl/GSM1905476_KL10_fpkm.txt.gz",
+              "sha256": "a140400b943a11e9562c8f5bc7beae92058d46fe139561c78446bdced77c8063",
+              "size": 252094,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905476.soft",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1905476&targ=self&form=text&view=full",
+              "sha256": "58babb002f603aa4a4e5aac2fb68f512097704c8ad50e9f4fcc56955c19546ad",
+              "size": 4230,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905478_KL11_fpkm.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM1905nnn/GSM1905478/suppl/GSM1905478_KL11_fpkm.txt.gz",
+              "sha256": "4d22041d40239d5c797c726e0783d37ecf4b2e4712f5527079bd43452a286e9d",
+              "size": 251317,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905478.soft",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1905478&targ=self&form=text&view=full",
+              "sha256": "30213e813e7ec1aab561b6b542bb959af493bd1f1a61c368b4501ed2487b2505",
+              "size": 4230,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905479_KL12_fpkm.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM1905nnn/GSM1905479/suppl/GSM1905479_KL12_fpkm.txt.gz",
+              "sha256": "c2cb73467894f08f20cdaff8fb24ec0fa248265efa0af7db55793769c1f00275",
+              "size": 252445,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            },
+            {
+              "asset_id": "GSM1905479.soft",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM1905479&targ=self&form=text&view=full",
+              "sha256": "1ecf8d1c37220f712d44cfcc117867217c4337d134f08cd9a217b42e68c1a22f",
+              "size": 4230,
+              "access_terms": "NCBI places no restrictions on GEO data use or distribution; retain source attribution",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Lawless et al. 2016, GSE73898"
+              }
+            }
+          ],
+          "citations": [
+            "https://doi.org/10.1074/mcp.M115.054288",
+            "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE73898",
+            "https://www.peptideatlas.org/PASS/PASS00717",
+            "https://www.ebi.ac.uk/pride/archive/projects/PXD002694"
+          ],
+          "assay_kinds": [
+            "targeted_ms",
+            "digest_ms",
+            "rna_seq"
+          ],
+          "coverage": {
+            "sheet_rows": {
+              "ProteinQuant": 1903,
+              "PeptideQuant": 3836,
+              "RNA": 6581,
+              "LabelFree": 3166
+            },
+            "protein_classes": {
+              "AA": 532,
+              "AB": 388,
+              "AC": 243,
+              "A-": 4,
+              "BB": 401,
+              "BC": 266,
+              "B-": 1,
+              "CC": 65,
+              "C-": 3
+            },
+            "standard_sequences": 93,
+            "standard_validation": {
+              "exact_subsequence": 3832,
+              "peptide_not_in_standard": 4
+            },
+            "quantified_protein_or_groups": 1167,
+            "upper_bound_protein_or_groups": 668,
+            "unquantifiable_protein_or_groups": 68,
+            "joined_srm_protein_groups": 55,
+            "label_free_unique_labels": 3165,
+            "label_free_duplicate_labels": {
+              "YNL239W": 2
+            },
+            "raw_rna_rows": 28548,
+            "raw_rna_lowdata_rows": 296,
+            "sample_pairing": "Source-cohort aggregate RNA/SRM only; individual MS/RNA replicate correspondence unresolved",
+            "reference_limits": "Historical SGD/Bowtie build and annotation release unspecified; source-only contexts cannot bind current PyEnsembl transcripts",
+            "standard_limits": "Four peptide rows do not match their reported synthetic standard; preserve quantities and explicit validation status",
+            "nc_orf_search": "Canonical targets; noncanonical ORF search not established; no ORF absence claim",
+            "excluded": "qconcatsummary redundant design/count table; raw transitions and light/heavy ratios not in workbook; no ribosome profiling"
+          },
+          "processing": {
+            "importer": "copy-yeast-v1",
+            "software": "orfdata",
+            "version": "0.7.0",
+            "reference_roles": {
+              "workbook": "ref:6850655bdc157940309fb8626cd44fe0ef0acb25daab8eddcb8c7c9cba3e2784",
+              "rna_replicates": "ref:f4a5327db00123357b8234b0ac05c9be9e92cfa0383aa0e77e72d72a635935e7"
+            },
+            "rna_inputs": [
+              {
+                "asset_id": "GSM1905474_KL9_fpkm.txt.gz",
+                "sample_id": "GSM1905474",
+                "metadata_asset": "GSM1905474.soft",
+                "biological_replicate": "1",
+                "title": "yeast RNA-seq fast BioRep1",
+                "rows": 7137,
+                "statuses": {
+                  "OK": 7063,
+                  "LOWDATA": 74
+                }
+              },
+              {
+                "asset_id": "GSM1905476_KL10_fpkm.txt.gz",
+                "sample_id": "GSM1905476",
+                "metadata_asset": "GSM1905476.soft",
+                "biological_replicate": "2",
+                "title": "yeast RNA-seq fast BioRep2",
+                "rows": 7137,
+                "statuses": {
+                  "OK": 7063,
+                  "LOWDATA": 74
+                }
+              },
+              {
+                "asset_id": "GSM1905478_KL11_fpkm.txt.gz",
+                "sample_id": "GSM1905478",
+                "metadata_asset": "GSM1905478.soft",
+                "biological_replicate": "3",
+                "title": "yeast RNA-seq fast BioRep3",
+                "rows": 7137,
+                "statuses": {
+                  "OK": 7063,
+                  "LOWDATA": 74
+                }
+              },
+              {
+                "asset_id": "GSM1905479_KL12_fpkm.txt.gz",
+                "sample_id": "GSM1905479",
+                "metadata_asset": "GSM1905479.soft",
+                "biological_replicate": "4",
+                "title": "yeast RNA-seq fast BioRep4",
+                "rows": 7137,
+                "statuses": {
+                  "OK": 7063,
+                  "LOWDATA": 74
+                }
+              }
+            ],
+            "aggregation": "Published RNA counts aggregated before FPKM; not a mean of per-replicate FPKM",
+            "calibrations": {
+              "SRM": "Protein-specific QconCAT with known spike and cell equivalents",
+              "RNA": "FPKM/sum(FPKM)*60000 assumed mRNA/cell",
+              "Qexactive": "Top3; 50 fmol P00489 and 400000 cells",
+              "SAX": "Top3; assumed 60000000 protein molecules/cell"
+            },
+            "unresolved": [
+              "Exact historical native sequence reference",
+              "Individual cross-assay biological replicate mapping",
+              "Label-free full protein-group membership"
+            ],
+            "operations": [
+              "Preserve native rows, measured zeros, bounds and missingness",
+              "Retain distinct calibration and quality flags",
+              "Keep grouped targets unresolved",
+              "Attach cohort-only RNA/protein relations"
+            ]
+          },
+          "schema": "orfdata.measurements.v1"
+        },
+        "distribution": {
+          "access_terms": "Lawless et al. 2016 workbook and QconCAT annotations: CC-BY-4.0. GEO numerical data: unrestricted NCBI reuse with author attribution. ORFdata transformation code: Apache-2.0.",
+          "redistributable": true,
+          "download_size": 14239331,
+          "download_sha256": "8999ea6e060ed5191124bba136ddb365a47ea9dc193d31e6bf45961bbe07b61a",
+          "installed_size": 168169472,
+          "data_release": "data-copy-yeast-2026-10-12.1"
+        },
+        "assets": {
+          "dataset.sqlite": {
+            "url": "https://github.com/openvax/orfdata/releases/download/data-copy-yeast-2026-10-12.1/copy-yeast-abundance-2026-10-12.1.sqlite.gz",
+            "sha256": "73b07cefaa3f8eab1dbe43d4c5bd5b9d7e0f84767649992c7da581ef45f517a1",
+            "size": 168169472,
+            "decompress": true
+          }
+        }
+      }
+    }
   }
 }

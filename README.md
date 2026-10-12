@@ -75,9 +75,10 @@ new experimental ORF catalogues. [Species and reference identity](docs/species.m
 Install with `pip install orfdata[pyensembl]`. See the
 [measurement API](docs/measurements.md) for native units, explicit samples and
 assays, and DataCache-managed downloads. Downloadable
-[human, mouse and dog protein abundance](docs/pfizer-protein.md) uses the same
-species-scoped API. These canonical-search protein groups do not establish
+[human, mouse and dog protein abundance](docs/pfizer-protein.md) and
+[yeast calibrated protein/RNA abundance](docs/copy-yeast.md) use the same
+species-scoped API. These canonical-search measurements do not establish
 noncanonical ORF abundance. The
 [quantitative, multispecies data roadmap](https://github.com/openvax/orfdata/issues/3)
-tracks RNA abundance, ribosome occupancy, yeast absolute quantification and
+tracks further RNA abundance, ribosome occupancy, absolute quantification and
 additional protein data releases.
