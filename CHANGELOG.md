@@ -8,6 +8,8 @@
   taxonomy now require an explicit `ReferenceContext` when binding.
 - Validate real human, mouse, dog and budding yeast reference slices offline.
   These fixtures do not add nonhuman experimental protein evidence.
+- Include reference fixtures, docs and check scripts in source distributions,
+  and validate the extracted source package in CI (#26).
 
 # 0.1.0
 
