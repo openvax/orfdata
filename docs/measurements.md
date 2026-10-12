@@ -6,8 +6,9 @@ proteins, protein groups and peptides. A measurement stays at the resolution
 the experiment supports. Parent-gene RNA abundance is useful context for an ORF;
 it is not a separate measurement of each ORF in that gene.
 
-Install `orfdata[data]` to manage datasets. The initial 0.3 registry is empty;
-the [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks source
+Install `orfdata[data]` to manage datasets. The registry includes downloadable
+[Pfizer/Oziolor human, mouse and dog protein summaries](pfizer-protein.md);
+the [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
 imports. The bundled human ORF evidence catalogue remains available offline.
 Its pooled PSM counts describe spectra, not sample-level protein abundance.
 
@@ -130,6 +131,12 @@ definitions = {
 ```
 
 CLI users can supply this JSON with `orfdata datasets --registry FILE ...`.
+
+Rebuild supported releases from their pinned original inputs with
+`registry.build(name, version, source_paths={"asset_id": "/local/file"})` or
+`orfdata datasets build NAME --source-path ASSET=PATH`. Local overrides still
+require the published hashes. Rebuilds use a separate import cache and preserve
+installed releases. Unsupported source importers fail explicitly.
 `ORFDATA_CACHE`, then `OPENVAX_DATA_CACHE`, then the platform's OpenVax cache
 select the root. ORFdata owns its `orfdata/` child. Release cache identities
 include manifest/reference and content hashes. SQLite partitions every table

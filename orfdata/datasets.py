@@ -122,6 +122,16 @@ class DatasetRegistry:
         return self._data_registry().download(name, version, force=force,
                                              source_paths=source_paths, **options)
 
+    def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
+        """Rebuild a registered release from pinned source files, explicitly."""
+        from .sources import importer
+
+        manifest = self.info(name, version)
+        transform = importer(manifest.processing.get("importer"))
+        return build_dataset(manifest, lambda inputs, output: transform(inputs, output, manifest),
+                             cache_root=self._cache_root, source_paths=source_paths, force=force,
+                             download_options=download_options)
+
     def open(self, name, version=None, *, verify_files=True):
         """Open an installed dataset after integrity and identity checks, offline."""
         version = self._version(name, version)

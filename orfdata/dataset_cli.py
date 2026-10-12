@@ -18,7 +18,7 @@ def run(argv=None, prog=None):
     listing.add_argument("--species")
     listing.add_argument("--taxon-id", type=int)
     listing.add_argument("--assay")
-    for command in ("info", "download", "inspect", "query", "pairs"):
+    for command in ("info", "download", "build", "inspect", "query", "pairs"):
         subparser = commands.add_parser(command)
         subparser.add_argument("name")
         subparser.add_argument("--version")
@@ -26,7 +26,13 @@ def run(argv=None, prog=None):
             subparser.add_argument("--force", action="store_true")
             subparser.add_argument("--timeout", type=float)
             subparser.add_argument("--quiet", action="store_true")
-            subparser.add_argument("--source-path", help="Use a local dataset.sqlite with the registered hash")
+            subparser.add_argument("--source-path", help="Use a local registered artifact (compressed when declared)")
+        if command == "build":
+            subparser.add_argument("--force", action="store_true")
+            subparser.add_argument("--timeout", type=float)
+            subparser.add_argument("--quiet", action="store_true")
+            subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
+                                   help="Use a local pinned source; repeat for each input asset")
         if command == "query":
             subparser.add_argument("--reference", help="Exact ref:SHA256 context key")
             subparser.add_argument("--sample")
@@ -74,6 +80,20 @@ def run(argv=None, prog=None):
             sources = {"dataset.sqlite": args.source_path} if args.source_path else None
             result = registry.download(args.name, args.version, force=args.force,
                                        source_paths=sources, **options)
+        elif args.command == "build":
+            sources = {}
+            for value in args.source_path:
+                asset, separator, path = value.partition("=")
+                if not separator or not asset or not path or asset in sources:
+                    parser.error("Source overrides require unique ASSET=PATH entries")
+                sources[asset] = path
+            options = dict(show_progress=not args.quiet)
+            if args.timeout is not None:
+                options["timeout"] = args.timeout
+            dataset = registry.build(args.name, args.version, force=args.force,
+                                     source_paths=sources, download_options=options)
+            result = dict(path=str(dataset.path), counts=dataset.counts,
+                          dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":
             dataset = registry.open(args.name, args.version)
             for match in dataset.matched_measurements(
