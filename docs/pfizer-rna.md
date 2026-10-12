@@ -75,8 +75,10 @@ and remain candidates for separate releases through the same importer.
 `registry.build(name, source_paths=...)` or `orfdata datasets build NAME` rebuilds
 from pinned counts, GEO metadata, factual Table S5 sample records and the
 historical GTF; workbook rebuilding needs `orfdata[build-data]`. Python returns
-a `QuantitativeDataset` ready to query. The CLI returns its path; explicit CLI
-queries of local builds are tracked in [#43](https://github.com/openvax/orfdata/issues/43).
+a `QuantitativeDataset` ready to query. Reopen it offline with
+`registry.open_build(name)` or inspect it with `registry.inspect_build(name)`.
+The CLI selects that source build explicitly with `orfdata datasets query NAME
+--built`; `inspect --built` checks its saved provenance and output receipt.
 Normal registry queries open the independently verified published artifact.
 
 GEO data and Ensembl annotations retain their source reuse terms and attribution.

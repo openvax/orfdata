@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
 
@@ -29,6 +30,11 @@ def get_data_dir(override=None):
 
 def _digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _build_store(manifest, cache_root):
+    return (get_data_dir(cache_root) / "imports" / manifest.dataset_id /
+            manifest.version / _digest(manifest.to_dict()))
 
 
 class DatasetRegistry:
@@ -185,6 +191,46 @@ class DatasetRegistry:
             raise ValueError("Installed dataset manifest disagrees with registered release")
         return dataset
 
+    def inspect_build(self, name, version=None, *, verify_files=True):
+        """Inspect a source build offline, checking source pins and build identity.
+
+        Output bytes are checked against the build receipt. ``verified`` remains
+        false: the receipt is not an independently trusted published output hash.
+        Original source acquisition locations, including local overrides, remain
+        in ``sources``. Inspection never reads or reacquires those source files.
+        """
+        manifest = self.info(name, version)
+        inspected = _datacache().inspect_materialization(_build_store(manifest, self._cache_root),
+                                                        verify_files=verify_files)
+        if inspected.status != "available":
+            return inspected
+        try:
+            expected = {source.asset_id: source for source in manifest.sources}
+            if set(inspected.sources) != set(expected) or set(inspected.files) != {"dataset.sqlite"}:
+                raise ValueError("Built source/output inventory disagrees with the registered release")
+            for name, source in expected.items():
+                recorded = inspected.sources[name]
+                if (recorded["sha256"] != source.sha256 or recorded["size"] != source.size
+                        or recorded["verified"] is not True):
+                    raise ValueError("Built source integrity pins disagree with the registered release")
+            if inspected.transform != dict(version=manifest.schema, options=manifest.to_dict()):
+                raise ValueError("Built transform/manifest disagrees with the registered release")
+        except (KeyError, TypeError, ValueError) as exc:
+            return replace(inspected, status="invalid", verified=False, error=exc)
+        return inspected
+
+    def open_build(self, name, version=None, *, verify_files=True):
+        """Open a local source materialization explicitly, without artifact fallback."""
+        inspected = self.inspect_build(name, version, verify_files=verify_files)
+        if inspected.status == "missing":
+            raise FileNotFoundError(inspected.path)
+        if inspected.status != "available":
+            raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
+        dataset = QuantitativeDataset(inspected.files["dataset.sqlite"].path)
+        if dataset.manifest.to_dict() != self.info(name, version).to_dict():
+            raise ValueError("Built dataset manifest disagrees with the registered release")
+        return dataset
+
 
 def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, force=False,
                   download_options=None):
@@ -216,8 +262,7 @@ def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, forc
             raise ValueError("Importer produced a different dataset manifest")
 
     identity = manifest.to_dict()
-    destination = (get_data_dir(cache_root) / "imports" / manifest.dataset_id /
-                   manifest.version / _digest(identity))
+    destination = _build_store(manifest, cache_root)
     paths = _datacache().materialize(
         destination, sources, transform=dict(version=manifest.schema, options=identity),
         outputs={"dataset.sqlite": {}}, builder=build, force=force,

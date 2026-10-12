@@ -157,6 +157,24 @@ Rebuild supported releases from their pinned original inputs with
 `orfdata datasets build NAME --source-path ASSET=PATH`. Local overrides still
 require the published hashes. Rebuilds use a separate import cache and preserve
 installed releases. Unsupported source importers fail explicitly.
+
+Use `registry.open_build(name, version)` to reopen a source rebuild offline, or
+`registry.inspect_build(name, version)` to inspect it. Normal `open` still selects
+the published artifact. The CLI makes the same choice explicit:
+
+```sh
+orfdata datasets build DATASET --version RELEASE
+orfdata datasets inspect DATASET --version RELEASE --built
+orfdata datasets query DATASET --version RELEASE --built --unit counts
+```
+
+`pairs --built` also uses the local rebuild. Read operations never acquire or
+repair data. Build inspection checks source pins, transform identity and output
+bytes against the saved receipt, even after local source overrides have been
+removed. Its `verified` field remains false because a build receipt is not an
+independent published output checksum. Both cache origins retain their original
+paths and provenance; explicit force rebuilding preserves existing readers.
+
 `ORFDATA_CACHE`, then `OPENVAX_DATA_CACHE`, then the platform's OpenVax cache
 select the root. ORFdata owns its `orfdata/` child. Release cache identities
 include manifest/reference and content hashes. SQLite partitions every table

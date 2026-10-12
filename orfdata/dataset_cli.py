@@ -23,6 +23,9 @@ def run(argv=None, prog=None):
         subparser = commands.add_parser(command)
         subparser.add_argument("name")
         subparser.add_argument("--version")
+        if command in ("inspect", "query", "pairs"):
+            subparser.add_argument("--built", action="store_true",
+                                   help="Use a local source build explicitly, instead of a published artifact")
         if command in ("download", "download-reference"):
             subparser.add_argument("--force", action="store_true")
             subparser.add_argument("--timeout", type=float)
@@ -97,9 +100,12 @@ def run(argv=None, prog=None):
             target = ScopedTarget(reference.reference, args.kind, args.target, args.namespace or reference.spec.namespace)
             result = dict(source=reference.spec.to_dict(), membership=reference.membership(target).to_dict())
         elif args.command == "inspect":
-            inspected = registry.inspect(args.name, args.version)
+            inspect = registry.inspect_build if args.built else registry.inspect
+            inspected = inspect(args.name, args.version)
             result = dict(status=inspected.status, path=str(inspected.path),
                           error=str(inspected.error) if inspected.error else None)
+            if args.built:
+                result.update(origin="source_build", verified=inspected.verified)
         elif args.command == "download":
             options = dict(show_progress=not args.quiet)
             if args.timeout is not None:
@@ -122,7 +128,8 @@ def run(argv=None, prog=None):
             result = dict(path=str(dataset.path), counts=dataset.counts,
                           dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":
-            dataset = registry.open(args.name, args.version)
+            open_dataset = registry.open_build if args.built else registry.open
+            dataset = open_dataset(args.name, args.version)
             for match in dataset.matched_measurements(
                 allowed_bases=args.basis, allowed_temporal=args.temporal or ["concurrent"],
                 reference=args.reference, pair_ids=args.pair_id, relation_ids=args.relation_id,
@@ -130,7 +137,8 @@ def run(argv=None, prog=None):
                 sys.stdout.write(json.dumps(match.to_table_row()) + "\n")
             return
         else:
-            dataset = registry.open(args.name, args.version)
+            open_dataset = registry.open_build if args.built else registry.open
+            dataset = open_dataset(args.name, args.version)
             target = None
             if any((args.target, args.kind, args.namespace)):
                 if not all((args.target, args.kind, args.namespace, args.reference)):
