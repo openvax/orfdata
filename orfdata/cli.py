@@ -1,4 +1,4 @@
-"""Query and export the offline uORF evidence reference."""
+"""Query and export the offline ORF evidence reference."""
 
 import argparse
 import csv
@@ -6,7 +6,7 @@ import json
 import re
 import sys
 
-from .catalog import EVIDENCE_METHODS, load_catalog
+from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog
 
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
@@ -104,7 +104,9 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         parser.error(str(exc))
     if args.format == "json":
         output = {
-            "schema": "isovar.uorf_query.v1",
+            "schema": "isovar.uorf_query.v1"
+            if isinstance(catalog, UORFCatalog)
+            else "orfdata.query.v1",
             "metadata": catalog.metadata,
             "records": [r.to_dict() for r in records],
         }

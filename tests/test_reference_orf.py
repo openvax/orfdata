@@ -144,3 +144,13 @@ def test_nonhuman_mhc_evidence_is_scoped_and_preserved(tmp_path):
     assert load_catalog(path).get(record.orf_id).evidence == record.evidence
     with pytest.raises(ValueError, match="non-human"):
         catalog(replace(record, peptides=(replace(observation, method="hla"),)))
+
+
+def test_generic_cli_exports_noncoding_models_and_species(capsys):
+    from orfdata.cli import run
+
+    run(["--biotype", "lncRNA", "--evidence", "ms"])
+    output = json.loads(capsys.readouterr().out)
+    assert output["schema"] == "orfdata.query.v1"
+    assert output["records"]
+    assert all(row["biotype"] == "lncRNA" and row["taxon_id"] == 9606 for row in output["records"])
