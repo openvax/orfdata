@@ -80,5 +80,5 @@ merge and PyPI publication actually complete; publication remains unapproved.
 Primary sources:
 - https://www.nature.com/articles/s41587-022-01369-0
 - https://www.nature.com/articles/s41586-026-10459-x
-- https://openprot.org/p/help
+- https://archive.openprot.org/p/help
 - https://github.com/openvax/pyensembl
