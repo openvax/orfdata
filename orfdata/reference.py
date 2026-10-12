@@ -53,26 +53,36 @@ class ReferenceContext:
     """One species/strain, assembly and annotation, with a stable scoped key.
 
     ``annotation_version=None`` means unknown, never the current release.
+    Sequence-only or incomplete source references may also leave the assembly
+    or annotation provider None, with a pinned sequence/source SHA-256. They
+    remain queryable but cannot be used to bind a genomic transcript.
     An assembly accession must include its version. No assembly-name aliases,
     coordinate conversion, orthology or evidence transfer occur here.
     """
 
     taxon_id: int
     species: str
-    genome_build: str
-    annotation_name: str
+    genome_build: Optional[str]
+    annotation_name: Optional[str]
     annotation_version: Optional[str] = None
     assembly_accession: Optional[str] = None
     strain: Optional[str] = None
     strain_taxon_id: Optional[int] = None
     sequence_sha256: Optional[str] = None
     taxonomy_version: str = TAXONOMY_VERSION
+    source_sha256: Optional[str] = None
 
     def __post_init__(self):
         _positive(self.taxon_id, "taxon_id")
-        if not all(isinstance(x, str) and x.strip() for x in
-                   (self.species, self.genome_build, self.annotation_name)):
-            raise ValueError("Species, assembly and annotation provider are required")
+        if not isinstance(self.species, str) or not self.species.strip():
+            raise ValueError("Species is required")
+        for name in ("genome_build", "annotation_name"):
+            value = getattr(self, name)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise ValueError(f"{name} must be a nonempty source label or None")
+        if (self.genome_build is None or self.annotation_name is None) and not (
+                self.sequence_sha256 or self.source_sha256):
+            raise ValueError("An incomplete source reference requires a pinned sequence/source SHA-256")
         if self.taxonomy_version != TAXONOMY_VERSION:
             raise ValueError("Unsupported taxonomy alias version")
         known = species_taxon(self.species)
@@ -102,6 +112,8 @@ class ReferenceContext:
             r"[0-9a-f]{64}", self.sequence_sha256
         ):
             raise ValueError("Sequence-set fingerprint must be a lowercase SHA-256")
+        if self.source_sha256 is not None and not re.fullmatch(r"[0-9a-f]{64}", self.source_sha256):
+            raise ValueError("Source fingerprint must be a lowercase SHA-256")
         if self.strain is not None and (not isinstance(self.strain, str) or not self.strain):
             raise ValueError("Strain must be a nonempty source label or None")
 
@@ -110,11 +122,19 @@ class ReferenceContext:
         """Content identity, including strain and reference pins, excluding aliases."""
         values = self.to_dict()
         values.pop("species")
+        # Preserve every already-published genomic reference key from 0.2-0.4.
+        if values["source_sha256"] is None:
+            values.pop("source_sha256")
         payload = json.dumps(values, sort_keys=True, separators=(",", ":")).encode()
         return "ref:" + hashlib.sha256(payload).hexdigest()
 
     def to_dict(self):
         return asdict(self)
+
+    @property
+    def is_genomic(self):
+        """Whether an assembly and annotation provider are explicitly declared."""
+        return self.genome_build is not None and self.annotation_name is not None
 
     @classmethod
     def from_genome(cls, genome, *, context=None):
@@ -131,8 +151,9 @@ class ReferenceContext:
             raise ValueError("Genome species and taxonomy disagree")
         taxon = taxon if taxon is not None else named_taxon
         if context is None:
-            if species is None or taxon is None or not getattr(genome, "annotation_name", None):
-                raise ValueError("Genome species/taxonomy unavailable; provide an explicit ReferenceContext")
+            if (species is None or taxon is None or not getattr(genome, "annotation_name", None)
+                    or not getattr(genome, "reference_name", None)):
+                raise ValueError("Genome species/taxonomy/assembly unavailable; provide an explicit ReferenceContext")
             return cls(
                 taxon_id=taxon,
                 species=species_name(species),
@@ -143,6 +164,7 @@ class ReferenceContext:
                 strain_taxon_id=getattr(genome, "strain_taxon_id", None),
                 assembly_accession=getattr(genome, "assembly_accession", None),
                 sequence_sha256=getattr(genome, "sequence_sha256", None),
+                source_sha256=getattr(genome, "source_sha256", None),
             )
         if not isinstance(context, cls):
             raise TypeError("context must be a ReferenceContext")
@@ -157,6 +179,8 @@ class ReferenceContext:
         release. Taxonomy, strain and assembly checks still apply. This method
         does not claim that missing metadata were observed on the Genome.
         """
+        if self.genome_build is None or (include_annotation and self.annotation_name is None):
+            raise ValueError("Incomplete source reference cannot bind a Genome; use an explicit reference mapping")
         species = getattr(genome, "species", None)
         taxon = getattr(genome, "taxon_id", None)
         named_taxon = species_taxon(species) if species is not None else None
@@ -173,6 +197,7 @@ class ReferenceContext:
             ("strain", self.strain),
             ("strain_taxon_id", self.strain_taxon_id),
             ("sequence_sha256", self.sequence_sha256),
+            ("source_sha256", self.source_sha256),
         ]
         if include_annotation:
             fields.extend((("annotation_name", self.annotation_name),

@@ -46,7 +46,7 @@ def test_four_species_id_collisions_and_scoped_queries(tmp_path, experiment):
     assert {o.target.reference.taxon_id for o in observations} == {9606, 10090, 9615, 4932}
     assert {o.dataset_id for o in observations} == {"fixture"}
     assert dataset.counts == dict(sample=4, assay=4, mapping=0, target=4, measurement=4,
-                                  assay_pair=0, target_relation=0)
+                                  assay_pair=0, target_relation=0, reference_mapping=0)
     for expected in experiment[3]:
         assert list(dataset.measurements(target=expected.target)) == [expected]
         assert list(dataset.measurements(reference=expected.target.reference, sample_id="sample")) == [expected]

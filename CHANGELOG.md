@@ -1,3 +1,18 @@
+# 0.5.0
+
+- Represent sequence-only and incomplete source references with pinned inputs
+  and explicit null metadata, without inventing a genomic assembly (#28).
+  Existing complete-reference keys remain unchanged.
+- Add source-to-annotation mapping records and views that retain original
+  measurements, all candidate targets, validation limits and unmapped reasons.
+  Shared groups stay groups; gene RNA cannot map directly to ORF abundance.
+- Support mapped Python/CLI queries with explicit ambiguity and sequence
+  validation filters. SQLite storage version 3 adds mapping tables while older
+  datasets remain readable without inferred mappings.
+- Pair RNA and protein assays with different native references within a species
+  (#30). Derived values retain explicitly scoped input observations, including
+  colliding local IDs. Gene-to-protein-group links remain ambiguous context.
+
 # 0.4.0
 
 - Add explicit assay pairings and within-reference target relationships,

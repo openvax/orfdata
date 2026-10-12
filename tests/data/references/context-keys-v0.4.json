@@ -1,0 +1,62 @@
+[
+  {
+    "context": {
+      "taxon_id": 9606,
+      "species": "human",
+      "genome_build": "GRCh38",
+      "annotation_name": "ensembl",
+      "annotation_version": "110",
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12"
+    },
+    "key": "ref:c100e3bcdf35e7be4c07d321775a874f0b33798f1206a3f644a077ade25e62ac"
+  },
+  {
+    "context": {
+      "taxon_id": 10090,
+      "species": "mouse",
+      "genome_build": "GRCm39",
+      "annotation_name": "ensembl",
+      "annotation_version": "110",
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12"
+    },
+    "key": "ref:b1a1a9782cada040c143e0a62c2186d9574d224907a9e9bf08ccba669bcf64ea"
+  },
+  {
+    "context": {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": "ROS_Cfam_1.0",
+      "annotation_name": "ensembl",
+      "annotation_version": "110",
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12"
+    },
+    "key": "ref:61b2ddb161c9da3f8abb11c86262aa6971196028a598d353d28ffc66316dc992"
+  },
+  {
+    "context": {
+      "taxon_id": 4932,
+      "species": "yeast",
+      "genome_build": "R64-1-1",
+      "annotation_name": "ensembl",
+      "annotation_version": "110",
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12"
+    },
+    "key": "ref:1efc304e346265121dce4c6736829ef5925abb3496cdeb863bd1f62e21d719cd"
+  }
+]

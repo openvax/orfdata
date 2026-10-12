@@ -4,7 +4,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Optional
 
-from .measurements import Measurement, SourceAsset, _identifier, _metadata, _number, _Record
+from .measurements import (
+    Measurement,
+    MeasurementReference,
+    SourceAsset,
+    _identifier,
+    _metadata,
+    _number,
+    _Record,
+)
 from .reference import ReferenceContext, ScopedTarget
 
 PAIRING_BASES = (
@@ -12,7 +20,8 @@ PAIRING_BASES = (
     "independent_cultures", "tissue_aggregate", "condition_aggregate",
 )
 TEMPORAL_RELATIONS = ("concurrent", "longitudinal", "unknown")
-TARGET_RELATIONS = ("same_target", "canonical_translation", "parent_rna_context", "shared_group_member")
+TARGET_RELATIONS = ("same_target", "canonical_translation", "parent_rna_context", "shared_group_member",
+                    "gene_protein_group_context")
 
 
 def _target(data):
@@ -56,18 +65,33 @@ class AssayPair(_Record):
     temporal_relation: str = "unknown"
     interval: Optional[float] = None
     interval_unit: Optional[str] = None
+    right_reference: Optional[ReferenceContext] = None
+
+    @classmethod
+    def from_dict(cls, data):
+        values = dict(data)
+        values["reference"] = ReferenceContext(**values["reference"])
+        if values.get("right_reference") is not None:
+            values["right_reference"] = ReferenceContext(**values["right_reference"])
+        return cls(**values)
 
     def __post_init__(self):
         _identifier(self.pair_id, "pair_id")
         _release(self)
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("Pair requires a ReferenceContext")
+        if self.right_reference is None:
+            object.__setattr__(self, "right_reference", self.reference)
+        if not isinstance(self.right_reference, ReferenceContext):
+            raise TypeError("Right assay reference must be a ReferenceContext")
+        if self.reference.taxon_id != self.right_reference.taxon_id:
+            raise ValueError("Assay pairs cannot cross species; use orthology comparisons")
         for identifier in (self.left_assay_id, self.right_assay_id):
             if identifier is not None:
                 _identifier(identifier, "assay ID")
         if self.left_assay_id is None and self.right_assay_id is None:
             raise ValueError("A pairing requires at least one declared assay")
-        if self.left_assay_id == self.right_assay_id:
+        if self.left_assay_id == self.right_assay_id and self.reference.key == self.right_reference.key:
             raise ValueError("A pairing requires distinct assays")
         if self.basis not in PAIRING_BASES:
             raise ValueError("Unknown assay pairing basis")
@@ -103,8 +127,8 @@ class TargetRelation(_Record):
         _release(self)
         if not isinstance(self.left, ScopedTarget) or not isinstance(self.right, ScopedTarget):
             raise TypeError("Target relations require ScopedTargets")
-        if self.left.reference.key != self.right.reference.key:
-            raise ValueError("Within-dataset target relations cannot cross reference contexts")
+        if self.left.reference.taxon_id != self.right.reference.taxon_id:
+            raise ValueError("Target relations cannot cross species; use orthology")
         if self.relation not in TARGET_RELATIONS:
             raise ValueError("Unknown target relationship")
         if self.cardinality not in ("one_to_one", "one_to_many", "many_to_one", "many_to_many", "unknown"):
@@ -122,6 +146,10 @@ class TargetRelation(_Record):
             raise ValueError("Parent RNA context links a gene/transcript to an ORF")
         if self.relation == "shared_group_member" and kinds not in (("protein_group", "protein"), ("protein_group", "orf")):
             raise ValueError("Group membership links a group to one candidate member")
+        if self.relation == "gene_protein_group_context" and kinds not in (("gene", "protein_group"), ("transcript", "protein_group")):
+            raise ValueError("Gene/group context links parent RNA to a source protein group")
+        if self.relation == "gene_protein_group_context" and self.cardinality == "one_to_one":
+            raise ValueError("Gene/group context cannot claim unique protein attribution")
         _metadata(self, "evidence")
 
     @classmethod
@@ -157,7 +185,8 @@ class MatchedMeasurements(_Record):
             raise TypeError("A match requires an AssayPair and TargetRelation")
         if (pair.dataset_id, pair.dataset_version) != (relation.dataset_id, relation.dataset_version):
             raise ValueError("Pairing and target relation belong to different dataset releases")
-        if pair.reference.key != relation.left.reference.key:
+        if (pair.reference.key != relation.left.reference.key
+                or pair.right_reference.key != relation.right.reference.key):
             raise ValueError("Pairing and target relation have different references")
         for side in ("left", "right"):
             values = tuple(getattr(self, side))
@@ -227,6 +256,11 @@ class MatchedMeasurements(_Record):
         derivation = dict(method=method, normalization=dict(normalization),
                           pairing=self.pairing.to_dict(), target_relation=self.relation.to_dict(),
                           uncertainty="not_propagated", unresolved_reason=reason)
+        if numerator.target.reference.key == denominator.target.reference.key:
+            inputs = dict(input_measurements=(numerator.measurement_id, denominator.measurement_id))
+        else:
+            inputs = dict(input_references=(MeasurementReference.from_measurement(numerator),
+                                            MeasurementReference.from_measurement(denominator)))
         return Measurement(
             measurement_id=measurement_id, target=numerator.target,
             sample_id=numerator.sample_id, assay_id=numerator.assay_id, quantity=quantity,
@@ -234,8 +268,7 @@ class MatchedMeasurements(_Record):
             unit=f"({numerator.unit})/({denominator.unit})",
             dataset_id=numerator.dataset_id, dataset_version=numerator.dataset_version,
             status="not_measured" if reason else "measured", origin="derived",
-            input_measurements=(numerator.measurement_id, denominator.measurement_id),
-            derivation=derivation,
+            derivation=derivation, **inputs,
         )
 
 

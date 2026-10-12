@@ -25,6 +25,13 @@ only explicitly concurrent assays are returned; opt into `longitudinal` or
 TMT channels and bridges remain in the assays and do not become biological
 sample counts.
 
+RNA annotation and protein search references can differ. `AssayPair.reference`
+is the left assay's context; `right_reference` explicitly identifies the right
+assay's context and defaults to the left for older records. Both must belong to
+the same species. A protein FASTA does not need an invented genomic assembly:
+see [source references](source-references.md). Original targets and references
+remain attached to both sides, even when their local IDs happen to match.
+
 The CLI streams the same table rows:
 
 ```sh
@@ -39,10 +46,13 @@ and cardinality. `same_target` compares one target across assays/samples.
 `parent_rna_context` links parent RNA to an ORF but keeps the RNA value attached
 to its original gene/transcript. `shared_group_member` records an ambiguous
 protein-group assignment; the group value stays a group value.
+`gene_protein_group_context` links RNA to an ambiguous source protein group
+without assigning that group's abundance to an individual protein or ORF.
 
 Importers pass `AssayPair` and `TargetRelation` iterators as `pairings=` and
 `relations=` to `QuantitativeDataset.create`. IDs belong to the dataset release
-and reference context. Invalid assay references, contradictory known donor
+and left reference context. The right assay/target keeps its own context.
+Invalid assay references, contradictory known donor
 identities and conflicting one-to-one assignments fail the import. Original
 storage-version-1 datasets remain readable and have no declared relationships.
 
@@ -67,7 +77,10 @@ assays. Missing, censored or nonpositive denominators produce an unresolved
 `not_measured` result with its reason, never infinity or a measured zero. RPF/RNA
 ratios are source-defined translation-efficiency measures, not measured flux.
 All derived values retain their input IDs, pairing, target attribution and
-normalization assumptions.
+normalization assumptions. When input reference contexts differ, the ratio
+stores `MeasurementReference` records in `input_references`, rather than
+unqualified local IDs. This preserves source identity across annotation and
+search-FASTA releases.
 
 ## Across species
 
