@@ -39,6 +39,9 @@ def run(argv=None, prog=None):
             subparser.add_argument("--assay-id")
             subparser.add_argument("--quantity")
             subparser.add_argument("--status")
+            subparser.add_argument("--unit", help="Exact native unit, e.g. iBAQ, rIBAQ, TPM or counts")
+            subparser.add_argument("--scale", choices=("linear", "log"))
+            subparser.add_argument("--log-base", type=float, help="Exact native logarithm base; no transformation")
             subparser.add_argument("--target")
             subparser.add_argument("--kind")
             subparser.add_argument("--namespace")
@@ -111,7 +114,8 @@ def run(argv=None, prog=None):
                 references = {r.key: r for r in dataset.manifest.references}
                 target = ScopedTarget(references[args.reference], args.kind, args.target, args.namespace)
             filters = dict(sample_id=args.sample, assay_id=args.assay_id,
-                           quantity=args.quantity, status=args.status)
+                           quantity=args.quantity, status=args.status,
+                           unit=args.unit, scale=args.scale, log_base=args.log_base)
             if args.mapped:
                 if target is None:
                     parser.error("--mapped requires an exact target and reference")

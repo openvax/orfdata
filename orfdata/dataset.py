@@ -18,6 +18,8 @@ from .measurements import (
     MeasurementReference,
     Sample,
     TargetMapping,
+    _identifier,
+    _number,
     _plain,
 )
 from .pairing import (
@@ -136,6 +138,19 @@ def _measurement_record(observation):
         if default is MISSING or value != default:
             result[field.name] = _plain(value)
     return result
+
+
+def _validate_native_selectors(unit=None, scale=None, log_base=None):
+    if unit is not None:
+        _identifier(unit, "measurement unit selector")
+    if scale is not None and scale not in ("linear", "log"):
+        raise ValueError("Measurement scale selector must be linear or log")
+    if log_base is not None:
+        _number(log_base, "logarithm base selector")
+        if log_base <= 0 or log_base == 1:
+            raise ValueError("Logarithm base selector must be positive and not one")
+        if scale == "linear":
+            raise ValueError("A linear scale selector cannot have a logarithm base")
 
 
 class QuantitativeDataset:
@@ -405,8 +420,9 @@ class QuantitativeDataset:
             raise ValueError("Choose explicit usable mapping statuses")
         if type(require_sequence) is not bool:
             raise TypeError("require_sequence must be a boolean")
-        if set(observation_filters) - {"sample_id", "assay_id", "quantity", "status"}:
+        if set(observation_filters) - {"sample_id", "assay_id", "quantity", "status", "unit", "scale", "log_base"}:
             raise ValueError("Mapped observation filters cannot override source/target reference identity")
+        _validate_native_selectors(**{name: observation_filters.get(name) for name in ("unit", "scale", "log_base")})
         for mapping in self.reference_mappings(target=target):
             if mapping.status not in allowed or (require_sequence and not mapping.sequence_validated):
                 continue
@@ -468,16 +484,19 @@ class QuantitativeDataset:
                                               tuple(by_target[1].get(relation.right.key, ())))
 
     def measurements(self, *, target=None, reference=None, sample_id=None,
-                     assay_id=None, quantity=None, status=None):
+                     assay_id=None, quantity=None, status=None, unit=None, scale=None,
+                     log_base=None):
         """Iterate native observations; a target match is exact, never orthology.
 
         Unqualified IDs across multiple references are rejected. To browse all
         species together, omit ID filters; each result still carries its scope.
+        Native unit/scale/base selectors are exact; no conversion or aggregation.
         """
         if quantity is not None and quantity not in QUANTITIES:
             raise ValueError("Unknown measurement quantity")
         if status is not None and status not in MEASUREMENT_STATUSES:
             raise ValueError("Unknown measurement status")
+        _validate_native_selectors(unit, scale, log_base)
         scope = self._scope(reference)
         if target is not None:
             if not isinstance(target, ScopedTarget):
@@ -495,11 +514,23 @@ class QuantitativeDataset:
                  "m.id, m.sample_id, m.assay_id, m.quantity, m.status "
                  "FROM measurement m JOIN target t ON m.reference_key=t.reference_key "
                  "AND m.target_key=t.key")
-        if selected:
-            query += " WHERE " + " AND ".join(f"m.{key}=?" for key, _ in selected)
+        conditions = [f"m.{key}=?" for key, _ in selected]
+        parameters = [value for _, value in selected]
+        # JSON extraction applies to original v1-v3 records and compact v4
+        # residual records. SQLite filters before Python reconstructs objects.
+        for value, expression in (
+            (unit, "json_extract(m.record, '$.unit')"),
+            (scale, "coalesce(json_extract(m.record, '$.scale'), 'linear')"),
+            (log_base, "json_extract(m.record, '$.log_base')"),
+        ):
+            if value is not None:
+                conditions.append(expression + "=?")
+                parameters.append(value)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
         query += " ORDER BY m.reference_key, m.id"
         with closing(self._connect()) as connection:
-            for row in connection.execute(query, [value for _, value in selected]):
+            for row in connection.execute(query, parameters):
                 values = json.loads(row[0])
                 if self._storage_version == 4:
                     values = dict(_V4_DEFAULTS, **values)

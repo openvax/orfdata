@@ -1,3 +1,10 @@
+# 0.9.0
+
+- Select exact native `unit`, `scale` and `log_base` in measurement queries,
+  mapped views, CLI queries and Parquet exports, including storage v1-v4.
+- Preserve unfiltered behavior, values, zeros, missingness and source-row lineage.
+  An unavailable series returns no observations; no conversion or fallback occurs.
+
 # 0.8.0
 
 - Compact new quantitative datasets with integer reference/target/assay keys
