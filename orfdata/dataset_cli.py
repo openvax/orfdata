@@ -36,6 +36,12 @@ def run(argv=None, prog=None):
             subparser.add_argument("--target")
             subparser.add_argument("--kind")
             subparser.add_argument("--namespace")
+            subparser.add_argument("--mapped", action="store_true",
+                                   help="Return source observations with explicit reference mappings")
+            subparser.add_argument("--mapping-status", action="append",
+                                   help="Mapping status to include; default unique")
+            subparser.add_argument("--require-sequence", action="store_true",
+                                   help="Require recorded exact sequence validation for mapped queries")
         if command == "pairs":
             subparser.add_argument("--basis", action="append", required=True,
                                    help="Allowed pairing basis; repeat for multiple bases")
@@ -84,10 +90,19 @@ def run(argv=None, prog=None):
                     parser.error("Target queries require --target, --kind, --namespace and --reference")
                 references = {r.key: r for r in dataset.manifest.references}
                 target = ScopedTarget(references[args.reference], args.kind, args.target, args.namespace)
-            for measurement in dataset.measurements(
-                target=target, reference=args.reference, sample_id=args.sample,
-                assay_id=args.assay_id, quantity=args.quantity, status=args.status,
-            ):
+            filters = dict(sample_id=args.sample, assay_id=args.assay_id,
+                           quantity=args.quantity, status=args.status)
+            if args.mapped:
+                if target is None:
+                    parser.error("--mapped requires an exact target and reference")
+                measurements = dataset.mapped_measurements(
+                    target, mapping_statuses=args.mapping_status or ["unique"],
+                    require_sequence=args.require_sequence, **filters)
+            else:
+                if args.mapping_status or args.require_sequence:
+                    parser.error("Mapping filters require --mapped")
+                measurements = dataset.measurements(target=target, reference=args.reference, **filters)
+            for measurement in measurements:
                 sys.stdout.write(json.dumps(measurement.to_dict()) + "\n")
             return
         json.dump(result, sys.stdout, indent=2)

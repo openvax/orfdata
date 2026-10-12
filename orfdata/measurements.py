@@ -91,6 +91,9 @@ class _Record:
                 row["reference"] = ReferenceContext(**row["reference"])
                 targets.append(ScopedTarget(**row))
             values["targets"] = tuple(targets)
+        if "input_references" in values:
+            values["input_references"] = tuple(MeasurementReference.from_dict(row)
+                                               for row in values["input_references"])
         return cls(**values)
 
 
@@ -247,6 +250,33 @@ class Assay(_Record):
 
 
 @dataclass(frozen=True)
+class MeasurementReference(_Record):
+    """An input observation identified across dataset releases and references."""
+
+    dataset_id: str
+    dataset_version: str
+    reference: ReferenceContext
+    measurement_id: str
+
+    def __post_init__(self):
+        for name in ("dataset_id", "dataset_version", "measurement_id"):
+            _identifier(getattr(self, name), name)
+        if not isinstance(self.reference, ReferenceContext):
+            raise TypeError("Measurement reference requires a ReferenceContext")
+
+    @property
+    def key(self):
+        return self.dataset_id, self.dataset_version, self.reference.key, self.measurement_id
+
+    @classmethod
+    def from_measurement(cls, measurement):
+        if not isinstance(measurement, Measurement):
+            raise TypeError("Expected a Measurement")
+        return cls(measurement.dataset_id, measurement.dataset_version,
+                   measurement.target.reference, measurement.measurement_id)
+
+
+@dataclass(frozen=True)
 class Measurement(_Record):
     """A native value with units, missingness, target resolution and provenance.
 
@@ -275,6 +305,7 @@ class Measurement(_Record):
     input_measurements: tuple = ()
     derivation: Mapping = field(default_factory=dict)
     provenance: Mapping = field(default_factory=dict)
+    input_references: tuple = ()
 
     def __post_init__(self):
         for name in ("measurement_id", "sample_id", "assay_id", "unit", "dataset_id", "dataset_version"):
@@ -314,11 +345,26 @@ class Measurement(_Record):
         if len(set(inputs)) != len(inputs) or self.measurement_id in inputs:
             raise ValueError("Derived input IDs must be unique and exclude the output")
         object.__setattr__(self, "input_measurements", inputs)
+        references = tuple(self.input_references)
+        if inputs and references:
+            raise ValueError("Choose legacy same-context input IDs or explicit input references, not both")
+        if any(not isinstance(value, MeasurementReference) for value in references):
+            raise TypeError("input_references must contain MeasurementReferences")
+        own_key = (self.dataset_id, self.dataset_version, self.target.reference.key, self.measurement_id)
+        keys = {value.key for value in references}
+        if len(keys) != len(references) or own_key in keys:
+            raise ValueError("Input references must be unique and exclude the output")
+        for value in references:
+            if (value.dataset_id, value.dataset_version) != (self.dataset_id, self.dataset_version):
+                raise ValueError("Derived inputs must belong to the same dataset release")
+            if value.reference.taxon_id != self.target.reference.taxon_id:
+                raise ValueError("Derived abundance inputs cannot cross species")
+        object.__setattr__(self, "input_references", references)
         if self.origin in ("derived", "predicted") and not self.derivation:
             raise ValueError("Derived/predicted values require a named method and assumptions")
         if self.origin in ("derived", "predicted") and isinstance(self.derivation, Mapping):
             _identifier(self.derivation.get("method"), "derivation method")
-        if self.origin == "observed" and (inputs or self.derivation):
+        if self.origin == "observed" and (inputs or references or self.derivation):
             raise ValueError("An observed value cannot contain a derivation")
         _metadata(self, "derivation", "provenance")
 

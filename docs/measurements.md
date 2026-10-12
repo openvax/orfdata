@@ -46,6 +46,10 @@ mapping table. The default PyEnsembl target uses its unversioned `id`; request
 mapping across annotation releases, gene isoforms, ORFs or species. A variant or
 fusion product does not inherit a native reference protein measurement.
 
+For native sources with unreported genomic metadata, use explicit
+[source references and mapping views](source-references.md) to retain the original
+observation alongside its mapping to a PyEnsembl target.
+
 The CLI uses the same operations:
 
 ```sh
@@ -96,7 +100,10 @@ An importer calls `QuantitativeDataset.create(path, manifest, samples=...,
 assays=..., measurements=..., mappings=...)`. These inputs may be generators;
 measurements are written incrementally. Every observation names a source asset
 or earlier input measurements. Derived inputs precede outputs in the same
-reference context. Duplicate IDs, broken foreign keys, wrong dataset releases
+dataset release. `input_measurements` names IDs within the output reference;
+`input_references` instead uses `MeasurementReference` records with each input's
+dataset, version, reference and ID. The two forms cannot be mixed. Cross-species
+derived abundance is rejected. Duplicate IDs, broken foreign keys, wrong dataset releases
 and cross-reference links fail the import. Failed builds do not replace data.
 
 Use `build_dataset(manifest, builder, ...)` for a managed local import.

@@ -15,7 +15,15 @@ from .catalog import (
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
-from .measurements import Assay, DatasetManifest, Measurement, Sample, SourceAsset, TargetMapping
+from .measurements import (
+    Assay,
+    DatasetManifest,
+    Measurement,
+    MeasurementReference,
+    Sample,
+    SourceAsset,
+    TargetMapping,
+)
 from .model import ORFModel, ReferenceORF
 from .pairing import (
     AssayPair,
@@ -26,6 +34,7 @@ from .pairing import (
     compare_orthologs,
 )
 from .reference import ReferenceContext, ScopedTarget
+from .reference_mapping import MappedMeasurement, ReferenceMapping
 from .version import __version__
 
 __all__ = [
@@ -47,6 +56,7 @@ __all__ = [
     "Sample",
     "Assay",
     "Measurement",
+    "MeasurementReference",
     "TargetMapping",
     "AssayPair",
     "TargetRelation",
@@ -54,6 +64,8 @@ __all__ = [
     "OrthologyMapping",
     "OrthologyComparison",
     "compare_orthologs",
+    "ReferenceMapping",
+    "MappedMeasurement",
     "load_catalog",
     "UORFCatalog",
     "UORFRecord",
