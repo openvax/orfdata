@@ -71,4 +71,6 @@ The catalogue API supports other species, with explicit species and assembly
 checks. **Bundled evidence is currently human-only**; mouse bindings use synthetic
 test data. [Adding another species](docs/reference.md#other-species).
 
-Development draft: version 0.1.0 is not yet published.
+Install with `pip install orfdata[pyensembl]`. See the
+[quantitative, multispecies data roadmap](https://github.com/openvax/orfdata/issues/3)
+for planned RNA abundance, ribosome occupancy and protein measurements.

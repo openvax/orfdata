@@ -124,7 +124,7 @@ and validate coordinate conventions. No OpenProt importer is included yet.
 
 ## Rebuild and verify
 
-From a development checkout with the draft PyEnsembl dependency available:
+From a development checkout with the PyEnsembl dependency installed:
 
 ```sh
 python -m pip install -e '.[dev]'
