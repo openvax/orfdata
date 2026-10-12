@@ -145,4 +145,5 @@ arbitrary other taxa use the same schema. The core API needs neither pandas nor
 PyArrow. Optional `orfdata[columnar]` enables `dataset.export_parquet(path)`;
 query columns accompany full measurement JSON, preserving exact values and
 provenance even when a floating-point analysis column cannot represent an
-integer exactly.
+integer exactly. [Compact storage and compatibility](storage.md) describes
+new SQLite v4 writes, legacy readers and actual-source size/query benchmarks.

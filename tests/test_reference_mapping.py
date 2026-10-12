@@ -186,13 +186,9 @@ def test_unmapped_records_and_old_storage_remain_inspectable(tmp_path, mapped):
     dataset = write(tmp_path, mapped, reference_mappings=[missing])
     assert list(dataset.reference_mappings()) == [missing]
     assert list(dataset.mapped_measurements(original.targets[0])) == []
-    with sqlite3.connect(dataset.path) as connection:
-        connection.execute("DROP TABLE reference_assignment")
-        connection.execute("DROP TABLE reference_mapping")
-        connection.execute("PRAGMA user_version=2")
-    old = QuantitativeDataset(dataset.path)
+    old = QuantitativeDataset(Path(__file__).parent / "data/storage/v2.sqlite")
     assert list(old.reference_mappings()) == []
-    assert len(list(old.measurements())) == 4
+    assert len(list(old.measurements())) == 12
 
 
 def test_mapped_cli_preserves_source_identity(tmp_path, mapped, capsys):
