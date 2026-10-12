@@ -20,7 +20,7 @@ include sex. Channels and technical runs do not count as independent donors.
 pip install 'orfdata[data]'
 orfdata datasets list --species dog
 orfdata datasets download pfizer-atlas-dog-protein
-orfdata datasets query pfizer-atlas-dog-protein --quantity protein_abundance
+orfdata datasets query pfizer-atlas-dog-protein --quantity protein_abundance --unit iBAQ --scale linear
 ```
 
 ```python
@@ -30,9 +30,12 @@ registry = DatasetRegistry()
 dataset = registry.open("pfizer-atlas-dog-protein")  # After explicit download.
 reference, = dataset.manifest.references
 group = ScopedTarget(reference, "protein_group", "A0A0A0MPB0", "MSV000099744:ProteinGroup")
-for value in dataset.measurements(target=group):
+for value in dataset.measurements(target=group, unit="iBAQ", scale="linear"):
     print(value.sample_id, value.unit, value.value, value.status)
 ```
+
+Omit the unit selector to return both native series. They retain the same source
+row and sample identity; two units do not imply two independent measurements.
 
 Every target retains its species and the checksum of the deposited UniProt
 search FASTA. The original genomic assembly and UniProt release are unknown.

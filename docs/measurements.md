@@ -51,6 +51,24 @@ For native sources with unreported genomic metadata, use explicit
 [source references and mapping views](source-references.md) to retain the original
 observation alongside its mapping to a PyEnsembl target.
 
+Choose a native series explicitly when a source supplies several units:
+
+```python
+values = dataset.measurements(quantity="protein_abundance", unit="iBAQ", scale="linear")
+dataset.export_parquet("ibaq.parquet", unit="iBAQ", scale="linear")
+```
+
+`unit`, `scale` and `log_base` also work with `mapped_measurements` and existing
+storage v1-v4 releases. Units are exact and case-sensitive. Selecting
+`scale="log", log_base=2` returns values already on that scale; nothing is transformed.
+An unavailable series returns no observations. Contradictory linear/log requests
+raise an error. Omitting selectors preserves all native series.
+
+For example, Pfizer iBAQ and rIBAQ are two series from the same source rows.
+Selecting or exporting both does not create additional donors, spectra or
+independent detections. Source row/sample/assay lineage stays attached to each
+measurement.
+
 The CLI uses the same operations:
 
 ```sh
