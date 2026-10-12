@@ -75,7 +75,7 @@ reconstructed RNA products and preserves each candidate's RNA support. For
 example, the native TPST1 peptide KIILSKISV is absent from the Sid TPST1–CRCP
 alternatives, so its MS evidence does not support those altered products.
 
-These integrations are in the Varcode 10.12.0 and Isovar 1.48.0 drafts.
+These integrations are in the Varcode 10.12.0 and Isovar 1.49.0 drafts.
 
 ## Data and limits
 
