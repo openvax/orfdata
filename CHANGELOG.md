@@ -1,3 +1,15 @@
+# 0.6.0
+
+- Import the complete public Pfizer/Oziolor human, mouse and dog protein-group
+  summary tables through one species-scoped API, retaining native iBAQ/rIBAQ,
+  measured zeros, source missingness and unresolved group representatives.
+- Preserve source sample identities, TMT channels, pools, normalization and
+  pinned search FASTAs. No inferred RNA pairing or protein copies-per-cell.
+- Add explicit source rebuilds with `DatasetRegistry.build` and
+  `orfdata datasets build`, using DataCache checksums and local source overrides.
+- Register versioned compressed data artifacts, including the complete canine
+  summary in an 84.4 MB download, with source counts and redistribution terms.
+
 # 0.5.0
 
 - Represent sequence-only and incomplete source references with pinned inputs
