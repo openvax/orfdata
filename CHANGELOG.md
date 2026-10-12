@@ -1,3 +1,16 @@
+# 0.7.0
+
+- Import CoPY yeast SRM protein/peptide quantities, distinct label-free estimates,
+  aggregate RNA and four RNA libraries through the same species-scoped dataset API.
+- Preserve upper bounds, missingness, quality status, standards, uncertainty and
+  calibration. RNA copies/cell retain their 60,000-mRNA assumption and input lineage.
+- Add explicit cohort RNA/protein comparisons; individual replicate pairing,
+  grouped-protein attribution and unspecified historical references stay unresolved.
+- Register a checksum-verified 69,125-observation data release and source rebuild,
+  using stable versioned PMC objects instead of a regenerated ZIP (#33).
+- Retain four standard-sequence mismatches and duplicate label-free rows with
+  visible provenance; further source reconciliation is tracked in #34.
+
 # 0.6.0
 
 - Import the complete public Pfizer/Oziolor human, mouse and dog protein-group

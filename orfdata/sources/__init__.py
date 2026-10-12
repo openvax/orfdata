@@ -7,4 +7,8 @@ def importer(name):
         from .pfizer import import_protein
 
         return import_protein
+    if name == "copy-yeast-v1":
+        from .copy import import_copy
+
+        return import_copy
     raise ValueError(f"No packaged importer for {name!r}")
