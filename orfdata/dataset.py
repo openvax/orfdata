@@ -16,6 +16,14 @@ from .measurements import (
     Sample,
     TargetMapping,
 )
+from .pairing import (
+    PAIRING_BASES,
+    TEMPORAL_RELATIONS,
+    AssayPair,
+    MatchedMeasurements,
+    TargetRelation,
+    _check_one_to_one,
+)
 from .reference import ReferenceContext, ScopedTarget
 
 _SCHEMA = """
@@ -51,6 +59,18 @@ CREATE TABLE input_measurement (
 CREATE INDEX target_lookup ON target(reference_key, namespace, kind, identifier);
 CREATE INDEX observation_lookup ON measurement(reference_key, target_key, sample_id, assay_id);
 CREATE INDEX assay_lookup ON measurement(reference_key, assay_id, quantity, status);
+CREATE TABLE assay_pair (
+    reference_key TEXT NOT NULL REFERENCES reference(key), id TEXT NOT NULL,
+    left_assay_id TEXT, right_assay_id TEXT, record TEXT NOT NULL,
+    PRIMARY KEY(reference_key, id),
+    FOREIGN KEY(reference_key, left_assay_id) REFERENCES assay(reference_key, id),
+    FOREIGN KEY(reference_key, right_assay_id) REFERENCES assay(reference_key, id));
+CREATE TABLE target_relation (
+    reference_key TEXT NOT NULL, id TEXT NOT NULL,
+    left_target_key TEXT NOT NULL, right_target_key TEXT NOT NULL, record TEXT NOT NULL,
+    PRIMARY KEY(reference_key, id),
+    FOREIGN KEY(reference_key, left_target_key) REFERENCES target(reference_key, key),
+    FOREIGN KEY(reference_key, right_target_key) REFERENCES target(reference_key, key));
 """
 
 
@@ -73,7 +93,8 @@ class QuantitativeDataset:
     def __init__(self, path):
         self.path = Path(path).resolve()
         with closing(self._connect()) as connection:
-            if connection.execute("PRAGMA user_version").fetchone()[0] != 1:
+            self._storage_version = connection.execute("PRAGMA user_version").fetchone()[0]
+            if self._storage_version not in (1, 2):
                 raise ValueError("Unsupported quantitative database schema")
             row = connection.execute("SELECT value FROM metadata WHERE name='manifest'").fetchone()
             if row is None:
@@ -88,7 +109,8 @@ class QuantitativeDataset:
         return connection
 
     @classmethod
-    def create(cls, path, manifest, *, samples, assays, measurements, mappings=()):
+    def create(cls, path, manifest, *, samples, assays, measurements, mappings=(),
+               pairings=(), relations=()):
         """Write a new dataset from iterators, validating scope and foreign keys.
 
         Never overwrite an existing file. An interrupted/invalid build removes
@@ -106,7 +128,7 @@ class QuantitativeDataset:
             connection = sqlite3.connect(path)
             connection.execute("PRAGMA foreign_keys=ON")
             connection.executescript(_SCHEMA)
-            connection.execute("PRAGMA user_version=1")
+            connection.execute("PRAGMA user_version=2")
             connection.execute("INSERT INTO metadata VALUES ('manifest', ?)",
                                (_json(manifest.to_dict()),))
             for reference in manifest.references:
@@ -125,6 +147,45 @@ class QuantitativeDataset:
                 connection.execute("INSERT INTO assay VALUES (?, ?, ?, ?)",
                                    (assay.reference.key, assay.assay_id, assay.sample_id,
                                     _json(assay.to_dict())))
+            for pair in pairings:
+                if not isinstance(pair, AssayPair):
+                    raise TypeError("pairings must contain AssayPairs")
+                if (pair.dataset_id, pair.dataset_version) != (manifest.dataset_id, manifest.version):
+                    raise ValueError("Pairing belongs to a different dataset release")
+                if pair.basis in ("same_material", "adjacent_donor_tissue"):
+                    units = []
+                    for identifier in (pair.left_assay_id, pair.right_assay_id):
+                        row = connection.execute(
+                            "SELECT s.record FROM assay a JOIN sample s ON a.reference_key=s.reference_key "
+                            "AND a.sample_id=s.id WHERE a.reference_key=? AND a.id=?",
+                            (pair.reference.key, identifier)).fetchone()
+                        if row:
+                            unit = json.loads(row[0]).get("biological_unit_id")
+                            if unit is not None:
+                                units.append(unit)
+                    if len(set(units)) > 1:
+                        raise ValueError("Declared pairing contradicts biological-unit identities")
+                connection.execute("INSERT INTO assay_pair VALUES (?, ?, ?, ?, ?)",
+                                   (pair.reference.key, pair.pair_id, pair.left_assay_id,
+                                    pair.right_assay_id, _json(pair.to_dict())))
+            relation_links = ({}, {})
+            for relation in relations:
+                if not isinstance(relation, TargetRelation):
+                    raise TypeError("relations must contain TargetRelations")
+                if (relation.dataset_id, relation.dataset_version) != (manifest.dataset_id, manifest.version):
+                    raise ValueError("Target relation belongs to a different dataset release")
+                for target in (relation.left, relation.right):
+                    connection.execute("INSERT OR IGNORE INTO target VALUES (?, ?, ?, ?, ?)",
+                                       (target.reference.key, _target_key(target), target.kind,
+                                        target.namespace, target.identifier))
+                for index, (first, second) in enumerate(((relation.left, relation.right), (relation.right, relation.left))):
+                    _check_one_to_one(relation_links[index],
+                                      (relation.relation, first.key, second.kind, second.namespace), second.key,
+                                      relation.cardinality == "one_to_one")
+                connection.execute("INSERT INTO target_relation VALUES (?, ?, ?, ?, ?)",
+                                   (relation.left.reference.key, relation.relation_id,
+                                    _target_key(relation.left), _target_key(relation.right),
+                                    _json(relation.to_dict())))
             for mapping in mappings:
                 if not isinstance(mapping, TargetMapping):
                     raise TypeError("mappings must contain TargetMappings")
@@ -164,7 +225,8 @@ class QuantitativeDataset:
                                        ((reference_key, observation.measurement_id, identifier)
                                         for identifier in observation.input_measurements))
             counts = {table: connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
-                      for table in ("sample", "assay", "mapping", "target", "measurement")}
+                      for table in ("sample", "assay", "mapping", "target", "measurement",
+                                    "assay_pair", "target_relation")}
             connection.execute("INSERT INTO metadata VALUES ('counts', ?)", (_json(counts),))
             connection.commit()
             connection.close()
@@ -204,6 +266,58 @@ class QuantitativeDataset:
 
     def mappings(self, *, reference=None):
         return self._records("mapping", TargetMapping, reference=reference)
+
+    def pairings(self, *, reference=None):
+        """Iterate source-declared pairings; legacy releases have none."""
+        if self._storage_version == 1:
+            self._scope(reference)
+            return iter(())
+        return self._records("assay_pair", AssayPair, reference=reference)
+
+    def relations(self, *, reference=None):
+        """Iterate source-backed within-reference target relationships."""
+        if self._storage_version == 1:
+            self._scope(reference)
+            return iter(())
+        return self._records("target_relation", TargetRelation, reference=reference)
+
+    def matched_measurements(self, *, allowed_bases, allowed_temporal=("concurrent",),
+                             reference=None, pair_ids=None, relation_ids=None):
+        """Iterate explicit assay/target matches, preserving all values and missing mates.
+
+        Defaults require concurrent assays; opting into longitudinal or unknown
+        timing is explicit. No matching by tissue names or inferred orthology.
+        Each side contains its own original observations, never a Cartesian
+        multiplication or an aggregate over technical replicates/quantities.
+        """
+        bases, temporal = set(allowed_bases), set(allowed_temporal)
+        if isinstance(pair_ids, str) or isinstance(relation_ids, str):
+            raise TypeError("Relationship ID selections must be sequences, not a single string")
+        if not bases or bases - set(PAIRING_BASES):
+            raise ValueError("Specify valid allowed pairing bases explicitly")
+        if not temporal or temporal - set(TEMPORAL_RELATIONS):
+            raise ValueError("Specify valid allowed temporal relationships")
+        if (pair_ids or relation_ids) and reference is None and len(self._references) > 1:
+            raise ValueError("Relationship ID queries across species require a reference")
+        relations = tuple(relation for relation in self.relations(reference=reference)
+                          if relation_ids is None or relation.relation_id in relation_ids)
+        for pair in self.pairings(reference=reference):
+            if pair.basis not in bases or pair.temporal_relation not in temporal:
+                continue
+            if pair_ids is not None and pair.pair_id not in pair_ids:
+                continue
+            by_target = []
+            for assay in (pair.left_assay_id, pair.right_assay_id):
+                values = {}
+                if assay is not None:
+                    for value in self.measurements(reference=pair.reference, assay_id=assay):
+                        values.setdefault(value.target.key, []).append(value)
+                by_target.append(values)
+            for relation in relations:
+                if relation.left.reference.key == pair.reference.key:
+                    yield MatchedMeasurements(pair, relation,
+                                              tuple(by_target[0].get(relation.left.key, ())),
+                                              tuple(by_target[1].get(relation.right.key, ())))
 
     def measurements(self, *, target=None, reference=None, sample_id=None,
                      assay_id=None, quantity=None, status=None):

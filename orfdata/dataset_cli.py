@@ -18,7 +18,7 @@ def run(argv=None, prog=None):
     listing.add_argument("--species")
     listing.add_argument("--taxon-id", type=int)
     listing.add_argument("--assay")
-    for command in ("info", "download", "inspect", "query"):
+    for command in ("info", "download", "inspect", "query", "pairs"):
         subparser = commands.add_parser(command)
         subparser.add_argument("name")
         subparser.add_argument("--version")
@@ -36,6 +36,14 @@ def run(argv=None, prog=None):
             subparser.add_argument("--target")
             subparser.add_argument("--kind")
             subparser.add_argument("--namespace")
+        if command == "pairs":
+            subparser.add_argument("--basis", action="append", required=True,
+                                   help="Allowed pairing basis; repeat for multiple bases")
+            subparser.add_argument("--temporal", action="append",
+                                   help="Allowed temporal relation; default concurrent")
+            subparser.add_argument("--reference")
+            subparser.add_argument("--pair-id", action="append")
+            subparser.add_argument("--relation-id", action="append")
     args = parser.parse_args(argv)
     try:
         definitions = None
@@ -60,6 +68,14 @@ def run(argv=None, prog=None):
             sources = {"dataset.sqlite": args.source_path} if args.source_path else None
             result = registry.download(args.name, args.version, force=args.force,
                                        source_paths=sources, **options)
+        elif args.command == "pairs":
+            dataset = registry.open(args.name, args.version)
+            for match in dataset.matched_measurements(
+                allowed_bases=args.basis, allowed_temporal=args.temporal or ["concurrent"],
+                reference=args.reference, pair_ids=args.pair_id, relation_ids=args.relation_id,
+            ):
+                sys.stdout.write(json.dumps(match.to_table_row()) + "\n")
+            return
         else:
             dataset = registry.open(args.name, args.version)
             target = None

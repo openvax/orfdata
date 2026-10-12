@@ -13,6 +13,7 @@ ASSAY_KINDS = ("rna_seq", "ribo_seq", "digest_ms", "mhc_ms", "targeted_ms")
 QUANTITIES = (
     "rna_abundance", "ribosome_occupancy", "translation_efficiency",
     "protein_abundance", "peptide_abundance", "spectrum_count", "turnover",
+    "protein_rna_ratio", "abundance_ratio",
 )
 MEASUREMENT_STATUSES = ("measured", "below_detection", "not_measured", "not_mapped", "missing")
 MEASUREMENT_ORIGINS = ("observed", "derived", "predicted")
