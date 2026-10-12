@@ -120,8 +120,10 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         sys.stdout.write("\n")
     elif args.format == "fasta":
         for r in records:
+            reference = "" if r.reference_context is None else " reference=" + r.reference_context.key
+            scope = "" if isinstance(catalog, UORFCatalog) else f" taxon={r.taxon_id}{reference}"
             sys.stdout.write(
-                f">{r.orf_id} gene={r.gene_name} transcript={r.transcript_id} assembly={r.genome_build} biotype={r.biotype}\n{r.protein_sequence}\n"
+                f">{r.orf_id} gene={r.gene_name} transcript={r.transcript_id} assembly={r.genome_build} biotype={r.biotype}{scope}\n{r.protein_sequence}\n"
             )
     else:
         fields = (
@@ -143,12 +145,17 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
             "peptides_json",
             "initiation_context_json",
         )
+        scoped = not isinstance(catalog, UORFCatalog)
+        if scoped:
+            fields += ("reference_context_json",)
         writer = csv.DictWriter(sys.stdout, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for r in records:
             row = r.to_dict()
             for field in ("coding_blocks", "ribosome_studies", "peptides", "initiation_context"):
                 row[field + "_json"] = json.dumps(row.pop(field), separators=(",", ":"))
+            if scoped:
+                row["reference_context_json"] = json.dumps(row.pop("reference_context", None), separators=(",", ":"))
             writer.writerow(row)
 
 

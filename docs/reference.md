@@ -105,6 +105,10 @@ dataset `2026-10-08.2`. New code should use the broader `load_catalog()` API.
 
 ## Other species
 
+[ReferenceContext and ScopedTarget](species.md) keep taxa, strains, assemblies
+and annotation versions separate. Custom genomes without species/taxonomy need
+an explicit context when binding; source-pinned contexts require an exact match.
+
 `load_catalog(path)` reads a custom versioned JSON catalogue. Each catalogue is
 scoped to one species and assembly; each model records its NCBI taxon, scientific
 name, assembly, translation table and source. Human evidence is never transferred
