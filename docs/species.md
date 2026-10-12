@@ -42,6 +42,11 @@ pinned annotation context can bind an identical transcript in another release;
 the actual resolved context and transcript/coding/protein hashes are exported.
 No binding downloads a reference or performs liftover.
 
+`context.validate_genome(genome)` checks available metadata against an explicit
+context. Genomic alleles can use `include_annotation=False`: their coordinates
+are independent of a gene annotation release, while taxonomy, strain and
+assembly checks still apply. This does not relax ORF or RNA-product binding.
+
 `ScopedTarget` supports genes, transcripts, ORFs, proteins, ambiguous protein
 groups and peptides. A parent's gene or RNA measurement remains at its original
 resolution; this identity layer does not copy it onto every ORF. Orthology and

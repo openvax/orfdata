@@ -146,23 +146,41 @@ class ReferenceContext:
             )
         if not isinstance(context, cls):
             raise TypeError("context must be a ReferenceContext")
-        if taxon is not None and taxon != context.taxon_id:
+        context.validate_genome(genome)
+        return context
+
+    def validate_genome(self, genome, *, include_annotation=True):
+        """Check available Genome metadata against this explicit declaration.
+
+        Set ``include_annotation=False`` only for genomic-coordinate objects
+        such as variants: an allele does not belong to one gene annotation
+        release. Taxonomy, strain and assembly checks still apply. This method
+        does not claim that missing metadata were observed on the Genome.
+        """
+        species = getattr(genome, "species", None)
+        taxon = getattr(genome, "taxon_id", None)
+        named_taxon = species_taxon(species) if species is not None else None
+        if taxon is not None and named_taxon is not None and taxon != named_taxon:
+            raise ValueError("Genome species and taxonomy disagree")
+        taxon = taxon if taxon is not None else named_taxon
+        if taxon is not None and taxon != self.taxon_id:
             raise ValueError("Genome taxon mismatch")
-        if species is not None and canonical_species(species) != canonical_species(context.species):
+        if species is not None and canonical_species(species) != canonical_species(self.species):
             raise ValueError("Genome species mismatch")
-        for attribute, expected in (
-            ("reference_name", context.genome_build),
-            ("annotation_name", context.annotation_name),
-            ("annotation_version", context.annotation_version),
-            ("assembly_accession", context.assembly_accession),
-            ("strain", context.strain),
-            ("strain_taxon_id", context.strain_taxon_id),
-            ("sequence_sha256", context.sequence_sha256),
-        ):
+        fields = [
+            ("reference_name", self.genome_build),
+            ("assembly_accession", self.assembly_accession),
+            ("strain", self.strain),
+            ("strain_taxon_id", self.strain_taxon_id),
+            ("sequence_sha256", self.sequence_sha256),
+        ]
+        if include_annotation:
+            fields.extend((("annotation_name", self.annotation_name),
+                           ("annotation_version", self.annotation_version)))
+        for attribute, expected in fields:
             actual = getattr(genome, attribute, None)
             if actual is not None and (expected is None or str(actual) != str(expected)):
                 raise ValueError(f"Genome {attribute} mismatch")
-        return context
 
 
 @dataclass(frozen=True)

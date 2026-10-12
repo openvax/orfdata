@@ -132,6 +132,17 @@ def test_target_namespace_type_and_reference_are_part_of_identity():
         assert changed.key != first.key
 
 
+def test_genomic_coordinates_are_annotation_independent_but_species_scoped():
+    c = context()
+    other = transcript(replace(c, annotation_version="111")).genome
+    with pytest.raises(ValueError, match="annotation_version"):
+        c.validate_genome(other)
+    c.validate_genome(other, include_annotation=False)
+    other.species = "mouse"
+    with pytest.raises(ValueError, match="taxon"):
+        c.validate_genome(other, include_annotation=False)
+
+
 def test_catalogue_preserves_context_roundtrip(tmp_path):
     from orfdata import ORFCatalog
 
