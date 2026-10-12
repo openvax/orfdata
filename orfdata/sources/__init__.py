@@ -12,3 +12,12 @@ def importer(name):
 
         return import_copy
     raise ValueError(f"No packaged importer for {name!r}")
+
+
+def search_references(manifest):
+    """Return source-declared native search sets; calibration FASTAs are excluded."""
+    if manifest.processing.get("importer") == "pfizer-protein-v1":
+        from .pfizer import search_references as pfizer_references
+
+        return pfizer_references(manifest)
+    return ()

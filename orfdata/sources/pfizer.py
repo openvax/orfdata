@@ -44,6 +44,18 @@ def build_protein(species, *, cache_root=None, source_paths=None, force=False, d
                          download_options=download_options)
 
 
+def search_references(manifest):
+    """Declare the exact deposited protein FASTA, independent of reported groups."""
+    from ..search_reference import SearchReferenceSpec
+
+    if manifest.processing.get("importer") != "pfizer-protein-v1":
+        raise ValueError("Not a Pfizer protein source manifest")
+    reference, = manifest.references
+    asset = next(asset for asset in manifest.sources if asset.asset_id == "search.fasta")
+    return (SearchReferenceSpec(manifest.dataset_id, manifest.version, reference, asset,
+                                "uniprot", "uniprot-fasta", manifest.coverage["search_sequences"]),)
+
+
 def _rows(path):
     with open(path, newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")

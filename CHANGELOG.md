@@ -1,3 +1,12 @@
+# 0.10.0
+
+- Expose complete pinned Pfizer human/mouse/dog search FASTAs through explicit
+  reference downloads and offline Python/CLI queries, independently of abundance.
+- Preserve all native sequences and headers, source terms and scoped identities,
+  including search entries without reported protein-group representatives.
+- Distinguish search membership from detection and unresolved group assignment;
+  keep quantitative artifact hashes and historical cache identities unchanged.
+
 # 0.9.0
 
 - Select exact native `unit`, `scale` and `log_base` in measurement queries,
