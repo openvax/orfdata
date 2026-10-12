@@ -12,6 +12,7 @@ from orfdata import (
     DatasetRegistry,
     MatchedMeasurements,
     Measurement,
+    OrthologyComparison,
     OrthologyMapping,
     QuantitativeDataset,
     ScopedTarget,
@@ -62,6 +63,7 @@ def test_four_species_native_observations_and_tmt_lineage(tmp_path, paired):
         assert match.left[0].unit == "TPM" and match.right[0].unit == "iBAQ"
         assert AssayPair.from_dict(match.pairing.to_dict()) == match.pairing
         assert TargetRelation.from_dict(match.relation.to_dict()) == match.relation
+        assert MatchedMeasurements.from_dict(match.to_dict()) == match
     assay = next(a for a in dataset.assays() if a.kind == "digest_ms")
     assert (assay.plex, assay.channel, assay.bridge, assay.technical_replicate) == ("plex-1", "126", "131C", "1")
     with pytest.raises(TypeError):
@@ -234,6 +236,7 @@ def test_orthology_keeps_both_species_and_never_transfers_abundance(tmp_path, pa
         assert comparison.right == (observations[index],)
         assert comparison.left[0].value != comparison.right[0].value
         assert OrthologyMapping.from_dict(comparison.mapping.to_dict()) == comparison.mapping
+        assert OrthologyComparison.from_dict(comparison.to_dict()) == comparison
     assert list(compare_orthologs(dataset, dataset, [replace(mappings[0], cardinality="one_to_many")])) == []
     alternate = replace(mappings[0], mapping_id="other", right=replace(mappings[0].right, identifier="other"))
     with pytest.raises(ValueError, match="Conflicting one-to-one"):

@@ -145,6 +145,12 @@ class MatchedMeasurements(_Record):
     left: tuple
     right: tuple
 
+    @classmethod
+    def from_dict(cls, data):
+        return cls(AssayPair.from_dict(data["pairing"]), TargetRelation.from_dict(data["relation"]),
+                   tuple(Measurement.from_dict(value) for value in data["left"]),
+                   tuple(Measurement.from_dict(value) for value in data["right"]))
+
     def __post_init__(self):
         pair, relation = self.pairing, self.relation
         if not isinstance(pair, AssayPair) or not isinstance(relation, TargetRelation):
@@ -279,6 +285,12 @@ class OrthologyComparison(_Record):
     mapping: OrthologyMapping
     left: tuple
     right: tuple
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(OrthologyMapping.from_dict(data["mapping"]),
+                   tuple(Measurement.from_dict(value) for value in data["left"]),
+                   tuple(Measurement.from_dict(value) for value in data["right"]))
 
     def __post_init__(self):
         if not isinstance(self.mapping, OrthologyMapping):
