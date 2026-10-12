@@ -94,6 +94,49 @@ class DatasetRegistry:
         release = self._definitions[name]["versions"][version]
         return json.loads(json.dumps({key: release[key] for key in ("distribution", "assets")}))
 
+    def search_references(self, name, version=None):
+        """Discover declared native search FASTAs without downloading any files."""
+        from .sources import search_references
+
+        return search_references(self.info(name, version))
+
+    def _search_reference(self, name, version, reference, asset_id):
+        key = getattr(reference, "key", reference)
+        choices = [spec for spec in self.search_references(name, version)
+                   if (key is None or spec.reference.key == key)
+                   and (asset_id is None or spec.source.asset_id == asset_id)]
+        if not choices:
+            raise ValueError("No declared native search reference matches this dataset/context/asset")
+        if len(choices) != 1:
+            raise ValueError("Select an exact reference context and source asset")
+        return choices[0]
+
+    def inspect_reference(self, name, version=None, *, reference=None, asset_id=None, verify_files=True):
+        """Inspect the separate reference cache offline; never repair or download."""
+        from .search_reference import reference_registry
+
+        spec = self._search_reference(name, version, reference, asset_id)
+        return reference_registry(spec, self._cache_root).inspect(spec.dataset_id, spec.dataset_version,
+                                                                 verify_files=verify_files)
+
+    def download_reference(self, name, version=None, *, reference=None, asset_id=None,
+                           force=False, source_path=None, **options):
+        """Explicitly acquire a complete pinned search FASTA without rebuilding abundance."""
+        from .search_reference import reference_registry
+
+        spec = self._search_reference(name, version, reference, asset_id)
+        overrides = {spec.source.asset_id: source_path} if source_path is not None else None
+        return reference_registry(spec, self._cache_root).download(
+            spec.dataset_id, spec.dataset_version, force=force, source_paths=overrides, **options)
+
+    def open_reference(self, name, version=None, *, reference=None, asset_id=None):
+        """Open and validate an installed native search set, without network access."""
+        from .search_reference import SearchReference, reference_registry
+
+        spec = self._search_reference(name, version, reference, asset_id)
+        path = reference_registry(spec, self._cache_root).local_path(spec.dataset_id, spec.dataset_version)
+        return SearchReference(path, spec)
+
     def _data_registry(self):
         if self._registry is None:
             definitions = {name: dict(default_version=entry["default_version"], versions={

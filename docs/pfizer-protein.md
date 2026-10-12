@@ -45,6 +45,11 @@ lookup does not establish all group members. Opting into unresolved mapped
 views keeps the original group measurement visible, without assigning its value
 to an individual protein. No RNA pairings are inferred in this release.
 
+The [complete search references](search-references.md) are available through
+`registry.download_reference(name)` and `registry.open_reference(name)` without
+rebuilding abundance. This includes proteins without reported representatives;
+search membership is separate from detection or protein-group assignment.
+
 Source `NA` values remain missing and numeric zeros remain measured zeros.
 Absent group/channel combinations have no observation. For dog, 64,039 combinations
 are absent and eight reported rows contain `NA`, reproducing the existing

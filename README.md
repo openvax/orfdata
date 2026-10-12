@@ -78,7 +78,8 @@ assays, and DataCache-managed downloads. Downloadable
 [human, mouse and dog protein abundance](docs/pfizer-protein.md) and
 [yeast calibrated protein/RNA abundance](docs/copy-yeast.md) use the same
 species-scoped API. These canonical-search measurements do not establish
-noncanonical ORF abundance. The
+noncanonical ORF abundance. The [native search references](docs/search-references.md)
+preserve complete deposited sequences, including unreported entries. The
 [quantitative, multispecies data roadmap](https://github.com/openvax/orfdata/issues/3)
 tracks further RNA abundance, ribosome occupancy, absolute quantification and
 additional protein data releases.

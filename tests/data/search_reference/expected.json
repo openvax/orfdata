@@ -1,0 +1,44 @@
+{
+  "source": {
+    "dataset_id": "pfizer-atlas-dog-protein",
+    "dataset_version": "2026-10-12.1",
+    "reference": {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": null,
+      "annotation_name": "uniprot",
+      "annotation_version": null,
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": "d8488bf283de653efcff2e5de6d413b116e1ba4a2eb89298bd31205e72fef682",
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": null
+    },
+    "source": {
+      "asset_id": "search.fasta",
+      "url": "https://massive.ucsd.edu/ProteoSAFe/DownloadResultFile?file=f.MSV000099744/sequence/Dog_UP000002254_9615_noisoform.fasta",
+      "sha256": "d8488bf283de653efcff2e5de6d413b116e1ba4a2eb89298bd31205e72fef682",
+      "size": 14659832,
+      "access_terms": "UniProt Consortium CC-BY-4.0; deposited search FASTA",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "UniProt Consortium",
+        "deposit": "https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=062b109e9adf461ba619369dd0d85aa9",
+        "source_update": "deposited original FASTA; UniProt release unspecified",
+        "terms_verified": "2026-10-12"
+      }
+    },
+    "namespace": "uniprot",
+    "format": "uniprot-fasta",
+    "expected_sequences": 20649
+  },
+  "slice_sha256": "e419aae863b138593e8e8d6a8e595db94d7315d7e673475f0e7b9e93f92f120b",
+  "original_source_lines": {
+    "A0A068LEV2": 1,
+    "A0A0A0MPB0": 36
+  },
+  "reported_representative": "A0A0A0MPB0",
+  "no_reported_representative": "A0A068LEV2"
+}

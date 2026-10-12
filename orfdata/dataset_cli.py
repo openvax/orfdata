@@ -18,15 +18,23 @@ def run(argv=None, prog=None):
     listing.add_argument("--species")
     listing.add_argument("--taxon-id", type=int)
     listing.add_argument("--assay")
-    for command in ("info", "download", "build", "inspect", "query", "pairs"):
+    for command in ("info", "download", "build", "inspect", "query", "pairs", "references",
+                    "download-reference", "inspect-reference", "query-reference"):
         subparser = commands.add_parser(command)
         subparser.add_argument("name")
         subparser.add_argument("--version")
-        if command == "download":
+        if command in ("download", "download-reference"):
             subparser.add_argument("--force", action="store_true")
             subparser.add_argument("--timeout", type=float)
             subparser.add_argument("--quiet", action="store_true")
-            subparser.add_argument("--source-path", help="Use a local registered artifact (compressed when declared)")
+            subparser.add_argument("--source-path", help="Use a local pinned file (compressed when declared)")
+        if command in ("download-reference", "inspect-reference", "query-reference"):
+            subparser.add_argument("--reference", help="Exact native reference context key")
+            subparser.add_argument("--asset", help="Declared source asset ID")
+        if command == "query-reference":
+            subparser.add_argument("--target", required=True, help="Exact native accession")
+            subparser.add_argument("--kind", default="protein")
+            subparser.add_argument("--namespace", help="Default: the declared source namespace")
         if command == "build":
             subparser.add_argument("--force", action="store_true")
             subparser.add_argument("--timeout", type=float)
@@ -72,6 +80,22 @@ def run(argv=None, prog=None):
         elif args.command == "info":
             result = registry.info(args.name, args.version).to_dict()
             result["download"] = registry.download_metadata(args.name, args.version)
+        elif args.command == "references":
+            result = [spec.to_dict() for spec in registry.search_references(args.name, args.version)]
+        elif args.command == "inspect-reference":
+            inspected = registry.inspect_reference(args.name, args.version, reference=args.reference, asset_id=args.asset)
+            result = dict(status=inspected.status, path=str(inspected.path),
+                          error=str(inspected.error) if inspected.error else None)
+        elif args.command == "download-reference":
+            options = dict(show_progress=not args.quiet)
+            if args.timeout is not None:
+                options["timeout"] = args.timeout
+            result = registry.download_reference(args.name, args.version, reference=args.reference, asset_id=args.asset,
+                                                 force=args.force, source_path=args.source_path, **options)
+        elif args.command == "query-reference":
+            reference = registry.open_reference(args.name, args.version, reference=args.reference, asset_id=args.asset)
+            target = ScopedTarget(reference.reference, args.kind, args.target, args.namespace or reference.spec.namespace)
+            result = dict(source=reference.spec.to_dict(), membership=reference.membership(target).to_dict())
         elif args.command == "inspect":
             inspected = registry.inspect(args.name, args.version)
             result = dict(status=inspected.status, path=str(inspected.path),

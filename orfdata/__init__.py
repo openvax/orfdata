@@ -35,6 +35,7 @@ from .pairing import (
 )
 from .reference import ReferenceContext, ScopedTarget
 from .reference_mapping import MappedMeasurement, ReferenceMapping
+from .search_reference import SearchMembership, SearchReference, SearchReferenceSpec, SearchSequence
 from .version import __version__
 
 __all__ = [
@@ -66,6 +67,10 @@ __all__ = [
     "compare_orthologs",
     "ReferenceMapping",
     "MappedMeasurement",
+    "SearchReferenceSpec",
+    "SearchReference",
+    "SearchSequence",
+    "SearchMembership",
     "load_catalog",
     "UORFCatalog",
     "UORFRecord",
