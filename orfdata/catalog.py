@@ -15,6 +15,7 @@ from typing import Optional
 
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
 from .model import ORFModel, ReferenceORF, _species
+from .reference import ReferenceContext
 from .sequence import CODONS, reverse_complement_dna
 
 EVIDENCE_METHODS = ("ribosome", "shotgun", "mhc", "hla", "ms_unclassified", "ms")
@@ -114,6 +115,7 @@ class ORFRecord:
     species: Optional[str] = None
     translation_table: int = 1
     source: str = ""
+    reference_context: Optional[ReferenceContext] = None
 
     @property
     def model(self):
@@ -133,6 +135,7 @@ class ORFRecord:
             species=self.species,
             translation_table=self.translation_table,
             source=self.source,
+            reference_context=self.reference_context,
         )
 
     @property
@@ -144,6 +147,8 @@ class ORFRecord:
         """Construct a record from the generic model and independent evidence."""
         evidence = ORFEvidence() if evidence is None else evidence
         fields = model.to_dict()
+        if model.reference_context is not None:
+            fields["reference_context"] = model.reference_context
         fields["biotype"] = fields.pop("orf_type")
         return cls(
             **fields,
@@ -152,13 +157,15 @@ class ORFRecord:
             initiation_context=initiation_context,
         )
 
-    def bind(self, transcript):
+    def bind(self, transcript, *, context=None):
         """Validate and bind this ORF to a PyEnsembl transcript without relabelling it."""
-        return ReferenceORF(self, transcript)
+        return ReferenceORF(self, transcript, context=context)
 
     def to_dict(self):
         """Return a serializable copy of this record."""
         result = asdict(self)
+        if self.reference_context is None:
+            result.pop("reference_context")
         if self.initiation_context is not None:
             result["initiation_context"] = self.initiation_context.to_dict()
         return result
@@ -348,7 +355,7 @@ class ORFCatalog:
             if r.genome_build != self.genome_build or r.strand not in ("+", "-"):
                 raise ValueError(f"Invalid assembly or strand for {r.orf_id}")
             r.model  # Validate identity and geometry, including non-upstream ORFs.
-            if (r.taxon_id, r.species) != (self.taxon_id, self.species):
+            if (r.taxon_id, _species(r.species)) != (self.taxon_id, _species(self.species)):
                 raise ValueError("Catalogue and ORF species disagree")
             if (
                 not r.coding_blocks
@@ -425,7 +432,7 @@ class ORFCatalog:
         """Return an exact source ORF ID; unknown IDs raise KeyError."""
         return self._by_id[orf_id]
 
-    def for_transcript(self, transcript, **filters):
+    def for_transcript(self, transcript, *, context=None, **filters):
         """Return validated ORFs on this transcript, with optional evidence filters.
 
         A source model that disagrees with the selected annotation raises rather
@@ -436,8 +443,11 @@ class ORFCatalog:
         species = getattr(transcript.genome, "species", None)
         if species is not None and _species(species) != _species(self.species):
             raise ValueError("Catalogue transcript species mismatch")
+        resolved = ReferenceContext.from_genome(transcript.genome, context=context)
+        if resolved.taxon_id != self.taxon_id:
+            raise ValueError("Catalogue transcript taxon mismatch")
         return tuple(
-            record.bind(transcript)
+            record.bind(transcript, context=resolved)
             for record in self.query(**filters)
             if record.transcript_id.split(".")[0] == str(transcript.id).split(".")[0]
         )
@@ -576,6 +586,8 @@ def _load_catalog(path=None, *, expected_sha256=None, resource="orf-evidence"):
             )
         row["coding_blocks"] = tuple(tuple(x) for x in row["coding_blocks"])
         row["ribosome_studies"] = tuple(row["ribosome_studies"])
+        if row.get("reference_context") is not None:
+            row["reference_context"] = ReferenceContext(**row["reference_context"])
         if row.get("initiation_context") is not None:
             context = dict(row["initiation_context"])
             assessment = context.pop("assessment", None)

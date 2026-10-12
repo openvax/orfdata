@@ -68,8 +68,9 @@ RNA products. Reference evidence stays separate from evidence for a variant or
 fusion. See the [API and integration guide](docs/reference.md).
 
 The catalogue API supports other species, with explicit species and assembly
-checks. **Bundled evidence is currently human-only**; mouse bindings use synthetic
-test data. [Adding another species](docs/reference.md#other-species).
+checks. **Bundled experimental evidence is currently human-only**. Offline tests
+bind real human, mouse, dog and yeast reference slices; those fixtures are not
+new experimental ORF catalogues. [Species and reference identity](docs/species.md).
 
 Install with `pip install orfdata[pyensembl]`. See the
 [quantitative, multispecies data roadmap](https://github.com/openvax/orfdata/issues/3)

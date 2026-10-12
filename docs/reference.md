@@ -75,7 +75,9 @@ reconstructed RNA products and preserves each candidate's RNA support. For
 example, the native TPST1 peptide KIILSKISV is absent from the Sid TPST1–CRCP
 alternatives, so its MS evidence does not support those altered products.
 
-These integrations are in the Varcode 10.12.0 and Isovar 1.49.0 drafts.
+The reference integration is available in Varcode 10.12.0; the Isovar 1.50.0
+integration is in review. The stricter reference-context contract is coordinated
+with Varcode 10.13.0 and Isovar 1.51.0.
 
 ## Data and limits
 
@@ -104,6 +106,10 @@ outside the current API.
 dataset `2026-10-08.2`. New code should use the broader `load_catalog()` API.
 
 ## Other species
+
+[ReferenceContext and ScopedTarget](species.md) keep taxa, strains, assemblies
+and annotation versions separate. Custom genomes without species/taxonomy need
+an explicit context when binding; source-pinned contexts require an exact match.
 
 `load_catalog(path)` reads a custom versioned JSON catalogue. Each catalogue is
 scoped to one species and assembly; each model records its NCBI taxon, scientific

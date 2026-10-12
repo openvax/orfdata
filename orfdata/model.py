@@ -1,7 +1,10 @@
 """Reference ORF identity and its binding to an annotated transcript."""
 
+import hashlib
 from dataclasses import asdict, dataclass
+from typing import Optional
 
+from .reference import ReferenceContext, canonical_species, species_taxon
 from .sequence import CODONS
 
 
@@ -29,10 +32,21 @@ class ORFModel:
     species: str
     translation_table: int = 1
     source: str = ""
+    reference_context: Optional[ReferenceContext] = None
 
     def __post_init__(self):
         if type(self.taxon_id) is not int or self.taxon_id < 1 or not self.species:
             raise ValueError("An explicit species and positive NCBI taxon_id are required")
+        known = species_taxon(self.species)
+        if known is not None and known != self.taxon_id:
+            raise ValueError("ORF species name and taxon_id disagree")
+        if self.reference_context is not None:
+            if not isinstance(self.reference_context, ReferenceContext):
+                raise TypeError("reference_context must be a ReferenceContext")
+            if (self.reference_context.taxon_id != self.taxon_id
+                    or self.reference_context.genome_build != self.genome_build
+                    or canonical_species(self.reference_context.species) != canonical_species(self.species)):
+                raise ValueError("ORF and reference context disagree")
         if type(self.translation_table) is not int or self.translation_table < 1:
             raise ValueError("An explicit NCBI translation_table is required")
         if not all((self.orf_id, self.transcript_id, self.genome_build, self.orf_type)):
@@ -58,7 +72,10 @@ class ORFModel:
         return positions[::-1] if self.strand == "-" else positions
 
     def to_dict(self):
-        return asdict(self)
+        result = asdict(self)
+        if self.reference_context is None:
+            result.pop("reference_context")
+        return result
 
 
 def transcript_positions(transcript):
@@ -78,7 +95,7 @@ def _contig(value):
 
 
 def _species(value):
-    return str(getattr(value, "latin_name", value)).lower().replace(" ", "_")
+    return canonical_species(value)
 
 
 @dataclass(frozen=True, init=False)
@@ -96,8 +113,9 @@ class ReferenceORF:
     coding_sequence: str
     transcript_sequence: str
     genomic_positions: tuple
+    context: ReferenceContext
 
-    def __init__(self, record, transcript):
+    def __init__(self, record, transcript, *, context=None):
         model = record.model
         genome = transcript.genome
         if genome.reference_name != model.genome_build:
@@ -108,6 +126,11 @@ class ReferenceORF:
         taxon = getattr(genome, "taxon_id", None)
         if taxon is not None and taxon != model.taxon_id:
             raise ValueError("ORF transcript taxon mismatch")
+        resolved_context = ReferenceContext.from_genome(genome, context=context)
+        if resolved_context.taxon_id != model.taxon_id:
+            raise ValueError("ORF transcript taxon mismatch")
+        if model.reference_context is not None and model.reference_context.key != resolved_context.key:
+            raise ValueError("ORF transcript reference context mismatch (annotation, strain or assembly)")
         if str(transcript.id).split(".")[0] != model.transcript_id.split(".")[0]:
             raise ValueError("ORF transcript identity mismatch")
         # If the source explicitly pins a transcript version, respect it.
@@ -154,6 +177,7 @@ class ReferenceORF:
             coding_sequence=coding,
             transcript_sequence=sequence,
             genomic_positions=positions,
+            context=resolved_context,
         ).items():
             object.__setattr__(self, name, value)
 
@@ -175,6 +199,16 @@ class ReferenceORF:
         return dict(
             model=self.model.to_dict(),
             evidence=self.evidence.to_dict(),
+            reference_context=self.context.to_dict(),
+            reference_key=self.context.key,
+            sequence_fingerprints={
+                name: hashlib.sha256(sequence.encode("ascii")).hexdigest()
+                for name, sequence in (
+                    ("transcript_sha256", self.transcript_sequence),
+                    ("coding_sha256", self.coding_sequence),
+                    ("protein_sha256", self.protein_sequence),
+                )
+            },
             resolved_transcript=dict(
                 id=transcript.id,
                 version=getattr(transcript, "version", None),

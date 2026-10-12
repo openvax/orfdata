@@ -14,6 +14,7 @@ from .catalog import (
 )
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
 from .model import ORFModel, ReferenceORF
+from .reference import ReferenceContext, ScopedTarget
 from .version import __version__
 
 __all__ = [
@@ -25,6 +26,8 @@ __all__ = [
     "PeptideEvidence",
     "ORFModel",
     "ReferenceORF",
+    "ReferenceContext",
+    "ScopedTarget",
     "load_catalog",
     "UORFCatalog",
     "UORFRecord",
