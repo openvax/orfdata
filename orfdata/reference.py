@@ -206,3 +206,28 @@ class ScopedTarget:
 
     def to_dict(self):
         return asdict(self)
+
+    @classmethod
+    def from_orf(cls, reference_orf, *, namespace):
+        """Identify a bound reference ORF in an explicit catalogue/release namespace."""
+        from .model import ReferenceORF
+
+        if not isinstance(reference_orf, ReferenceORF):
+            raise TypeError("Expected a bound ReferenceORF, not a modified variant/RNA product")
+        return cls(reference_orf.context, "orf", reference_orf.model.orf_id, namespace)
+
+    @classmethod
+    def from_pyensembl(cls, feature, *, kind, namespace, context=None, versioned=False):
+        """Scope a PyEnsembl gene/transcript without implicit release conversion.
+
+        Choose versioned=True only for sources that use versioned IDs. A missing
+        versioned identifier is an error; versions are never silently stripped.
+        The exact namespace should match the quantitative source's mapping.
+        """
+        if kind not in ("gene", "transcript"):
+            raise ValueError("PyEnsembl features must be gene or transcript targets")
+        identifier = getattr(feature, "versioned_id" if versioned else "id", None)
+        if not identifier:
+            raise ValueError("Feature lacks the requested identifier")
+        return cls(ReferenceContext.from_genome(feature.genome, context=context), kind,
+                   identifier, namespace)

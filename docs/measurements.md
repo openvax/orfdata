@@ -1,0 +1,134 @@
+# RNA, ribosome and protein measurements
+
+ORFdata adds evidence to PyEnsembl's reference transcripts and proteins. Its
+quantitative layer stores measurements of genes, transcripts, reference ORFs,
+proteins, protein groups and peptides. A measurement stays at the resolution
+the experiment supports. Parent-gene RNA abundance is useful context for an ORF;
+it is not a separate measurement of each ORF in that gene.
+
+Install `orfdata[data]` to manage datasets. The initial 0.3 registry is empty;
+the [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks source
+imports. The bundled human ORF evidence catalogue remains available offline.
+Its pooled PSM counts describe spectra, not sample-level protein abundance.
+
+## Discover, download and query
+
+```python
+from orfdata import DatasetRegistry, ScopedTarget
+
+registry = DatasetRegistry()  # Metadata only; no download.
+releases = registry.list(species="dog", assay="digest_ms")
+```
+
+For a registered release, use `registry.info(name, version)` for its immutable
+manifest, `registry.download(name, version)` to fetch it, and
+`registry.open(name, version)` to read it offline. `inspect` reports missing,
+available or invalid files without downloading or repairing them.
+`download_metadata` returns the artifact's access terms and file hashes/sizes.
+An invalid cache
+requires an explicit `download(..., force=True)`; old reader paths survive.
+Python download options such as timeout, retries and progress go to DataCache.
+
+```python
+# dataset = registry.open(name, version)
+# transcript is a PyEnsembl Transcript in the dataset's exact reference context.
+target = ScopedTarget.from_pyensembl(
+    transcript, kind="transcript", namespace="ensembl:110"
+)
+for measurement in dataset.measurements(target=target):
+    print(measurement.value, measurement.unit, measurement.status)
+```
+
+Use `ScopedTarget.from_orf(bound_reference_orf, namespace=source_release)` for a
+validated reference ORF. Namespaces and identifiers must match the source's
+mapping table. The default PyEnsembl target uses its unversioned `id`; request
+`versioned=True` when the source uses versioned identifiers. There is no implicit
+mapping across annotation releases, gene isoforms, ORFs or species. A variant or
+fusion product does not inherit a native reference protein measurement.
+
+The CLI uses the same operations:
+
+```sh
+orfdata datasets list --species yeast
+orfdata datasets info DATASET --version RELEASE
+orfdata datasets download DATASET --version RELEASE
+orfdata datasets inspect DATASET --version RELEASE
+orfdata datasets query DATASET --version RELEASE --quantity protein_abundance
+```
+
+Queries stream JSON lines. `--reference ref:SHA256` selects an exact context;
+target queries also require `--target`, `--kind` and `--namespace`. Unqualified
+sample/assay ID queries across multiple references are rejected. Existing
+catalogue commands such as `orfdata --gene TPST1` retain their behavior.
+
+## What each value means
+
+`Measurement` retains the dataset/version, reference-scoped target, sample and
+assay IDs, value, native unit, linear/log scale and log base, uncertainty and its
+definition, detection limit, status, origin and provenance. Measured zero,
+below detection, not measured, not mapped and missing are distinct. Censored or
+missing values use `None`; native sentinels can remain in provenance.
+
+RNA counts/TPM/FPKM, ribosome occupancy, source-defined translation efficiency,
+LFQ/iBAQ/TMT values, peptide intensity, PSM counts, copies per cell and turnover
+remain distinct. No conversion is automatic. Derived/predicted values name a
+method and retain source/input provenance. An estimate from calibration remains
+an estimate; an intensity/TPM ratio does not acquire molecule-ratio units.
+
+`Sample` records biological units, pools and source labels. `Assay` separately
+records technical replicates, runs, fractions, TMT plex/channel/bridge,
+normalization and calibration. A sample's strain/breed belongs in its attributes;
+it need not be the strain used to assemble its reference genome. `TargetMapping`
+retains all candidate assignments or an unmapped reason. A protein-group
+representative does not become a uniquely measured protein. Explicit sample
+pairing and orthology comparisons follow in
+[issue #6](https://github.com/openvax/orfdata/issues/6).
+
+## Importing a source
+
+Define a `DatasetManifest` with exact reference contexts, raw source URLs,
+SHA-256 hashes and byte sizes, citations, file-specific access/redistribution
+terms, searched/measurable coverage, processing software/version/parameters and
+row accounting. Unavailable metadata stay unknown. Article licensing does not
+substitute for the data files' terms.
+
+An importer calls `QuantitativeDataset.create(path, manifest, samples=...,
+assays=..., measurements=..., mappings=...)`. These inputs may be generators;
+measurements are written incrementally. Every observation names a source asset
+or earlier input measurements. Derived inputs precede outputs in the same
+reference context. Duplicate IDs, broken foreign keys, wrong dataset releases
+and cross-reference links fail the import. Failed builds do not replace data.
+
+Use `build_dataset(manifest, builder, ...)` for a managed local import.
+`builder(source_paths, output_path)` reads the verified inputs and creates that
+SQLite dataset. DataCache publishes it atomically with input/output checksums
+and a processing receipt. `source_paths={asset_id: local_file}` supports manually
+acquired sources. Importing locally does not grant redistribution rights.
+
+A `DatasetRegistry(definitions, cache_root=...)` registers releases as:
+
+```python
+definitions = {
+    name: {
+        "default_version": version,
+        "versions": {version: {
+            "manifest": manifest.to_dict(),
+            "distribution": {"access_terms": terms, "redistributable": False},
+            "assets": {"dataset.sqlite": {
+                "url": url, "sha256": sha256, "size": size, "decompress": False,
+            }},
+        }},
+    }
+}
+```
+
+CLI users can supply this JSON with `orfdata datasets --registry FILE ...`.
+`ORFDATA_CACHE`, then `OPENVAX_DATA_CACHE`, then the platform's OpenVax cache
+select the root. ORFdata owns its `orfdata/` child. Release cache identities
+include manifest/reference and content hashes. SQLite partitions every table
+by reference key, with composite foreign keys; human, mouse, dog, yeast and
+arbitrary other taxa use the same schema. The core API needs neither pandas nor
+PyArrow. Optional `orfdata[columnar]` enables `dataset.export_parquet(path)`;
+query columns accompany full measurement JSON, preserving exact values and
+provenance even when a floating-point analysis column cannot represent an
+integer exactly.
