@@ -1,0 +1,1 @@
+Small factual slices of Ingolia et al. (2009), DOI10.1126/science.1168978, GSE13750. Native columns and original line numbers are preserved; full-source URLs, SHA-256 and sizes are recorded in ingolia.json. GEO unrestricted reuse with attribution. This fixture validates source-defined region targets only, not full reference/ORF mapping or a production source importer.

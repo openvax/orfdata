@@ -2,8 +2,8 @@
 
 ORFdata adds evidence to PyEnsembl's reference transcripts and proteins. Its
 quantitative layer stores measurements of genes, transcripts, reference ORFs,
-proteins, protein groups and peptides. A measurement stays at the resolution
-the experiment supports. Parent-gene RNA abundance is useful context for an ORF;
+proteins, protein groups, peptides and source-defined regions. A measurement stays
+at the resolution the experiment supports. Parent-gene RNA abundance is useful context for an ORF;
 it is not a separate measurement of each ORF in that gene.
 
 Install `orfdata[data]` to manage datasets. The registry includes downloadable
@@ -49,6 +49,14 @@ mapping table. The default PyEnsembl target uses its unversioned `id`; request
 `versioned=True` when the source uses versioned identifiers. There is no implicit
 mapping across annotation releases, gene isoforms, ORFs or species. A variant or
 fusion product does not inherit a native reference protein measurement.
+
+Use `ScopedTarget(reference, "region", source_id, source_namespace)` for a
+quantified UTR, intron or other source-defined window. Keep its native feature
+type and target length in measurement provenance. A region ID does not assert
+known genomic coordinates or a translated ORF. RNA and Ribo measurements of the
+same region can be compared through an explicit `same_target` relationship;
+such a density ratio describes that region, not a particular uORF inside it.
+Regions do not automatically bind to PyEnsembl or participate in gene/ORF orthology.
 
 For native sources with unreported genomic metadata, use explicit
 [source references and mapping views](source-references.md) to retain the original
