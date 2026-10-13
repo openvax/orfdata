@@ -1,0 +1,1496 @@
+{
+  "source_manifest": {
+    "dataset_id": "wang-human-tissue-abundance",
+    "version": "2026-10-12.1",
+    "title": "Wang healthy human tissue RNA, protein and calibrated copy estimates",
+    "references": [
+      {
+        "taxon_id": 9606,
+        "species": "human",
+        "genome_build": "GRCh38",
+        "annotation_name": "ensembl",
+        "annotation_version": "83",
+        "assembly_accession": "GCA_000001405.20",
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": "5b7e60956435026d2588ed92a719e74f0b5b39f13f072638cefd634c7cfbc219",
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": "687f8b330bc6297fef833fcf3c48464e1ae46115fd706295238fdf51728cd017"
+      }
+    ],
+    "sources": [
+      {
+        "asset_id": "protein.zip",
+        "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s003.zip",
+        "sha256": "b9b91d91319435f5ebbfb1d5c1f5bd22131e879f7872e767cd4f32a8b55b382e",
+        "size": 9020300,
+        "access_terms": "CC-BY-4.0; Wang et al. (2019)",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Wang et al. (2019)",
+          "publication": "https://doi.org/10.15252/msb.20188503"
+        }
+      },
+      {
+        "asset_id": "rna.zip",
+        "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s004.zip",
+        "sha256": "ee37aacff077892203db83d1736975745feacc33ba4a0ede7fe68470ca89ce95",
+        "size": 35792466,
+        "access_terms": "CC-BY-4.0; Wang et al. (2019)",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Wang et al. (2019)",
+          "publication": "https://doi.org/10.15252/msb.20188503"
+        }
+      },
+      {
+        "asset_id": "copies.zip",
+        "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s007.zip",
+        "sha256": "1c9aee1d3869874c9ed2343a43b976c9f7adfe040af50780fc61f1b712ab77b9",
+        "size": 18746969,
+        "access_terms": "CC-BY-4.0; Wang et al. (2019)",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Wang et al. (2019)",
+          "publication": "https://doi.org/10.15252/msb.20188503"
+        }
+      },
+      {
+        "asset_id": "annotation.gtf.gz",
+        "url": "https://ftp.ensembl.org/pub/release-83/gtf/homo_sapiens/Homo_sapiens.GRCh38.83.gtf.gz",
+        "sha256": "687f8b330bc6297fef833fcf3c48464e1ae46115fd706295238fdf51728cd017",
+        "size": 45686084,
+        "access_terms": "Ensembl-generated data available without restriction; retain Ensembl/EMBL-EBI attribution",
+        "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+        "redistributable": true,
+        "metadata": {
+          "ensembl_release": "83",
+          "taxon_id": 9606
+        }
+      },
+      {
+        "asset_id": "search.fasta.gz",
+        "url": "https://ftp.ensembl.org/pub/release-83/fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz",
+        "sha256": "5b7e60956435026d2588ed92a719e74f0b5b39f13f072638cefd634c7cfbc219",
+        "size": 12726357,
+        "access_terms": "Ensembl-generated data available without restriction; retain Ensembl/EMBL-EBI attribution",
+        "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+        "redistributable": true,
+        "metadata": {
+          "ensembl_release": "83",
+          "taxon_id": 9606
+        }
+      }
+    ],
+    "citations": [
+      "https://doi.org/10.15252/msb.20188503"
+    ],
+    "assay_kinds": [
+      "rna_seq",
+      "digest_ms"
+    ],
+    "coverage": {
+      "samples": 29,
+      "quantitative_metadata_rows": 30,
+      "series": {
+        "protein_groups": {
+          "rows": 15210,
+          "empty_rows": 0,
+          "zero_cells": 120028,
+          "numeric_text_cells": 0
+        },
+        "protein_genes": {
+          "rows": 13640,
+          "empty_rows": 24,
+          "zero_cells": 89861,
+          "numeric_text_cells": 0
+        },
+        "rna_transcripts": {
+          "rows": 93674,
+          "empty_rows": 0,
+          "zero_cells": 327059,
+          "numeric_text_cells": 2353
+        },
+        "rna_genes": {
+          "rows": 18072,
+          "empty_rows": 0,
+          "zero_cells": 168474,
+          "numeric_text_cells": 0
+        },
+        "protein_copies": {
+          "rows": 15210,
+          "empty_rows": 0,
+          "zero_cells": 120028,
+          "numeric_text_cells": 0
+        },
+        "rna_copies": {
+          "rows": 60519,
+          "empty_rows": 0,
+          "zero_cells": 1036469,
+          "numeric_text_cells": 0
+        }
+      },
+      "annotation_counts": {
+        "genes": 60675,
+        "transcripts": 199184,
+        "proteins": 93892
+      },
+      "search_sequences": 102450,
+      "orf_specific_abundance": false,
+      "pairing": "adjacent cryosections of source tissue specimens; donor identity not inferred"
+    },
+    "processing": {
+      "importer": "wang-human-tissue-v1",
+      "software": "orfdata 0.13.0",
+      "tissues": [
+        "Adrenal gland",
+        "Appendix",
+        "Brain",
+        "Colon",
+        "Duodenum",
+        "Endometrium",
+        "Esophagus",
+        "Fallopian tube",
+        "Fat",
+        "Gallbladder",
+        "Heart",
+        "Kidney",
+        "Liver",
+        "Lung",
+        "Lymph node",
+        "Ovary",
+        "Pancreas",
+        "Placenta",
+        "Prostate",
+        "Rectum",
+        "Salivary gland",
+        "Small intestine",
+        "Smooth muscle",
+        "Spleen",
+        "Stomach",
+        "Testis",
+        "Thyroid",
+        "Tonsil",
+        "Urinary bladder"
+      ],
+      "tissue_aliases": {
+        "Gall bladder": "Gallbladder"
+      },
+      "source_assembly_header": "GRCh38.p5",
+      "copy_estimates": "source-derived; proteomic ruler protein and assumed mRNA fraction 2%",
+      "excluded_quantitative_tissues": {
+        "Bone marrow": "no matching RNA sample or 29-tissue table column"
+      },
+      "source_views": "Eraslan reprocessing is a separate dataset, not additional biological replication"
+    },
+    "schema": "orfdata.measurements.v1"
+  },
+  "rows": {
+    "protein_groups": [
+      {
+        "source_line": 2,
+        "native_row": [
+          "CON__O95678;ENSP00000252245.5",
+          "ENSP00000252245",
+          "ENSG00000170454",
+          "KRT75",
+          0,
+          417120,
+          2388000
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 3,
+        "native_row": [
+          "CON__P13646-1;ENSP00000466525.1",
+          "ENSP00000336604;ENSP00000246635",
+          "ENSG00000171401",
+          "KRT13",
+          2936700,
+          4999400,
+          45939000
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 6,
+        "native_row": [
+          "ENSP00000000233.5;ENSP00000412701.1;ENSP00000446353.1;ENSP00000420655.1",
+          "ENSP00000000233",
+          "ENSG00000004059",
+          "ARF5",
+          112020000,
+          219420000,
+          602400000
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 625,
+        "native_row": [
+          "ENSP00000233331.7;ENSP00000388677.1;ENSP00000392498.1;ENSP00000387267.1;ENSP00000386937.2;ENSP00000389887.1",
+          "ENSP00000233331;ENSP00000388677",
+          "ENSG00000115274;ENSG00000274049",
+          "INO80B;INO80B-WBP1",
+          0,
+          0,
+          766290
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 4012,
+        "native_row": [
+          "ENSP00000321019.7;ENSP00000488786.1;ENSP00000484462.1;ENSP00000411257.2;ENSP00000413720.3;ENSP00000411552.2",
+          "ENSP00000484462;ENSP00000488786;ENSP00000321019",
+          "ENSG00000273707",
+          "CDKN1C",
+          10135000,
+          721830,
+          258650
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      }
+    ],
+    "rna_transcripts": [
+      {
+        "source_line": 2,
+        "native_row": [
+          "ENST00000000233",
+          "ENSP00000000233",
+          "ENSG00000004059",
+          "ARF5",
+          52.3489,
+          39.4288,
+          70.8908
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 6,
+        "native_row": [
+          "ENST00000001146",
+          "ENSP00000001146",
+          "ENSG00000003137",
+          "CYP26B1",
+          1.54309,
+          0.205858,
+          0.954983
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 1420,
+        "native_row": [
+          "ENST00000233331",
+          "ENSP00000233331",
+          "ENSG00000115274",
+          "INO80B",
+          2.88782,
+          0.157992,
+          4.63566
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 2014,
+        "native_row": [
+          "ENST00000246635",
+          "ENSP00000246635",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          4.96625e-09
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 2344,
+        "native_row": [
+          "ENST00000252245",
+          "ENSP00000252245",
+          "ENSG00000170454",
+          "KRT75",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 3490,
+        "native_row": [
+          "ENST00000262227",
+          "ENSP00000262227",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0.0194058,
+          "3.36612000000097e-312",
+          3.6471e-214
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 9293,
+        "native_row": [
+          "ENST00000314319",
+          "ENSP00000313506",
+          "ENSG00000088756",
+          "ARHGAP28",
+          1.29134,
+          1.40057,
+          0.956031
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 12577,
+        "native_row": [
+          "ENST00000336861",
+          "ENSP00000336604",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          1.08347e-08
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 25549,
+        "native_row": [
+          "ENST00000383472",
+          "ENSP00000372964",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0.198099,
+          9.81996e-69,
+          0.155119
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 32057,
+        "native_row": [
+          "ENST00000409493",
+          "ENSP00000386937",
+          "ENSG00000115274",
+          "INO80B",
+          3.23225,
+          5.76967,
+          4.23278
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 32408,
+        "native_row": [
+          "ENST00000409917",
+          "ENSP00000387267",
+          "ENSG00000115274",
+          "INO80B",
+          1.16276e-17,
+          3.57682e-25,
+          1.84272e-29
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 32820,
+        "native_row": [
+          "ENST00000412253",
+          "ENSP00000401465",
+          "ENSG00000003137",
+          "CYP26B1",
+          0.175486,
+          0.647131,
+          0.953331
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 33868,
+        "native_row": [
+          "ENST00000415666",
+          "ENSP00000412701",
+          "ENSG00000004059",
+          "ARF5",
+          2.0981e-32,
+          0.706172,
+          7.08268e-29
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 35156,
+        "native_row": [
+          "ENST00000419673",
+          "ENSP00000392660",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0.000527722,
+          0.000234655,
+          0.000667076
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 38847,
+        "native_row": [
+          "ENST00000431187",
+          "ENSP00000389887",
+          "ENSG00000115274",
+          "INO80B",
+          1.25813e-06,
+          2.17618e-09,
+          2.28674
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 42211,
+        "native_row": [
+          "ENST00000441673",
+          "ENSP00000392498",
+          "ENSG00000274049",
+          "INO80B-WBP1",
+          9.72307,
+          5.10454,
+          6.05748
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 45622,
+        "native_row": [
+          "ENST00000452361",
+          "ENSP00000388677",
+          "ENSG00000274049",
+          "INO80B-WBP1",
+          0.000719148,
+          0.00540903,
+          0.000511441
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 46618,
+        "native_row": [
+          "ENST00000455562",
+          "ENSP00000398740",
+          "ENSG00000115274",
+          "INO80B",
+          5.08357e-101,
+          0.644838,
+          3.73066e-70
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 47953,
+        "native_row": [
+          "ENST00000461519",
+          "ENSP00000430871",
+          "ENSG00000003137",
+          "CYP26B1",
+          2.78634e-179,
+          2.21087e-45,
+          0.26489
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 48434,
+        "native_row": [
+          "ENST00000464634",
+          "ENSP00000466525",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0.133178
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 50075,
+        "native_row": [
+          "ENST00000474509",
+          "ENSP00000430888",
+          "ENSG00000003137",
+          "CYP26B1",
+          1.50426e-231,
+          3.63871e-67,
+          2.67604e-141
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 64683,
+        "native_row": [
+          "ENST00000531294",
+          "ENSP00000437262",
+          "ENSG00000088756",
+          "ARHGAP28",
+          4.09626e-59,
+          2.01024e-61,
+          4.84939e-61
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 65267,
+        "native_row": [
+          "ENST00000532723",
+          "ENSP00000433390",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0.367999,
+          0.419273,
+          7.93034e-226
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 65380,
+        "native_row": [
+          "ENST00000532996",
+          "ENSP00000435990",
+          "ENSG00000088756",
+          "ARHGAP28",
+          1.82941e-92,
+          1.41112e-121,
+          4.3392e-110
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 70174,
+        "native_row": [
+          "ENST00000546307",
+          "ENSP00000443304",
+          "ENSG00000003137",
+          "CYP26B1",
+          0.00265135,
+          0.429856,
+          3.02096e-05
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 80025,
+        "native_row": [
+          "ENST00000577524",
+          "ENSP00000463672",
+          "ENSG00000088756",
+          "ARHGAP28",
+          3.67519e-59,
+          1.56404e-154,
+          7.33914e-137
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 80534,
+        "native_row": [
+          "ENST00000579689",
+          "ENSP00000463143",
+          "ENSG00000088756",
+          "ARHGAP28",
+          3.19645e-69,
+          2.68005e-194,
+          0.311443
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 80887,
+        "native_row": [
+          "ENST00000581099",
+          "ENSP00000462912",
+          "ENSG00000088756",
+          "ARHGAP28",
+          1.43673e-233,
+          2.17838e-249,
+          0.0608611
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 81436,
+        "native_row": [
+          "ENST00000583410",
+          "ENSP00000464141",
+          "ENSG00000088756",
+          "ARHGAP28",
+          1.26639e-93,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 81629,
+        "native_row": [
+          "ENST00000584287",
+          "ENSP00000464310",
+          "ENSG00000088756",
+          "ARHGAP28",
+          1.27656e-279,
+          0,
+          1.27276e-217
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 81657,
+        "native_row": [
+          "ENST00000584387",
+          "ENSP00000462831",
+          "ENSG00000088756",
+          "ARHGAP28",
+          3.82415e-81,
+          0,
+          0.31313
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 82700,
+        "native_row": [
+          "ENST00000587435",
+          "ENSP00000467833",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 82743,
+        "native_row": [
+          "ENST00000587544",
+          "ENSP00000468221",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          1.29481e-05
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 83880,
+        "native_row": [
+          "ENST00000590425",
+          "ENSP00000466465",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0.060743
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      }
+    ],
+    "rna_genes": [
+      {
+        "source_line": 35,
+        "native_row": [
+          "ENSG00000003137",
+          "CYP26B1",
+          1.51,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 46,
+        "native_row": [
+          "ENSG00000004059",
+          "ARF5",
+          51.09,
+          38.97,
+          71.91
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 1742,
+        "native_row": [
+          "ENSG00000088756",
+          "ARHGAP28",
+          1.26,
+          1.38,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 4246,
+        "native_row": [
+          "ENSG00000115274",
+          "INO80B",
+          5.97,
+          5.7,
+          11.32
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 12290,
+        "native_row": [
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 17818,
+        "native_row": [
+          "ENSG00000274049",
+          "INO80B-WBP1",
+          9.49,
+          5.04,
+          6.14
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      }
+    ],
+    "protein_genes": [
+      {
+        "source_line": 40,
+        "native_row": [
+          "ENSG00000004059",
+          "ARF5",
+          112559620.9,
+          335689364.9,
+          189945587.3
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 1533,
+        "native_row": [
+          "ENSG00000088756",
+          "ARHGAP28",
+          25782.60412,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 3677,
+        "native_row": [
+          "ENSG00000115274",
+          "INO80B",
+          0,
+          0,
+          241622.5168
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 10004,
+        "native_row": [
+          "ENSG00000170454",
+          "KRT75",
+          0,
+          638149.4298,
+          752971.5513
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 10132,
+        "native_row": [
+          "ENSG00000171401",
+          "KRT13",
+          2950846.624,
+          7648552.597,
+          14485242.92
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 13524,
+        "native_row": [
+          "ENSG00000273707",
+          "CDKN1C",
+          10183822.16,
+          1104323.463,
+          81556.15232
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      }
+    ],
+    "protein_copies": [
+      {
+        "source_line": 2,
+        "native_row": [
+          "ENSP00000252245",
+          "ENSG00000170454",
+          "KRT75",
+          0,
+          1898.29055780323,
+          5289.77955586123
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 3,
+        "native_row": [
+          "ENSP00000336604;ENSP00000246635",
+          "ENSG00000171401",
+          "KRT13",
+          15097.8181810895,
+          25481.1844172775,
+          113977.050323044
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 6,
+        "native_row": [
+          "ENSP00000000233",
+          "ENSG00000004059",
+          "ARF5",
+          546528.427933152,
+          1061231.66596268,
+          1418221.52799641
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 625,
+        "native_row": [
+          "ENSP00000233331;ENSP00000388677",
+          "ENSG00000115274;ENSG00000274049",
+          "INO80B",
+          0,
+          0,
+          1481.40987423304
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 4012,
+        "native_row": [
+          "ENSP00000484462;ENSP00000488786;ENSP00000321019",
+          "ENSG00000273707",
+          "CDKN1C",
+          32516.8789456195,
+          2295.87112303005,
+          400.442893776779
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      }
+    ],
+    "rna_copies": [
+      {
+        "source_line": 2,
+        "native_row": [
+          "ENST00000000233",
+          "ENSG00000004059",
+          "ARF5",
+          26.4169703150635,
+          15.4211535023089,
+          31.4190015715965
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 6,
+        "native_row": [
+          "ENST00000001146",
+          "ENSG00000003137",
+          "CYP26B1",
+          0.295653623040164,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 1268,
+        "native_row": [
+          "ENST00000233331",
+          "ENSG00000115274",
+          "INO80B",
+          1.192105,
+          0,
+          1.680673
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 1764,
+        "native_row": [
+          "ENST00000246635",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 7997,
+        "native_row": [
+          "ENST00000314319",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0.2573154,
+          0.2163007,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 10544,
+        "native_row": [
+          "ENST00000336861",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 20476,
+        "native_row": [
+          "ENST00000383472",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 25148,
+        "native_row": [
+          "ENST00000409493",
+          "ENSG00000115274",
+          "INO80B",
+          1.897101,
+          2.624608,
+          2.181918
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 25654,
+        "native_row": [
+          "ENST00000412253",
+          "ENSG00000003137",
+          "CYP26B1",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 26252,
+        "native_row": [
+          "ENST00000415666",
+          "ENSG00000004059",
+          "ARF5",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 27016,
+        "native_row": [
+          "ENST00000419673",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 29275,
+        "native_row": [
+          "ENST00000431187",
+          "ENSG00000115274",
+          "INO80B",
+          0,
+          0,
+          5.062035
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 31306,
+        "native_row": [
+          "ENST00000441673",
+          "ENSG00000274049",
+          "INO80B-WBP1",
+          6.88818,
+          2.802758,
+          3.768948
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 34807,
+        "native_row": [
+          "ENST00000461519",
+          "ENSG00000003137",
+          "CYP26B1",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 35099,
+        "native_row": [
+          "ENST00000464634",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 44271,
+        "native_row": [
+          "ENST00000531294",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 44579,
+        "native_row": [
+          "ENST00000532723",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 44641,
+        "native_row": [
+          "ENST00000532996",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 47415,
+        "native_row": [
+          "ENST00000546307",
+          "ENSG00000003137",
+          "CYP26B1",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 53181,
+        "native_row": [
+          "ENST00000579689",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 53386,
+        "native_row": [
+          "ENST00000581099",
+          "ENSG00000088756",
+          "ARHGAP28",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 54385,
+        "native_row": [
+          "ENST00000587435",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      },
+      {
+        "source_line": 54410,
+        "native_row": [
+          "ENST00000587544",
+          "ENSG00000171401",
+          "KRT13",
+          0,
+          0,
+          0
+        ],
+        "source_columns": [
+          "Adrenal gland",
+          "Colon",
+          "Duodenum"
+        ]
+      }
+    ]
+  }
+}

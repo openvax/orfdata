@@ -77,7 +77,8 @@ Install with `pip install orfdata[pyensembl]`. See the
 assays, and DataCache-managed downloads. Downloadable
 [human, mouse and dog protein abundance](docs/pfizer-protein.md) and
 [yeast calibrated protein/RNA abundance](docs/copy-yeast.md) use the same
-species-scoped API, as do [native dog and mouse RNA counts](docs/pfizer-rna.md).
+species-scoped API, as do [native dog and mouse RNA counts](docs/pfizer-rna.md)
+and [matched human tissue RNA/protein measurements](docs/human-tissue.md).
 Gene RNA and canonical protein measurements do not establish
 noncanonical ORF abundance. The [native search references](docs/search-references.md)
 preserve complete deposited sequences, including unreported entries. The

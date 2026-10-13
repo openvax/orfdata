@@ -1,0 +1,188 @@
+{
+  "dataset_id": "wang-human-tissue-abundance",
+  "version": "fixture",
+  "title": "Real Wang healthy-tissue slices; not full study coverage",
+  "references": [
+    {
+      "taxon_id": 9606,
+      "species": "human",
+      "genome_build": "GRCh38",
+      "annotation_name": "ensembl",
+      "annotation_version": "83",
+      "assembly_accession": "GCA_000001405.20",
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": "eaf0dab930f8f734d742ade256442a15358ba751ba937a6b73e2579a029940ff",
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": "0275ec7f5d69d8e7f35f509ccb0317754f5a3016e320e8010b70c2f087b8f34d"
+    }
+  ],
+  "sources": [
+    {
+      "asset_id": "protein.zip",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s003.zip",
+      "sha256": "2568d185fad6466745d4996499d76044b35078e07030cc41832a510738a9d3ad",
+      "size": 6677,
+      "access_terms": "CC-BY-4.0; Wang et al. (2019)",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Wang et al. (2019)",
+        "publication": "https://doi.org/10.15252/msb.20188503",
+        "original_source": {
+          "sha256": "b9b91d91319435f5ebbfb1d5c1f5bd22131e879f7872e767cd4f32a8b55b382e",
+          "size": 9020300,
+          "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s003.zip"
+        }
+      }
+    },
+    {
+      "asset_id": "rna.zip",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s004.zip",
+      "sha256": "361f28054543a3178bcaf8812d5577e0e0aa194c323c65bfe985c85ac18e670e",
+      "size": 7098,
+      "access_terms": "CC-BY-4.0; Wang et al. (2019)",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Wang et al. (2019)",
+        "publication": "https://doi.org/10.15252/msb.20188503",
+        "original_source": {
+          "sha256": "ee37aacff077892203db83d1736975745feacc33ba4a0ede7fe68470ca89ce95",
+          "size": 35792466,
+          "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s004.zip"
+        }
+      }
+    },
+    {
+      "asset_id": "copies.zip",
+      "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s007.zip",
+      "sha256": "a8e5ab17622037e7365fdb21cc6f4d25d4021715a94727e2b55e8e3e46eafcd3",
+      "size": 6190,
+      "access_terms": "CC-BY-4.0; Wang et al. (2019)",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Wang et al. (2019)",
+        "publication": "https://doi.org/10.15252/msb.20188503",
+        "original_source": {
+          "sha256": "1c9aee1d3869874c9ed2343a43b976c9f7adfe040af50780fc61f1b712ab77b9",
+          "size": 18746969,
+          "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC6379049.1/MSB-15-e8503-s007.zip"
+        }
+      }
+    },
+    {
+      "asset_id": "annotation.gtf.gz",
+      "url": "https://ftp.ensembl.org/pub/release-83/gtf/homo_sapiens/Homo_sapiens.GRCh38.83.gtf.gz",
+      "sha256": "0275ec7f5d69d8e7f35f509ccb0317754f5a3016e320e8010b70c2f087b8f34d",
+      "size": 11587,
+      "access_terms": "Ensembl-generated data available without restriction; retain Ensembl/EMBL-EBI attribution",
+      "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "ensembl_release": "83",
+        "taxon_id": 9606,
+        "original_source": {
+          "sha256": "687f8b330bc6297fef833fcf3c48464e1ae46115fd706295238fdf51728cd017",
+          "size": 45686084,
+          "url": "https://ftp.ensembl.org/pub/release-83/gtf/homo_sapiens/Homo_sapiens.GRCh38.83.gtf.gz"
+        }
+      }
+    },
+    {
+      "asset_id": "search.fasta.gz",
+      "url": "https://ftp.ensembl.org/pub/release-83/fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz",
+      "sha256": "eaf0dab930f8f734d742ade256442a15358ba751ba937a6b73e2579a029940ff",
+      "size": 3423,
+      "access_terms": "Ensembl-generated data available without restriction; retain Ensembl/EMBL-EBI attribution",
+      "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "ensembl_release": "83",
+        "taxon_id": 9606,
+        "original_source": {
+          "sha256": "5b7e60956435026d2588ed92a719e74f0b5b39f13f072638cefd634c7cfbc219",
+          "size": 12726357,
+          "url": "https://ftp.ensembl.org/pub/release-83/fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz"
+        }
+      }
+    }
+  ],
+  "citations": [
+    "https://doi.org/10.15252/msb.20188503"
+  ],
+  "assay_kinds": [
+    "rna_seq",
+    "digest_ms"
+  ],
+  "coverage": {
+    "samples": 3,
+    "quantitative_metadata_rows": 4,
+    "series": {
+      "protein_groups": {
+        "rows": 5,
+        "empty_rows": 0,
+        "zero_cells": 3,
+        "numeric_text_cells": 0
+      },
+      "protein_genes": {
+        "rows": 6,
+        "empty_rows": 24,
+        "zero_cells": 5,
+        "numeric_text_cells": 0
+      },
+      "rna_transcripts": {
+        "rows": 34,
+        "empty_rows": 0,
+        "zero_cells": 20,
+        "numeric_text_cells": 1
+      },
+      "rna_genes": {
+        "rows": 6,
+        "empty_rows": 0,
+        "zero_cells": 6,
+        "numeric_text_cells": 0
+      },
+      "protein_copies": {
+        "rows": 5,
+        "empty_rows": 0,
+        "zero_cells": 3,
+        "numeric_text_cells": 0
+      },
+      "rna_copies": {
+        "rows": 23,
+        "empty_rows": 0,
+        "zero_cells": 54,
+        "numeric_text_cells": 0
+      }
+    },
+    "annotation_counts": {
+      "genes": 7,
+      "transcripts": 47,
+      "proteins": 34
+    },
+    "search_sequences": 38,
+    "orf_specific_abundance": false,
+    "pairing": "adjacent cryosections of source tissue specimens; donor identity not inferred"
+  },
+  "processing": {
+    "importer": "wang-human-tissue-v1",
+    "software": "orfdata 0.13.0",
+    "tissues": [
+      "Adrenal gland",
+      "Colon",
+      "Duodenum"
+    ],
+    "tissue_aliases": {
+      "Gall bladder": "Gallbladder"
+    },
+    "source_assembly_header": "GRCh38.p5",
+    "copy_estimates": "source-derived; proteomic ruler protein and assumed mRNA fraction 2%",
+    "excluded_quantitative_tissues": {
+      "Bone marrow": "no matching RNA sample or 29-tissue table column"
+    },
+    "source_views": "Eraslan reprocessing is a separate dataset, not additional biological replication"
+  },
+  "schema": "orfdata.measurements.v1"
+}
