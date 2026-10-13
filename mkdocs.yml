@@ -39,7 +39,6 @@ nav:
       - Yeast protein and RNA: copy-yeast.md
       - Yeast RNA and ribosome occupancy: ingolia-yeast.md
   - Project:
-      - Design notes: design.md
       - Release notes: https://github.com/openvax/orfdata/blob/main/CHANGELOG.md
       - Data roadmap: https://github.com/openvax/orfdata/issues/3
 plugins:

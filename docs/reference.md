@@ -234,4 +234,3 @@ python -m orfdata.build --source-dir /path/to/sources --prepare-sources \
 
 Source preparation downloads pinned public inputs and needs Rscript to extract
 the author export. Ordinary queries need neither R nor spreadsheet libraries.
-See the [design notes](design.md) for the model and library boundaries.

@@ -60,6 +60,29 @@ transferred to another species. Viral proteomes can be added with
 orfdata also provides [RNA, ribosome and protein measurements](https://openvax.github.io/orfdata/measurements/)
 for human, mouse, dog and yeast.
 
+## Measurement datasets
+
+RNA, ribosome and protein measurements are separate, downloadable datasets with
+the same species-scoped API. Install the `data` extra, then download and query
+one:
+
+```sh
+pip install 'orfdata[data]'
+orfdata datasets list
+orfdata datasets download ingolia-yeast-rna-ribo
+```
+
+| Guide | Species | Measurements |
+| --- | --- | --- |
+| [Protein abundance](https://openvax.github.io/orfdata/pfizer-protein/) | Human, mouse, dog | TMT protein groups (Oziolor et al.) |
+| [RNA abundance](https://openvax.github.io/orfdata/pfizer-rna/) | Dog, mouse | Native gene counts (Oziolor et al.) |
+| [Matched human tissues](https://openvax.github.io/orfdata/human-tissue/) | Human | RNA and protein from adjacent cryosections (Wang et al.) |
+| [Yeast protein and RNA](https://openvax.github.io/orfdata/copy-yeast/) | Budding yeast | Calibrated protein and RNA abundance (CoPY) |
+| [Yeast RNA and ribosome occupancy](https://openvax.github.io/orfdata/ingolia-yeast/) | Budding yeast | Source regions, including UTR and ncRNA labels (Ingolia et al.) |
+
+Gene RNA and canonical protein measurements do not establish noncanonical ORF
+abundance. See [released data and gaps](https://openvax.github.io/orfdata/coverage/).
+
 ## Documentation
 
 The [documentation](https://openvax.github.io/orfdata/) covers:
@@ -75,3 +98,8 @@ The [documentation](https://openvax.github.io/orfdata/) covers:
 The [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
 species and sources. Every PR includes a version bump, lint and tests;
 maintainers publish with `./deploy.sh` from clean `main`.
+
+## License
+
+Apache 2.0. Downloadable datasets keep their sources' own terms and
+attribution, recorded in each release manifest.

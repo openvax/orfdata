@@ -1,13 +1,13 @@
 # Optional ORF catalogues
 
-`CatalogRegistry` manages versioned ORF catalogues with the same explicit
-discovery, download, build and offline-open workflow as `DatasetRegistry`.
-It returns the existing `ORFCatalog`; query results still bind to the original
-PyEnsembl transcript through `ReferenceORF`.
+The bundled human catalogue is available through `load_catalog()` without
+downloads. `CatalogRegistry` manages additional versioned ORF catalogues, with
+the same explicit discovery, download, build and offline-open workflow as
+`DatasetRegistry`. It returns the existing `ORFCatalog`; query results still
+bind to the original PyEnsembl transcript through `ReferenceORF`.
 
-The default optional registry currently has no released entries. The bundled
-human catalogue remains available through `load_catalog()` without downloads.
-The examples below use a caller-supplied registry; they do not imply a published
+The default optional registry currently has no released entries. The examples
+below use a caller-supplied registry; they do not imply a published
 experimental catalogue for another species.
 
 ```python
@@ -74,13 +74,15 @@ the full manifest in `metadata.catalog_manifest`. Every accepted record must
 declare a complete genomic reference included in that manifest. Opening validates
 the whole manifest, species/assembly, references and declared output counts.
 
-The initial `catalog-copy-v1` adapter wraps an independently prepared, unmanaged, pinned
-portable catalogue named by `processing.catalog_asset`; it preserves native
-metadata and adds the managed manifest. It rejects an input that already has a
-managed manifest instead of replacing its release provenance. It does not infer missing references or
-validate new biological models on behalf of a source importer. Python developers
-can use `build_catalog(manifest, builder)`, where `builder(inputs, output_path)`
-writes the managed file. DataCache verifies inputs and validates the completed
+The initial `catalog-copy-v1` adapter wraps an independently prepared,
+unmanaged, pinned portable catalogue named by `processing.catalog_asset`; it
+preserves native metadata and adds the managed manifest. It rejects an input
+that already has a managed manifest instead of replacing its release provenance.
+It does not infer missing references or validate new biological models on
+behalf of a source importer.
+
+Python developers can use `build_catalog(manifest, builder)`, where
+`builder(inputs, output_path)` writes the managed file. DataCache verifies inputs and validates the completed
 output before publishing the local build. Importer paths in metadata are never
 executed as Python code.
 

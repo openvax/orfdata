@@ -14,15 +14,10 @@ yeast data.
 | EV5 protein groups | 15,210 | Estimated copies/cell |
 | EV5 transcripts | 60,519 | Estimated copies/cell |
 
-There are 6,273,425 source cells. The same specimen has several processing views;
-these are not additional biological replicates. Native specimen IDs, RNA/MS run
-IDs, units, source cells and processing methods remain attached to the data.
-Bone marrow has no matched RNA column and is outside the 29-tissue dataset.
 The download is approximately 397 MB and installs to a 3.86 GB SQLite database.
-Every source cell and RNA-copy input link was independently reconciled before
-publication. Missing or censored cells remain explicit observations.
 
 ```sh
+pip install 'orfdata[data]'
 orfdata datasets download wang-human-tissue-abundance --version 2026-10-12.1
 ```
 
@@ -49,12 +44,25 @@ match, = dataset.matched_measurements(
 print(match.left[0].value, match.right[0].value)  # 51.09, 112559620.9
 ```
 
+## Specimens and source cells
+
+There are 6,273,425 source cells. The same specimen has several processing views;
+these are not additional biological replicates. Native specimen IDs, RNA/MS run
+IDs, units, source cells and processing methods remain attached to the data.
+Bone marrow has no matched RNA column and is outside the 29-tissue dataset.
+Every source cell and RNA-copy input link was independently reconciled before
+publication. Missing or censored cells remain explicit observations.
+
+## PyEnsembl targets and search references
+
 With Ensembl 83 already installed in PyEnsembl, the same target can be built with
 `ScopedTarget.from_pyensembl(gene_object, kind="gene", namespace="ensembl",
 context=reference)`. The context pins the historical GRCh38.p5 assembly accession,
 GTF and complete Ensembl 83 protein FASTA. Alternate-reference protein entries
 absent from the GTF remain in the native search set. Search lookups preserve
 versioned FASTA IDs; they do not silently strip versions or imply detection.
+
+## Interpreting the values
 
 Protein-group values remain group observations. Representative proteins and their
 parent genes/transcripts are context, with unresolved individual attribution.
@@ -79,6 +87,8 @@ Unfiltered transcript FPKM retains its native zeros and tiny numeric text values
 a nonzero estimate does not establish expression above the study's 1-FPKM cutoff.
 Original numeric text and zero sentinels remain in provenance. Stable identifiers
 join the source tables even when their display gene labels differ.
+
+## Related reanalysis and terms
 
 The [Eraslan reanalysis](https://doi.org/10.15252/msb.20188513) selects major
 isoforms and normalizes exon/intron counts differently. It is a separate planned
