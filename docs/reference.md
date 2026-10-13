@@ -43,6 +43,25 @@ catalog = load_catalog()
 records = catalog.query(gene="TPST1", evidence="ms")
 ```
 
+## Identifiers
+
+Bundled ORF IDs are the source's GENCODE Phase I IDs. They start with the
+chromosome: `c7riboseqorf56` is on chromosome 7. The 3,085 `c…riboseqorf…`
+ORFs were detected in two or more ribosome-profiling studies, and the 4,179
+`c…norep…` ORFs in one. They are not Ensembl stable IDs.
+
+Each record names one host transcript (`transcript_id`, an unversioned ENST)
+and that transcript's gene (`gene_id`, an ENSG), as validated against Ensembl
+101. For an ORF on an mRNA, this is the gene of the transcript's annotated
+protein. Later releases can change both: of the 7,108 ORFs that bind to Ensembl
+115, 87 host transcripts now belong to a different ENSG and 796 gene symbols
+changed. A bound ORF's `transcript` and a proteome entry's gene fields describe
+the genome you loaded; `orf.model` keeps the source's labels.
+
+The host is one of possibly several transcripts that carry the same ORF. In
+Ensembl 115, 5,830 of the 7,108 bound ORFs have an identical spliced coding
+path on at least one other transcript. orfdata binds only the source's host.
+
 ## Evidence
 
 Use `orf.evidence.has_evidence("ribosome")`, `"shotgun"` (protease-digest MS),

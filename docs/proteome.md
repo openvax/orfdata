@@ -90,7 +90,8 @@ Counter({'Transcript absent from this annotation': 25, 'ORF splice path mismatch
 
 The bundled models were validated against Ensembl 101; later releases retire
 or change some of their transcripts. orfdata never moves an ORF to a different
-transcript or sequence. `identical_to_annotated` counts added ORFs whose
+transcript or sequence, even though 41 of these 46 ORFs have an identical
+spliced coding path on another Ensembl 115 transcript. `identical_to_annotated` counts added ORFs whose
 protein now matches an annotated protein. Both entries are kept because they
 have different identities and evidence.
 
@@ -138,8 +139,11 @@ protein ID. Fields that apply follow as `key=value`:
 >c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 biotype=uORF evidence=ribosome,mhc
 ```
 
-For extra ORFs, `biotype` is the source ORF class and `evidence` lists the
-supporting evidence types; `mhc` includes HLA.
+For extra ORFs, the accession is the source ORF ID, `transcript` is its host
+transcript in this genome, and `gene` and `gene_name` are that transcript's gene
+in this genome. `biotype` is the source ORF class and `evidence` lists the
+supporting evidence types; `mhc` includes HLA. See
+[identifiers](reference.md#identifiers).
 
 ## Command line
 

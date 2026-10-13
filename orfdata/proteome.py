@@ -26,8 +26,10 @@ _EVIDENCE_LABELS = ("ribosome", "shotgun", "mhc", "ms_unclassified")
 class ProteomeEntry:
     """One protein sequence and where it came from.
 
-    ``kind`` is ``"annotated"``, ``"extra_orf"`` or ``"viral"``. ``biotype`` is
-    the transcript biotype for annotated proteins and the source ORF class for
+    ``kind`` is ``"annotated"``, ``"extra_orf"`` or ``"viral"``. Gene and
+    transcript fields come from the genome the proteome was built from; an
+    extra ORF's source annotation stays on ``orf.model``. ``biotype`` is the
+    transcript biotype for annotated proteins and the source ORF class for
     extra ORFs. ``evidence`` lists the evidence types supporting an extra ORF.
     """
 
@@ -83,9 +85,10 @@ class ExtraORFs:
         return tuple(o for o in self.orfs if str(o.transcript.id).split(".")[0] == transcript_id)
 
     def for_gene(self, gene):
-        """Bound ORFs whose source gene matches a gene object, ID or name."""
-        names = {getattr(gene, "id", gene), getattr(gene, "name", gene)}
-        return tuple(o for o in self.orfs if names & {o.model.gene_id, o.model.gene_name})
+        """Bound ORFs whose gene in this genome or in the source matches an object, ID or name."""
+        names = {x for x in (getattr(gene, "id", gene), getattr(gene, "name", gene)) if x}
+        return tuple(o for o in self.orfs if names & {
+            o.transcript.gene_id, o.transcript.gene_name, o.model.gene_id, o.model.gene_name})
 
 
 @dataclass(frozen=True)
@@ -206,8 +209,8 @@ class Proteome:
         annotated = {e.sequence for e in self.entries if e.kind == "annotated"}
         added = tuple(ProteomeEntry(
             accession=orf.model.orf_id, sequence=orf.protein_sequence, kind="extra_orf",
-            taxon_id=orf.model.taxon_id, source=source, gene_id=orf.model.gene_id,
-            gene_name=orf.model.gene_name or None,
+            taxon_id=orf.model.taxon_id, source=source, gene_id=orf.transcript.gene_id,
+            gene_name=orf.transcript.gene_name or None,
             transcript_id=getattr(orf.transcript, "versioned_id", orf.transcript.id),
             contig=orf.transcript.contig, biotype=orf.model.orf_type,
             evidence=tuple(m for m in _EVIDENCE_LABELS if orf.evidence.has_evidence(m)), orf=orf,

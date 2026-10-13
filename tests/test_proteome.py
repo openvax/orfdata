@@ -108,6 +108,8 @@ def test_extra_orfs_are_selected_by_evidence_and_unbound_ones_are_reported(genom
     extra = [e for e in proteome if e.kind == "extra_orf"]
     assert [(e.accession, e.sequence, e.evidence, e.biotype) for e in extra] == [("ms-orf", "MKPG", ("shotgun",), "lncRNA")]
     assert extra[0].orf.transcript.biotype == "lncRNA" and extra[0].transcript_id == "test_rna.1"
+    # Gene fields describe this genome; the source's own labels stay on the model.
+    assert (extra[0].gene_name, extra[0].orf.model.gene_name) == ("TEST_GENE", "TEST")
     reasons = {e.orf_id: e.reason for e in proteome.excluded}
     assert reasons == {"absent-orf": "Transcript absent from this annotation", "changed-orf": "ORF reference protein/stop mismatch"}
     layer = dict(proteome.layers[-1])
@@ -127,7 +129,9 @@ def test_extra_orfs_lookup_by_transcript_and_gene(genome, catalog):
     assert [o.model.orf_id for o in found] == ["ms-orf", "ribo-orf"]
     transcript = genome.transcript_by_id("test_rna")
     assert found.for_transcript(transcript) == found.for_transcript("test_rna.1") == found.orfs
-    assert found.for_gene("TEST") == found.orfs and found.for_gene("coding_gene") == ()
+    # The genome names this gene TEST_GENE; the source catalogue calls it TEST.
+    assert found.for_gene("TEST") == found.for_gene("TEST_GENE") == found.orfs
+    assert found.for_gene("coding_gene") == found.for_gene("") == ()
     assert {e.orf_id for e in found.excluded} == {"absent-orf", "changed-orf"}
 
 
@@ -197,7 +201,7 @@ def test_fasta_export_round_trips_sequences_and_provenance(genome, catalog):
         else:
             records[header] += line
     assert records == {e.fasta_header(): e.sequence for e in proteome}
-    assert ">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST transcript=test_rna.1 contig=1 biotype=lncRNA evidence=shotgun" in records
+    assert ">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE transcript=test_rna.1 contig=1 biotype=lncRNA evidence=shotgun" in records
 
 
 def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, monkeypatch):
