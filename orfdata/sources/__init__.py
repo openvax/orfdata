@@ -11,6 +11,10 @@ def importer(name):
         from .copy import import_copy
 
         return import_copy
+    if name == "pfizer-rna-v1":
+        from .pfizer_rna import import_rna
+
+        return import_rna
     raise ValueError(f"No packaged importer for {name!r}")
 
 

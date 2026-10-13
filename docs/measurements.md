@@ -8,6 +8,8 @@ it is not a separate measurement of each ORF in that gene.
 
 Install `orfdata[data]` to manage datasets. The registry includes downloadable
 [Pfizer/Oziolor human, mouse and dog protein summaries](pfizer-protein.md);
+[native dog/mouse RNA](pfizer-rna.md) and [yeast RNA/protein calibration](copy-yeast.md)
+use the same objects. See [released coverage and gaps](coverage.md);
 the [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
 imports. The bundled human ORF evidence catalogue remains available offline.
 Its pooled PSM counts describe spectra, not sample-level protein abundance.

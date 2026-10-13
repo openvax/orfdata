@@ -1,3 +1,12 @@
+# 0.11.0
+
+- Import native Pfizer/Oziolor dog and mouse RNA gene counts, with measured zeros,
+  sample/run metadata and exact Ensembl 110 gene/reference validation.
+- Keep mouse biological strains separate from the reference genome, retain
+  differing source tissue labels, and leave unresolved RNA/protein pairing explicit.
+- Deduplicate three equivalent GEO count deposits; do not relabel nonhuman
+  ortholog matrices as human measurements. Missing human counts remain tracked in #37.
+
 # 0.10.0
 
 - Expose complete pinned Pfizer human/mouse/dog search FASTAs through explicit

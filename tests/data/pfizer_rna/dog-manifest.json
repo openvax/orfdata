@@ -1,0 +1,186 @@
+{
+  "dataset_id": "fixture-pfizer-atlas-dog-rna",
+  "version": "2026-10-12.1",
+  "title": "Actual source slice: Pfizer/Oziolor dog native RNA gene counts",
+  "references": [
+    {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": "ROS_Cfam_1.0",
+      "annotation_name": "ensembl",
+      "annotation_version": "110",
+      "assembly_accession": "GCA_014441545.1",
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": "3cbca5b1e1d260837f4a440d9b890ec5ddd78a83b791323957a33129e2ebb08a"
+    }
+  ],
+  "sources": [
+    {
+      "asset_id": "counts.csv.gz",
+      "url": "https://example.invalid/pfizer-rna/counts.csv.gz",
+      "sha256": "aae3c10020f70c3f61a669e5f11e84931bbabd250e06eb7911933d534ba794e9",
+      "size": 161,
+      "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+      "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Oziolor et al. / Pfizer",
+        "native_columns": [
+          "sid",
+          "species",
+          "tnm",
+          "egid",
+          "rcnt"
+        ],
+        "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+        "uncompressed_size": 3714928015,
+        "identical_content_mirrors": [
+          {
+            "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325522/suppl/GSE325522_zoomap_rcnt_all_samples1.csv.gz",
+            "uncompressed_size": 3714928015,
+            "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+            "seconds": 3.395852957997704
+          },
+          {
+            "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325523/suppl/GSE325523_zoomap_rcnt_all_samples2.csv.gz",
+            "uncompressed_size": 3714928015,
+            "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+            "seconds": 43.368584458999976
+          },
+          {
+            "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325525/suppl/GSE325525_zoomap_rcnt_all_samples3.csv.gz",
+            "uncompressed_size": 3714928015,
+            "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+            "seconds": 40.83363512499636
+          }
+        ],
+        "fixture_of_sha256": "a22780f92ffd0a028e30fe3392d73d01f787eb5a62b2043e8d26940191cbac70",
+        "fixture_description": "Small source-backed slice; not the full release"
+      }
+    },
+    {
+      "asset_id": "GSE325522_family.soft.gz",
+      "url": "https://example.invalid/pfizer-rna/GSE325522_family.soft.gz",
+      "sha256": "0197df463f44275c6494865d204cf4f39955fff11f9ee12cf8a10c1b43296573",
+      "size": 629,
+      "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+      "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Oziolor et al. / Pfizer",
+        "role": "GEO submitted sample metadata",
+        "fixture_of_sha256": "7d43fc13482ea36d162e4626d945fc1e290fb780c454775dd8dd354b4221a9d7",
+        "fixture_description": "Small source-backed slice; not the full release"
+      }
+    },
+    {
+      "asset_id": "GSE325523_family.soft.gz",
+      "url": "https://example.invalid/pfizer-rna/GSE325523_family.soft.gz",
+      "sha256": "feb86b8805697f66506dd05722652aeb2b22e766af4b16d6f35aee4636371e3e",
+      "size": 686,
+      "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+      "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Oziolor et al. / Pfizer",
+        "role": "GEO submitted sample metadata",
+        "fixture_of_sha256": "1c2bb1ba2c8c2c38613299f5f912b5dea2b27b877a5bac625ef0ef91eab4edcd",
+        "fixture_description": "Small source-backed slice; not the full release"
+      }
+    },
+    {
+      "asset_id": "GSE325525_family.soft.gz",
+      "url": "https://example.invalid/pfizer-rna/GSE325525_family.soft.gz",
+      "sha256": "4f50a696696ec19d67353856ebfd539a9f95b07f436bb24f16c1726cc8482cc9",
+      "size": 688,
+      "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+      "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Oziolor et al. / Pfizer",
+        "role": "GEO submitted sample metadata",
+        "fixture_of_sha256": "fe65e031ab389f5d64702c683566902301d0d6ffcdbec2cf2c3f85c2138e0e94",
+        "fixture_description": "Small source-backed slice; not the full release"
+      }
+    },
+    {
+      "asset_id": "samples.xlsx",
+      "url": "https://example.invalid/pfizer-rna/samples.xlsx",
+      "sha256": "81dae798fea3842601f0f03f4556573744f95d891f12b5294cea3ed69884f8d5",
+      "size": 5491,
+      "access_terms": "Article supplement: CC-BY-NC-ND-4.0; used for factual sample metadata, original workbook not redistributed in the data artifact",
+      "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+      "redistributable": false,
+      "metadata": {
+        "attribution": "Oziolor et al. (2026)",
+        "sheet": "TableS5",
+        "original_article": "https://doi.org/10.1038/s41597-026-07512-9",
+        "fixture_of_sha256": "a95b7a2514679ba6f7283573059f27e6182b5620f6d0beead601e47daf85e740",
+        "fixture_description": "Small source-backed slice; not the full release"
+      }
+    },
+    {
+      "asset_id": "annotation.gtf.gz",
+      "url": "https://example.invalid/pfizer-rna/dog-annotation.gtf.gz",
+      "sha256": "3cbca5b1e1d260837f4a440d9b890ec5ddd78a83b791323957a33129e2ebb08a",
+      "size": 1428,
+      "access_terms": "Ensembl-generated data available without restriction; retain Ensembl attribution and source provenance",
+      "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Ensembl / EMBL-EBI",
+        "ensembl_release": "110",
+        "gene_identifiers": "unversioned as measured",
+        "native_gene_membership_verified": true,
+        "fixture_of_sha256": "f0f226cc42b8579d1f6d1668344f60804b6df6f68cce74de73604e074b160651",
+        "fixture_description": "Small source-backed slice; not the full release"
+      }
+    }
+  ],
+  "citations": [
+    "https://doi.org/10.1038/s41597-026-07512-9",
+    "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE325522"
+  ],
+  "assay_kinds": [
+    "rna_seq"
+  ],
+  "coverage": {
+    "rows": 6,
+    "zeros": 2,
+    "samples": 2,
+    "genes": 3,
+    "reference_genes": 4,
+    "unmeasured_annotation_genes": 1,
+    "metadata_samples": 5,
+    "source_species_rows": {
+      "dog": 6,
+      "mouse": 6
+    },
+    "human_native_observations": 0,
+    "human_metadata_samples": 1,
+    "protein_pairing": "unresolved specimen/pool crosswalk; no pairs inferred",
+    "quantified_level": "gene",
+    "orf_specific_abundance": false
+  },
+  "processing": {
+    "importer": "pfizer-rna-v1",
+    "software": "orfdata 0.11.0",
+    "native_species": "dog",
+    "geo_metadata_assets": [
+      "GSE325522_family.soft.gz",
+      "GSE325523_family.soft.gz",
+      "GSE325525_family.soft.gz"
+    ],
+    "count_column": "rcnt",
+    "native_units": "counts",
+    "integer_counts": true,
+    "ortholog_projection": false,
+    "duplicate_deposits": "One canonical CSV input; identical content in three GEO submissions is not concatenated",
+    "strain_scope": "source biological strain is separate from annotation/reference strain",
+    "missing_human_issue": "https://github.com/openvax/orfdata/issues/37"
+  },
+  "schema": "orfdata.measurements.v1"
+}
