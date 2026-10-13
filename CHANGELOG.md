@@ -1,3 +1,13 @@
+# 0.13.0
+
+- Import the six native Wang healthy-human-tissue abundance series with historical
+  Ensembl 83 references, adjacent-specimen pairing and source calibration.
+- Preserve censored copy estimates, native numeric text and protein-group
+  ambiguity; keep gene-level comparisons distinct from individual ORF abundance.
+- Read complete pinned Ensembl peptide FASTAs, including gzip sources, exact
+  versioned identifiers, alternate-reference entries and native stop characters.
+  Header taxonomy remains unknown when absent; explicit source species is retained.
+
 # 0.10.0
 
 - Expose complete pinned Pfizer human/mouse/dog search FASTAs through explicit

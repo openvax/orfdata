@@ -11,6 +11,10 @@ def importer(name):
         from .copy import import_copy
 
         return import_copy
+    if name == "wang-human-tissue-v1":
+        from .wang import import_tissue
+
+        return import_tissue
     raise ValueError(f"No packaged importer for {name!r}")
 
 
@@ -20,4 +24,8 @@ def search_references(manifest):
         from .pfizer import search_references as pfizer_references
 
         return pfizer_references(manifest)
+    if manifest.processing.get("importer") == "wang-human-tissue-v1":
+        from .wang import search_references as wang_references
+
+        return wang_references(manifest)
     return ()

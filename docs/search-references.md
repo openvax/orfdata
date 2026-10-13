@@ -73,3 +73,13 @@ Adapters must explicitly declare their native search sets and formats. The
 initial parser supports deposited UniProt FASTAs. CoPY yeast's QconCAT FASTA is
 synthetic calibration material, so it is not exposed as a native yeast proteome;
 that historical search reference remains an explicit source gap.
+
+## Historical Ensembl searches
+
+Declared Ensembl peptide FASTAs retain exact versioned identifiers and native
+headers, including alternate-reference entries and stop characters. Gzip source
+hashes identify the original compressed bytes. An Ensembl header does not encode
+taxonomy: `source_taxon_id` is `None`, while the explicit pinned reference retains
+the source species. Gene labels use the native gene symbol when present, otherwise
+the native versioned gene ID. No ID-version stripping or protein-detection claim
+is implicit in a search lookup. See the [human tissue dataset](human-tissue.md).

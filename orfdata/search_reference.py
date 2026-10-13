@@ -1,5 +1,6 @@
 """Immutable native search sequences, separate from abundance and existence evidence."""
 
+import gzip
 import hashlib
 import re
 from collections.abc import Mapping
@@ -31,7 +32,7 @@ class SearchReferenceSpec(_Record):
             raise TypeError("Search references require a context and pinned SourceAsset")
         if self.reference.sequence_sha256 != self.source.sha256:
             raise ValueError("Native search context must identify the exact source FASTA bytes")
-        if self.format != "uniprot-fasta":
+        if self.format not in ("uniprot-fasta", "ensembl-pep-fasta", "ensembl-pep-fasta-gzip"):
             raise ValueError("Unsupported declared search FASTA format")
         if self.expected_sequences is not None and (type(self.expected_sequences) is not int or self.expected_sequences < 1):
             raise ValueError("Expected sequence count must be positive or unknown")
@@ -53,7 +54,7 @@ class SearchSequence(_Record):
     fasta_id: str
     sequence: str
     sequence_sha256: str
-    source_taxon_id: int
+    source_taxon_id: Optional[int]
     gene_label: Optional[str]
     database: str
     source_line: int
@@ -65,13 +66,16 @@ class SearchSequence(_Record):
             raise TypeError("Search sequence requires a native protein target")
         for name in ("header", "fasta_id", "sequence"):
             _identifier(getattr(self, name), name)
-        if not re.fullmatch("[A-Z]+", self.sequence):
+        alphabet = "[A-Z*]+" if self.database == "ensembl" else "[A-Z]+"
+        if not re.fullmatch(alphabet, self.sequence):
             raise ValueError("Invalid search sequence characters")
         if hashlib.sha256(self.sequence.encode("ascii")).hexdigest() != self.sequence_sha256:
             raise ValueError("Search sequence hash disagrees with its residues")
-        if self.source_taxon_id != self.target.reference.taxon_id:
+        if self.source_taxon_id is None and self.database != "ensembl":
+            raise ValueError("UniProt search sequences require their source taxon")
+        if self.source_taxon_id is not None and self.source_taxon_id != self.target.reference.taxon_id:
             raise ValueError("Native search sequence taxon disagrees with its reference")
-        if self.database not in ("sp", "tr") or type(self.source_line) is not int or self.source_line < 1:
+        if self.database not in ("sp", "tr", "ensembl") or type(self.source_line) is not int or self.source_line < 1:
             raise ValueError("Invalid search sequence source metadata")
         if self.gene_label is not None:
             _identifier(self.gene_label, "gene_label")
@@ -176,24 +180,19 @@ class SearchReference:
             if header is None:
                 return
             fasta_id = header.split()[0]
-            fields = fasta_id.split("|")
-            taxon = re.search(r"(?:^| )OX=(\d+)(?: |$)", header)
-            if len(fields) != 3 or fields[0] not in ("sp", "tr") or not all(fields[1:]) or taxon is None:
-                raise ValueError("Invalid declared UniProt search FASTA header")
-            if int(taxon.group(1)) != self.reference.taxon_id:
-                raise ValueError("Search entry taxon differs from the declared native reference")
-            identifier = fields[1]
+            identifier, database, taxon, gene = self._header(header, fasta_id)
             sequence = "".join(pieces)
-            if identifier in entries or not sequence or not re.fullmatch("[A-Z]+", sequence):
+            alphabet = "[A-Z*]+" if database == "ensembl" else "[A-Z]+"
+            if identifier in entries or not sequence or not re.fullmatch(alphabet, sequence):
                 raise ValueError("Duplicate/empty/invalid native search sequence")
-            gene = re.search(r"(?:^| )GN=(\S+)", header)
             entries[identifier] = SearchSequence(
                 ScopedTarget(self.reference, "protein", identifier, self.spec.namespace), header, fasta_id,
-                sequence, hashlib.sha256(sequence.encode("ascii")).hexdigest(), int(taxon.group(1)),
-                gene.group(1) if gene else None, fields[0], source_line,
+                sequence, hashlib.sha256(sequence.encode("ascii")).hexdigest(), taxon,
+                gene, database, source_line,
             )
 
-        with self.path.open(encoding="utf-8") as handle:
+        opener = gzip.open if self.spec.format == "ensembl-pep-fasta-gzip" else open
+        with opener(self.path, "rt", encoding="utf-8") as handle:
             for line, text in enumerate(handle, 1):
                 text = text.rstrip("\r\n")
                 if not text.strip():
@@ -211,6 +210,30 @@ class SearchReference:
         if not entries or (self.spec.expected_sequences is not None and len(entries) != self.spec.expected_sequences):
             raise ValueError("Search FASTA sequence count disagrees with declared coverage")
         return entries
+
+    def _header(self, header, fasta_id):
+        if self.spec.format == "uniprot-fasta":
+            fields = fasta_id.split("|")
+            taxon = re.search(r"(?:^| )OX=(\d+)(?: |$)", header)
+            if len(fields) != 3 or fields[0] not in ("sp", "tr") or not all(fields[1:]) or taxon is None:
+                raise ValueError("Invalid declared UniProt search FASTA header")
+            if int(taxon.group(1)) != self.reference.taxon_id:
+                raise ValueError("Search entry taxon differs from the declared native reference")
+            gene = re.search(r"(?:^| )GN=(\S+)", header)
+            return fields[1], fields[0], int(taxon.group(1)), gene.group(1) if gene else None
+
+        fields = header.split()
+        annotations = dict(field.split(":", 1) for field in fields[1:] if ":" in field)
+        location = next((annotations[k] for k in ("chromosome", "scaffold", "supercontig")
+                         if k in annotations), None)
+        if (len(fields) < 2 or not (fields[1] == "pep" or fields[1].startswith("pep:"))
+                or not annotations.get("gene") or not annotations.get("transcript") or not location):
+            raise ValueError("Invalid declared Ensembl peptide FASTA header")
+        if location.split(":", 1)[0] != self.reference.genome_build:
+            raise ValueError("Ensembl search entry assembly differs from the declared reference")
+        # Ensembl headers have no taxonomy field. The pinned source/reference
+        # declares the species; do not invent a header-observed taxon or strip IDs.
+        return fasta_id, "ensembl", None, annotations.get("gene_symbol", annotations["gene"])
 
 
 def reference_registry(spec, cache_root=None):
