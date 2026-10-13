@@ -1,0 +1,110 @@
+[
+  {
+    "sample": "GSM346111",
+    "source": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346111/suppl/GSM346111_fp_rich1_quant.txt.gz",
+      "size": 131843,
+      "sha256": "492f3a630d662de165309628b37ec5c89862f86b80c66391f7421e0f633efe76"
+    },
+    "rows": [
+      {
+        "line": 25,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "7.306",
+          "dens": "12.406",
+          "count": "43",
+          "len": "3466",
+          "total": "1698134"
+        }
+      },
+      {
+        "line": 26,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "50",
+          "total": "1698134"
+        }
+      },
+      {
+        "line": 27,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "1698134"
+        }
+      },
+      {
+        "line": 32,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "134.952",
+          "dens": "229.167",
+          "count": "11",
+          "len": "48",
+          "total": "1698134"
+        }
+      }
+    ]
+  },
+  {
+    "sample": "GSM346117",
+    "source": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346117/suppl/GSM346117_mrna_rich1_quant.txt.gz",
+      "size": 175847,
+      "sha256": "907ddaf47268ea6f36e2363c74a8c001ba48d1dc34617c1461ad5923e57def5b"
+    },
+    "rows": [
+      {
+        "line": 25,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "33.798",
+          "dens": "49.048",
+          "count": "170",
+          "len": "3466",
+          "total": "1451219"
+        }
+      },
+      {
+        "line": 26,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "55.126",
+          "dens": "80.000",
+          "count": "4",
+          "len": "50",
+          "total": "1451219"
+        }
+      },
+      {
+        "line": 27,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "1451219"
+        }
+      },
+      {
+        "line": 32,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "229.692",
+          "dens": "333.333",
+          "count": "16",
+          "len": "48",
+          "total": "1451219"
+        }
+      }
+    ]
+  }
+]

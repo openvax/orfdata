@@ -1,3 +1,10 @@
+# 0.14.0
+
+- Support source-defined region targets for RNA/Ribo measurements over UTRs,
+  introns and quantification windows, through the existing scoped query API.
+- Preserve the distinction between a measured region and a complete translated
+  ORF; retain explicit mapping, reference and comparison requirements.
+
 # 0.13.0
 
 - Import the six native Wang healthy-human-tissue abundance series with historical

@@ -210,7 +210,11 @@ class ReferenceContext:
 
 @dataclass(frozen=True)
 class ScopedTarget:
-    """A source identifier whose reference, kind and dataset cannot be discarded."""
+    """A source identifier whose reference, kind and dataset cannot be discarded.
+
+    ``region`` names a source-defined quantification window (for example a UTR
+    or intron). It does not assert resolved coordinates or a complete ORF.
+    """
 
     reference: ReferenceContext
     kind: str
@@ -220,7 +224,7 @@ class ScopedTarget:
     def __post_init__(self):
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("Target requires a ReferenceContext")
-        if self.kind not in ("gene", "transcript", "orf", "protein", "protein_group", "peptide"):
+        if self.kind not in ("gene", "transcript", "orf", "protein", "protein_group", "peptide", "region"):
             raise ValueError("Unknown target kind")
         if not all(isinstance(x, str) and x.strip() for x in (self.identifier, self.namespace)):
             raise ValueError("Target identifier and source namespace are required")
