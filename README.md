@@ -1,92 +1,76 @@
+[![Tests](https://github.com/openvax/orfdata/actions/workflows/tests.yml/badge.svg)](https://github.com/openvax/orfdata/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/orfdata.svg)](https://pypi.org/project/orfdata/)
+
 # orfdata
 
-**An evidence layer over [PyEnsembl](https://github.com/openvax/pyensembl) for
-proteins beyond standard annotations.** orfdata tells you which open reading
-frames (ORFs) have experimental support for producing peptides or proteins.
+orfdata builds the protein reference for a species: the proteins annotated in
+a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus noncanonical
+open reading frames (ORFs) with experimental evidence of translation. These
+include upstream and downstream ORFs, ORFs in alternative reading frames, and
+ORFs on RNAs annotated as noncoding. Each added ORF stays bound to its
+PyEnsembl transcript, with its source and evidence.
 
-PyEnsembl supplies reference transcripts and annotated proteins. orfdata adds
-other ORFs, their sequences, and evidence to those same transcript objects.
-One RNA can have several ORFs, even when its annotation says it is noncoding.
-The original transcript's biotype and annotated protein stay intact.
+## Installation
 
-## Which ORFs?
+Use Python 3.9 or later. Install orfdata and one PyEnsembl annotation:
 
-The bundled catalogue includes:
+```sh
+python -m pip install 'orfdata[pyensembl]'
+pyensembl install --release 115 --species human
+```
 
-- **Upstream ORFs (uORFs):** before the main protein-coding region.
-- **Overlapping ORFs:** extending into or out of the main coding region.
-- **Internal ORFs:** alternative reading frames within the main coding region.
-- **Downstream ORFs (dORFs):** after the main coding region.
-- **ORFs on noncoding RNAs:** including long noncoding RNAs (lncRNAs) and
-  processed transcripts without an annotated protein.
-
-These are additional possible protein sources that standard transcript protein
-annotations may omit. The catalogue currently contains **7,264 human GRCh38
-ORFs**, of which **2,186 have reported supporting mass-spectrometry observations**.
-It is a source-backed reference catalogue; it does not discover every possible
-ORF. [Data sources and current limits](docs/reference.md#data-and-limits).
-
-## What does the evidence mean?
-
-| Evidence | What it supports |
-| --- | --- |
-| Ribosome profiling | Translation of the ORF. |
-| Protease-digest mass spectrometry (MS) | Detection of peptides matching its protein sequence. |
-| MHC/HLA peptidomics | Detection of matching peptides presented by MHC molecules. |
-
-Peptide matches can be ambiguous, so orfdata keeps their source, mapping and
-quality information. These observations have different strengths: a translated
-ORF or detected peptide does not by itself establish a stable, functional protein.
-Missing evidence also does not establish that an ORF is never translated.
-[Evidence interpretation](docs/reference.md#evidence).
-
-## Use with PyEnsembl
-
-With the selected PyEnsembl annotation already downloaded and indexed:
+## Example
 
 ```python
 from pyensembl import EnsemblRelease
-from orfdata import load_catalog
+from orfdata import Proteome
 
-genome = EnsemblRelease(95, species="human")
-catalog = load_catalog()
-transcript = genome.transcript_by_id("ENST00000304842")  # TPST1
-
-for orf in catalog.for_transcript(transcript):
-    print(orf.model.orf_id, orf.protein_sequence)
-    print(orf.evidence.has_evidence("ms"))
-    assert orf.transcript is transcript
+genome = EnsemblRelease(115, species="human")
+proteome = Proteome.from_genome(genome).with_extra_orfs(evidence="ms")
+proteome.write_fasta("human-e115.fasta")
+print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
 
-The same call works for a noncoding parent, such as NUTM2B-AS1
-(`ENST00000483080`). Each returned `ReferenceORF` keeps its model, evidence and
-original PyEnsembl transcript together, after checking its coordinates and
-sequence against that transcript.
+```text
+{'annotated': 245535, 'extra_orf': 2140} 46
+```
 
-Varcode describes changes to this reference ORF; Isovar connects it to observed
-RNA products. Reference evidence stays separate from evidence for a variant or
-fusion. See the [API and integration guide](docs/reference.md).
+This takes every protein in the Ensembl 115 annotation and adds the 2,140
+bundled human ORFs that have supporting mass-spectrometry peptides and bind
+exactly to Ensembl 115 transcripts. The other 46 selected ORFs are listed in
+`proteome.excluded` with the reason. Use `evidence="ribosome"` for all 7,108
+ribosome-profiling ORFs that bind. From the command line:
 
-The catalogue API supports other species, with explicit species and assembly
-checks. **The bundled experimental ORF catalogue is currently human-only**. Offline tests
-bind real human, mouse, dog and yeast reference slices; those fixtures are not
-new experimental ORF catalogues. [Species and reference identity](docs/species.md).
+```sh
+orfdata proteome --species human --release 115 --output human-e115.fasta
+```
 
-[Optional catalogue management](docs/catalogs.md) provides explicit, versioned
-downloads and source builds while returning the same ORF objects and queries.
+A translated ORF or a detected peptide does not by itself establish a stable,
+functional protein. Most MS support in the bundled catalogue comes from
+peptides presented by HLA molecules.
 
-Install with `pip install orfdata[pyensembl]`. See the
-[measurement API](docs/measurements.md) for native units, explicit samples and
-assays, and DataCache-managed downloads. Downloadable
-[human, mouse and dog protein abundance](docs/pfizer-protein.md) and
-[yeast calibrated protein/RNA abundance](docs/copy-yeast.md) use the same
-species-scoped API, as do [native dog and mouse RNA counts](docs/pfizer-rna.md)
-and [matched human tissue RNA/protein measurements](docs/human-tissue.md).
-[Yeast RNA and ribosome occupancy](docs/ingolia-yeast.md) retain their source
-regions, including UTR and ncRNA labels.
-Gene RNA and canonical protein measurements do not establish
-noncanonical ORF abundance. The [native search references](docs/search-references.md)
-preserve complete deposited sequences, including unreported entries. The
-[quantitative, multispecies data roadmap](https://github.com/openvax/orfdata/issues/3)
-tracks further RNA abundance, ribosome occupancy, absolute quantification and
-additional protein data releases. See the [released coverage and gaps](docs/coverage.md).
+## Species
+
+The bundled noncanonical ORF catalogue is human GRCh38 only. Mouse, dog and
+yeast proteomes contain their PyEnsembl-annotated proteins; `with_extra_orfs()`
+raises for them until a qualified catalogue is released. Human evidence is never
+transferred to another species. Viral proteomes can be added with
+`with_viral(...)`, but only to a proteome for one of the virus's recorded hosts.
+orfdata also provides [RNA, ribosome and protein measurements](https://openvax.github.io/orfdata/measurements/)
+for human, mouse, dog and yeast.
+
+## Documentation
+
+The [documentation](https://openvax.github.io/orfdata/) covers:
+
+| Task | Guide |
+| --- | --- |
+| Build a proteome: evidence levels, exclusions, contigs, viral proteins | [Build a reference proteome](https://openvax.github.io/orfdata/proteome/) |
+| ORF classes, evidence definitions, Varcode and Isovar integration | [ORFs and evidence](https://openvax.github.io/orfdata/reference/) |
+| Species and reference identity, mitochondrial genetic codes | [Species, references and genetic codes](https://openvax.github.io/orfdata/species/) |
+| Versioned ORF catalogues managed through DataCache | [Optional ORF catalogues](https://openvax.github.io/orfdata/catalogs/) |
+| Quantitative datasets and what has been released | [Measurements](https://openvax.github.io/orfdata/measurements/), [released data and gaps](https://openvax.github.io/orfdata/coverage/) |
+
+The [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
+species and sources. Every PR includes a version bump, lint and tests;
+maintainers publish with `./deploy.sh` from clean `main`.

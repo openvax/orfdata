@@ -1,3 +1,13 @@
+# 0.19.0
+
+- Build layered reference proteomes from a PyEnsembl genome: annotated proteins,
+  evidence-selected noncanonical ORFs and host-restricted viral proteins, with
+  per-layer provenance and reported exclusions. Adds `orfdata proteome`.
+- Bind ORFs under declared NCBI tables 2 and 3 (vertebrate and yeast
+  mitochondrial codes), and normalize contig names as PyEnsembl does.
+- Include aggregate evidence in generic TSV exports (#58).
+- Publish documentation with MkDocs on GitHub Pages.
+
 # 0.18.0
 
 - Manage optional ORF catalogues through explicit, checksum-verified discovery,

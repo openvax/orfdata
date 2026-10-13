@@ -1,12 +1,24 @@
-# Using orfdata
+# ORFs and evidence
 
-See the [README](../README.md) for the purpose, ORF types and basic example.
+orfdata adds open reading frames (ORFs) that standard protein annotations omit:
+
+- **Upstream ORFs (uORFs)** before the main coding region, and **overlapping
+  uORFs** that extend into it.
+- **Internal ORFs** in another reading frame within the main coding region.
+- **Downstream ORFs (dORFs)** after the main coding region, and overlapping ones.
+- **ORFs on noncoding RNAs**, including lncRNAs and processed transcripts.
+
+The bundled human catalogue contains 7,264 such GRCh38 ORFs from
+ribosome-profiling studies; 2,186 also have supporting MS peptides. It is a
+source-backed reference, not a discovery of every possible ORF. Most users start
+with a [reference proteome](proteome.md) or `extra_orfs(genome)`; this page
+describes the objects and evidence underneath.
 
 ## Objects and queries
 
-`load_catalog()` loads the bundled reference data offline. Catalogue access uses
-only the Python standard library; the optional `pyensembl` extra supplies
-PyEnsembl. Binding uses a transcript you have already loaded.
+`load_catalog()` loads the bundled human reference data offline. Catalogue
+access uses only the Python standard library; the optional `pyensembl` extra
+supplies PyEnsembl. Binding uses a transcript you have already loaded.
 
 `catalog.for_transcript(transcript)` returns a `ReferenceORF` for each matching
 ORF. Each has:
@@ -20,7 +32,9 @@ Binding checks the assembly, available species information, transcript identity,
 full spliced coding path, protein sequence and terminal stop. A matching gene
 name alone is insufficient. Incompatible annotations raise an error.
 
-To inspect source records without loading a transcript:
+`extra_orfs(genome)` does the same for every transcript of a genome at once and
+reports ORFs that do not bind. To inspect source records without loading a
+transcript:
 
 ```python
 from orfdata import load_catalog

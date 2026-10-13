@@ -1,0 +1,61 @@
+site_name: orfdata
+site_description: Reference proteomes with evidence-backed noncanonical ORFs on PyEnsembl genomes
+site_url: https://openvax.github.io/orfdata/
+repo_url: https://github.com/openvax/orfdata
+repo_name: openvax/orfdata
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  font: false
+  palette:
+    scheme: default
+    primary: white
+    accent: blue
+  features:
+    - navigation.indexes
+    - navigation.expand
+    - content.code.copy
+extra_css:
+  - stylesheets/docs.css
+nav:
+  - Home: index.md
+  - Proteomes:
+      - Build a reference proteome: proteome.md
+  - Noncanonical ORFs:
+      - ORFs and evidence: reference.md
+      - Species, references and genetic codes: species.md
+      - Optional ORF catalogues: catalogs.md
+  - Quantitative data:
+      - Measurements: measurements.md
+      - Comparing RNA, ribosome and protein: pairing.md
+      - Source references and mappings: source-references.md
+      - Protein search references: search-references.md
+      - Released data and gaps: coverage.md
+      - Storage: storage.md
+  - Datasets:
+      - Human tissue RNA and protein: human-tissue.md
+      - Human, mouse and dog protein: pfizer-protein.md
+      - Dog and mouse RNA: pfizer-rna.md
+      - Yeast protein and RNA: copy-yeast.md
+      - Yeast RNA and ribosome occupancy: ingolia-yeast.md
+  - Project:
+      - Design notes: design.md
+      - Release notes: https://github.com/openvax/orfdata/blob/main/CHANGELOG.md
+      - Data roadmap: https://github.com/openvax/orfdata/issues/3
+plugins:
+  - search
+markdown_extensions:
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn
