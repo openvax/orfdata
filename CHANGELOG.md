@@ -1,3 +1,10 @@
+# 0.12.0
+
+- Reopen and inspect local source builds offline through `open_build` and
+  `inspect_build`, preserving source provenance and validating build identity.
+- Add explicit `--built` selection to CLI queries, pairing views and inspection;
+  published artifacts remain the default, with no download or fallback on reads.
+
 # 0.11.0
 
 - Import native Pfizer/Oziolor dog and mouse RNA gene counts, with measured zeros,
