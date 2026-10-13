@@ -1,6 +1,8 @@
 """Aggregate counts retain source identity and cannot become resolved evidence."""
 
+import csv
 import hashlib
+import io
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -16,6 +18,7 @@ from orfdata import (
     ReferenceContext,
     ScopedTarget,
     load_catalog,
+    load_uorf_catalog,
 )
 from orfdata.cli import run
 
@@ -159,6 +162,35 @@ def test_cli_resolution_and_native_summary_export(tmp_path, capsys):
     assert result["records"][0]["summaries"] == [s.to_dict()]
     run(["--catalog", str(path), "--evidence", "ms", "--require-resolved"])
     assert json.loads(capsys.readouterr().out)["records"] == []
+
+
+def test_tsv_exports_native_summaries_including_unknown_zero_and_empty(tmp_path, capsys):
+    # Regression for #58: DictWriter previously rejected the summaries field.
+    summaries = (summary(), summary(metric="unknown count", value=None),
+                 summary(method="ribosome", metric="study count", value=0))
+    supported = ORFRecord.from_model(model(), ORFEvidence(summaries=summaries))
+    plain = ORFRecord.from_model(model(orf_id="plain"))
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(ORFCatalog([supported, plain], catalog(plain).metadata).to_dict()))
+    run(["--catalog", str(path), "--format", "tsv"])
+    rows = csv.DictReader(io.StringIO(capsys.readouterr().out), delimiter="\t")
+    exported = {row["orf_id"]: json.loads(row["summaries_json"]) for row in rows}
+    assert exported == {model().orf_id: [s.to_dict() for s in summaries], "plain": []}
+    restored = [EvidenceSummary.from_dict(s) for s in exported[model().orf_id]]
+    assert restored == list(summaries) and [s.value for s in restored] == [2, None, 0]
+    assert {s.key for s in restored} == {s.key for s in summaries}
+
+
+def test_legacy_upstream_tsv_keeps_columns_and_rejects_aggregate_evidence(tmp_path, capsys):
+    run(["--gene", "TPST1", "--format", "tsv"], catalog_loader=lambda path: load_uorf_catalog())
+    header = capsys.readouterr().out.splitlines()[0].split("\t")
+    assert header[-1] == "initiation_context_json" and "summaries_json" not in header
+    record = ORFRecord.from_model(model(orf_type="uORF"), ORFEvidence(summaries=(summary(),)))
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(catalog(record).to_dict()))
+    with pytest.raises(SystemExit):
+        run(["--catalog", str(path), "--format", "tsv"], catalog_loader=load_uorf_catalog)
+    assert "use --format json" in capsys.readouterr().err
 
 
 def test_method_scope_source_pins_and_nonhuman_mhc():
