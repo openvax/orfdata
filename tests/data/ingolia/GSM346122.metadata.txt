@@ -1,0 +1,17 @@
+^SAMPLE = GSM346122
+!Sample_title = mRNA-starved-2
+!Sample_geo_accession = GSM346122
+!Sample_source_name_ch1 = yeast BY4741, 20 min amino acid starved
+!Sample_organism_ch1 = Saccharomyces cerevisiae
+!Sample_taxid_ch1 = 4932
+!Sample_characteristics_ch1 = BY4741 (leu2D0 ura3D0 met15D0 his3D1)
+!Sample_treatment_protocol_ch1 = All samples were treated for 2 min with cycloheximide 100 ug / ml
+!Sample_growth_protocol_ch1 = Yeast strain BY4741 (leu2D0 ura3D0 met15D0 his3D1) was grown at 30 C in YEPD to OD600 = 0.6-0.7, then 20 min into minimal media w/o amino acids at 30 C if indicated
+!Sample_extract_protocol_ch1 = Footprints: cells were rapidly harvested, flash-frozen in polysome lysis buffer, and pulverized in a mixer mill, extracts were digested with 150 U Rnase I for 1 hour, monosomes were purified by sucrose density gradient, RNA was extracted from the monosome fraction by hot acid phenol; total RNA was prepared from flash-frozen cells by the hot acid phenol protocol, polyA RNA was purified by oligo-dT DynaBeads, and fragmented at 95 C under mild alkali conditions
+!Sample_description = Small RNA sequencing by polyadenylation and circularization: RNA fragments were dephosphorylated, purified by filtration followed by gel purification for ~30 bp fragments, tailed with poly-A polymerase, reverse transcribed with anchored oligo-dT primer, cDNA was circularized
+!Sample_description = 
+!Sample_description = Footprints: sucrose density gradient; mRNA: polyA
+!Sample_data_processing = Reads aligned to reference genome by first 21 nt, then extended to account for the poly-A tail
+!Sample_instrument_model = Illumina Genome Analyzer
+!Sample_relation = SRA: https://www.ncbi.nlm.nih.gov/sra?term=SRX003189
+!Sample_relation = BioSample: https://www.ncbi.nlm.nih.gov/biosample/SAMN02195637

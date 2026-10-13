@@ -19,6 +19,10 @@ def importer(name):
         from .wang import import_tissue
 
         return import_tissue
+    if name == "ingolia-yeast-ribo-v1":
+        from .ingolia import import_ribo
+
+        return import_ribo
     raise ValueError(f"No packaged importer for {name!r}")
 
 

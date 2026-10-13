@@ -9,7 +9,7 @@ data coverage, independently of what the API can represent.
 | Human | Wang: 29 specimens, gene/transcript FPKM and estimated copies/cell | Wang: 15,210 groups, iBAQ and estimated copies/cell; Pfizer: 10,352 groups, 37 channels, iBAQ/rIBAQ | Wang: adjacent cryosections; Pfizer: native RNA missing |
 | Mouse | Pfizer: 606 libraries, 56,051 gene targets, counts | Pfizer: 12,124 groups, 63 channels, iBAQ/rIBAQ | Unresolved library-to-pool correspondence |
 | Dog | Pfizer: 434 libraries, 30,941 gene targets, counts | Pfizer: 9,929 groups, 38 channels, iBAQ/rIBAQ | Unresolved library-to-pool correspondence |
-| Budding yeast | CoPY: four RNA libraries plus a source aggregate, FPKM and estimated copies/cell | CoPY: calibrated SRM and separately calibrated label-free estimates | Explicit source-cohort pairing; individual cross-assay replicate matches unknown |
+| Budding yeast | CoPY: four RNA libraries plus a source aggregate, FPKM and estimated copies/cell; Ingolia: four RNA libraries, counts and densities | CoPY: calibrated SRM and separately calibrated label-free estimates | CoPY: explicit source-cohort pairing; individual cross-assay replicate matches unknown |
 
 Gene targets include measured zeros; their presence in a matrix does not imply
 expression in every sample. Protein-group representatives do not establish
@@ -25,12 +25,16 @@ individual protein isoforms or noncanonical ORFs.
 The separate existence-evidence catalogue contains 7,264 human noncanonical
 ORFs, including 2,186 with reported MS support. It has no released mouse, dog or
 yeast experimental ncORF catalogue yet. Its ribosome evidence and pooled PSM
-counts are not sample-level ribosome occupancy or protein abundance. No species
-currently has a released quantitative Ribo-seq dataset in this registry.
+counts are not sample-level ribosome occupancy or protein abundance. The separate
+Ingolia yeast release contains four Ribo-seq libraries across 13,748 source
+regions, alongside four RNA libraries. Exact region coordinates and RNA/RPF
+aliquot pairing remain unresolved. Other species do not yet have released
+quantitative Ribo-seq datasets in this registry.
 
 See the short guides for [matched human tissues](human-tissue.md),
 [protein measurements](pfizer-protein.md),
-[native dog/mouse RNA](pfizer-rna.md), [yeast RNA/protein calibration](copy-yeast.md)
+[native dog/mouse RNA](pfizer-rna.md), [yeast RNA/protein calibration](copy-yeast.md),
+[yeast RNA/ribosome occupancy](ingolia-yeast.md)
 and [complete search sequences](search-references.md). The
 [roadmap](https://github.com/openvax/orfdata/issues/3) tracks further human
 comparators, quantitative Ribo-seq, ncORF evidence and additional species.
