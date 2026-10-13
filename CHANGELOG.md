@@ -1,3 +1,10 @@
+# 0.18.0
+
+- Manage optional ORF catalogues through explicit, checksum-verified discovery,
+  download, source-build and offline query APIs backed by OpenVax DataCache.
+- Retain the existing ORFCatalog/PyEnsembl model with declared source/reference
+  contexts and independent accepted/unresolved coverage.
+
 # 0.17.0
 
 - Preserve source-scoped aggregate ORF evidence counts alongside resolved peptide
