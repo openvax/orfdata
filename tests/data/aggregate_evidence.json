@@ -1,0 +1,877 @@
+{
+  "notice": "Factual OpenProt 2.2 source slices, CC-BY-4.0; aggregate counts and native assignments only, not validated ORF-coordinate fixtures.",
+  "examples": [
+    {
+      "species": "human",
+      "native": {
+        "protein accession": "IP_057218",
+        "protein accession (others)": "IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218",
+        "protein type": "AltProt",
+        "protein length (a.a.)": "33",
+        "molecular weight (kDa)": "3.51",
+        "isoelectric point": "8.04",
+        "frame": "2",
+        "gene symbol": "OR4F29",
+        "chr": "1",
+        "start genomic coordinates": "451329",
+        "stop genomic coordinates": "451430",
+        "strand": "-1",
+        "transcript accession": "NM_001005221.2",
+        "type": "mRNA",
+        "localization": "CDS",
+        "start transcript coordinates": "248",
+        "stop transcript coordinates": "350",
+        "MS score": "2",
+        "TE Translation Event score": "0",
+        "Kozak motif": "-",
+        "High-efficiency TIS motif": "-",
+        "Domains": "0"
+      },
+      "source_line": 2,
+      "protein_sequence": "MTCSESAKSSPLEAASLKSSSSTSLVVWRWCCS",
+      "native_fasta_header": ">IP_057218|TX=9606 OS=Human GN=OR4F21,OR4F1P,OR4F8P,OR4F16,OR4F2P,OR4F28P,OR4F7P,OR4F29,OR4F8BP,OR4F3 TA=ENST00000332831.5,NM_001005277.1,ENST00000651688.1,ENST00000405102.1,ENST00000402444.2,ENST00000559128.1,ENST00000456475.1,ENST00000589943.1,XM_017002410.2,NM_001005504.1,XM_047431162.1,NM_001005224.2,ENST00000424047.1,ENST00000320901.4,NM_001005221.2,ENST00000426406.4,XM_017002408.2,XM_024449992.2 PA=IP_057218",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 9606,
+              "species": "human",
+              "genome_build": "GRCh38",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+            },
+            "kind": "protein",
+            "identifier": "IP_057218",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "f65c4730b6bbbfe46287087679645eaff04e13e6d95de3013c9f13fbffcd6110",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 2,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "source_sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 9606,
+              "species": "human",
+              "genome_build": "GRCh38",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+            },
+            "kind": "protein",
+            "identifier": "IP_057218",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "f65c4730b6bbbfe46287087679645eaff04e13e6d95de3013c9f13fbffcd6110",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 0,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "source_sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.readme.html",
+          "size": 8132,
+          "sha256": "823cb2b37babd49f64f5da3f513898ba51a2b2d929e5210359195f2d0a5fe557"
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "size": 172966644,
+          "sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.fasta.zip",
+          "size": 23583519,
+          "sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+        }
+      ]
+    },
+    {
+      "species": "human",
+      "native": {
+        "protein accession": "IP_057218",
+        "protein accession (others)": "IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218,IP_057218",
+        "protein type": "AltProt",
+        "protein length (a.a.)": "33",
+        "molecular weight (kDa)": "3.51",
+        "isoelectric point": "8.04",
+        "frame": "1",
+        "gene symbol": "OR4F16",
+        "chr": "1",
+        "start genomic coordinates": "686305",
+        "stop genomic coordinates": "686406",
+        "strand": "-1",
+        "transcript accession": "XM_024449992.2",
+        "type": "mRNA",
+        "localization": "CDS",
+        "start transcript coordinates": "2743",
+        "stop transcript coordinates": "2845",
+        "MS score": "2",
+        "TE Translation Event score": "0",
+        "Kozak motif": "-",
+        "High-efficiency TIS motif": "-",
+        "Domains": "0"
+      },
+      "source_line": 3,
+      "protein_sequence": "MTCSESAKSSPLEAASLKSSSSTSLVVWRWCCS",
+      "native_fasta_header": ">IP_057218|TX=9606 OS=Human GN=OR4F21,OR4F1P,OR4F8P,OR4F16,OR4F2P,OR4F28P,OR4F7P,OR4F29,OR4F8BP,OR4F3 TA=ENST00000332831.5,NM_001005277.1,ENST00000651688.1,ENST00000405102.1,ENST00000402444.2,ENST00000559128.1,ENST00000456475.1,ENST00000589943.1,XM_017002410.2,NM_001005504.1,XM_047431162.1,NM_001005224.2,ENST00000424047.1,ENST00000320901.4,NM_001005221.2,ENST00000426406.4,XM_017002408.2,XM_024449992.2 PA=IP_057218",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 9606,
+              "species": "human",
+              "genome_build": "GRCh38",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+            },
+            "kind": "protein",
+            "identifier": "IP_057218",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "f65c4730b6bbbfe46287087679645eaff04e13e6d95de3013c9f13fbffcd6110",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 2,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "source_sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 9606,
+              "species": "human",
+              "genome_build": "GRCh38",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+            },
+            "kind": "protein",
+            "identifier": "IP_057218",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "f65c4730b6bbbfe46287087679645eaff04e13e6d95de3013c9f13fbffcd6110",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 0,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "source_sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.readme.html",
+          "size": 8132,
+          "sha256": "823cb2b37babd49f64f5da3f513898ba51a2b2d929e5210359195f2d0a5fe557"
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "size": 172966644,
+          "sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.fasta.zip",
+          "size": 23583519,
+          "sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+        }
+      ]
+    },
+    {
+      "species": "human",
+      "native": {
+        "protein accession": "IP_057547",
+        "protein accession (others)": "IP_057547,IP_057547,IP_057547,IP_057547,IP_057547,IP_057547,IP_057547,IP_057547",
+        "protein type": "AltProt",
+        "protein length (a.a.)": "128",
+        "molecular weight (kDa)": "13.37",
+        "isoelectric point": "12.89",
+        "frame": "1",
+        "gene symbol": "MIB2",
+        "chr": "1",
+        "start genomic coordinates": "1629035",
+        "stop genomic coordinates": "1629494",
+        "strand": "1",
+        "transcript accession": "XM_047446594.1",
+        "type": "mRNA",
+        "localization": "CDS",
+        "start transcript coordinates": "4771",
+        "stop transcript coordinates": "5158",
+        "MS score": "4",
+        "TE Translation Event score": "1",
+        "Kozak motif": "+",
+        "High-efficiency TIS motif": "-",
+        "Domains": "2"
+      },
+      "source_line": 388,
+      "protein_sequence": "MGRRLLGLPGARRRLPRACPGARPHRRLSCRPATGLGPPRQRGADGGRGGRLLPGAGGRRRELHQPPRSEPAGPGRRGSRAQGPSGLRPALPGAAGGRGRGPGPQANARDPQHRDEPARGRRAGARGR",
+      "native_fasta_header": ">IP_057547|TX=9606 OS=Human GN=MIB2 TA=XM_047446736.1,XM_047446741.1,XM_047446747.1,XM_047446731.1,XM_047446594.1,XM_047446738.1,XM_047446735.1,ENST00000483015.1 PA=IP_057547",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 9606,
+              "species": "human",
+              "genome_build": "GRCh38",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+            },
+            "kind": "protein",
+            "identifier": "IP_057547",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "aaba78f1d0e5456cacd8f8f2a376e111dab99584b68d4f2a719ece4376a03567",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 4,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "source_sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 9606,
+              "species": "human",
+              "genome_build": "GRCh38",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+            },
+            "kind": "protein",
+            "identifier": "IP_057547",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "aaba78f1d0e5456cacd8f8f2a376e111dab99584b68d4f2a719ece4376a03567",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 1,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "source_sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.readme.html",
+          "size": 8132,
+          "sha256": "823cb2b37babd49f64f5da3f513898ba51a2b2d929e5210359195f2d0a5fe557"
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.tsv.zip",
+          "size": 172966644,
+          "sha256": "7bf29c5e0afbce740c8ccf074febc3640a670597d2877be911b1c30d7e63a777"
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/HS/downloads/human-openprot-2_2-altprots+isoforms-min_2_pep-GRCh38.106.fasta.zip",
+          "size": 23583519,
+          "sha256": "eb0b9132ff40bf7e00f89749958878655a590b004e681595c2cdddf623c0c477"
+        }
+      ]
+    },
+    {
+      "species": "mouse",
+      "native": {
+        "protein accession": "II_085990",
+        "protein accession (others)": "II_085990",
+        "protein type": "Isoform",
+        "protein length (a.a.)": "129",
+        "molecular weight (kDa)": "13.9",
+        "isoelectric point": "5.17",
+        "frame": "3",
+        "gene symbol": "ENSMUSG00000020149.18",
+        "chr": "11",
+        "start genomic coordinates": "20151629",
+        "stop genomic coordinates": "20174844",
+        "strand": "1",
+        "transcript accession": "ENSMUST00000109601.8",
+        "type": "mRNA",
+        "localization": "-",
+        "start transcript coordinates": "192",
+        "stop transcript coordinates": "582",
+        "MS score": "2",
+        "TE Translation Event score": "0",
+        "Kozak motif": "-",
+        "High-efficiency TIS motif": "-",
+        "Domains": "12"
+      },
+      "source_line": 2,
+      "protein_sequence": "MSSMNPEYDYLFKLLLIGDSGVGKSCLLLRFADDTYTESYISTIGVDFKIRTIELDGKTIKLQIEFADSLGIPFLETSAKNATNVEQSFMTMAAEIKKRMGPGATAGGAEKSNVKIQSTPVKQSGGGCC",
+      "native_fasta_header": ">II_085990|TX=10090 OS=Mouse GN=ENSMUSG00000020149.18 TA=ENSMUST00000109601.8 PA=II_085990",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 10090,
+              "species": "mouse",
+              "genome_build": "GRCm39",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+            },
+            "kind": "protein",
+            "identifier": "II_085990",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "49fcfb07e1726d76bd9f0874fbb47f61fbaf6705ca6eeea6413678e6bde5b6ac",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 2,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "source_sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 10090,
+              "species": "mouse",
+              "genome_build": "GRCm39",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+            },
+            "kind": "protein",
+            "identifier": "II_085990",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "49fcfb07e1726d76bd9f0874fbb47f61fbaf6705ca6eeea6413678e6bde5b6ac",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 0,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "source_sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.readme.html",
+          "sha256": "5abe8adf343cad64a8be052836357c88cbbdd2346035154a42b0785384125803",
+          "size": 8130
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0",
+          "size": 2046162
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.fasta.zip",
+          "size": 739626,
+          "sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+        }
+      ]
+    },
+    {
+      "species": "mouse",
+      "native": {
+        "protein accession": "II_647137",
+        "protein accession (others)": "II_647137",
+        "protein type": "Isoform",
+        "protein length (a.a.)": "141",
+        "molecular weight (kDa)": "15.33",
+        "isoelectric point": "8.3",
+        "frame": "1",
+        "gene symbol": "ENSMUSG00000020149.18",
+        "chr": "11",
+        "start genomic coordinates": "20151629",
+        "stop genomic coordinates": "20174844",
+        "strand": "1",
+        "transcript accession": "ENSMUST00000109602.8",
+        "type": "mRNA",
+        "localization": "-",
+        "start transcript coordinates": "196",
+        "stop transcript coordinates": "622",
+        "MS score": "2",
+        "TE Translation Event score": "0",
+        "Kozak motif": "-",
+        "High-efficiency TIS motif": "-",
+        "Domains": "11"
+      },
+      "source_line": 3,
+      "protein_sequence": "MSSMNPEYDYLFKLLLIGDSGVGKSCLLLRFAESFNNVKQWLQEIDRYASENVNKLLVGNKCDLTTKKVVDYTTAKEFADSLGIPFLETSAKNATNVEQSFMTMAAEIKKRMGPGATAGGAEKSNVKIQSTPVKQSGGGCC",
+      "native_fasta_header": ">II_647137|TX=10090 OS=Mouse GN=ENSMUSG00000020149.18 TA=ENSMUST00000109602.8 PA=II_647137",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 10090,
+              "species": "mouse",
+              "genome_build": "GRCm39",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+            },
+            "kind": "protein",
+            "identifier": "II_647137",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "c1d953c30965e58d7f3685fa08d1e2305d305ae59414f53d407c3d271a5f59f5",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 2,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "source_sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 10090,
+              "species": "mouse",
+              "genome_build": "GRCm39",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+            },
+            "kind": "protein",
+            "identifier": "II_647137",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "c1d953c30965e58d7f3685fa08d1e2305d305ae59414f53d407c3d271a5f59f5",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 0,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "source_sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.readme.html",
+          "sha256": "5abe8adf343cad64a8be052836357c88cbbdd2346035154a42b0785384125803",
+          "size": 8130
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0",
+          "size": 2046162
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.fasta.zip",
+          "size": 739626,
+          "sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+        }
+      ]
+    },
+    {
+      "species": "mouse",
+      "native": {
+        "protein accession": "IP_825639",
+        "protein accession (others)": "IP_825639",
+        "protein type": "AltProt",
+        "protein length (a.a.)": "105",
+        "molecular weight (kDa)": "11.62",
+        "isoelectric point": "4.78",
+        "frame": "2",
+        "gene symbol": "ENSMUSG00000082778.2",
+        "chr": "X",
+        "start genomic coordinates": "150729045",
+        "stop genomic coordinates": "150729362",
+        "strand": "1",
+        "transcript accession": "ENSMUST00000117933.2",
+        "type": "misc_RNA",
+        "localization": "-",
+        "start transcript coordinates": "683",
+        "stop transcript coordinates": "1001",
+        "MS score": "7",
+        "TE Translation Event score": "1",
+        "Kozak motif": "+",
+        "High-efficiency TIS motif": "-",
+        "Domains": "8"
+      },
+      "source_line": 65,
+      "protein_sequence": "MAFRVPTPNVSVVDMTCRLEKPAKYDDIKKVVKQASEGPLKGILGYTEDQVVSCDFNSNSHSSTFDAGAGIALNDNFVKLISWYENEYGYSNRVVDLMACMASKE",
+      "native_fasta_header": ">IP_825639|TX=10090 OS=Mouse GN=ENSMUSG00000082778.2 TA=ENSMUST00000117933.2 PA=IP_825639",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 10090,
+              "species": "mouse",
+              "genome_build": "GRCm39",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+            },
+            "kind": "protein",
+            "identifier": "IP_825639",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "ac2f903c9eecb9ff419a5217729c2b52e311a353459ba13eddab2241def310f3",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 7,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "source_sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 10090,
+              "species": "mouse",
+              "genome_build": "GRCm39",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+            },
+            "kind": "protein",
+            "identifier": "IP_825639",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "ac2f903c9eecb9ff419a5217729c2b52e311a353459ba13eddab2241def310f3",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 1,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "source_sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.readme.html",
+          "sha256": "5abe8adf343cad64a8be052836357c88cbbdd2346035154a42b0785384125803",
+          "size": 8130
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+          "sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0",
+          "size": 2046162
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.fasta.zip",
+          "size": 739626,
+          "sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+        }
+      ]
+    },
+    {
+      "species": "yeast",
+      "native": {
+        "protein accession": "IP_003019",
+        "protein accession (others)": "IP_003019,IP_003019",
+        "protein type": "AltProt",
+        "protein length (a.a.)": "38",
+        "molecular weight (kDa)": "4.56",
+        "isoelectric point": "10.77",
+        "frame": "3",
+        "gene symbol": "YDR176W",
+        "chr": "IV",
+        "start genomic coordinates": "816205",
+        "stop genomic coordinates": "816321",
+        "strand": "1",
+        "transcript accession": "YDR176W_mRNA",
+        "type": "mRNA",
+        "localization": "CDS",
+        "start transcript coordinates": "1755",
+        "stop transcript coordinates": "1872",
+        "MS score": "2",
+        "TE Translation Event score": "0",
+        "Kozak motif": "+",
+        "High-efficiency TIS motif": "-",
+        "Domains": "0"
+      },
+      "source_line": 2,
+      "protein_sequence": "MAGILIYFRRFRQTNRPGLCQTYSRTQEKKEASYSSFK",
+      "native_fasta_header": ">IP_003019|TX=559292 OS=Yeast S288c GN=YDR176W,NGG1 TA=NM_001180483.3,YDR176W_mRNA PA=IP_003019",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 4932,
+              "species": "yeast",
+              "genome_build": "R64-1-1",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": "S288c",
+              "strain_taxon_id": 559292,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "a80304bb3a5a9a074837895ec94ece5c252d395d832c09ddd87b20217f61f73c"
+            },
+            "kind": "protein",
+            "identifier": "IP_003019",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "4620f2e6debc1a3cd222c945105948c254da7d9c7037b0cae35d6b630b815454",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 2,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.zip",
+          "source_sha256": "2f87f87196ab32b667a93ac60efe9b0d92819b0ae4aecf21bf541c84b33111bc"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 4932,
+              "species": "yeast",
+              "genome_build": "R64-1-1",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": "S288c",
+              "strain_taxon_id": 559292,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "a80304bb3a5a9a074837895ec94ece5c252d395d832c09ddd87b20217f61f73c"
+            },
+            "kind": "protein",
+            "identifier": "IP_003019",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "4620f2e6debc1a3cd222c945105948c254da7d9c7037b0cae35d6b630b815454",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 0,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.zip",
+          "source_sha256": "2f87f87196ab32b667a93ac60efe9b0d92819b0ae4aecf21bf541c84b33111bc"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.readme.html",
+          "sha256": "1e174726ffd6275152c1c6b13a0902aa6b654ad7a84dae0cb52549ed84670d0e",
+          "size": 8160
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.zip",
+          "sha256": "2f87f87196ab32b667a93ac60efe9b0d92819b0ae4aecf21bf541c84b33111bc",
+          "size": 10232
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.fasta.zip",
+          "size": 6410,
+          "sha256": "a80304bb3a5a9a074837895ec94ece5c252d395d832c09ddd87b20217f61f73c"
+        }
+      ]
+    },
+    {
+      "species": "yeast",
+      "native": {
+        "protein accession": "IP_003019",
+        "protein accession (others)": "IP_003019,IP_003019",
+        "protein type": "AltProt",
+        "protein length (a.a.)": "38",
+        "molecular weight (kDa)": "4.56",
+        "isoelectric point": "10.77",
+        "frame": "3",
+        "gene symbol": "NGG1",
+        "chr": "IV",
+        "start genomic coordinates": "816205",
+        "stop genomic coordinates": "816321",
+        "strand": "1",
+        "transcript accession": "NM_001180483.3",
+        "type": "mRNA",
+        "localization": "CDS",
+        "start transcript coordinates": "1755",
+        "stop transcript coordinates": "1872",
+        "MS score": "2",
+        "TE Translation Event score": "0",
+        "Kozak motif": "+",
+        "High-efficiency TIS motif": "-",
+        "Domains": "0"
+      },
+      "source_line": 3,
+      "protein_sequence": "MAGILIYFRRFRQTNRPGLCQTYSRTQEKKEASYSSFK",
+      "native_fasta_header": ">IP_003019|TX=559292 OS=Yeast S288c GN=YDR176W,NGG1 TA=NM_001180483.3,YDR176W_mRNA PA=IP_003019",
+      "summaries": [
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 4932,
+              "species": "yeast",
+              "genome_build": "R64-1-1",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": "S288c",
+              "strain_taxon_id": 559292,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "a80304bb3a5a9a074837895ec94ece5c252d395d832c09ddd87b20217f61f73c"
+            },
+            "kind": "protein",
+            "identifier": "IP_003019",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "4620f2e6debc1a3cd222c945105948c254da7d9c7037b0cae35d6b630b815454",
+          "method": "ms",
+          "metric": "MS score",
+          "value": 2,
+          "definition": "Sum of study-specific unique-peptide counts; not global peptide uniqueness.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.zip",
+          "source_sha256": "2f87f87196ab32b667a93ac60efe9b0d92819b0ae4aecf21bf541c84b33111bc"
+        },
+        {
+          "source": "OpenProt",
+          "release": "2.2",
+          "target": {
+            "reference": {
+              "taxon_id": 4932,
+              "species": "yeast",
+              "genome_build": "R64-1-1",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": "S288c",
+              "strain_taxon_id": 559292,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "a80304bb3a5a9a074837895ec94ece5c252d395d832c09ddd87b20217f61f73c"
+            },
+            "kind": "protein",
+            "identifier": "IP_003019",
+            "namespace": "openprot"
+          },
+          "protein_sha256": "4620f2e6debc1a3cd222c945105948c254da7d9c7037b0cae35d6b630b815454",
+          "method": "ribosome",
+          "metric": "TE Translation Event score",
+          "value": 0,
+          "definition": "Count of studies reporting one or more significant translation detections.",
+          "scope": "protein_sequence",
+          "source_url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.zip",
+          "source_sha256": "2f87f87196ab32b667a93ac60efe9b0d92819b0ae4aecf21bf541c84b33111bc"
+        }
+      ],
+      "source_assets": [
+        {
+          "url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.readme.html",
+          "sha256": "1e174726ffd6275152c1c6b13a0902aa6b654ad7a84dae0cb52549ed84670d0e",
+          "size": 8160
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.zip",
+          "sha256": "2f87f87196ab32b667a93ac60efe9b0d92819b0ae4aecf21bf541c84b33111bc",
+          "size": 10232
+        },
+        {
+          "url": "https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.fasta.zip",
+          "size": 6410,
+          "sha256": "a80304bb3a5a9a074837895ec94ece5c252d395d832c09ddd87b20217f61f73c"
+        }
+      ]
+    }
+  ]
+}

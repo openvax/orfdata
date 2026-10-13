@@ -1,3 +1,10 @@
+# 0.17.0
+
+- Preserve source-scoped aggregate ORF evidence counts alongside resolved peptide
+  and ribosome observations, with explicit resolution filters and shared identity.
+- Keep counts distinct from abundance, peptide uniqueness, spectrum review and
+  evidence for modified variant/RNA products.
+
 # 0.16.0
 
 - Import native yeast rich/starvation RNA and ribosome-footprint region counts,

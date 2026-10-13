@@ -12,7 +12,7 @@ PyEnsembl. Binding uses a transcript you have already loaded.
 ORF. Each has:
 
 - `model`: source identity, ORF type, coordinates, species and protein sequence.
-- `evidence`: ribosome observations and peptide-level MS observations.
+- `evidence`: ribosome observations, peptide-level MS and native aggregate support.
 - `transcript`: the original PyEnsembl transcript, including its original biotype.
 - `coding_sequence` and `protein_sequence`: checked against that transcript.
 
@@ -46,10 +46,44 @@ possible protein. Inspect `orf.evidence.peptides` for peptide sequences, source
 accessions, matching intervals, mapping counts and review quality. Missing counts
 remain unknown; low or mixed spectrum reviews do not count as supporting MS.
 
+Some sources provide only aggregate support counts. `EvidenceSummary` keeps the
+native metric, definition, value, source/release, source checksum and explicitly
+scoped entity. For example, [OpenProt's native metrics](https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.readme.html)
+include an MS score that sums study-specific unique-peptide
+counts; it is neither global peptide uniqueness nor protein abundance. Its
+translation score counts studies with significant translation detection.
+`None` means unknown and remains distinct from a reported zero.
+
+Positive summaries in `orf.evidence.summaries` can satisfy general evidence
+queries. To require actual peptide records or named ribosome studies, use:
+
+```python
+orf.evidence.has_evidence("ms", require_resolved=True)
+catalog.query(evidence="ribosome", require_resolved=True)
+```
+
+The CLI uses `--evidence ms --require-resolved`. Uniqueness and review filters
+always require resolved peptide observations. Summaries never create peptide
+sequences, residue coverage, retained variant peptides or mutant-translation
+evidence. Their protein checksum and species/reference checks prevent attaching
+them to a different protein or incompatible source context.
+
+A sequence-level summary may have several transcript assignments. Those records
+share the summary's `key`; `catalog.evidence_summaries` returns each native metric
+once and rejects conflicting facts for the same identity. Native accession
+aliases must be resolved explicitly by the source adapter. Counts from different
+metrics and sources are not summed, and a later peptide-resolved snapshot is not
+an additional independent experiment merely because it has more detail.
+
+This API includes source-backed OpenProt human, mouse and yeast test slices.
+It does not yet publish those species' OpenProt ORF catalogues; coordinate and
+sequence qualification remains tracked in [#18](https://github.com/openvax/orfdata/issues/18).
+
 The distinction between translation, peptide detection and functional protein
 evidence follows the [TransCODE study](https://www.nature.com/articles/s41586-026-10459-x).
-Source evidence belongs to the exact reference ORF. It is not automatically
-evidence for a different isoform, a mutant protein, a fusion or another species.
+Source evidence stays at its declared ORF or protein-sequence scope. It is not
+automatically evidence for another isoform, a mutant protein, a fusion or
+another species.
 
 ## Variants and RNA products
 

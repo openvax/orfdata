@@ -13,6 +13,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Optional
 
+from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
 from .model import ORFModel, ReferenceORF, _species
 from .reference import ReferenceContext
@@ -73,25 +74,41 @@ class ORFEvidence:
 
     ribosome_studies: tuple = ()
     peptides: tuple = ()
+    summaries: tuple = ()
+
+    def __post_init__(self):
+        object.__setattr__(self, "summaries", unique_summaries(self.summaries))
 
     def to_dict(self):
-        return asdict(self)
+        result = asdict(self)
+        if not self.summaries:
+            result.pop("summaries")
+        return result
 
-    def has_evidence(self, method, *, require_unique=False, require_reviewed=False):
-        """Select reference observations by assay, without clinical promotion."""
+    def has_evidence(self, method, *, require_unique=False, require_reviewed=False, require_resolved=False):
+        """Select reported support, or require named studies/resolved peptides.
+
+        Aggregate counts never satisfy uniqueness or spectrum-review filters.
+        No selection establishes evidence for a modified protein product.
+        """
         if method not in EVIDENCE_METHODS:
             raise ValueError(f"Unknown evidence method: {method}")
         if method == "ribosome":
             if require_unique or require_reviewed:
                 raise ValueError("MS filters do not apply to ribosome evidence")
-            return bool(self.ribosome_studies)
-        return any(
+            return bool(self.ribosome_studies) or (not require_resolved and any(
+                s.method == "ribosome" and s.is_supporting for s in self.summaries))
+        resolved = any(
             (method == "ms" or p.method == method or (method == "mhc" and p.method == "hla"))
             and p.is_supporting
             and (not require_unique or p.unique_in_source)
             and (not require_reviewed or p.quality == "reviewed_support")
             for p in self.peptides
         )
+        return resolved or (not (require_resolved or require_unique or require_reviewed) and any(
+            (method == "ms" and s.method != "ribosome"
+             or s.method == method or method == "mhc" and s.method == "hla")
+            and s.is_supporting for s in self.summaries))
 
 
 @dataclass(frozen=True)
@@ -116,6 +133,14 @@ class ORFRecord:
     translation_table: int = 1
     source: str = ""
     reference_context: Optional[ReferenceContext] = None
+    summaries: tuple = ()
+
+    def __post_init__(self):
+        object.__setattr__(self, "summaries", unique_summaries(self.summaries))
+        if self.summaries:
+            model = self.model
+            for summary in self.summaries:
+                summary.validate_orf(model)
 
     @property
     def model(self):
@@ -140,7 +165,7 @@ class ORFRecord:
 
     @property
     def evidence(self):
-        return ORFEvidence(self.ribosome_studies, self.peptides)
+        return ORFEvidence(self.ribosome_studies, self.peptides, self.summaries)
 
     @classmethod
     def from_model(cls, model, evidence=None, *, initiation_context=None):
@@ -154,6 +179,7 @@ class ORFRecord:
             **fields,
             ribosome_studies=evidence.ribosome_studies,
             peptides=evidence.peptides,
+            summaries=evidence.summaries,
             initiation_context=initiation_context,
         )
 
@@ -164,6 +190,8 @@ class ORFRecord:
     def to_dict(self):
         """Return a serializable copy of this record."""
         result = asdict(self)
+        if not self.summaries:
+            result.pop("summaries")
         if self.reference_context is None:
             result.pop("reference_context")
         if self.initiation_context is not None:
@@ -284,9 +312,10 @@ class ORFRecord:
             translation_change="not_measured",
         )
 
-    def has_evidence(self, method, *, require_unique=False, require_reviewed=False):
+    def has_evidence(self, method, *, require_unique=False, require_reviewed=False, require_resolved=False):
         return self.evidence.has_evidence(
-            method, require_unique=require_unique, require_reviewed=require_reviewed
+            method, require_unique=require_unique, require_reviewed=require_reviewed,
+            require_resolved=require_resolved,
         )
 
     def _coding_offset(self, position):
@@ -423,6 +452,13 @@ class ORFCatalog:
                     ):
                         raise ValueError(f"Peptide sequence does not match {r.orf_id}")
 
+        self._evidence_summaries = unique_summaries(s for r in self.records for s in r.summaries)
+
+    @property
+    def evidence_summaries(self):
+        """Distinct source counts, without multiplying transcript assignments."""
+        return self._evidence_summaries
+
     @property
     def metadata(self):
         """Return a copy of dataset version, sources, scope and provenance."""
@@ -472,6 +508,7 @@ class ORFCatalog:
         evidence=None,
         require_unique=False,
         require_reviewed=False,
+        require_resolved=False,
         biotype=None,
         include_initiation_context=False,
     ):
@@ -483,6 +520,8 @@ class ORFCatalog:
         are unversioned identifiers. Empty results do not prove no translation.
         ``require_unique`` means unique within the evidence source's mapping
         scope, not unique in every normal human proteome.
+        ``require_resolved`` excludes aggregate-only support: MS needs a peptide
+        observation and ribosome evidence needs a named study.
         ``include_initiation_context`` also intersects placed spliced start
         flanks, for example an upstream Kozak SNV. The default remains coding
         blocks only. It does not include introns between context bases.
@@ -504,6 +543,8 @@ class ORFCatalog:
             raise ValueError("require_unique applies to MS evidence only")
         if require_reviewed and evidence not in EVIDENCE_METHODS[1:]:
             raise ValueError("require_reviewed applies to MS evidence only")
+        if require_resolved and evidence is None:
+            raise ValueError("require_resolved requires an evidence method")
 
         return tuple(
             r
@@ -530,7 +571,8 @@ class ORFCatalog:
             and (
                 evidence is None
                 or r.has_evidence(
-                    evidence, require_unique=require_unique, require_reviewed=require_reviewed
+                    evidence, require_unique=require_unique, require_reviewed=require_reviewed,
+                    require_resolved=require_resolved,
                 )
             )
         )
@@ -604,6 +646,7 @@ def _load_catalog(path=None, *, expected_sha256=None, resource="orf-evidence"):
             p["spectrum_ids"] = tuple(p.get("spectrum_ids", ()))
             peptides.append(PeptideEvidence(**p))
         row["peptides"] = tuple(peptides)
+        row["summaries"] = tuple(EvidenceSummary.from_dict(s) for s in row.get("summaries", ()))
         records.append(ORFRecord(**row))
     return ORFCatalog(records, metadata)
 
