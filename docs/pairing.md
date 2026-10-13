@@ -47,7 +47,9 @@ native reference. Incompatible species or reference selections fail explicitly.
 `left_filters` and `right_filters` select native `quantity`, `status`, `unit`,
 `scale` and `log_base`. They do not override assay identities. Pairing strength
 and target attribution are unchanged; filtered-out values leave empty sides,
-not measured zeros. `pair_ids` and `relation_ids` select original source IDs.
+not measured zeros.
+
+`pair_ids` and `relation_ids` select original source IDs.
 Relationships can also be inspected with `dataset.relations(left_target=gene)`
 or `dataset.pairings(pair_ids=[...], reference=reference)` without scanning
 unrelated Python objects. See the [human example](human-tissue.md).
