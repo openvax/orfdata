@@ -36,13 +36,30 @@ from .pairing import (
     TargetRelation,
     compare_orthologs,
 )
+from .proteome import (
+    ExcludedORF,
+    ExtraORFs,
+    Proteome,
+    ProteomeEntry,
+    ViralProteome,
+    extra_orfs,
+)
 from .reference import ReferenceContext, ScopedTarget
 from .reference_mapping import MappedMeasurement, ReferenceMapping
 from .search_reference import SearchMembership, SearchReference, SearchReferenceSpec, SearchSequence
+from .sequence import GeneticCode, genetic_code
 from .version import __version__
 
 __all__ = [
     "__version__",
+    "Proteome",
+    "ProteomeEntry",
+    "ViralProteome",
+    "extra_orfs",
+    "ExtraORFs",
+    "ExcludedORF",
+    "GeneticCode",
+    "genetic_code",
     "EVIDENCE_METHODS",
     "ORFCatalog",
     "ORFRecord",

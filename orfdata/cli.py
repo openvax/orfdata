@@ -20,9 +20,14 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         from .dataset_cli import run as dataset_run
 
         return dataset_run(argv[1:], prog=(prog or "orfdata") + " datasets")
+    if argv and argv[0] == "proteome":
+        from .proteome_cli import run as proteome_run
+
+        return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
     parser = argparse.ArgumentParser(
         description=__doc__, prog=prog,
-        epilog="Manage optional ORF catalogues with 'orfdata catalogs --help'; quantitative data with 'orfdata datasets --help'.")
+        epilog="Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
+               "catalogues with 'orfdata catalogs --help'; quantitative data with 'orfdata datasets --help'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
