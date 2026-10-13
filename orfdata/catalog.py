@@ -516,8 +516,8 @@ class ORFCatalog:
 
         A locus query requires an explicit assembly. Gene and transcript lookup
         is a discovery aid, not evidence transfer between transcript isoforms.
-        Transcript identifiers match exactly as supplied in the source; these
-        are unversioned identifiers. Empty results do not prove no translation.
+        Transcript identifiers match exactly as supplied in the source,
+        including versions when present. Empty results do not prove no translation.
         ``require_unique`` means unique within the evidence source's mapping
         scope, not unique in every normal human proteome.
         ``require_resolved`` excludes aggregate-only support: MS needs a peptide

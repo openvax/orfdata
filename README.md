@@ -72,6 +72,9 @@ checks. **The bundled experimental ORF catalogue is currently human-only**. Offl
 bind real human, mouse, dog and yeast reference slices; those fixtures are not
 new experimental ORF catalogues. [Species and reference identity](docs/species.md).
 
+[Optional catalogue management](docs/catalogs.md) provides explicit, versioned
+downloads and source builds while returning the same ORF objects and queries.
+
 Install with `pip install orfdata[pyensembl]`. See the
 [measurement API](docs/measurements.md) for native units, explicit samples and
 assays, and DataCache-managed downloads. Downloadable

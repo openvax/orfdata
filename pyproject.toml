@@ -29,7 +29,7 @@ version = {attr = "orfdata.version.__version__"}
 include = ["orfdata*"]
 
 [tool.setuptools.package-data]
-orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/datasets.json"]
+orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/datasets.json", "data/catalogs.json"]
 
 [tool.ruff]
 target-version = "py39"

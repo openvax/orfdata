@@ -12,6 +12,8 @@ from .catalog import (
     load_catalog,
     load_uorf_catalog,
 )
+from .catalog_manifest import CatalogManifest
+from .catalogs import CatalogRegistry, build_catalog
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
 from .evidence_summary import EvidenceSummary
@@ -45,6 +47,9 @@ __all__ = [
     "ORFCatalog",
     "ORFRecord",
     "ORFEvidence",
+    "CatalogManifest",
+    "CatalogRegistry",
+    "build_catalog",
     "EvidenceSummary",
     "PeptideEvidence",
     "ORFModel",

@@ -12,16 +12,29 @@ from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     """Export reference records as JSON, TSV or FASTA."""
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "catalogs":
+        from .catalog_cli import run as catalog_run
+
+        return catalog_run(argv[1:], prog=(prog or "orfdata") + " catalogs")
     if argv and argv[0] == "datasets":
         from .dataset_cli import run as dataset_run
 
         return dataset_run(argv[1:], prog=(prog or "orfdata") + " datasets")
     parser = argparse.ArgumentParser(
         description=__doc__, prog=prog,
-        epilog="For quantitative data management, use 'orfdata datasets --help'.")
-    parser.add_argument("--catalog", help="Use a compatible local JSON/JSON.gz catalogue")
-    parser.add_argument("--gene", help="Exact gene symbol or Ensembl gene ID")
-    parser.add_argument("--transcript", help="Exact source transcript ID (unversioned)")
+        epilog="Manage optional ORF catalogues with 'orfdata catalogs --help'; quantitative data with 'orfdata datasets --help'.")
+    _add_query_arguments(parser)
+    args = parser.parse_args(argv)
+    return _query(args, parser, catalog_loader)
+
+
+def _add_query_arguments(parser, *, catalog_path=True):
+    if catalog_path:
+        parser.add_argument("--catalog", help="Use a compatible local JSON/JSON.gz catalogue")
+    else:
+        parser.set_defaults(catalog=None)
+    parser.add_argument("--gene", help="Exact source gene symbol or identifier")
+    parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
     parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
     parser.add_argument("--require-resolved", action="store_true",
@@ -47,10 +60,12 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     parser.add_argument("--ref", help="Forward-genomic SNV REF; requires --alt and --position")
     parser.add_argument("--alt", help="Forward-genomic SNV ALT; compare initiation contexts")
     parser.add_argument(
-        "--genome-build", help="Required for genomic queries; packaged data use GRCh38"
+        "--genome-build", help="Required for genomic queries; must match the selected catalogue"
     )
     parser.add_argument("--format", choices=("json", "tsv", "fasta"), default="json")
-    args = parser.parse_args(argv)
+
+
+def _query(args, parser, catalog_loader):
     if args.region and args.position:
         parser.error("Choose --region or --position")
     if args.position and args.format != "json":
