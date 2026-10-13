@@ -14,6 +14,7 @@ from .catalog import (
 )
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
+from .evidence_summary import EvidenceSummary
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
 from .measurements import (
     Assay,
@@ -44,6 +45,7 @@ __all__ = [
     "ORFCatalog",
     "ORFRecord",
     "ORFEvidence",
+    "EvidenceSummary",
     "PeptideEvidence",
     "ORFModel",
     "ReferenceORF",

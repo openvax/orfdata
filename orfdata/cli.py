@@ -24,6 +24,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     parser.add_argument("--transcript", help="Exact source transcript ID (unversioned)")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
     parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
+    parser.add_argument("--require-resolved", action="store_true",
+                        help="Require resolved peptides or named ribosome studies; exclude aggregate-only support")
     parser.add_argument(
         "--require-unique", action="store_true", help="Require one protein mapping in the MS source"
     )
@@ -69,6 +71,7 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
             "gene": args.gene,
             "transcript_id": args.transcript,
             "evidence": args.evidence,
+            "require_resolved": args.require_resolved,
             "require_unique": args.require_unique,
             "require_reviewed": args.require_reviewed,
             "biotype": args.biotype,
