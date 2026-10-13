@@ -1,3 +1,10 @@
+# 0.15.0
+
+- Select paired observations by scoped left/right targets and native per-side
+  quantity, status, unit and scale filters in Python and the CLI.
+- Filter relationships and assay observations in SQLite before reconstructing
+  unrelated records, retaining pairing strength, missing mates and attribution.
+
 # 0.14.0
 
 - Support source-defined region targets for RNA/Ribo measurements over UTRs,

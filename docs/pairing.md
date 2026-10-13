@@ -38,6 +38,25 @@ The CLI streams the same table rows:
 orfdata datasets pairs DATASET --version RELEASE --basis same_material
 ```
 
+Select exact targets with `left_target=...` and `right_target=...`, using the
+same `ScopedTarget` objects as ordinary measurement queries, including targets
+constructed from PyEnsembl genes. `reference` identifies the left context;
+a left target supplies that scope when omitted. Each right target keeps its own
+native reference. Incompatible species or reference selections fail explicitly.
+
+`left_filters` and `right_filters` select native `quantity`, `status`, `unit`,
+`scale` and `log_base`. They do not override assay identities. Pairing strength
+and target attribution are unchanged; filtered-out values leave empty sides,
+not measured zeros. `pair_ids` and `relation_ids` select original source IDs.
+Relationships can also be inspected with `dataset.relations(left_target=gene)`
+or `dataset.pairings(pair_ids=[...], reference=reference)` without scanning
+unrelated Python objects. See the [human example](human-tissue.md).
+
+CLI equivalents use `--left-unit`, `--right-unit` and the other prefixed native
+filters. A target requires all four of `--left-target`, `--left-kind`,
+`--left-namespace` and `--left-reference` (or the corresponding `--right-...`
+arguments). ID selectors remain `--pair-id` and `--relation-id`.
+
 ## Which targets are being compared?
 
 `TargetRelation` links exact, reference-scoped targets with mapping evidence

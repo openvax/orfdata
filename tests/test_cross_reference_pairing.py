@@ -54,6 +54,13 @@ def test_native_references_pair_and_derive_without_identifier_collision(tmp_path
     assert match.left == (rna,) and match.right == (protein,)
     assert rna.measurement_id == protein.measurement_id  # Source IDs really collide.
     assert rna.target.reference.key != protein.target.reference.key
+    selected, = dataset.matched_measurements(
+        allowed_bases=["same_material"], pair_ids=["pair"],
+        left_target=rna.target, right_target=protein.target,
+        left_filters={"unit": "TPM"}, right_filters={"unit": "iBAQ"})
+    assert selected == match
+    assert list(dataset.relations(right_target=protein.target)) == [match.relation]
+    assert list(dataset.relations(reference=protein.target.reference, right_target=protein.target)) == []
     assert MatchedMeasurements.from_dict(json.loads(json.dumps(match.to_dict()))) == match
     ratio = match.ratio(protein, rna, measurement_id="ratio", method="native ratio",
                         normalization={"method": "none; synthetic units"})
@@ -85,6 +92,15 @@ def test_cross_reference_pair_cli_retains_native_scopes(tmp_path, native_pair, c
     assert row["rna_abundance"][0]["target"]["reference"]["genome_build"] is not None
     assert row["protein_abundance"][0]["target"]["reference"]["genome_build"] is None
     assert row["pairing"]["right_reference"]["sequence_sha256"] == "a" * 64
+    selections = []
+    for side, value in zip(("left", "right"), native_pair[1]["measurements"]):
+        target = value.target
+        selections.extend([f"--{side}-target", target.identifier, f"--{side}-kind", target.kind,
+                           f"--{side}-namespace", target.namespace, f"--{side}-reference", target.reference.key,
+                           f"--{side}-unit", value.unit])
+    run(["datasets", "--registry", str(registry), "--cache-root", str(cache),
+         "pairs", "fixture", "--basis", "same_material", "--pair-id", "pair"] + selections)
+    assert json.loads(capsys.readouterr().out) == row
 
 
 def test_cross_reference_foreign_keys_and_biological_identity(tmp_path, native_pair):
