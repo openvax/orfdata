@@ -1,0 +1,340 @@
+{
+  "source_manifest": {
+    "dataset_id": "pfizer-atlas-dog-rna",
+    "version": "2026-10-12.1",
+    "title": "Pfizer/Oziolor dog native RNA gene counts",
+    "references": [
+      {
+        "taxon_id": 9615,
+        "species": "dog",
+        "genome_build": "ROS_Cfam_1.0",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": "GCA_014441545.1",
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": "f0f226cc42b8579d1f6d1668344f60804b6df6f68cce74de73604e074b160651"
+      }
+    ],
+    "sources": [
+      {
+        "asset_id": "counts.csv.gz",
+        "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325522/suppl/GSE325522_zoomap_rcnt_all_samples1.csv.gz",
+        "sha256": "a22780f92ffd0a028e30fe3392d73d01f787eb5a62b2043e8d26940191cbac70",
+        "size": 357970524,
+        "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+        "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Oziolor et al. / Pfizer",
+          "native_columns": [
+            "sid",
+            "species",
+            "tnm",
+            "egid",
+            "rcnt"
+          ],
+          "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+          "uncompressed_size": 3714928015,
+          "identical_content_mirrors": [
+            {
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325522/suppl/GSE325522_zoomap_rcnt_all_samples1.csv.gz",
+              "uncompressed_size": 3714928015,
+              "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+              "seconds": 3.395852957997704
+            },
+            {
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325523/suppl/GSE325523_zoomap_rcnt_all_samples2.csv.gz",
+              "uncompressed_size": 3714928015,
+              "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+              "seconds": 43.368584458999976
+            },
+            {
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325525/suppl/GSE325525_zoomap_rcnt_all_samples3.csv.gz",
+              "uncompressed_size": 3714928015,
+              "uncompressed_sha256": "a8f2c52f3471568ac6ce7078d0da6cb7dd2902c6696344dd895b4875240c57e2",
+              "seconds": 40.83363512499636
+            }
+          ]
+        }
+      },
+      {
+        "asset_id": "GSE325522_family.soft.gz",
+        "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325522/soft/GSE325522_family.soft.gz",
+        "sha256": "7d43fc13482ea36d162e4626d945fc1e290fb780c454775dd8dd354b4221a9d7",
+        "size": 49000,
+        "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+        "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Oziolor et al. / Pfizer",
+          "role": "GEO submitted sample metadata"
+        }
+      },
+      {
+        "asset_id": "GSE325523_family.soft.gz",
+        "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325523/soft/GSE325523_family.soft.gz",
+        "sha256": "1c2bb1ba2c8c2c38613299f5f912b5dea2b27b877a5bac625ef0ef91eab4edcd",
+        "size": 44626,
+        "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+        "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Oziolor et al. / Pfizer",
+          "role": "GEO submitted sample metadata"
+        }
+      },
+      {
+        "asset_id": "GSE325525_family.soft.gz",
+        "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE325nnn/GSE325525/soft/GSE325525_family.soft.gz",
+        "sha256": "fe65e031ab389f5d64702c683566902301d0d6ffcdbec2cf2c3f85c2138e0e94",
+        "size": 40663,
+        "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute submitters",
+        "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Oziolor et al. / Pfizer",
+          "role": "GEO submitted sample metadata"
+        }
+      },
+      {
+        "asset_id": "samples.xlsx",
+        "url": "https://pmc-oa-opendata.s3.amazonaws.com/PMC13482810.1/41597_2026_7512_MOESM15_ESM.xlsx",
+        "sha256": "a95b7a2514679ba6f7283573059f27e6182b5620f6d0beead601e47daf85e740",
+        "size": 316225,
+        "access_terms": "Article supplement: CC-BY-NC-ND-4.0; used for factual sample metadata, original workbook not redistributed in the data artifact",
+        "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+        "redistributable": false,
+        "metadata": {
+          "attribution": "Oziolor et al. (2026)",
+          "sheet": "TableS5",
+          "original_article": "https://doi.org/10.1038/s41597-026-07512-9"
+        }
+      },
+      {
+        "asset_id": "annotation.gtf.gz",
+        "url": "https://ftp.ensembl.org/pub/release-110/gtf/canis_lupus_familiaris/Canis_lupus_familiaris.ROS_Cfam_1.0.110.gtf.gz",
+        "sha256": "f0f226cc42b8579d1f6d1668344f60804b6df6f68cce74de73604e074b160651",
+        "size": 16758303,
+        "access_terms": "Ensembl-generated data available without restriction; retain Ensembl attribution and source provenance",
+        "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+        "redistributable": true,
+        "metadata": {
+          "attribution": "Ensembl / EMBL-EBI",
+          "ensembl_release": "110",
+          "gene_identifiers": "unversioned as measured",
+          "native_gene_membership_verified": true
+        }
+      }
+    ],
+    "citations": [
+      "https://doi.org/10.1038/s41597-026-07512-9",
+      "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE325522"
+    ],
+    "assay_kinds": [
+      "rna_seq"
+    ],
+    "coverage": {
+      "rows": 13428394,
+      "zeros": 4218202,
+      "samples": 434,
+      "genes": 30941,
+      "reference_genes": 31121,
+      "unmeasured_annotation_genes": 180,
+      "metadata_samples": 2227,
+      "source_species_rows": {
+        "dog": 13428394,
+        "cyno": 17833680,
+        "rat": 9409927,
+        "mouse": 33966906,
+        "pig": 13050846
+      },
+      "human_native_observations": 0,
+      "human_metadata_samples": 44,
+      "protein_pairing": "unresolved specimen/pool crosswalk; no pairs inferred",
+      "quantified_level": "gene",
+      "orf_specific_abundance": false
+    },
+    "processing": {
+      "importer": "pfizer-rna-v1",
+      "software": "orfdata 0.11.0",
+      "native_species": "dog",
+      "geo_metadata_assets": [
+        "GSE325522_family.soft.gz",
+        "GSE325523_family.soft.gz",
+        "GSE325525_family.soft.gz"
+      ],
+      "count_column": "rcnt",
+      "native_units": "counts",
+      "integer_counts": true,
+      "ortholog_projection": false,
+      "duplicate_deposits": "One canonical CSV input; identical content in three GEO submissions is not concatenated",
+      "strain_scope": "source biological strain is separate from annotation/reference strain",
+      "missing_human_issue": "https://github.com/openvax/orfdata/issues/37"
+    },
+    "schema": "orfdata.measurements.v1"
+  },
+  "rows": [
+    {
+      "original_line": 2,
+      "row": {
+        "sid": "1",
+        "species": "dog",
+        "tnm": "Adipose",
+        "egid": "ENSCAFG00845000002",
+        "rcnt": "1699"
+      },
+      "fixture_line": 2
+    },
+    {
+      "original_line": 3,
+      "row": {
+        "sid": "1",
+        "species": "dog",
+        "tnm": "Adipose",
+        "egid": "ENSCAFG00845000003",
+        "rcnt": "31"
+      },
+      "fixture_line": 3
+    },
+    {
+      "original_line": 6,
+      "row": {
+        "sid": "1",
+        "species": "dog",
+        "tnm": "Adipose",
+        "egid": "ENSCAFG00845000006",
+        "rcnt": "0"
+      },
+      "fixture_line": 4
+    },
+    {
+      "original_line": 30943,
+      "row": {
+        "sid": "2",
+        "species": "dog",
+        "tnm": "Adipose",
+        "egid": "ENSCAFG00845000002",
+        "rcnt": "813"
+      },
+      "fixture_line": 5
+    },
+    {
+      "original_line": 30944,
+      "row": {
+        "sid": "2",
+        "species": "dog",
+        "tnm": "Adipose",
+        "egid": "ENSCAFG00845000003",
+        "rcnt": "170"
+      },
+      "fixture_line": 6
+    },
+    {
+      "original_line": 30947,
+      "row": {
+        "sid": "2",
+        "species": "dog",
+        "tnm": "Adipose",
+        "egid": "ENSCAFG00845000006",
+        "rcnt": "0"
+      },
+      "fixture_line": 7
+    }
+  ],
+  "sample_table": [
+    {
+      "original_line": 2,
+      "row": [
+        1,
+        "dog",
+        null,
+        "dogmap_1.0",
+        "Adipose",
+        "Other",
+        "tx",
+        20001,
+        38102327,
+        75.4201531759041,
+        "SRR36422589",
+        10104017400,
+        "SAMN53736994"
+      ]
+    },
+    {
+      "original_line": 3,
+      "row": [
+        2,
+        "dog",
+        null,
+        "dogmap_1.0",
+        "Adipose",
+        "Other",
+        "tx",
+        20846,
+        37400726,
+        73.0869548258692,
+        "SRR36422588",
+        10234583200,
+        "SAMN53736995"
+      ]
+    },
+    {
+      "original_line": 1136,
+      "row": [
+        1345,
+        "mouse_c57",
+        "c57",
+        "mousemap_c57_1.0",
+        "Aorta",
+        "Circulatory",
+        "tx",
+        23993,
+        37441337,
+        84.1154045504315,
+        "SRR36425581",
+        8902373400,
+        "SAMN53790472"
+      ]
+    },
+    {
+      "original_line": 1138,
+      "row": [
+        1347,
+        "mouse_cd1",
+        "cd1",
+        "mousemap_cd1_1.0",
+        "Aorta",
+        "Circulatory",
+        "tx",
+        22473,
+        43549203,
+        93.4583875941989,
+        "SRR36425579",
+        9319485200,
+        "SAMN53790474"
+      ]
+    },
+    {
+      "original_line": 1690,
+      "row": [
+        2472,
+        "human",
+        null,
+        "humanmap_1.0",
+        "Retina",
+        "Nervous",
+        "tx",
+        29840,
+        43571590,
+        88.652972028719,
+        "SRR36354102",
+        9829696400,
+        "SAMN53789403"
+      ]
+    }
+  ],
+  "unmeasured_gene": "ENSCAFG00845015183"
+}

@@ -3,3 +3,4 @@ recursive-include docs *.md
 recursive-include tests *.py *.json *.md *.tsv *.fasta
 recursive-include tests/data/copy *.xlsx *.gz *.soft *.xml *.pdf
 recursive-include tests/data/storage *.sqlite
+recursive-include tests/data/pfizer_rna *.gz *.xlsx
