@@ -1,3 +1,10 @@
+# 0.16.0
+
+- Import native yeast rich/starvation RNA and ribosome-footprint region counts,
+  with source-reported read densities, normalization inputs and sample metadata.
+- Preserve historical source-window identity and unknown genomic coordinates;
+  do not infer complete ORFs or unqualified cross-assay aliquot matches.
+
 # 0.15.0
 
 - Select paired observations by scoped left/right targets and native per-side

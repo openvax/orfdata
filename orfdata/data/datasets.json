@@ -1355,5 +1355,473 @@
         }
       }
     }
+  },
+  "ingolia-yeast-rna-ribo": {
+    "default_version": "2026-10-13.1",
+    "versions": {
+      "2026-10-13.1": {
+        "manifest": {
+          "dataset_id": "ingolia-yeast-rna-ribo",
+          "version": "2026-10-13.1",
+          "title": "Ingolia yeast rich/starvation RNA and ribosome-footprint region measurements",
+          "references": [
+            {
+              "taxon_id": 4932,
+              "species": "yeast",
+              "genome_build": null,
+              "annotation_name": "SGD",
+              "annotation_version": "2008-06-22",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "6e00f3e627d2db935ee19fa93f63088092d059e7ac059eb70f9901a985703573"
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "readMe.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346111/suppl/GSM346111_readMe.txt.gz",
+              "sha256": "6e00f3e627d2db935ee19fa93f63088092d059e7ac059eb70f9901a985703573",
+              "size": 554,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Historical source annotation and native quantification definitions"
+              }
+            },
+            {
+              "asset_id": "GSM346111.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346111/suppl/GSM346111_fp_rich1_quant.txt.gz",
+              "sha256": "492f3a630d662de165309628b37ec5c89862f86b80c66391f7421e0f633efe76",
+              "size": 131843,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346111.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346111&targ=self&form=text&view=brief",
+              "sha256": "4f878a3eb912bb7bb9f0cd86a9ecc7c7516be41d76bf9924af037e55c744f47d",
+              "size": 3090,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            },
+            {
+              "asset_id": "GSM346114.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346114/suppl/GSM346114_fp_rich1_quant.txt.gz",
+              "sha256": "462d9a2d4a035e28c75ebb2bfe09d62e9bed43695b0087fea56c6a7071f5ac53",
+              "size": 139300,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346114.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346114&targ=self&form=text&view=brief",
+              "sha256": "0eed4a97ca0d098b6d2efc3a00aa727d7df48eec7b34be50894cfe182f0b4a31",
+              "size": 3090,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            },
+            {
+              "asset_id": "GSM346115.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346115/suppl/GSM346115_fp_noaa1_quant.txt.gz",
+              "sha256": "1827ed2e2d9439e296d9e250ba3ed256c8efb3516d0cc3fdc7e53655ad3c7c06",
+              "size": 137380,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346115.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346115&targ=self&form=text&view=brief",
+              "sha256": "a3de12e84a7e15692de3a20b07536e57eb0758384af3d0a56a320d1c5c7db110",
+              "size": 3096,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            },
+            {
+              "asset_id": "GSM346116.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346116/suppl/GSM346116_fp_noaa2_quant.txt.gz",
+              "sha256": "f69a16d0d865fcbdabd4a8fe0bfb535165c0626f2e00563c1a0a72f843111698",
+              "size": 154780,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346116.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346116&targ=self&form=text&view=brief",
+              "sha256": "35ee87d1140adeaf04fbe88e6116c0a3b45ad763cf5f732d14e69a3d8500df0a",
+              "size": 3097,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            },
+            {
+              "asset_id": "GSM346117.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346117/suppl/GSM346117_mrna_rich1_quant.txt.gz",
+              "sha256": "907ddaf47268ea6f36e2363c74a8c001ba48d1dc34617c1461ad5923e57def5b",
+              "size": 175847,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346117.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346117&targ=self&form=text&view=brief",
+              "sha256": "09579e46385df5d400ee7e9491235fdc8044544e7481f8c748ab2e21d14bbdbf",
+              "size": 3088,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            },
+            {
+              "asset_id": "GSM346118.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346118/suppl/GSM346118_mrna_rich2_quant.txt.gz",
+              "sha256": "a63a3982967f090ff6ebe8e2c61a86d0630d0d6040e0b2fee9702a7fe813b254",
+              "size": 183608,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346118.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346118&targ=self&form=text&view=brief",
+              "sha256": "6dac9836a93977c08aa422d6e468f0d4b0d8b15ca170d4855823b0666d7efbf3",
+              "size": 3088,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            },
+            {
+              "asset_id": "GSM346120.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346120/suppl/GSM346120_mrna_noaa1_quant.txt.gz",
+              "sha256": "7e3f375a524a665ed09ac74356432485c1ceac7d6e89b5de33a13214f379583c",
+              "size": 167038,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346120.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346120&targ=self&form=text&view=brief",
+              "sha256": "a4a5d6aba6b210755c70f4bd1b86c76ff11a2bc4efce20cad71f319d0162c043",
+              "size": 3095,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            },
+            {
+              "asset_id": "GSM346122.quant.txt.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346122/suppl/GSM346122_mrna_noaa2_quant.txt.gz",
+              "sha256": "610491c19c0ced95dcca85930174845b66582b5b27e2251bca7dc1d64b899316",
+              "size": 177629,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Native processed feature counts/densities"
+              }
+            },
+            {
+              "asset_id": "GSM346122.metadata.txt",
+              "url": "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM346122&targ=self&form=text&view=brief",
+              "sha256": "b426a528e75449463ef14fd2b816167a9149729050a855ca8289d1c52e8e329c",
+              "size": 3095,
+              "access_terms": "NCBI GEO imposes no restrictions on use or distribution of deposited data; attribute Ingolia et al. (2009)",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Ingolia et al. Science 2009",
+                "role": "Public GEO library facts; importer excludes contact fields"
+              }
+            }
+          ],
+          "citations": [
+            "https://doi.org/10.1126/science.1168978",
+            "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE13750"
+          ],
+          "assay_kinds": [
+            "rna_seq",
+            "ribo_seq"
+          ],
+          "coverage": {
+            "features": 13748,
+            "feature_types": {
+              "unclassified_source_feature": 5408,
+              "three_prime_UTR": 4592,
+              "five_prime_UTR": 3523,
+              "intron": 225
+            },
+            "samples": 8,
+            "assays": 8,
+            "libraries": {
+              "GSM346111": {
+                "features": 13748,
+                "zero_counts": 6485,
+                "total_cds_reads": 1698134,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              },
+              "GSM346114": {
+                "features": 13748,
+                "zero_counts": 5526,
+                "total_cds_reads": 3151832,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              },
+              "GSM346115": {
+                "features": 13748,
+                "zero_counts": 5473,
+                "total_cds_reads": 788626,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              },
+              "GSM346116": {
+                "features": 13748,
+                "zero_counts": 3121,
+                "total_cds_reads": 2040043,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              },
+              "GSM346117": {
+                "features": 13748,
+                "zero_counts": 633,
+                "total_cds_reads": 1451219,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              },
+              "GSM346118": {
+                "features": 13748,
+                "zero_counts": 0,
+                "total_cds_reads": 3541965,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              },
+              "GSM346120": {
+                "features": 13748,
+                "zero_counts": 1266,
+                "total_cds_reads": 857584,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              },
+              "GSM346122": {
+                "features": 13748,
+                "zero_counts": 555,
+                "total_cds_reads": 2375965,
+                "feature_types": {
+                  "unclassified_source_feature": 5408,
+                  "three_prime_UTR": 4592,
+                  "five_prime_UTR": 3523,
+                  "intron": 225
+                }
+              }
+            },
+            "source_rows": 109984,
+            "observations": 329952,
+            "observed_counts": 109984,
+            "source_derived_densities": 219968,
+            "rna_rpf_aliquot_pairs": 0,
+            "exact_genomic_mapping": false,
+            "orf_specific_abundance": false,
+            "experimental_orf_catalogue": false
+          },
+          "processing": {
+            "importer": "ingolia-yeast-ribo-v1",
+            "software": "orfdata 0.16.0",
+            "libraries": [
+              {
+                "sample_id": "GSM346111",
+                "title": "Footprints-rich-1",
+                "assay_kind": "ribo_seq",
+                "biosample": "SAMN02195614",
+                "sra_experiment": "SRX003186",
+                "quant_asset": "GSM346111.quant.txt.gz",
+                "metadata_asset": "GSM346111.metadata.txt"
+              },
+              {
+                "sample_id": "GSM346114",
+                "title": "Footprints-rich-2",
+                "assay_kind": "ribo_seq",
+                "biosample": "SAMN02195615",
+                "sra_experiment": "SRX003187",
+                "quant_asset": "GSM346114.quant.txt.gz",
+                "metadata_asset": "GSM346114.metadata.txt"
+              },
+              {
+                "sample_id": "GSM346115",
+                "title": "Footprints-starved-1",
+                "assay_kind": "ribo_seq",
+                "biosample": "SAMN02195616",
+                "sra_experiment": "SRX003184",
+                "quant_asset": "GSM346115.quant.txt.gz",
+                "metadata_asset": "GSM346115.metadata.txt"
+              },
+              {
+                "sample_id": "GSM346116",
+                "title": "Footprints-starved-2",
+                "assay_kind": "ribo_seq",
+                "biosample": "SAMN02195617",
+                "sra_experiment": "SRX003185",
+                "quant_asset": "GSM346116.quant.txt.gz",
+                "metadata_asset": "GSM346116.metadata.txt"
+              },
+              {
+                "sample_id": "GSM346117",
+                "title": "mRNA-rich-1",
+                "assay_kind": "rna_seq",
+                "biosample": "SAMN02195634",
+                "sra_experiment": "SRX003190",
+                "quant_asset": "GSM346117.quant.txt.gz",
+                "metadata_asset": "GSM346117.metadata.txt"
+              },
+              {
+                "sample_id": "GSM346118",
+                "title": "mRNA-rich-2",
+                "assay_kind": "rna_seq",
+                "biosample": "SAMN02195635",
+                "sra_experiment": "SRX003191",
+                "quant_asset": "GSM346118.quant.txt.gz",
+                "metadata_asset": "GSM346118.metadata.txt"
+              },
+              {
+                "sample_id": "GSM346120",
+                "title": "mRNA-starved-1",
+                "assay_kind": "rna_seq",
+                "biosample": "SAMN02195636",
+                "sra_experiment": "SRX003188",
+                "quant_asset": "GSM346120.quant.txt.gz",
+                "metadata_asset": "GSM346120.metadata.txt"
+              },
+              {
+                "sample_id": "GSM346122",
+                "title": "mRNA-starved-2",
+                "assay_kind": "rna_seq",
+                "biosample": "SAMN02195637",
+                "sra_experiment": "SRX003189",
+                "quant_asset": "GSM346122.quant.txt.gz",
+                "metadata_asset": "GSM346122.metadata.txt"
+              }
+            ],
+            "feature_namespace": "Ingolia2009:feature",
+            "source_normalized_values": "retained as reported, rounded to three decimals; linked to native counts",
+            "historical_annotation": "SGD2008-06-22; UTRs from Nagalakshmi et al. Science2008",
+            "exact_genomic_window_mapping": "unresolved; no current-reference substitution",
+            "source_paper_rna_rpf_pairing": "Reports the same samples; exact GSM aliquot crosswalk unresolved",
+            "source_rna_rich2_zero_policy": "GSM346118 has no zero count rows; no undocumented pseudocount is added or removed"
+          },
+          "schema": "orfdata.measurements.v1"
+        },
+        "distribution": {
+          "access_terms": "NCBI GEO deposits: unrestricted use/distribution with source attribution to Ingolia et al. (2009). ORFdata transformation code: Apache-2.0.",
+          "redistributable": true,
+          "download_size": 24111762,
+          "download_sha256": "87e993ddfe777aaebe1b8d1eaa2b64faab8eb6c6e259c34293a71650b073e9ee",
+          "installed_size": 210239488,
+          "data_release": "data-ingolia-yeast-rna-ribo-2026-10-13.1"
+        },
+        "assets": {
+          "dataset.sqlite": {
+            "url": "https://github.com/openvax/orfdata/releases/download/data-ingolia-yeast-rna-ribo-2026-10-13.1/ingolia-yeast-rna-ribo-2026-10-13.1.sqlite.gz",
+            "sha256": "983d593f9766ed2e292f3f3eede5c518ab2105c1b343c1a45d6815dc90f7e02c",
+            "size": 210239488,
+            "decompress": true
+          }
+        }
+      }
+    }
   }
 }

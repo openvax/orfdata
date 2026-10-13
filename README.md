@@ -79,6 +79,8 @@ assays, and DataCache-managed downloads. Downloadable
 [yeast calibrated protein/RNA abundance](docs/copy-yeast.md) use the same
 species-scoped API, as do [native dog and mouse RNA counts](docs/pfizer-rna.md)
 and [matched human tissue RNA/protein measurements](docs/human-tissue.md).
+[Yeast RNA and ribosome occupancy](docs/ingolia-yeast.md) retain their source
+regions, including UTR and ncRNA labels.
 Gene RNA and canonical protein measurements do not establish
 noncanonical ORF abundance. The [native search references](docs/search-references.md)
 preserve complete deposited sequences, including unreported entries. The

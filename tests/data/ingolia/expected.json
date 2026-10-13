@@ -1,0 +1,842 @@
+{
+  "GSM346111": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346111/suppl/GSM346111_fp_rich1_quant.txt.gz",
+      "size": 131843,
+      "sha256": "492f3a630d662de165309628b37ec5c89862f86b80c66391f7421e0f633efe76"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "1294.977",
+          "dens": "2199.044",
+          "count": "3679",
+          "len": "1673",
+          "total": "1698134"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "588",
+          "total": "1698134"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "149",
+          "total": "1698134"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "92.209",
+          "dens": "156.584",
+          "count": "176",
+          "len": "1124",
+          "total": "1698134"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "7.306",
+          "dens": "12.406",
+          "count": "43",
+          "len": "3466",
+          "total": "1698134"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "50",
+          "total": "1698134"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "1698134"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "134.952",
+          "dens": "229.167",
+          "count": "11",
+          "len": "48",
+          "total": "1698134"
+        }
+      }
+    ]
+  },
+  "GSM346114": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346114/suppl/GSM346114_fp_rich1_quant.txt.gz",
+      "size": 139300,
+      "sha256": "462d9a2d4a035e28c75ebb2bfe09d62e9bed43695b0087fea56c6a7071f5ac53"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "679.118",
+          "dens": "2140.466",
+          "count": "3581",
+          "len": "1673",
+          "total": "3151832"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "588",
+          "total": "3151832"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "149",
+          "total": "3151832"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "74.238",
+          "dens": "233.986",
+          "count": "263",
+          "len": "1124",
+          "total": "3151832"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "9.612",
+          "dens": "30.294",
+          "count": "105",
+          "len": "3466",
+          "total": "3151832"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "50",
+          "total": "3151832"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "3.869",
+          "dens": "12.195",
+          "count": "1",
+          "len": "82",
+          "total": "3151832"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "198.297",
+          "dens": "625.000",
+          "count": "30",
+          "len": "48",
+          "total": "3151832"
+        }
+      }
+    ]
+  },
+  "GSM346115": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346115/suppl/GSM346115_fp_noaa1_quant.txt.gz",
+      "size": 137380,
+      "sha256": "1827ed2e2d9439e296d9e250ba3ed256c8efb3516d0cc3fdc7e53655ad3c7c06"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "2360.973",
+          "dens": "1861.925",
+          "count": "3115",
+          "len": "1673",
+          "total": "788626"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "588",
+          "total": "788626"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "149",
+          "total": "788626"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "127.480",
+          "dens": "100.534",
+          "count": "113",
+          "len": "1124",
+          "total": "788626"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "19.024",
+          "dens": "15.003",
+          "count": "52",
+          "len": "3466",
+          "total": "788626"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "50",
+          "total": "788626"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "788626"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "7819.507",
+          "dens": "6166.667",
+          "count": "296",
+          "len": "48",
+          "total": "788626"
+        }
+      }
+    ]
+  },
+  "GSM346116": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346116/suppl/GSM346116_fp_noaa2_quant.txt.gz",
+      "size": 154780,
+      "sha256": "f69a16d0d865fcbdabd4a8fe0bfb535165c0626f2e00563c1a0a72f843111698"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "652.507",
+          "dens": "1331.142",
+          "count": "2227",
+          "len": "1673",
+          "total": "2040043"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "588",
+          "total": "2040043"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "149",
+          "total": "2040043"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "180.113",
+          "dens": "367.438",
+          "count": "413",
+          "len": "1124",
+          "total": "2040043"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "18.103",
+          "dens": "36.930",
+          "count": "128",
+          "len": "3466",
+          "total": "2040043"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "50",
+          "total": "2040043"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "2040043"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "9834.352",
+          "dens": "20062.500",
+          "count": "963",
+          "len": "48",
+          "total": "2040043"
+        }
+      }
+    ]
+  },
+  "GSM346117": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346117/suppl/GSM346117_mrna_rich1_quant.txt.gz",
+      "size": 175847,
+      "sha256": "907ddaf47268ea6f36e2363c74a8c001ba48d1dc34617c1461ad5923e57def5b"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "837.765",
+          "dens": "1215.780",
+          "count": "2034",
+          "len": "1673",
+          "total": "1451219"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "1.172",
+          "dens": "1.701",
+          "count": "1",
+          "len": "588",
+          "total": "1451219"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "9.249",
+          "dens": "13.423",
+          "count": "2",
+          "len": "149",
+          "total": "1451219"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "1061.814",
+          "dens": "1540.925",
+          "count": "1732",
+          "len": "1124",
+          "total": "1451219"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "33.798",
+          "dens": "49.048",
+          "count": "170",
+          "len": "3466",
+          "total": "1451219"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "55.126",
+          "dens": "80.000",
+          "count": "4",
+          "len": "50",
+          "total": "1451219"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "1451219"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "229.692",
+          "dens": "333.333",
+          "count": "16",
+          "len": "48",
+          "total": "1451219"
+        }
+      }
+    ]
+  },
+  "GSM346118": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346118/suppl/GSM346118_mrna_rich2_quant.txt.gz",
+      "size": 183608,
+      "sha256": "a63a3982967f090ff6ebe8e2c61a86d0630d0d6040e0b2fee9702a7fe813b254"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "465.598",
+          "dens": "1649.133",
+          "count": "2759",
+          "len": "1673",
+          "total": "3541965"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "0.480",
+          "dens": "1.701",
+          "count": "1",
+          "len": "588",
+          "total": "3541965"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "24.633",
+          "dens": "87.248",
+          "count": "13",
+          "len": "149",
+          "total": "3541965"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "903.252",
+          "dens": "3199.288",
+          "count": "3596",
+          "len": "1124",
+          "total": "3541965"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "32.338",
+          "dens": "114.541",
+          "count": "397",
+          "len": "3466",
+          "total": "3541965"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "50.819",
+          "dens": "180.000",
+          "count": "9",
+          "len": "50",
+          "total": "3541965"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "6.886",
+          "dens": "24.390",
+          "count": "2",
+          "len": "82",
+          "total": "3541965"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "88.228",
+          "dens": "312.500",
+          "count": "15",
+          "len": "48",
+          "total": "3541965"
+        }
+      }
+    ]
+  },
+  "GSM346120": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346120/suppl/GSM346120_mrna_noaa1_quant.txt.gz",
+      "size": 167038,
+      "sha256": "7e3f375a524a665ed09ac74356432485c1ceac7d6e89b5de33a13214f379583c"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "1471.349",
+          "dens": "1261.805",
+          "count": "2111",
+          "len": "1673",
+          "total": "857584"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "588",
+          "total": "857584"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "15.652",
+          "dens": "13.423",
+          "count": "2",
+          "len": "149",
+          "total": "857584"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "674.327",
+          "dens": "578.292",
+          "count": "650",
+          "len": "1124",
+          "total": "857584"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "68.968",
+          "dens": "59.146",
+          "count": "205",
+          "len": "3466",
+          "total": "857584"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "209.892",
+          "dens": "180.000",
+          "count": "9",
+          "len": "50",
+          "total": "857584"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "857584"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "2113.496",
+          "dens": "1812.500",
+          "count": "87",
+          "len": "48",
+          "total": "857584"
+        }
+      }
+    ]
+  },
+  "GSM346122": {
+    "upstream": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM346nnn/GSM346122/suppl/GSM346122_mrna_noaa2_quant.txt.gz",
+      "size": 177629,
+      "sha256": "610491c19c0ced95dcca85930174845b66582b5b27e2251bca7dc1d64b899316"
+    },
+    "rows": [
+      {
+        "original_line": 2,
+        "fixture_line": 2,
+        "native": {
+          "yorf": "15S_rRNA",
+          "norm": "556.983",
+          "dens": "1323.371",
+          "count": "2214",
+          "len": "1673",
+          "total": "2375965"
+        }
+      },
+      {
+        "original_line": 4,
+        "fixture_line": 3,
+        "native": {
+          "yorf": "HRA1",
+          "norm": "0.716",
+          "dens": "1.701",
+          "count": "1",
+          "len": "588",
+          "total": "2375965"
+        }
+      },
+      {
+        "original_line": 8,
+        "fixture_line": 4,
+        "native": {
+          "yorf": "Q0080",
+          "norm": "14.124",
+          "dens": "33.557",
+          "count": "5",
+          "len": "149",
+          "total": "2375965"
+        }
+      },
+      {
+        "original_line": 18,
+        "fixture_line": 5,
+        "native": {
+          "yorf": "R0020C",
+          "norm": "790.089",
+          "dens": "1877.224",
+          "count": "2110",
+          "len": "1124",
+          "total": "2375965"
+        }
+      },
+      {
+        "original_line": 25,
+        "fixture_line": 6,
+        "native": {
+          "yorf": "YAL001C",
+          "norm": "78.688",
+          "dens": "186.959",
+          "count": "648",
+          "len": "3466",
+          "total": "2375965"
+        }
+      },
+      {
+        "original_line": 26,
+        "fixture_line": 7,
+        "native": {
+          "yorf": "YAL001C_3'utr",
+          "norm": "84.176",
+          "dens": "200.000",
+          "count": "10",
+          "len": "50",
+          "total": "2375965"
+        }
+      },
+      {
+        "original_line": 27,
+        "fixture_line": 8,
+        "native": {
+          "yorf": "YAL001C_intron",
+          "norm": "0.000",
+          "dens": "0.000",
+          "count": "0",
+          "len": "82",
+          "total": "2375965"
+        }
+      },
+      {
+        "original_line": 32,
+        "fixture_line": 9,
+        "native": {
+          "yorf": "YAL005C_5'utr",
+          "norm": "447.187",
+          "dens": "1062.500",
+          "count": "51",
+          "len": "48",
+          "total": "2375965"
+        }
+      }
+    ]
+  }
+}
