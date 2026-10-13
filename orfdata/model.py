@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from typing import Optional
 
 from .reference import ReferenceContext, canonical_species, species_taxon
-from .sequence import CODONS
+from .sequence import genetic_code
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,8 @@ class ORFModel:
     Coordinates are 1-based inclusive; blocks are in ascending genomic order.
     ``orf_type`` describes this reading frame, never the parent RNA's biotype.
     ``translation_table`` is an NCBI genetic-code ID, not inferred from species
-    or a contig name. The initial sequence binder supports table 1 explicitly.
+    or a contig name. Binding supports tables 1, 2 and 3 (standard, vertebrate
+    and yeast mitochondrial); other declared codes fail when bound.
     """
 
     orf_id: str
@@ -90,7 +91,10 @@ def transcript_positions(transcript):
 
 
 def _contig(value):
+    """Compare contig names as PyEnsembl normalizes them, e.g. Mito as MITO."""
     value = str(value).removeprefix("chr")
+    if value.isalpha():
+        value = value.upper()
     return "MT" if value == "M" else value
 
 
@@ -140,11 +144,7 @@ class ReferenceORF:
                 raise ValueError("ORF transcript version mismatch")
         if _contig(transcript.contig) != _contig(model.contig) or transcript.strand != model.strand:
             raise ValueError("ORF transcript locus mismatch")
-        if model.translation_table != 1:
-            raise ValueError(
-                "Unsupported ORF translation table %s; no implicit standard-code fallback"
-                % model.translation_table
-            )
+        code = genetic_code(model.translation_table)
         positions = transcript_positions(transcript)
         if transcript.sequence is None:
             raise ValueError("ORF transcript sequence unavailable")
@@ -161,14 +161,7 @@ class ReferenceORF:
         coding = sequence[start : start + len(wanted)]
         if any(b not in "ACGT" for b in coding):
             raise ValueError("ORF reference sequence is ambiguous")
-        if coding[:3] not in ("ATG", "CTG", "TTG"):
-            raise ValueError(
-                "Unsupported ORF initiation codon; an explicit initiation model is required"
-            )
-        translated = "".join(CODONS[coding[i : i + 3]] for i in range(0, len(coding), 3))
-        if coding[:3] in ("ATG", "CTG", "TTG"):
-            translated = "M" + translated[1:]
-        if translated != model.protein_sequence + "*":
+        if code.translate(coding) != model.protein_sequence + "*":
             raise ValueError("ORF reference protein/stop mismatch")
         for name, value in dict(
             record=record,
@@ -192,6 +185,11 @@ class ReferenceORF:
     @property
     def protein_sequence(self):
         return self.model.protein_sequence
+
+    @property
+    def genetic_code(self):
+        """The ORF's declared NCBI code; modified products must keep using it."""
+        return genetic_code(self.model.translation_table)
 
     def to_dict(self):
         transcript = self.transcript

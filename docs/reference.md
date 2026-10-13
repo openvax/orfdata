@@ -124,10 +124,11 @@ the packaged source-specific filters; this is not a count of proven functional
 proteins. Packaged manifests retain source accessions, checksums, licenses,
 processing rules and dataset version.
 
-The current binder accepts complete ORFs with a terminal stop, NCBI translation
-table 1, and ATG/CTG/TTG initiation codons. All bundled models start at ATG.
-Other genetic codes, initiation conventions and incomplete ORFs need additional
-support. Transcript-boundary contexts can be partial; initiation efficiency and
+The current binder accepts complete ORFs with a terminal stop under NCBI
+tables 1, 2 or 3 and their initiation codons; see
+[genetic codes](species.md#genetic-codes). All bundled models use table 1 and start
+at ATG. Other genetic codes, initiation conventions and incomplete ORFs need
+additional support. Transcript-boundary contexts can be partial; initiation efficiency and
 effects on the main coding region are not established by these data.
 
 Circular-RNA translation, stop-codon readthrough and translation from new

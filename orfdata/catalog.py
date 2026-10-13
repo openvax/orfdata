@@ -15,9 +15,9 @@ from typing import Optional
 
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
-from .model import ORFModel, ReferenceORF, _species
+from .model import ORFModel, ReferenceORF, _contig, _species
 from .reference import ReferenceContext
-from .sequence import CODONS, reverse_complement_dna
+from .sequence import genetic_code, reverse_complement_dna
 
 EVIDENCE_METHODS = ("ribosome", "shotgun", "mhc", "hla", "ms_unclassified", "ms")
 
@@ -25,13 +25,6 @@ EVIDENCE_METHODS = ("ribosome", "shotgun", "mhc", "hla", "ms_unclassified", "ms"
 def _positive_integer(value, name):
     if type(value) is not int or value < 1:
         raise ValueError(f"{name} must be a positive integer")
-
-
-def _contig(value):
-    value = str(value)
-    if value.startswith("chr"):
-        value = value[3:]
-    return "MT" if value in ("M", "MT") else value
 
 
 @dataclass(frozen=True)
@@ -292,9 +285,7 @@ class ORFRecord:
             offset = start + (relative - 1) // 3 * 3
             before, after = sequence[offset : offset + 3], altered[offset : offset + 3]
             if len(before) == 3 and all(b in "ACGT" for b in before + after):
-                if self.translation_table != 1:
-                    raise ValueError("Unsupported ORF translation table")
-                table = CODONS
+                table = genetic_code(self.translation_table).codons
                 codons = {
                     "reference_codon": before,
                     "alternate_codon": after,
