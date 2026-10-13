@@ -70,6 +70,11 @@ def run(argv=None, prog=None):
             subparser.add_argument("--reference")
             subparser.add_argument("--pair-id", action="append")
             subparser.add_argument("--relation-id", action="append")
+            for side in ("left", "right"):
+                for field in ("target", "kind", "namespace", "reference", "quantity", "status", "unit"):
+                    subparser.add_argument(f"--{side}-{field}")
+                subparser.add_argument(f"--{side}-scale", choices=("linear", "log"))
+                subparser.add_argument(f"--{side}-log-base", type=float)
     args = parser.parse_args(argv)
     try:
         definitions = None
@@ -130,9 +135,24 @@ def run(argv=None, prog=None):
         elif args.command == "pairs":
             open_dataset = registry.open_build if args.built else registry.open
             dataset = open_dataset(args.name, args.version)
+            references = {r.key: r for r in dataset.manifest.references}
+            selections = {}
+            for side in ("left", "right"):
+                identifier, kind, namespace, reference = (
+                    getattr(args, f"{side}_{field}") for field in ("target", "kind", "namespace", "reference"))
+                if any((identifier, kind, namespace, reference)):
+                    if not all((identifier, kind, namespace, reference)):
+                        parser.error(f"{side.title()} target queries require --{side}-target, --{side}-kind, "
+                                     f"--{side}-namespace and --{side}-reference")
+                    selections[f"{side}_target"] = ScopedTarget(references[reference], kind, identifier, namespace)
+                selections[f"{side}_filters"] = {
+                    field: getattr(args, f"{side}_{field}")
+                    for field in ("quantity", "status", "unit", "scale", "log_base")
+                    if getattr(args, f"{side}_{field}") is not None}
             for match in dataset.matched_measurements(
                 allowed_bases=args.basis, allowed_temporal=args.temporal or ["concurrent"],
                 reference=args.reference, pair_ids=args.pair_id, relation_ids=args.relation_id,
+                **selections,
             ):
                 sys.stdout.write(json.dumps(match.to_table_row()) + "\n")
             return

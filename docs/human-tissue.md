@@ -37,6 +37,18 @@ for value in dataset.measurements(target=gene, sample_id="V122"):
     print(value.quantity, value.value, value.unit, value.status)
 ```
 
+Select the same gene on both sides for a specimen's native gene-level comparison:
+
+```python
+match, = dataset.matched_measurements(
+    allowed_bases=["adjacent_donor_tissue"],
+    pair_ids=["rna_genes:protein_genes:V122"],
+    left_target=gene, right_target=gene,
+    left_filters={"unit": "FPKM"}, right_filters={"unit": "iBAQ"},
+)
+print(match.left[0].value, match.right[0].value)  # 51.09, 112559620.9
+```
+
 With Ensembl 83 already installed in PyEnsembl, the same target can be built with
 `ScopedTarget.from_pyensembl(gene_object, kind="gene", namespace="ensembl",
 context=reference)`. The context pins the historical GRCh38.p5 assembly accession,

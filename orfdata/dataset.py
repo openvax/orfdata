@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import sqlite3
+from collections.abc import Mapping
 from contextlib import closing
 from dataclasses import MISSING, fields
 from functools import lru_cache
@@ -151,6 +152,26 @@ def _validate_native_selectors(unit=None, scale=None, log_base=None):
             raise ValueError("Logarithm base selector must be positive and not one")
         if scale == "linear":
             raise ValueError("A linear scale selector cannot have a logarithm base")
+
+
+def _validate_observation_selectors(quantity=None, status=None, unit=None, scale=None, log_base=None):
+    if quantity is not None and quantity not in QUANTITIES:
+        raise ValueError("Unknown measurement quantity")
+    if status is not None and status not in MEASUREMENT_STATUSES:
+        raise ValueError("Unknown measurement status")
+    _validate_native_selectors(unit, scale, log_base)
+
+
+def _paired_filters(filters):
+    if filters is None:
+        return {}
+    if not isinstance(filters, Mapping):
+        raise TypeError("Paired observation filters must be a mapping")
+    if set(filters) - {"quantity", "status", "unit", "scale", "log_base"}:
+        raise ValueError("Paired filters select native quantities, not assay or reference identity")
+    filters = dict(filters)
+    _validate_observation_selectors(**filters)
+    return filters
 
 
 class QuantitativeDataset:
@@ -359,13 +380,21 @@ class QuantitativeDataset:
             raise ValueError("Reference context is not present in this dataset")
         return key
 
-    def _records(self, table, cls, *, reference=None):
+    def _records(self, table, cls, *, reference=None, ids=None, filters=()):
         scope = self._scope(reference)
         query = f"SELECT record FROM {table}"
-        params = ()
+        conditions, params = [], []
         if scope is not None:
-            query += " WHERE reference_key=?"
-            params = (scope,)
+            conditions.append("reference_key=?")
+            params.append(scope)
+        if ids is not None:
+            conditions.append("id IN (SELECT value FROM json_each(?))")
+            params.append(_json(ids))
+        for column, value in filters:
+            conditions.append(column + "=?")
+            params.append(value)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
         query += " ORDER BY reference_key, id"
         with closing(self._connect()) as connection:
             for row in connection.execute(query, params):
@@ -429,59 +458,103 @@ class QuantitativeDataset:
             for observation in self.measurements(target=mapping.source, **observation_filters):
                 yield MappedMeasurement(observation, mapping, target)
 
-    def pairings(self, *, reference=None):
-        """Iterate source-declared pairings; legacy releases have none."""
-        if self._storage_version == 1:
-            self._scope(reference)
-            return iter(())
-        return self._records("assay_pair", AssayPair, reference=reference)
+    def _relationship_ids(self, ids, reference):
+        if ids is None:
+            return None
+        if isinstance(ids, str):
+            raise TypeError("Relationship ID selections must be sequences, not a single string")
+        ids = tuple(ids)
+        for value in ids:
+            _identifier(value, "relationship ID selector")
+        if ids and reference is None and len(self._references) > 1:
+            raise ValueError("Relationship ID queries across species require a reference")
+        return ids
 
-    def relations(self, *, reference=None):
-        """Iterate same-species relationships, optionally scoped by their left reference."""
+    def _relation_scope(self, reference, left_target, right_target):
+        scope = self._scope(reference)
+        for target in (left_target, right_target):
+            if target is not None:
+                if not isinstance(target, ScopedTarget):
+                    raise TypeError("Paired targets must be ScopedTarget objects")
+                self._scope(target.reference)
+        if left_target is not None:
+            if scope is not None and scope != left_target.reference.key:
+                raise ValueError("Left target and requested reference disagree")
+            scope = left_target.reference.key
+        if (scope is not None and right_target is not None
+                and self._references[scope].taxon_id != right_target.reference.taxon_id):
+            raise ValueError("Paired targets must belong to the same species")
+        return scope
+
+    def pairings(self, *, reference=None, pair_ids=None):
+        """Iterate source-declared pairings; legacy releases have none."""
+        scope = self._scope(reference)
+        ids = self._relationship_ids(pair_ids, scope)
         if self._storage_version == 1:
-            self._scope(reference)
             return iter(())
-        return self._records("target_relation", TargetRelation, reference=reference)
+        return self._records("assay_pair", AssayPair, reference=scope, ids=ids)
+
+    def relations(self, *, reference=None, relation_ids=None, left_target=None, right_target=None):
+        """Select relationships by exact scoped targets or left-scoped source IDs."""
+        scope = self._relation_scope(reference, left_target, right_target)
+        ids = self._relationship_ids(relation_ids, scope)
+        if self._storage_version == 1:
+            return iter(())
+        filters = []
+        if left_target is not None:
+            filters.append(("left_target_key", _target_key(left_target)))
+        if right_target is not None:
+            right_scope = "right_reference_key" if self._storage_version >= 3 else "reference_key"
+            filters.extend(((right_scope, right_target.reference.key),
+                            ("right_target_key", _target_key(right_target))))
+        return self._records("target_relation", TargetRelation, reference=scope, ids=ids, filters=filters)
 
     def matched_measurements(self, *, allowed_bases, allowed_temporal=("concurrent",),
-                             reference=None, pair_ids=None, relation_ids=None):
+                             reference=None, pair_ids=None, relation_ids=None,
+                             left_target=None, right_target=None, left_filters=None, right_filters=None):
         """Iterate explicit assay/target matches, preserving all values and missing mates.
 
         Defaults require concurrent assays; opting into longitudinal or unknown
         timing is explicit. No matching by tissue names or inferred orthology.
         Each side contains its own original observations, never a Cartesian
         multiplication or an aggregate over technical replicates/quantities.
+        Exact scoped targets select relationships. Per-side native filters select
+        values, retaining missing mates and the original pairing/attribution scope.
         """
         bases, temporal = set(allowed_bases), set(allowed_temporal)
-        if isinstance(pair_ids, str) or isinstance(relation_ids, str):
-            raise TypeError("Relationship ID selections must be sequences, not a single string")
         if not bases or bases - set(PAIRING_BASES):
             raise ValueError("Specify valid allowed pairing bases explicitly")
         if not temporal or temporal - set(TEMPORAL_RELATIONS):
             raise ValueError("Specify valid allowed temporal relationships")
-        if (pair_ids or relation_ids) and reference is None and len(self._references) > 1:
-            raise ValueError("Relationship ID queries across species require a reference")
-        relations = tuple(relation for relation in self.relations(reference=reference)
-                          if relation_ids is None or relation.relation_id in relation_ids)
-        for pair in self.pairings(reference=reference):
+        scope = self._relation_scope(reference, left_target, right_target)
+        left_filters, right_filters = _paired_filters(left_filters), _paired_filters(right_filters)
+        pairs = self.pairings(reference=scope, pair_ids=pair_ids)
+        relations = tuple(self.relations(reference=scope, relation_ids=relation_ids,
+                                          left_target=left_target, right_target=right_target))
+        selected = relation_ids is not None or left_target is not None or right_target is not None
+        for pair in pairs:
             if pair.basis not in bases or pair.temporal_relation not in temporal:
                 continue
-            if pair_ids is not None and pair.pair_id not in pair_ids:
+            related = tuple(r for r in relations if r.left.reference.key == pair.reference.key
+                            and r.right.reference.key == pair.right_reference.key)
+            if not related:
                 continue
             by_target = []
-            for assay_reference, assay in ((pair.reference, pair.left_assay_id),
-                                           (pair.right_reference, pair.right_assay_id)):
+            for side, assay_reference, assay, filters in (
+                ("left", pair.reference, pair.left_assay_id, left_filters),
+                ("right", pair.right_reference, pair.right_assay_id, right_filters),
+            ):
                 values = {}
                 if assay is not None:
-                    for value in self.measurements(reference=assay_reference, assay_id=assay):
+                    keys = tuple({_target_key(getattr(r, side)) for r in related}) if selected else None
+                    for value in self._measurements(reference=assay_reference, assay_id=assay,
+                                                    target_keys=keys, **filters):
                         values.setdefault(value.target.key, []).append(value)
                 by_target.append(values)
-            for relation in relations:
-                if (relation.left.reference.key == pair.reference.key
-                        and relation.right.reference.key == pair.right_reference.key):
-                    yield MatchedMeasurements(pair, relation,
-                                              tuple(by_target[0].get(relation.left.key, ())),
-                                              tuple(by_target[1].get(relation.right.key, ())))
+            for relation in related:
+                yield MatchedMeasurements(pair, relation,
+                                          tuple(by_target[0].get(relation.left.key, ())),
+                                          tuple(by_target[1].get(relation.right.key, ())))
 
     def measurements(self, *, target=None, reference=None, sample_id=None,
                      assay_id=None, quantity=None, status=None, unit=None, scale=None,
@@ -492,11 +565,14 @@ class QuantitativeDataset:
         species together, omit ID filters; each result still carries its scope.
         Native unit/scale/base selectors are exact; no conversion or aggregation.
         """
-        if quantity is not None and quantity not in QUANTITIES:
-            raise ValueError("Unknown measurement quantity")
-        if status is not None and status not in MEASUREMENT_STATUSES:
-            raise ValueError("Unknown measurement status")
-        _validate_native_selectors(unit, scale, log_base)
+        return self._measurements(target=target, reference=reference, sample_id=sample_id,
+                                  assay_id=assay_id, quantity=quantity, status=status,
+                                  unit=unit, scale=scale, log_base=log_base)
+
+    def _measurements(self, *, target=None, reference=None, sample_id=None,
+                      assay_id=None, quantity=None, status=None, unit=None, scale=None,
+                      log_base=None, target_keys=None):
+        _validate_observation_selectors(quantity, status, unit, scale, log_base)
         scope = self._scope(reference)
         if target is not None:
             if not isinstance(target, ScopedTarget):
@@ -516,6 +592,9 @@ class QuantitativeDataset:
                  "AND m.target_key=t.key")
         conditions = [f"m.{key}=?" for key, _ in selected]
         parameters = [value for _, value in selected]
+        if target_keys is not None:
+            conditions.append("m.target_key IN (SELECT value FROM json_each(?))")
+            parameters.append(_json(target_keys))
         # JSON extraction applies to original v1-v3 records and compact v4
         # residual records. SQLite filters before Python reconstructs objects.
         for value, expression in (
