@@ -10,6 +10,7 @@ import pytest
 from pyensembl import Genome
 
 from orfdata import (
+    ExtraORFs,
     ORFCatalog,
     ORFEvidence,
     ORFModel,
@@ -24,14 +25,18 @@ from orfdata.cli import run
 
 LNCRNA = "CCCATGAAACCCGGGTAAATGAAATAA"  # Start codon spans the exon junction.
 CODING = "ATGAAACCCTAA"
+ENS_RNA, ENS_GENE = "ENSMUST00000000001", "ENSMUSG00000000001"  # Synthetic Ensembl-style IDs.
 
 
-def write_genome(tmp_path, reference_name="GRCm39", species="mus_musculus"):
+def write_genome(path, reference_name="GRCm39", species="mus_musculus", *, lnc_id="test_rna",
+                 lnc_gene="test_gene", version="1"):
+    path.mkdir(parents=True, exist_ok=True)
     rows = []
 
     def add(contig, transcript_id, gene_id, biotype, exons, cds=None, protein_id=None):
-        attrs = (f'gene_id "{gene_id}"; gene_name "{gene_id.upper()}"; transcript_id "{transcript_id}"; '
-                 f'transcript_version "1"; gene_biotype "{biotype}"; transcript_biotype "{biotype}";')
+        attrs = (f'gene_id "{gene_id}"; gene_version "{version}"; gene_name "{gene_id.upper()}"; '
+                 f'transcript_id "{transcript_id}"; transcript_version "{version}"; '
+                 f'gene_biotype "{biotype}"; transcript_biotype "{biotype}";')
         start, end = exons[0][0], exons[-1][1]
         rows.extend(f"{contig}\tfixture\t{kind}\t{start}\t{end}\t.\t+\t.\t{attrs}\n" for kind in ("gene", "transcript"))
         rows.extend(f'{contig}\tfixture\texon\t{a}\t{b}\t.\t+\t.\t{attrs} exon_number "{i + 1}"; exon_id "{transcript_id}-{i}";\n'
@@ -40,18 +45,18 @@ def write_genome(tmp_path, reference_name="GRCm39", species="mus_musculus"):
             rows.append(f'{contig}\tfixture\tCDS\t{cds[0]}\t{cds[1]}\t.\t+\t0\t{attrs} exon_number "1"; '
                         f'protein_id "{protein_id}"; protein_version "1";\n')
 
-    add("1", "test_rna", "test_gene", "lncRNA", ((100, 104), (205, 226)))
+    add("1", lnc_id, lnc_gene, "lncRNA", ((100, 104), (205, 226)))
     add("1", "coding_rna", "coding_gene", "protein_coding", ((1000, 1011),), (1000, 1008), "coding_protein")
     add("JH584304.1", "alt_rna", "alt_gene", "protein_coding", ((50, 61),), (50, 58), "alt_protein")
-    gtf = tmp_path / "genome.gtf"
+    gtf = path / "genome.gtf"
     gtf.write_text("".join(rows))
-    cdna = tmp_path / "cdna.fa"
-    cdna.write_text(f">test_rna.1\n{LNCRNA}\n>coding_rna.1\n{CODING}\n>alt_rna.1\n{CODING}\n")
-    pep = tmp_path / "pep.fa"
+    cdna = path / "cdna.fa"
+    cdna.write_text(f">{lnc_id}.{version}\n{LNCRNA}\n>coding_rna.{version}\n{CODING}\n>alt_rna.{version}\n{CODING}\n")
+    pep = path / "pep.fa"
     pep.write_text(">coding_protein.1\nMKP\n>alt_protein.1\nMKP\n")
     genome = Genome(reference_name, "synthetic", "1", gtf_path_or_url=str(gtf),
                     transcript_fasta_paths_or_urls=[str(cdna)], protein_fasta_paths_or_urls=[str(pep)],
-                    cache_directory_path=str(tmp_path))
+                    cache_directory_path=str(path))
     genome.species = species
     genome.index()
     return genome
@@ -59,7 +64,7 @@ def write_genome(tmp_path, reference_name="GRCm39", species="mus_musculus"):
 
 @pytest.fixture
 def genome(tmp_path):
-    genome = write_genome(tmp_path)
+    genome = write_genome(tmp_path / "genome")
     yield genome
     genome.close()
 
@@ -70,18 +75,38 @@ def orf(orf_id, transcript_id="test_rna", blocks=((103, 104), (205, 217)), prote
     return ORFRecord.from_model(model, ORFEvidence(**evidence))
 
 
-@pytest.fixture
-def catalog():
+def make_catalog(transcript_id="test_rna"):
     peptide = (PeptideEvidence("shotgun", "KPG", ((2, 4),), "synthetic", "fixture"),)
     records = [
-        orf("ms-orf", peptides=peptide),
-        orf("ribo-orf", blocks=((218, 226),), protein="MK", ribosome_studies=("synthetic-study",)),
+        orf("ms-orf", transcript_id, peptides=peptide),
+        orf("ribo-orf", transcript_id, blocks=((218, 226),), protein="MK", ribosome_studies=("synthetic-study",)),
         orf("absent-orf", transcript_id="missing_rna", peptides=peptide),
-        orf("changed-orf", protein="MKPA", peptides=(PeptideEvidence("shotgun", "MKP", ((1, 3),), "synthetic", "fixture"),)),
+        orf("changed-orf", transcript_id, protein="MKPA",
+            peptides=(PeptideEvidence("shotgun", "MKP", ((1, 3),), "synthetic", "fixture"),)),
     ]
     return ORFCatalog(records, dict(genome_build="GRCm39", taxon_id=10090, species="mus_musculus",
                                     coordinates="1-based-inclusive", dataset_version="fixture-v1",
                                     sources=[dict(id="synthetic", scope="test fixture")]))
+
+
+@pytest.fixture
+def catalog():
+    return make_catalog()
+
+
+@pytest.fixture
+def ensembl_style(tmp_path):
+    """Build genomes that share Ensembl-style IDs but differ in version or reference."""
+    genomes = []
+
+    def make(name, reference_name="GRCm39", species="mus_musculus", version="6"):
+        genomes.append(write_genome(tmp_path / name, reference_name, species, lnc_id=ENS_RNA,
+                                    lnc_gene=ENS_GENE, version=version))
+        return genomes[-1]
+
+    yield make
+    for genome in genomes:
+        genome.close()
 
 
 def virus(hosts=(10090,)):
@@ -94,7 +119,8 @@ def test_annotated_proteome_matches_the_genome_annotation(genome):
     assert [(e.accession, e.sequence, e.kind, e.contig) for e in proteome] == [
         ("alt_protein.1", "MKP", "annotated", "JH584304.1"), ("coding_protein.1", "MKP", "annotated", "1")]
     entry = proteome.entries[1]
-    assert (entry.transcript_id, entry.gene_id, entry.biotype, entry.taxon_id) == ("coding_rna.1", "coding_gene", "protein_coding", 10090)
+    assert (entry.transcript_id, entry.gene_id, entry.transcript_biotype, entry.orf_type, entry.taxon_id) == (
+        "coding_rna.1", "coding_gene", "protein_coding", None, 10090)
     assert proteome.summary()["distinct_sequences"] == 1
     assert [dict(layer)["kind"] for layer in proteome.layers] == ["annotated"]
     primary = proteome.filter(lambda e: "." not in e.contig, description="primary contigs")
@@ -106,7 +132,9 @@ def test_extra_orfs_are_selected_by_evidence_and_unbound_ones_are_reported(genom
     base = Proteome.from_genome(genome)
     proteome = base.with_extra_orfs(catalog=catalog)  # MS support by default
     extra = [e for e in proteome if e.kind == "extra_orf"]
-    assert [(e.accession, e.sequence, e.evidence, e.biotype) for e in extra] == [("ms-orf", "MKPG", ("shotgun",), "lncRNA")]
+    # The host transcript's biotype and the source ORF class are separate fields.
+    assert [(e.accession, e.sequence, e.evidence, e.transcript_biotype, e.orf_type) for e in extra] == [
+        ("ms-orf", "MKPG", ("shotgun",), "lncRNA", "lncRNA")]
     assert extra[0].orf.transcript.biotype == "lncRNA" and extra[0].transcript_id == "test_rna.1"
     # Gene fields describe this genome; the source's own labels stay on the model.
     assert (extra[0].gene_name, extra[0].orf.model.gene_name) == ("TEST_GENE", "TEST")
@@ -130,13 +158,78 @@ def test_extra_orfs_lookup_by_transcript_and_gene(genome, catalog):
     transcript = genome.transcript_by_id("test_rna")
     assert found.for_transcript(transcript) == found.for_transcript("test_rna.1") == found.orfs
     # The genome names this gene TEST_GENE; the source catalogue calls it TEST.
-    assert found.for_gene("TEST") == found.for_gene("TEST_GENE") == found.orfs
-    assert found.for_gene("coding_gene") == found.for_gene("") == ()
+    assert found.for_gene("TEST_GENE") == found.for_gene("TEST", source=True) == found.orfs
+    assert found.for_gene("TEST") == found.for_gene("coding_gene") == found.for_gene("") == ()
+    assert found.for_transcript("test_rna.1") == found.orfs
+    assert found.for_transcript("test_rna.2") == ()  # Not an Ensembl version: no stripping.
+    bound = found.orfs[0]
+    assert (bound.orf_id, bound.id, bound.orf_type, bound.transcript_id) == ("ms-orf", "ms-orf", "lncRNA", "test_rna")
+    assert (bound.gene_id, bound.gene_name, bound.model.gene_name) == ("test_gene", "TEST_GENE", "TEST")
+    assert bound.gene.id == "test_gene" and bound.coding_blocks == ((103, 104), (205, 217))
     assert {e.orf_id for e in found.excluded} == {"absent-orf", "changed-orf"}
 
 
+def test_transcript_lookup_keeps_version_and_reference_identity(ensembl_style):
+    # Regression for #62: lookups once stripped versions and ignored the query's genome.
+    genome = ensembl_style("main")
+    found = extra_orfs(genome, catalog=make_catalog(ENS_RNA))
+    assert [o.orf_id for o in found.for_transcript(ENS_RNA)] == ["ms-orf", "ribo-orf"]
+    assert found.for_transcript(ENS_RNA + ".6") == found.for_transcript(genome.transcript_by_id(ENS_RNA)) == found.orfs
+    with pytest.raises(ValueError, match=r"ENSMUST00000000001\.999 requested; this reference has ENSMUST00000000001\.6"):
+        found.for_transcript(ENS_RNA + ".999")
+    for name, changes in (("old-assembly", dict(reference_name="GRCm38")),
+                          ("same-ids-in-rat", dict(species="rattus_norvegicus"))):
+        other = ensembl_style(name, **changes)
+        with pytest.raises(ValueError, match="not from this collection's reference"):
+            found.for_transcript(other.transcript_by_id(ENS_RNA))
+    newer = ensembl_style("newer", version="7")
+    with pytest.raises(ValueError, match=r"ENSMUST00000000001\.7 differs from this reference's ENSMUST00000000001\.6"):
+        found.for_transcript(newer.transcript_by_id(ENS_RNA))
+
+
+def test_gene_lookup_separates_this_annotation_from_source_labels(ensembl_style):
+    genome = ensembl_style("main")
+    found = extra_orfs(genome, catalog=make_catalog(ENS_RNA))
+    assert found.for_gene(ENS_GENE) == found.for_gene(ENS_GENE + ".6") == found.orfs
+    assert found.for_gene(genome.gene_by_id(ENS_GENE)) == found.orfs
+    with pytest.raises(ValueError, match=r"ENSMUSG00000000001\.5 requested"):
+        found.for_gene(ENS_GENE + ".5")
+    # The source catalogue calls this gene test_gene / TEST; that is not its ID here.
+    assert found.for_gene("test_gene") == found.for_gene("TEST") == ()
+    assert found.for_gene("test_gene", source=True) == found.for_gene("TEST", source=True) == found.orfs
+    assert (found.orfs[0].gene_id, found.orfs[0].model.gene_id) == (ENS_GENE, "test_gene")
+    with pytest.raises(TypeError):
+        found.for_gene(genome.gene_by_id(ENS_GENE), source=True)
+    other = ensembl_style("old-assembly", reference_name="GRCm38")
+    with pytest.raises(ValueError, match="not from this collection's reference"):
+        found.for_gene(other.gene_by_id(ENS_GENE))
+    newer = ensembl_style("newer", version="7")
+    with pytest.raises(ValueError, match="differs from this reference"):
+        found.for_gene(newer.gene_by_id(ENS_GENE))
+
+
+def test_empty_collection_keeps_its_reference(ensembl_style):
+    genome = ensembl_style("main")
+    empty = extra_orfs(genome, catalog=make_catalog("ENSMUST00000099999"))  # Nothing binds.
+    assert len(empty) == 0 and len(empty.excluded) == 4 and empty.reference.genome_build == "GRCm39"
+    other = ensembl_style("old-assembly", reference_name="GRCm38")
+    with pytest.raises(ValueError, match="not from this collection's reference"):
+        empty.for_transcript(other.transcript_by_id(ENS_RNA))
+    assert empty.for_transcript(ENS_RNA) == ()
+    with pytest.raises(TypeError, match="ReferenceContext"):
+        ExtraORFs((), (), None, None)
+    with pytest.raises(ValueError, match="bound to its reference"):
+        ExtraORFs(extra_orfs(genome, catalog=make_catalog(ENS_RNA)).orfs, (), None, other_reference(empty))
+
+
+def other_reference(collection):
+    from dataclasses import replace
+
+    return replace(collection.reference, genome_build="GRCm38")
+
+
 def test_uninstalled_annotation_is_never_downloaded_or_indexed(tmp_path):
-    genome = write_genome(tmp_path)
+    genome = write_genome(tmp_path / "genome")
     genome.close()
     unindexed = Genome("GRCm39", "synthetic", "1", gtf_path_or_url=genome.gtf_path,
                        transcript_fasta_paths_or_urls=genome.transcript_fasta_paths,
@@ -157,7 +250,7 @@ def test_species_without_a_catalogue_or_mismatched_catalogue_fails(genome):
 
 
 def test_bundled_human_catalogue_is_the_default_for_grch38(tmp_path):
-    human = write_genome(tmp_path, "GRCh38", "homo_sapiens")
+    human = write_genome(tmp_path / "human", "GRCh38", "homo_sapiens")
     try:
         proteome = Proteome.from_genome(human).with_extra_orfs()
     finally:
@@ -201,7 +294,7 @@ def test_fasta_export_round_trips_sequences_and_provenance(genome, catalog):
         else:
             records[header] += line
     assert records == {e.fasta_header(): e.sequence for e in proteome}
-    assert ">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE transcript=test_rna.1 contig=1 biotype=lncRNA evidence=shotgun" in records
+    assert ">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE transcript=test_rna.1 contig=1 transcript_biotype=lncRNA orf_type=lncRNA evidence=shotgun" in records
 
 
 def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, monkeypatch):

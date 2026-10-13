@@ -8,6 +8,7 @@ genome is reported rather than dropped silently.
 
 import gzip
 import hashlib
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,6 +21,8 @@ from .reference import ReferenceContext
 
 # Evidence labels reported for an included ORF; "mhc" includes human HLA.
 _EVIDENCE_LABELS = ("ribosome", "shotgun", "mhc", "ms_unclassified")
+# PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
+_ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 
 
 @dataclass(frozen=True)
@@ -27,10 +30,10 @@ class ProteomeEntry:
     """One protein sequence and where it came from.
 
     ``kind`` is ``"annotated"``, ``"extra_orf"`` or ``"viral"``. Gene and
-    transcript fields come from the genome the proteome was built from; an
-    extra ORF's source annotation stays on ``orf.model``. ``biotype`` is the
-    transcript biotype for annotated proteins and the source ORF class for
-    extra ORFs. ``evidence`` lists the evidence types supporting an extra ORF.
+    transcript fields, including ``transcript_biotype``, come from the genome
+    the proteome was built from; an extra ORF's source labels stay on
+    ``orf.model``. ``orf_type`` is an extra ORF's source class, such as uORF
+    or lncRNA, kept verbatim. ``evidence`` lists its supporting evidence types.
     """
 
     accession: str
@@ -42,14 +45,16 @@ class ProteomeEntry:
     gene_name: Optional[str] = None
     transcript_id: Optional[str] = None
     contig: Optional[str] = None
-    biotype: Optional[str] = None
+    transcript_biotype: Optional[str] = None
+    orf_type: Optional[str] = None
     evidence: tuple = ()
     orf: Optional[ReferenceORF] = field(default=None, compare=False, repr=False)
 
     def fasta_header(self):
         fields = dict(kind=self.kind, taxon=self.taxon_id, source=self.source, gene=self.gene_id,
                       gene_name=self.gene_name, transcript=self.transcript_id, contig=self.contig,
-                      biotype=self.biotype, evidence=",".join(self.evidence) or None)
+                      transcript_biotype=self.transcript_biotype, orf_type=self.orf_type,
+                      evidence=",".join(self.evidence) or None)
         described = " ".join(f"{k}={str(v).replace(' ', '_')}" for k, v in fields.items() if v is not None)
         return f">{self.accession} {described}"
 
@@ -65,13 +70,24 @@ class ExcludedORF:
 
 @dataclass(frozen=True)
 class ExtraORFs:
-    """Catalogue ORFs bound to the transcripts of one genome."""
+    """Catalogue ORFs bound to the transcripts of one genome and reference.
+
+    ``reference`` is the resolved reference context, kept even when no ORF
+    binds. Lookups never return an ORF bound to another reference or version.
+    """
 
     orfs: tuple
     excluded: tuple
     catalog: object = field(repr=False)
+    reference: ReferenceContext
     evidence: Optional[str] = None
     filters: Mapping = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not isinstance(self.reference, ReferenceContext):
+            raise TypeError("ExtraORFs requires its resolved ReferenceContext")
+        if any(o.context.key != self.reference.key for o in self.orfs):
+            raise ValueError("Every ORF in a collection must be bound to its reference")
 
     def __iter__(self):
         return iter(self.orfs)
@@ -80,15 +96,50 @@ class ExtraORFs:
         return len(self.orfs)
 
     def for_transcript(self, transcript):
-        """Bound ORFs on one transcript, given as an object or ID."""
-        transcript_id = str(getattr(transcript, "id", transcript)).split(".")[0]
-        return tuple(o for o in self.orfs if str(o.transcript.id).split(".")[0] == transcript_id)
+        """Bound ORFs on one transcript of this reference.
 
-    def for_gene(self, gene):
-        """Bound ORFs whose gene in this genome or in the source matches an object, ID or name."""
-        names = {x for x in (getattr(gene, "id", gene), getattr(gene, "name", gene)) if x}
-        return tuple(o for o in self.orfs if names & {
-            o.transcript.gene_id, o.transcript.gene_name, o.model.gene_id, o.model.gene_name})
+        A string matches a transcript ID exactly. An unversioned Ensembl ID
+        means this annotation's version; a versioned one must match it. A
+        transcript object must come from this reference and version.
+        Incompatible requests raise rather than return another reference's ORF.
+        """
+        if isinstance(transcript, str):
+            return tuple(o for o in self.orfs
+                         if _same_id(transcript, o.transcript.id, _versioned(o.transcript)))
+        self._check_genome(transcript, "Transcript")
+        found = tuple(o for o in self.orfs if o.transcript.id == transcript.id)
+        if any(_versioned(o.transcript) != _versioned(transcript) for o in found):
+            raise ValueError(f"Transcript {_versioned(transcript)} differs from this reference's "
+                             f"{_versioned(found[0].transcript)}")
+        return found
+
+    def for_gene(self, gene, *, source=False):
+        """Bound ORFs on transcripts of one gene in this genome.
+
+        ``gene`` is a gene object, ID or name, resolved like transcripts. With
+        ``source=True``, a string instead matches the source catalogue's own
+        gene ID or name, which can differ from this annotation's.
+        """
+        if source:
+            if not isinstance(gene, str):
+                raise TypeError("Source gene labels are strings; a gene object selects this genome's genes")
+            return tuple(o for o in self.orfs if gene and gene in (o.model.gene_id, o.model.gene_name))
+        if isinstance(gene, str):
+            return tuple(o for o in self.orfs if gene and (
+                gene == o.transcript.gene_name
+                or _same_id(gene, o.transcript.gene_id, lambda o=o: _versioned(o.transcript.gene))))
+        self._check_genome(gene, "Gene")
+        found = tuple(o for o in self.orfs if o.transcript.gene_id == gene.id)
+        if any(_versioned(o.transcript.gene) != _versioned(gene) for o in found):
+            raise ValueError(f"Gene {_versioned(gene)} differs from this reference's "
+                             f"{_versioned(found[0].transcript.gene)}")
+        return found
+
+    def _check_genome(self, feature, label):
+        try:
+            self.reference.validate_genome(feature.genome)
+        except ValueError as error:
+            raise ValueError(f"{label} {feature.id} is not from this collection's reference: {error}") from None
 
 
 @dataclass(frozen=True)
@@ -185,7 +236,7 @@ class Proteome:
                 sequence=sequence, kind="annotated", taxon_id=reference.taxon_id, source=source,
                 gene_id=transcript.gene_id, gene_name=transcript.gene_name or None,
                 transcript_id=getattr(transcript, "versioned_id", transcript.id),
-                contig=transcript.contig, biotype=transcript.biotype,
+                contig=transcript.contig, transcript_biotype=transcript.biotype,
             ))
         layer = dict(kind="annotated", source=source, reference=reference.key, added=len(entries))
         return cls(reference, entries, (layer,), genome=genome)
@@ -212,7 +263,8 @@ class Proteome:
             taxon_id=orf.model.taxon_id, source=source, gene_id=orf.transcript.gene_id,
             gene_name=orf.transcript.gene_name or None,
             transcript_id=getattr(orf.transcript, "versioned_id", orf.transcript.id),
-            contig=orf.transcript.contig, biotype=orf.model.orf_type,
+            contig=orf.transcript.contig, transcript_biotype=orf.transcript.biotype,
+            orf_type=orf.model.orf_type,
             evidence=tuple(m for m in _EVIDENCE_LABELS if orf.evidence.has_evidence(m)), orf=orf,
         ) for orf in found)
         layer = dict(kind="extra_orf", source=source, evidence=evidence, filters=dict(found.filters),
@@ -315,7 +367,30 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             bound.append(record.bind(transcript, context=reference))
         except ValueError as error:
             excluded.append(ExcludedORF(record.orf_id, record.transcript_id, str(error)))
-    return ExtraORFs(tuple(bound), tuple(excluded), catalog, evidence, MappingProxyType(filters))
+    return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, evidence, MappingProxyType(filters))
+
+
+def _versioned(feature):
+    return str(getattr(feature, "versioned_id", None) or feature.id)
+
+
+def _same_id(query, bare, versioned):
+    """Exact ID match; a differing Ensembl version is an error, not a fallback.
+
+    ``versioned`` may be a callable, resolved only for a query that could be a
+    versioned form of ``bare``.
+    """
+    if query == bare:
+        return True
+    if not query.startswith(bare + "."):
+        return False
+    versioned = versioned() if callable(versioned) else versioned
+    if query == versioned:
+        return True
+    match = _ENSEMBL_VERSIONED.fullmatch(query)
+    if match and match.group(1) == bare:
+        raise ValueError(f"{query} requested; this reference has {versioned}")
+    return False
 
 
 def _require_installed(genome):

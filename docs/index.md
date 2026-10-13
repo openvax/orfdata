@@ -1,10 +1,10 @@
 # orfdata
 
 orfdata builds the protein reference for a species: the proteins annotated in
-a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus noncanonical
-open reading frames (ORFs) with experimental evidence of translation. Each
-added ORF stays bound to its PyEnsembl transcript, with its source and
-evidence. Viral proteomes can be added explicitly, but only for a species that
+a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus open reading
+frames (ORFs) that ribosome-profiling studies found translated outside those
+annotations. Each added ORF stays bound to its PyEnsembl transcript, with its
+source, category and evidence. Viral proteomes can be added explicitly, but only for a species that
 is a recorded host of the virus.
 
 ## Install
@@ -83,10 +83,11 @@ True
 ```
 
 `extra_orfs(genome)` binds the catalogue to every matching transcript of this
-genome. Each result is a `ReferenceORF`: the source ORF, its evidence and the
-original PyEnsembl transcript, after checking the spliced coding path and
-protein sequence. One RNA can have several ORFs, even when Ensembl annotates it
-as noncoding; the transcript's biotype and annotated protein are unchanged.
+genome; without `evidence=`, it includes every catalogue ORF. Each result is a
+`ReferenceORF`: the source ORF, its evidence and the original PyEnsembl
+transcript, after checking the spliced coding path and protein sequence. One RNA
+can have several ORFs, even when Ensembl annotates it as noncoding; the
+transcript's biotype and annotated protein are unchanged.
 
 ## Species
 

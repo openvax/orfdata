@@ -123,10 +123,13 @@ virus's taxon in their FASTA headers.
 
 ## Lower-level ORF lookup
 
-`extra_orfs(genome, evidence=None)` returns the bound ORFs that a proteome layer
-uses, plus the same exclusions. Look them up with `for_transcript` and
-`for_gene`. Each item is a [`ReferenceORF`](reference.md#objects-and-queries)
-with the original PyEnsembl transcript.
+`extra_orfs(genome, evidence=None)` returns every bound catalogue ORF, plus the
+same exclusions. Its default selects no evidence level: use it for annotation,
+such as variant effects on uORFs, where the proteome's MS default would be the
+wrong scope. Look ORFs up with `for_transcript` and `for_gene`; see
+[identifiers](reference.md#identifiers) for how versions and references are
+checked. Each item is a [`ReferenceORF`](reference.md#objects-and-queries) with
+the original PyEnsembl transcript, its gene and the source model.
 
 ## FASTA headers
 
@@ -135,14 +138,15 @@ accession: an Ensembl protein ID with its version, a source ORF ID or a viral
 protein ID. Fields that apply follow as `key=value`:
 
 ```text
->ENSP00000269305.4 kind=annotated taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 biotype=protein_coding
->c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 biotype=uORF evidence=ribosome,mhc
+>ENSP00000269305.4 kind=annotated taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
+>c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,mhc
 ```
 
 For extra ORFs, the accession is the source ORF ID, `transcript` is its host
-transcript in this genome, and `gene` and `gene_name` are that transcript's gene
-in this genome. `biotype` is the source ORF class and `evidence` lists the
-supporting evidence types; `mhc` includes HLA. See
+transcript in this genome, and `gene`, `gene_name` and `transcript_biotype`
+describe that transcript in this genome. `orf_type` is the source's ORF
+category, kept verbatim; see [ORF categories](reference.md#orf-categories).
+`evidence` lists the supporting evidence types; `mhc` includes HLA. See also
 [identifiers](reference.md#identifiers).
 
 ## Command line

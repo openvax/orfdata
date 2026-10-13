@@ -1,18 +1,39 @@
 # ORFs and evidence
 
-orfdata adds open reading frames (ORFs) that standard protein annotations omit:
+The bundled human catalogue is the
+[GENCODE Ribo-seq ORF](https://www.gencodegenes.org/pages/riboseq_orfs/)
+Phase 1 set: 7,264 GRCh38 ORFs that ribosome-profiling studies found translated
+but that the reference annotation (GENCODE v35) did not annotate as proteins.
+2,186 also have supporting MS peptides. "Noncanonical" is relative to an
+annotation and transcript: in Ensembl 115, 34 of the 7,108 ORFs that bind encode
+a protein identical to an annotated ENSP, and an ORF can be annotated in one
+transcript model but not another. The catalogue is source-backed; it does not
+discover every possible ORF. The larger Phase 2 set is planned
+([#16](https://github.com/openvax/orfdata/issues/16)). Most users start with a
+[reference proteome](proteome.md) or `extra_orfs(genome)`; this page describes
+the objects and evidence underneath.
 
-- **Upstream ORFs (uORFs)** before the main coding region, and **overlapping
-  uORFs** that extend into it.
-- **Internal ORFs** in another reading frame within the main coding region.
-- **Downstream ORFs (dORFs)** after the main coding region, and overlapping ones.
-- **ORFs on noncoding RNAs**, including lncRNAs and processed transcripts.
+## ORF categories
 
-The bundled human catalogue contains 7,264 such GRCh38 ORFs from
-ribosome-profiling studies; 2,186 also have supporting MS peptides. It is a
-source-backed reference, not a discovery of every possible ORF. Most users start
-with a [reference proteome](proteome.md) or `extra_orfs(genome)`; this page
-describes the objects and evidence underneath.
+Each ORF keeps its source category verbatim as `orf_type`. The terms follow
+[Mudge et al. 2022, Table 2](https://pmc.ncbi.nlm.nih.gov/articles/PMC9757701/#T2):
+
+| `orf_type` | Position |
+| --- | --- |
+| `uORF` | Within the 5′ UTR of a protein-coding gene's transcript |
+| `uoORF` | Begins in the 5′ UTR and overlaps the annotated coding sequence in a different frame |
+| `intORF` | Entirely within the annotated coding sequence, in a different frame |
+| `dORF` | Within the 3′ UTR |
+| `doORF` | Begins within the annotated coding sequence and ends in the 3′ UTR, in a different frame |
+| `lncRNA` | On a transcript annotated as a long noncoding RNA |
+| `processed_transcript` | On a transcript annotated as `processed_transcript`, with no annotated protein |
+
+The category, the host transcript's biotype and the evidence are separate
+properties. The category describes the source's annotation; a bound ORF's
+`transcript.biotype` describes the annotation you loaded. In Ensembl 115, for
+example, most `processed_transcript` ORFs are on `protein_coding_CDS_not_defined`
+or `retained_intron` transcripts, and 48 uORFs are on nonsense-mediated-decay
+transcripts. One RNA can carry several ORFs.
 
 ## Objects and queries
 
@@ -55,8 +76,12 @@ and that transcript's gene (`gene_id`, an ENSG), as validated against Ensembl
 101. For an ORF on an mRNA, this is the gene of the transcript's annotated
 protein. Later releases can change both: of the 7,108 ORFs that bind to Ensembl
 115, 87 host transcripts now belong to a different ENSG and 796 gene symbols
-changed. A bound ORF's `transcript` and a proteome entry's gene fields describe
-the genome you loaded; `orf.model` keeps the source's labels.
+changed. A bound ORF's `gene_id`, `gene_name` and `transcript` describe the
+genome you loaded; `orf.model` keeps the source's labels. In
+`extra_orfs(genome)`, `for_gene` matches genes in the loaded annotation, or the
+source's labels with `source=True`. `for_transcript` and `for_gene` reject a
+transcript or gene from another reference, and a versioned Ensembl ID must match
+the loaded version.
 
 The host is one of possibly several transcripts that carry the same ORF. In
 Ensembl 115, 5,830 of the 7,108 bound ORFs have an identical spliced coding

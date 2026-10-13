@@ -191,6 +191,38 @@ class ReferenceORF:
         """The ORF's declared NCBI code; modified products must keep using it."""
         return genetic_code(self.model.translation_table)
 
+    # Identity in the bound annotation; the source's own labels stay on ``model``.
+    @property
+    def orf_id(self):
+        return self.model.orf_id
+
+    id = orf_id
+
+    @property
+    def orf_type(self):
+        """Source ORF class, kept verbatim; independent of the transcript biotype."""
+        return self.model.orf_type
+
+    @property
+    def coding_blocks(self):
+        return self.model.coding_blocks
+
+    @property
+    def transcript_id(self):
+        return self.transcript.id
+
+    @property
+    def gene(self):
+        return self.transcript.gene
+
+    @property
+    def gene_id(self):
+        return self.transcript.gene_id
+
+    @property
+    def gene_name(self):
+        return self.transcript.gene_name
+
     def to_dict(self):
         transcript = self.transcript
         genome = transcript.genome

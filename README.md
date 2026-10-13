@@ -4,11 +4,12 @@
 # orfdata
 
 orfdata builds the protein reference for a species: the proteins annotated in
-a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus noncanonical
-open reading frames (ORFs) with experimental evidence of translation. These
-include upstream and downstream ORFs, ORFs in alternative reading frames, and
-ORFs on RNAs annotated as noncoding. Each added ORF stays bound to its
-PyEnsembl transcript, with its source and evidence.
+a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus open reading
+frames (ORFs) that ribosome-profiling studies found translated outside those
+annotations. These include upstream and downstream ORFs, ORFs in other reading
+frames of a coding sequence, and ORFs on RNAs annotated as noncoding. Each added
+ORF stays bound to its PyEnsembl transcript, with its source, category and
+evidence.
 
 ## Installation
 
