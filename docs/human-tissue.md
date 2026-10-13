@@ -18,6 +18,9 @@ There are 6,273,425 source cells. The same specimen has several processing views
 these are not additional biological replicates. Native specimen IDs, RNA/MS run
 IDs, units, source cells and processing methods remain attached to the data.
 Bone marrow has no matched RNA column and is outside the 29-tissue dataset.
+The download is approximately 397 MB and installs to a 3.86 GB SQLite database.
+Every source cell and RNA-copy input link was independently reconciled before
+publication. Missing or censored cells remain explicit observations.
 
 ```sh
 orfdata datasets download wang-human-tissue-abundance --version 2026-10-12.1

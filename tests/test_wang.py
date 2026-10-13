@@ -15,6 +15,28 @@ from orfdata.sources.wang import SERIES, _number, import_tissue
 ROOT = Path(__file__).parent / "data/wang"
 
 
+def test_packaged_human_release_discovery_is_offline(monkeypatch):
+    import requests
+
+    monkeypatch.setattr(requests.sessions.Session, "request", lambda *a, **k: pytest.fail("Discovery contacted network"))
+    registry = DatasetRegistry()
+    manifest = registry.info("wang-human-tissue-abundance", "2026-10-12.1")
+    assert manifest in registry.list(species="human", assay="rna_seq")
+    assert manifest in registry.list(taxon_id=9606, assay="digest_ms")
+    assert manifest not in registry.list(species="mouse")
+    assert manifest.coverage["samples"] == 29
+    assert sum(s["rows"] * 29 for s in manifest.coverage["series"].values()) == 6273425
+    assert manifest.coverage["orf_specific_abundance"] is False
+    reference, = manifest.references
+    assert reference.annotation_version == "83" and reference.assembly_accession == "GCA_000001405.20"
+    search, = registry.search_references(manifest.dataset_id)
+    assert search.expected_sequences == 102450
+    metadata = registry.download_metadata(manifest.dataset_id)
+    assert metadata["distribution"]["download_size"] == 397221510
+    assert metadata["distribution"]["installed_size"] == 3861286912
+    assert metadata["assets"]["dataset.sqlite"]["decompress"] is True
+
+
 @pytest.fixture
 def source():
     manifest = DatasetManifest.from_dict(json.loads((ROOT / "manifest.json").read_text()))
