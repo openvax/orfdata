@@ -37,25 +37,71 @@ transcripts. One RNA can carry several ORFs.
 
 ## Objects and queries
 
-`load_catalog()` loads the bundled human reference data offline. Catalogue
-access uses only the Python standard library; the optional `pyensembl` extra
-supplies PyEnsembl. Binding uses a transcript you have already loaded.
+A `TranscriptORF` is one ORF placement on one PyEnsembl transcript. It covers
+both the transcript's own annotated CDS and the catalogue's extra ORFs, so all
+the ORFs on an RNA can be handled the same way. `ReferenceORF` is the same
+class under its original name. Each has:
 
-`catalog.for_transcript(transcript)` returns a `ReferenceORF` for each matching
-ORF. Each has:
+- `kind`: `"annotated"` for the transcript's annotated CDS, `"extra_orf"` for a
+  catalogue ORF.
+- `orf_id`: the source ORF ID, or the versioned protein ID of an annotated CDS.
+- `transcript`, `transcript_id`, `gene`, `gene_id` and `gene_name`, from the
+  annotation you loaded. The transcript keeps its biotype and annotated protein.
+- `coding_sequence`, `protein_sequence`, `coding_blocks` and `cdna_interval`.
+- `orf_type`, `model` and `evidence`: the source's category, model and
+  evidence. An annotated CDS has none of these.
+- `placement`, `start_complete` and `stop_complete` (described below).
 
-- `model`: source identity, ORF type, coordinates, species and protein sequence.
-- `evidence`: ribosome observations, peptide-level MS and native aggregate support.
-- `transcript`: the original PyEnsembl transcript, including its original biotype.
-- `coding_sequence` and `protein_sequence`: checked against that transcript.
+An extra ORF is checked strictly: the assembly, available species information,
+transcript identity, the full spliced coding path, the protein sequence and the
+terminal stop must all match. A matching gene name alone is insufficient, and
+an incompatible annotation raises an error. An annotated CDS is taken as the
+annotation defines it, with the annotation's protein. Annotations include
+selenoproteins and CDSs without marked start or stop codons, so translation is
+not re-checked; `start_complete` and `stop_complete` report what the annotation
+marks.
 
-Binding checks the assembly, available species information, transcript identity,
-full spliced coding path, protein sequence and terminal stop. A matching gene
-name alone is insufficient. Incompatible annotations raise an error.
+```python
+from orfdata import TranscriptORF, extra_orfs
 
-`extra_orfs(genome)` does the same for every transcript of a genome at once and
-reports ORFs that do not bind. To inspect source records without loading a
-transcript:
+orfs = extra_orfs(genome)  # Every catalogue ORF bound to this genome.
+tpst1 = genome.transcript_by_id("ENST00000304842")
+for orf in orfs.for_transcript(tpst1, include_annotated=True):
+    print(orf.kind, orf.orf_id, orf.orf_type, orf.cdna_interval)
+```
+
+```text
+extra_orf c7riboseqorf56 uORF (149, 269)
+annotated ENSP00000302413.5 None (290, 1403)
+```
+
+Results come in RNA order: here the uORF ends 21 bases before the annotated
+CDS starts. `TranscriptORF.from_annotation(transcript)` gives the annotated CDS
+alone.
+
+`orfs.overlapping(contig, start, end, genome_build=...)` finds the bound ORFs
+whose coding path overlaps a 1-based inclusive interval; introns between coding
+blocks don't count. Add `include_initiation_context=True` to include an ORF's
+spliced start flanks, for example for a Kozak-position variant.
+
+### Placements
+
+A catalogue names one host transcript per ORF (`placement="source"`). Other
+transcripts often carry the identical spliced coding path. In Ensembl 115, the
+7,108 bound ORFs have 60,421 such placements on other transcripts.
+`extra_orfs(genome, placements="all")` binds those too, as
+`placement="compatible"`, after the same path, sequence and protein checks. A
+compatible placement lets a consumer find coding effects on sibling isoforms.
+It is not evidence that the ORF is translated from that isoform, and its
+`evidence` is still the source ORF's evidence. Source binding failures remain in
+`excluded`, even when a compatible placement exists. Building all placements
+for human takes about a minute.
+
+### Catalogue records
+
+`load_catalog()` loads the bundled human records offline using only the Python
+standard library, and `catalog.for_transcript(transcript)` binds the catalogue
+ORFs on one transcript. To inspect source records without a genome:
 
 ```python
 from orfdata import load_catalog

@@ -15,7 +15,7 @@ from typing import Optional
 
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
-from .model import ORFModel, ReferenceORF, _contig, _species
+from .model import ORFModel, TranscriptORF, _contig, _species
 from .reference import ReferenceContext
 from .sequence import genetic_code, reverse_complement_dna
 
@@ -176,9 +176,13 @@ class ORFRecord:
             initiation_context=initiation_context,
         )
 
-    def bind(self, transcript, *, context=None):
-        """Validate and bind this ORF to a PyEnsembl transcript without relabelling it."""
-        return ReferenceORF(self, transcript, context=context)
+    def bind(self, transcript, *, context=None, placement="source"):
+        """Validate and bind this ORF to a PyEnsembl transcript without relabelling it.
+
+        ``placement="compatible"`` binds to a transcript other than the source's
+        host when its spliced coding path and sequence are identical.
+        """
+        return TranscriptORF(self, transcript, context=context, placement=placement)
 
     def to_dict(self):
         """Return a serializable copy of this record."""

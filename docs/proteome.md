@@ -89,9 +89,13 @@ Counter({'Transcript absent from this annotation': 25, 'ORF splice path mismatch
 ```
 
 The bundled models were validated against Ensembl 101; later releases retire
-or change some of their transcripts. orfdata never moves an ORF to a different
-transcript or sequence, even though 41 of these 46 ORFs have an identical
-spliced coding path on another Ensembl 115 transcript. `identical_to_annotated` counts added ORFs whose
+or change some of their transcripts. By default orfdata never moves an ORF to a
+different transcript. With `placements="all"`, an ORF whose source transcript
+does not bind is added on another transcript with the identical spliced coding
+path and protein instead. That recovers 41 of these 46 ORFs; the other 5 no
+longer have their coding path in Ensembl 115. Recovered entries are marked
+`placement=compatible` in their FASTA header, and the layer counts them as
+`compatible_placements`. `identical_to_annotated` counts added ORFs whose
 protein now matches an annotated protein. Both entries are kept because they
 have different identities and evidence.
 
@@ -123,13 +127,14 @@ virus's taxon in their FASTA headers.
 
 ## Lower-level ORF lookup
 
-`extra_orfs(genome, evidence=None)` returns every bound catalogue ORF, plus the
-same exclusions. Its default selects no evidence level: use it for annotation,
+`extra_orfs(genome, evidence=None)` returns every bound catalogue ORF as a
+[`TranscriptORF`](reference.md#objects-and-queries), plus the same exclusions. Its default selects no evidence level: use it for annotation,
 such as variant effects on uORFs, where the proteome's MS default would be the
 wrong scope. Look ORFs up with `for_transcript` and `for_gene`; see
 [identifiers](reference.md#identifiers) for how versions and references are
-checked. Each item is a [`ReferenceORF`](reference.md#objects-and-queries) with
-the original PyEnsembl transcript, its gene and the source model.
+checked. `for_transcript(transcript, include_annotated=True)` adds the
+transcript's annotated CDS, and `overlapping(...)` finds ORFs at a genomic
+interval.
 
 ## FASTA headers
 
@@ -159,8 +164,8 @@ orfdata proteome --species mouse --release 115 --extra-orf-evidence none
 
 `--extra-orf-evidence` accepts the evidence names above, `all` for every
 catalogue ORF, or `none` for annotated proteins only. `--require-unique`,
-`--require-reviewed`, `--require-resolved` and `--catalog FILE` match the Python
-options. The FASTA goes to `--output` or standard output; a JSON summary of the
+`--require-reviewed`, `--require-resolved`, `--placements all` and
+`--catalog FILE` match the Python options. The FASTA goes to `--output` or standard output; a JSON summary of the
 layers and excluded ORFs goes to standard error.
 
 ## Not yet included

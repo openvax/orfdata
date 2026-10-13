@@ -103,12 +103,17 @@ def _species(value):
 
 
 @dataclass(frozen=True, init=False)
-class ReferenceORF:
-    """An ORF record validated against a specific PyEnsembl transcript.
+class TranscriptORF:
+    """One ORF placement on one PyEnsembl transcript.
 
-    The original transcript remains accessible as ``transcript`` with its
-    canonical protein/biotype unchanged. Multiple ReferenceORFs can bind the
-    same transcript, including one annotated as noncoding. No downloads occur.
+    ``kind`` is ``"annotated"`` for the transcript's own annotated CDS, or
+    ``"extra_orf"`` for a source catalogue ORF validated against the
+    transcript's spliced path, sequence and protein. ``placement`` is
+    ``"source"`` on the transcript the source declared, or ``"compatible"``
+    on another transcript carrying the identical spliced coding path; a
+    compatible placement is not evidence of translation on that transcript.
+    The transcript, including its biotype and annotated protein, is unchanged,
+    and one transcript can carry several ORFs. No downloads occur.
     """
 
     record: object
@@ -118,8 +123,15 @@ class ReferenceORF:
     transcript_sequence: str
     genomic_positions: tuple
     context: ReferenceContext
+    kind: str = "extra_orf"
+    placement: str = "source"
+    start_complete: bool = True
+    stop_complete: bool = True
+    annotation_id: Optional[str] = None
 
-    def __init__(self, record, transcript, *, context=None):
+    def __init__(self, record, transcript, *, context=None, placement="source"):
+        if placement not in ("source", "compatible"):
+            raise ValueError("placement must be 'source' or 'compatible'")
         model = record.model
         genome = transcript.genome
         if genome.reference_name != model.genome_build:
@@ -135,13 +147,14 @@ class ReferenceORF:
             raise ValueError("ORF transcript taxon mismatch")
         if model.reference_context is not None and model.reference_context.key != resolved_context.key:
             raise ValueError("ORF transcript reference context mismatch (annotation, strain or assembly)")
-        if str(transcript.id).split(".")[0] != model.transcript_id.split(".")[0]:
-            raise ValueError("ORF transcript identity mismatch")
-        # If the source explicitly pins a transcript version, respect it.
-        if "." in model.transcript_id:
-            resolved = getattr(transcript, "versioned_id", transcript.id)
-            if str(resolved) != model.transcript_id:
-                raise ValueError("ORF transcript version mismatch")
+        if placement == "source":
+            if str(transcript.id).split(".")[0] != model.transcript_id.split(".")[0]:
+                raise ValueError("ORF transcript identity mismatch")
+            # If the source explicitly pins a transcript version, respect it.
+            if "." in model.transcript_id:
+                resolved = getattr(transcript, "versioned_id", transcript.id)
+                if str(resolved) != model.transcript_id:
+                    raise ValueError("ORF transcript version mismatch")
         if _contig(transcript.contig) != _contig(model.contig) or transcript.strand != model.strand:
             raise ValueError("ORF transcript locus mismatch")
         code = genetic_code(model.translation_table)
@@ -163,49 +176,101 @@ class ReferenceORF:
             raise ValueError("ORF reference sequence is ambiguous")
         if code.translate(coding) != model.protein_sequence + "*":
             raise ValueError("ORF reference protein/stop mismatch")
-        for name, value in dict(
-            record=record,
-            transcript=transcript,
-            cdna_interval=(start, start + len(wanted)),
-            coding_sequence=coding,
-            transcript_sequence=sequence,
-            genomic_positions=positions,
-            context=resolved_context,
-        ).items():
+        self._set(record=record, transcript=transcript, cdna_interval=(start, start + len(wanted)),
+                  coding_sequence=coding, transcript_sequence=sequence, genomic_positions=positions,
+                  context=resolved_context, kind="extra_orf", placement=placement,
+                  start_complete=True, stop_complete=True, annotation_id=None)
+
+    @classmethod
+    def from_annotation(cls, transcript, *, context=None):
+        """The transcript's own annotated CDS, as the annotation defines it.
+
+        The protein is the annotation's, from its protein FASTA; translation is
+        not re-checked, because annotations include selenoproteins and CDSs
+        without start or stop codons. ``start_complete`` and ``stop_complete``
+        report whether the annotation marks those codons; the coding sequence
+        includes the stop codon when one is marked.
+        """
+        if not transcript.protein_id:
+            raise ValueError(f"Transcript {transcript.id} has no annotated CDS")
+        resolved_context = ReferenceContext.from_genome(transcript.genome, context=context)
+        positions = transcript_positions(transcript)
+        if transcript.sequence is None:
+            raise ValueError("Transcript sequence unavailable")
+        sequence = str(transcript.sequence).upper()
+        if len(sequence) != len(positions):
+            raise ValueError("Transcript sequence length mismatch")
+        coding = sorted((p for a, b in transcript.coding_sequence_position_ranges for p in range(a, b + 1)),
+                        reverse=transcript.strand == "-")
+        start = positions.index(coding[0]) if coding and coding[0] in positions else None
+        if start is None or positions[start : start + len(coding)] != tuple(coding):
+            raise ValueError(f"Annotated CDS of {transcript.id} is not one contiguous part of its RNA")
+        version = transcript.protein.protein_version
+        orf = object.__new__(cls)
+        orf._set(record=None, transcript=transcript, cdna_interval=(start, start + len(coding)),
+                 coding_sequence=sequence[start : start + len(coding)], transcript_sequence=sequence,
+                 genomic_positions=positions, context=resolved_context, kind="annotated",
+                 placement="source", start_complete=transcript.contains_start_codon,
+                 stop_complete=transcript.contains_stop_codon,
+                 annotation_id=transcript.protein_id + ("" if version is None else f".{version}"))
+        return orf
+
+    def _set(self, **values):
+        for name, value in values.items():
             object.__setattr__(self, name, value)
 
     @property
     def model(self):
-        return self.record.model
+        """The source ORF model; None for an annotated CDS."""
+        return None if self.record is None else self.record.model
 
     @property
     def evidence(self):
+        """Source evidence; an annotated CDS carries none from orfdata."""
+        if self.record is None:
+            from .catalog import ORFEvidence
+
+            return ORFEvidence()
         return self.record.evidence
 
     @property
     def protein_sequence(self):
-        return self.model.protein_sequence
+        return self.transcript.protein_sequence if self.record is None else self.model.protein_sequence
 
     @property
     def genetic_code(self):
-        """The ORF's declared NCBI code; modified products must keep using it."""
-        return genetic_code(self.model.translation_table)
+        """The ORF's declared NCBI code; modified products must keep using it.
+
+        None for an annotated CDS: the annotation does not declare its code.
+        """
+        return None if self.record is None else genetic_code(self.model.translation_table)
 
     # Identity in the bound annotation; the source's own labels stay on ``model``.
     @property
     def orf_id(self):
-        return self.model.orf_id
+        """The source ORF ID, or the versioned protein ID of an annotated CDS."""
+        return self.annotation_id if self.record is None else self.model.orf_id
 
     id = orf_id
 
     @property
     def orf_type(self):
-        """Source ORF class, kept verbatim; independent of the transcript biotype."""
-        return self.model.orf_type
+        """Source ORF category, kept verbatim; None for an annotated CDS."""
+        return None if self.record is None else self.model.orf_type
 
     @property
     def coding_blocks(self):
-        return self.model.coding_blocks
+        """1-based inclusive genomic blocks of the coding path, in ascending order."""
+        if self.record is not None:
+            return self.model.coding_blocks
+        start, end = self.cdna_interval
+        blocks = []
+        for position in sorted(self.genomic_positions[start:end]):
+            if blocks and position == blocks[-1][1] + 1:
+                blocks[-1][1] = position
+            else:
+                blocks.append([position, position])
+        return tuple(tuple(b) for b in blocks)
 
     @property
     def transcript_id(self):
@@ -227,7 +292,10 @@ class ReferenceORF:
         transcript = self.transcript
         genome = transcript.genome
         return dict(
-            model=self.model.to_dict(),
+            kind=self.kind,
+            placement=self.placement,
+            orf_id=self.orf_id,
+            model=None if self.model is None else self.model.to_dict(),
             evidence=self.evidence.to_dict(),
             reference_context=self.context.to_dict(),
             reference_key=self.context.key,
@@ -248,5 +316,11 @@ class ReferenceORF:
                 biotype=getattr(transcript, "biotype", None),
             ),
             cdna_interval=self.cdna_interval,
+            start_complete=self.start_complete,
+            stop_complete=self.stop_complete,
             coordinates="0-based-half-open-cdna;1-based-inclusive-genome",
         )
+
+
+# The original name; Varcode and Isovar import it.
+ReferenceORF = TranscriptORF

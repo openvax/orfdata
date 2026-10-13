@@ -3,6 +3,11 @@
 - Build layered reference proteomes from a PyEnsembl genome: annotated proteins,
   evidence-selected noncanonical ORFs and host-restricted viral proteins, with
   per-layer provenance and reported exclusions. Adds `orfdata proteome`.
+- `TranscriptORF` (formerly `ReferenceORF`, still available) represents both a
+  transcript's annotated CDS and catalogue ORFs, with direct transcript/gene
+  attributes. `extra_orfs(genome)` adds reference-checked transcript and gene
+  lookups, a genomic `overlapping()` query, and opt-in compatible placements
+  on other transcripts with the identical spliced coding path (#61, #62).
 - Bind ORFs under declared NCBI tables 2 and 3 (vertebrate and yeast
   mitochondrial codes), and normalize contig names as PyEnsembl does.
 - Include aggregate evidence in generic TSV exports (#58).

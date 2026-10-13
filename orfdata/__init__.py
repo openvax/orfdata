@@ -27,7 +27,7 @@ from .measurements import (
     SourceAsset,
     TargetMapping,
 )
-from .model import ORFModel, ReferenceORF
+from .model import ORFModel, ReferenceORF, TranscriptORF
 from .pairing import (
     AssayPair,
     MatchedMeasurements,
@@ -70,6 +70,7 @@ __all__ = [
     "EvidenceSummary",
     "PeptideEvidence",
     "ORFModel",
+    "TranscriptORF",
     "ReferenceORF",
     "ReferenceContext",
     "ScopedTarget",

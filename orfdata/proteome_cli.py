@@ -31,6 +31,9 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--require-reviewed", action="store_true",
                         help="Require convincing reviewed spectra (benchmark scores 4-5)")
     parser.add_argument("--catalog", help="Use a local JSON/JSON.gz ORF catalogue for this genome")
+    parser.add_argument("--placements", choices=("source", "all"), default="source",
+                        help="'all' places an ORF whose source transcript is gone on another transcript "
+                             "with the identical spliced coding path")
     parser.add_argument("--output", help="FASTA path; standard output by default")
     args = parser.parse_args(argv)
     try:
@@ -41,8 +44,9 @@ def run(argv=None, prog=None, *, genome_loader=None):
             proteome = proteome.with_extra_orfs(
                 evidence, catalog=load_catalog(args.catalog) if args.catalog else None,
                 require_resolved=args.require_resolved, require_unique=args.require_unique,
-                require_reviewed=args.require_reviewed)
-        elif args.catalog or args.require_resolved or args.require_unique or args.require_reviewed:
+                require_reviewed=args.require_reviewed, placements=args.placements)
+        elif (args.catalog or args.require_resolved or args.require_unique or args.require_reviewed
+              or args.placements != "source"):
             raise ValueError("Extra-ORF options require --extra-orf-evidence other than 'none'")
         proteome.write_fasta(args.output or sys.stdout)
     except (ValueError, OSError) as error:

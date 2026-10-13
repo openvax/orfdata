@@ -84,10 +84,11 @@ True
 
 `extra_orfs(genome)` binds the catalogue to every matching transcript of this
 genome; without `evidence=`, it includes every catalogue ORF. Each result is a
-`ReferenceORF`: the source ORF, its evidence and the original PyEnsembl
+`TranscriptORF`: the source ORF, its evidence and the original PyEnsembl
 transcript, after checking the spliced coding path and protein sequence. One RNA
 can have several ORFs, even when Ensembl annotates it as noncoding; the
-transcript's biotype and annotated protein are unchanged.
+transcript's biotype and annotated protein are unchanged. Add
+`include_annotated=True` to list the transcript's annotated CDS alongside them.
 
 ## Species
 
