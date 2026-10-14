@@ -48,6 +48,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--output", help="FASTA path; standard output by default")
     args = parser.parse_args(argv)
     try:
+        if args.cache_root and not args.cache:
+            raise ValueError("--cache-root needs --cache")
         evidence, options = _evidence(args)
         extra = args.extra_orf_evidence != "none"
         if not extra and (args.catalog or any(options.values())):

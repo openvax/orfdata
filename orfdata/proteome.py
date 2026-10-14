@@ -480,6 +480,8 @@ class Proteome:
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
         viral = tuple(viral)
+        if not extra_orfs and catalog is not None:
+            raise ValueError("A catalogue needs extra_orfs=True")
         rule = None
         if extra_orfs:
             rule = evidence_rule(evidence)
@@ -503,14 +505,16 @@ class Proteome:
         from .datasets import _digest
         from .version import __version__
 
-        key = dict(schema=SNAPSHOT_SCHEMA, orfdata=__version__, reference=reference.to_dict(),
+        key = dict(schema=SNAPSHOT_SCHEMA, orfdata=__version__, pyensembl=_pyensembl_version(),
+                   reference=reference.to_dict(), annotation=_annotation_files(genome),
                    extra_orfs=dict(evidence=None if rule is None else rule.to_dict(),
                                    catalog=_catalog_identity(catalog)) if extra_orfs else None,
-                   viral=[_digest(_json(asdict(virus))) for virus in viral])
+                   viral=[_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
+                          for virus in viral])
         path = _cached_snapshot(key, make, cache_root)
         if built:
             return built[0]
-        loaded = cls.load(path)
+        loaded = cls.load(path, _verified=True)
         proteome = cls(loaded.reference, loaded.entries, loaded.layers, loaded.excluded, genome)
         proteome.__dict__["_identity"] = loaded.identity
         return proteome
@@ -641,13 +645,18 @@ class Proteome:
         """Write a gzipped JSON snapshot that :meth:`load` reads offline."""
         content = self._content()
         snapshot = dict(schema=SNAPSHOT_SCHEMA, identity=_sha256(content), content=content)
-        with gzip.open(path, "wt", encoding="utf-8", compresslevel=6) as handle:
-            json.dump(snapshot, handle, sort_keys=True, separators=(",", ":"))
+        # No timestamp in the gzip header, so identical proteomes give identical files.
+        with open(path, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0,
+                                                    compresslevel=6) as handle:
+            handle.write(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode())
         return snapshot["identity"]
 
     @classmethod
-    def load(cls, path):
-        """Read a snapshot offline; corrupted or inconsistent content raises."""
+    def load(cls, path, *, _verified=False):
+        """Read a snapshot offline; corrupted or inconsistent content raises.
+
+        Entries do not carry ``orf``; use :func:`extra_orfs` for ORF objects.
+        """
         raw = Path(path).read_bytes()
         snapshot = json.loads(gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw)
         if snapshot.get("schema") != SNAPSHOT_SCHEMA:
@@ -658,7 +667,11 @@ class Proteome:
         proteome = cls(ReferenceContext(**content["reference"]),
                        (ProteomeEntry.from_dict(e) for e in content["entries"]),
                        content["layers"], (BindingFailure(**e) for e in content["excluded"]))
-        proteome.__dict__["_identity"] = snapshot["identity"]  # Verified above; tests check the round trip.
+        # A snapshot from the cache was written by save() and checksummed by DataCache; any other
+        # file must also re-serialize to its identity, so non-canonical content is rejected.
+        if not _verified and _sha256(proteome._content()) != snapshot["identity"]:
+            raise ValueError("Proteome snapshot does not round-trip to its identity")
+        proteome.__dict__["_identity"] = snapshot["identity"]
         return proteome
 
     def write_fasta(self, path_or_handle, *, width=60):
@@ -813,6 +826,8 @@ def _cached_snapshot(key, make, cache_root):
     inspected = datacache.inspect_bundle(store)
     if inspected.status == "available":
         return Path(inspected.files[_SNAPSHOT].path)
+    if inspected.status not in ("missing", "invalid"):
+        raise PermissionError(f"The proteome cache at {store} is {inspected.status}")
     store.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=store.parent) as work:
         files = {_SNAPSHOT: Path(work) / _SNAPSHOT, "recipe.json": Path(work) / "recipe.json"}
@@ -821,9 +836,43 @@ def _cached_snapshot(key, make, cache_root):
         files["recipe.json"].write_text(json.dumps(dict(key, identity=proteome.identity), indent=1, sort_keys=True))
         assets = {name: dict(path=str(file), size=file.stat().st_size,
                              sha256=hashlib.sha256(file.read_bytes()).hexdigest()) for name, file in files.items()}
-        paths = datacache.install_bundle(store, assets, force=inspected.status != "missing",
-                                         download_options=dict(show_progress=False))
+        try:
+            paths = datacache.install_bundle(store, assets, force=inspected.status == "invalid",
+                                             download_options=dict(show_progress=False))
+        except datacache.FileValidationError:
+            # Another program installed this build meanwhile; snapshots are byte-identical, so use it.
+            again = datacache.inspect_bundle(store)
+            if again.status != "available":
+                raise
+            return Path(again.files[_SNAPSHOT].path)
     return Path(paths[_SNAPSHOT])
+
+
+def _pyensembl_version():
+    try:
+        from pyensembl import __version__
+    except ImportError:
+        return None
+    return __version__
+
+
+def _annotation_files(genome):
+    """The genome's annotation sources: release URLs as given, local files by size and SHA-256."""
+    sources = [getattr(genome, "_gtf_path_or_url", None),
+               *(getattr(genome, "_transcript_fasta_paths_or_urls", None) or ()),
+               *(getattr(genome, "_protein_fasta_paths_or_urls", None) or ())]
+    found = []
+    for source in (str(s) for s in sources if s is not None):
+        path = Path(source)
+        if "://" in source or not path.is_file():
+            found.append([source])
+            continue
+        digest = hashlib.sha256()
+        with open(path, "rb") as handle:
+            for chunk in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(chunk)
+        found.append([path.name, path.stat().st_size, digest.hexdigest()])
+    return found
 
 
 def _json(value):

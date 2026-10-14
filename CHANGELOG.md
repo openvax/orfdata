@@ -4,9 +4,12 @@
   usual proteome in one call and keeps it in the OpenVax DataCache root, keyed
   by reference, evidence rule, catalogue and viral identities, snapshot schema
   and orfdata version; an identical later build loads the verified snapshot
-  (#74). `orfdata proteome --cache [--cache-root DIR]` does the same.
-- Snapshots load faster: the human Ensembl 115 proteome with MS-supported ORFs
-  loads in about 7 s instead of 11 s. Loading still verifies the content hash.
+  (#74). The key also covers the pyensembl version and, for a custom genome,
+  its local annotation files' sizes and SHA-256. `orfdata proteome --cache
+  [--cache-root DIR]` does the same.
+- Snapshots save deterministically, with no gzip timestamp, and faster: about
+  8 s instead of 15 s for human Ensembl 115 with MS-supported ORFs. A cache
+  hit loads in about 7 s; a first cached build takes about 30 s.
 
 # 0.23.0
 

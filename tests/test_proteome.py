@@ -382,8 +382,9 @@ def test_snapshot_round_trips_offline_and_rejects_corruption(genome, catalog, tm
     assert [e.to_dict() for e in loaded] == [e.to_dict() for e in proteome]
     assert loaded.excluded == proteome.excluded and loaded.layers == proteome.layers
     assert [e.kind for e in loaded.host()] == ["annotated"] * 3 + ["extra_orf"] * 2
-    # Identity is content-based: re-saving gives new bytes but the same identity.
+    # Identity is content-based, and saving is deterministic: re-saving gives the same bytes.
     assert loaded.save(tmp_path / "again.json.gz") == identity
+    assert (tmp_path / "again.json.gz").read_bytes() == path.read_bytes()
     with pytest.raises(ValueError, match="bind to a genome"):
         loaded.with_extra_orfs(catalog=catalog)
     snapshot = json.loads(gzip.decompress(path.read_bytes()))
@@ -391,6 +392,13 @@ def test_snapshot_round_trips_offline_and_rejects_corruption(genome, catalog, tm
     corrupt = tmp_path / "corrupt.json"
     corrupt.write_text(json.dumps(snapshot))
     with pytest.raises(ValueError, match="does not match its identity"):
+        Proteome.load(corrupt)
+    # Hash-consistent but non-canonical content does not load with a mismatched identity.
+    snapshot = json.loads(gzip.decompress(path.read_bytes()))
+    snapshot["content"]["entries"][0]["evidence"] = "ab"
+    snapshot["identity"] = _sha256(snapshot["content"])
+    corrupt.write_text(json.dumps(snapshot))
+    with pytest.raises(ValueError, match="does not round-trip"):
         Proteome.load(corrupt)
 
 
@@ -666,3 +674,42 @@ def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, mo
     first = json.loads(capsys.readouterr().err)["identity"]
     run(command)
     assert json.loads(capsys.readouterr().err)["identity"] == first == built.identity and calls == [1, 1]
+
+
+def test_cache_keys_viral_layers_and_annotation_files(genome, catalog, tmp_path, monkeypatch):
+    with_virus = Proteome.build(genome, catalog=catalog, viral=[virus()], cache=True, cache_root=tmp_path)
+    assert with_virus.identity == Proteome.build(genome, catalog=catalog, viral=[virus()]).identity
+    # Same names, different annotation files: never the same cache entry.
+    twins = write_genome(tmp_path / "twins", twin=True)
+    try:
+        assert "twin_protein.1" in {e.accession for e in Proteome.build(twins, extra_orfs=False, cache=True,
+                                                                         cache_root=tmp_path)}
+        plain = Proteome.build(genome, extra_orfs=False, cache=True, cache_root=tmp_path)
+        assert "twin_protein.1" not in {e.accession for e in plain}
+    finally:
+        twins.close()
+    with pytest.raises(ValueError, match="needs extra_orfs=True"):
+        Proteome.build(genome, catalog=catalog, extra_orfs=False)
+
+
+def test_cache_races_and_unreadable_stores(genome, catalog, tmp_path, monkeypatch):
+    from orfdata import proteome as module
+
+    calls = []
+
+    def make():
+        calls.append(1)
+        return Proteome.from_genome(genome)
+
+    key = dict(test="race")
+    # Another program installs the identical build while this one is building.
+    racing = module._cached_snapshot(key, lambda: (module._cached_snapshot(key, make, tmp_path), make())[1], tmp_path)
+    assert Proteome.load(racing).identity == Proteome.from_genome(genome).identity and len(calls) == 2
+    import datacache
+
+    monkeypatch.setattr(datacache, "inspect_bundle", lambda store: SimpleNamespace(status="inaccessible"))
+    with pytest.raises(PermissionError, match="inaccessible"):
+        module._cached_snapshot(dict(test="locked"), make, tmp_path)
+    assert len(calls) == 2  # Nothing was built for an unreadable store.
+    with pytest.raises(SystemExit):
+        run(["proteome", "--species", "mouse", "--release", "1", "--cache-root", str(tmp_path)])

@@ -238,7 +238,9 @@ selection, catalogue or exclusion changes, but not with file compression or
 formatting. Loading rejects a snapshot whose content does not match its
 identity, host proteins from another species, viral proteins without a
 matching host layer and layers declaring another reference. The human Ensembl
-115 proteome with MS-supported ORFs is a 57 MB snapshot that loads in about 7 s.
+115 proteome with MS-supported ORFs is a 57 MB snapshot that saves in about 8 s
+and loads in about 11 s. Saving is deterministic: the same proteome gives the
+same bytes.
 
 ### Cache a built proteome
 
@@ -255,7 +257,11 @@ The cache key is the reference, evidence rule, catalogue and viral
 identities, snapshot schema and orfdata version. A later identical build,
 from any program, loads that verified snapshot, so tools share one identity.
 For human Ensembl 115 with MS-supported ORFs, the first build takes about
-40 s, including saving, and later ones about 8 s. Each cached build sits next
+30 s, including saving, and later ones about 7 s. A cached snapshot is checked
+by its DataCache checksum, so it skips the re-serialization `load` does. Local
+annotation files of a custom genome are fingerprinted by size and SHA-256, so
+genomes that share names never share an entry. Entries of a cached or loaded
+proteome don't carry `orf`; use `extra_orfs(genome)` for ORF objects. Each cached build sits next
 to a `recipe.json` recording its key and identity. Nothing is downloaded, and
 `extra_orfs=False` builds the annotated proteome alone.
 
