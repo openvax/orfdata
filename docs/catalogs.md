@@ -53,6 +53,43 @@ evidence filters, and JSON/TSV/FASTA exports. They cannot override the selected
 release with a local `--catalog` argument. Use `orfdata --catalog FILE` for the
 existing standalone local-file workflow.
 
+## Lifting a catalogue to another assembly
+
+A catalogue built on one assembly can be lifted to another of the same species
+with a chain file, for example GRCh37 to GRCh38 or mm10 to GRCm39:
+
+```python
+from orfdata import ChainFile, extra_orfs, lift_catalog, load_catalog
+
+chain = ChainFile("GRCh38_to_GRCh37.chain.gz", source_build="GRCh38", target_build="GRCh37")
+grch37 = lift_catalog(load_catalog(), chain)
+print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.source)
+```
+
+```text
+7065 199 orfdata-catalog:2026-10-11.1@GRCh37
+```
+
+- **Chain files.** `ChainFile` reads UCSC and Ensembl chain files, gzipped or
+  not. Examples are Ensembl's
+  [`GRCh37_to_GRCh38.chain.gz`](https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/)
+  and UCSC's [`mm10ToMm39.over.chain.gz`](https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/)
+  or `canFam3ToGCF_014441545.1.over.chain.gz` for dog ROS_Cfam_1.0. Download
+  them yourself and check their terms; orfdata never fetches one.
+- **What lifts.** A record lifts only when every coding block lies inside one
+  ungapped alignment block and all blocks land on one contig and strand, in
+  order. The 199 bundled ORFs above that don't lift are listed with the
+  reason. Lifting the 7,065 back to GRCh38 with `GRCh37_to_GRCh38.chain.gz`
+  recovers the original coordinates of the 7,064 that lift back.
+- **Provenance.** Each lifted record keeps its original in `record.lifted_from`
+  and the chain's name and SHA-256 in `record.liftover`. Its initiation flanks
+  move with it when they map consistently.
+- **Placement.** `extra_orfs` on the target genome then checks each ORF's
+  exact coding path and protein, so a lift that changes the sequence is
+  excluded rather than trusted. A lifted record names no annotation release.
+- **Errors.** When only another assembly has a catalogue,
+  `load_catalog(species=..., genome_build=...)` says which one to lift.
+
 ## Source builds
 
 `registry.build(name, source_paths={"source.json": path})` explicitly rebuilds

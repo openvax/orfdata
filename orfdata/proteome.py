@@ -688,7 +688,8 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                 reason = str(error)
         for transcript_id in candidates[record.orf_id]:
             layout = layouts.get(transcript_id)
-            if transcript_id == source_id or layout is None:
+            # The source transcript is tried again by path when strict binding failed, e.g. across releases.
+            if (transcript_id == source_id and reason is None) or layout is None:
                 continue
             if _layout_offset(layout, model.strand, model.coding_blocks) is None:
                 continue
