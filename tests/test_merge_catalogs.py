@@ -11,6 +11,7 @@ from orfdata import (
     ORFCatalog,
     PeptideEvidence,
     Proteome,
+    ReferenceContext,
     RiboSeq,
     extra_orfs,
     load_catalog,
@@ -106,3 +107,48 @@ def test_any_source_id_finds_the_merged_orf_and_the_cli_merges_files(genome, tmp
     run(["proteome", "--species", "mouse", "--release", "1", "--min-ribo-seq-studies", "1",
          "--min-ms-peptides", "1", *paths])
     assert "equivalent=other:OP_1" in capsys.readouterr().out
+
+
+def single(source, *records, version="v1"):
+    return ORFCatalog([replace(r, source=source) for r in records], dict(
+        genome_build="GRCm39", taxon_id=10090, species="mus_musculus", coordinates="1-based-inclusive",
+        dataset_version=f"{source}-{version}", sources=[dict(id=source, scope="test fixture")]))
+
+
+def test_review_cases_for_ids_contexts_and_re_merging(genome):  # noqa: F811
+    base = make_catalog()
+    ms = base.get("ms-orf")
+    # Two later sources call the same ORF IP_1: one ORF, not an ambiguity.
+    b, c = single("b", replace(ms, orf_id="IP_1", initiation_context=None)), single("c", replace(ms, orf_id="IP_1"))
+    merged = merge_catalogs([base, b, c])
+    assert merged.get("IP_1") is merged.get("ms-orf") and merged.get("c:IP_1") is merged.get("ms-orf")
+    assert merged.get("synthetic:absent-orf").orf_id == "absent-orf"  # Unmerged records answer to source:id too.
+    # A merged catalogue merges again from its source records.
+    again = merge_catalogs([merge_catalogs([base, b]), c])
+    assert again.records == merged.records
+    # Catalogue order does not decide which initiation context an ORF keeps.
+    flipped = merge_catalogs([b, base])
+    assert flipped.get("IP_1").initiation_context == ms.initiation_context
+    # A member's evidence cannot be replaced by other evidence.
+    with pytest.raises(ValueError, match="members' evidence"):
+        replace(merged.get("ms-orf"), ribosome_studies=("invented",))
+    assert merged.metadata["merged_from"][0]["metadata"]["dataset_version"] == "fixture-v1"
+
+
+def test_pins_strains_conflicts_and_transcripts():
+    base = make_catalog()
+    ms = base.get("ms-orf")
+    older = ReferenceContext(10090, "mus_musculus", "GRCm39", "synthetic", "0")
+    pinned = single("b", replace(ms, orf_id="IP_1", reference_context=older))
+    # Sources pinned to different annotations leave the merged ORF unpinned, in either order.
+    for order in ([base, pinned], [pinned, base]):
+        assert merge_catalogs(order).get("IP_1").reference_context is None
+    strain = replace(older, strain="C57BL/6J")
+    with pytest.raises(ValueError, match="different or unknown strains"):
+        merge_catalogs([base, single("b", replace(ms, orf_id="IP_1", reference_context=strain))])
+    merged = merge_catalogs([base, other_catalog()])
+    # One path, two genetic codes; and the fixture's own changed-orf, whose protein differs from ms-orf's.
+    assert merged.metadata["conflicts"] == [["OP_3", "synthetic:ribo-orf"], ["absent-orf", "changed-orf", "ms-orf"]]
+    # absent-orf shares ms-orf's path on another transcript: a source record on that transcript joins it.
+    late = single("late", replace(ms, orf_id="L_1", transcript_id="missing_rna", initiation_context=None))
+    assert merge_catalogs([base, late]).get("L_1").orf_id == "absent-orf"

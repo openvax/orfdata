@@ -182,8 +182,13 @@ one catalogue stay as their source gave them.
 - **Evidence.** Each source's evidence is kept, and evidence rules see the union:
   a peptide counts once per sequence. Studies that two sources name
   differently count twice toward `RiboSeq(min_studies=...)`.
-- **Releases.** Catalogues must not repeat a source, so two releases of one
-  catalogue can't both be merged.
+- **Annotation pins.** Sources pinned to different annotation releases of the
+  assembly leave the merged ORF unpinned; each member keeps its own pin.
+- **Rejected merges.** Catalogues must share a strain, where an unknown strain
+  counts as its own value, and must not repeat a source, so two releases of
+  one catalogue can't both be merged. A merged catalogue can be merged again.
+- **Conflicts.** `catalog.metadata["conflicts"]` lists ORFs that share a coding
+  path but differ in protein, genetic code or declared start codon.
 
 The layer's `source` joins the catalogues' releases, such as
 `orfdata-catalog:2026-10-11.1+orfdata-catalog:study-v1`. On the command line, repeat

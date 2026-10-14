@@ -127,6 +127,10 @@ class ORFRecord:
             key = _merge_key(self)
             if any(m.members or _merge_key(m) != key for m in self.members):
                 raise ValueError(f"Members of {self.orf_id} must be source records of one ORF")
+            union = _union(self.members)
+            if any(getattr(self, name) != value for name, value in union.items()) or (
+                    self.initiation_context not in (None, *(m.initiation_context for m in self.members))):
+                raise ValueError(f"The evidence of {self.orf_id} must be its members' evidence")
         elif self.summaries:
             model = self.model
             for summary in self.summaries:
@@ -387,10 +391,9 @@ class ORFCatalog:
             raise ValueError("Duplicate ORF identifiers")
         self._aliases = {}
         for r in self.records:
-            for m in r.members:
-                for alias in (f"{m.source}:{m.orf_id}", m.orf_id):
-                    if alias != r.orf_id:
-                        self._aliases.setdefault(alias, []).append(r)
+            names = {f"{m.source}:{m.orf_id}" for m in r.members or (r,)} | {m.orf_id for m in r.members}
+            for alias in names - {r.orf_id}:
+                self._aliases.setdefault(alias, []).append(r)
         for r in self.records:
             if r.genome_build != self.genome_build or r.strand not in ("+", "-"):
                 raise ValueError(f"Invalid assembly or strand for {r.orf_id}")
@@ -476,11 +479,10 @@ class ORFCatalog:
         return deepcopy(self._metadata)
 
     def get(self, orf_id):
-        """Return the ORF with this ID; unknown IDs raise KeyError.
+        """Return the ORF with this ID, bare or as ``source:id``; unknown IDs raise KeyError.
 
-        In a merged catalogue every source's ID also works, bare or as
-        ``source:id``. A bare ID that two sources use for different ORFs
-        raises rather than choosing one.
+        In a merged catalogue every source's ID finds its ORF. A bare ID that
+        two sources use for different ORFs raises rather than choosing one.
         """
         if orf_id in self._by_id:
             return self._by_id[orf_id]
@@ -608,21 +610,49 @@ def _merge_key(record):
             record.translation_table, record.start_codon, record.genome_build, record.taxon_id)
 
 
+def _path_key(record):
+    return _merge_key(record)[:3] + _merge_key(record)[6:]
+
+
+def _strain(record):
+    context = record.reference_context
+    return (None, None) if context is None else (context.strain, context.strain_taxon_id)
+
+
+def _union(members):
+    """One ORF's evidence from several sources: identical observations listed once."""
+    return dict(ribosome_studies=tuple(dict.fromkeys(x for m in members for x in m.ribosome_studies)),
+                peptides=tuple(dict.fromkeys(x for m in members for x in m.peptides)),
+                summaries=unique_summaries(x for m in members for x in m.summaries))
+
+
+def _shared_context(primary, members):
+    """The first source initiation context that describes the primary record's transcript."""
+    return next((m.initiation_context for m in members if m.initiation_context is not None and (
+        m.initiation_context.source_transcript_id is None
+        or set(_id_forms(m.initiation_context.source_transcript_id)) & set(_id_forms(primary.transcript_id)))),
+        None)
+
+
 def merge_catalogs(catalogs):
-    """Merge ORF catalogues for one species and assembly into one catalogue.
+    """Merge ORF catalogues for one species, assembly and strain into one catalogue.
 
-    Records from different catalogues with the same spliced coding path,
-    protein, genetic code and declared start codon are one ORF; records within
-    one catalogue stay as the source gave them. The ORF's record keeps every source record in
-    ``members``, in catalogue order, and the union of their evidence; a peptide
-    or study reported by two sources is listed once. Different starts, stops or
-    proteins stay separate ORFs. Each ORF keeps the first source's ID; when two
-    sources use one ID for different ORFs, both become ``source:id``. Every
-    source's ID still finds the ORF through ``get``.
+    Records from different sources with the same spliced coding path,
+    protein, genetic code and declared start codon are one ORF; records from
+    one source stay as the source gave them. A record joins an ORF its source
+    places on the same transcript when there is a choice. The ORF's record
+    keeps every source record in ``members``, in catalogue order, and the
+    union of their evidence; each peptide keeps its source, and identical
+    observations are listed once. Different starts, stops, proteins or codes
+    stay separate ORFs, and ``metadata["conflicts"]`` lists the ones that share
+    a coding path. Each ORF keeps the first source's ID; when two sources use
+    one ID for different ORFs, both become ``source:id``. Every source's ID
+    still finds the ORF through ``get``. Merged catalogues can be merged again.
 
-    Catalogues must share species and assembly and must not repeat a source,
-    such as two releases of one catalogue. Studies that two sources name
-    differently are counted twice by ``RiboSeq(min_studies=...)``.
+    Catalogues must share species, assembly and strain, an unknown strain
+    included, and must not repeat a source, such as two releases of one
+    catalogue. Studies that two sources name differently are counted twice by
+    ``RiboSeq(min_studies=...)``.
     """
     catalogs = tuple(catalogs)
     if not catalogs or any(not isinstance(c, ORFCatalog) for c in catalogs):
@@ -634,29 +664,30 @@ def merge_catalogs(catalogs):
         if (catalog.taxon_id, catalog.genome_build) != (first.taxon_id, first.genome_build):
             raise ValueError(f"Cannot merge a {_species(catalog.species)} {catalog.genome_build} catalogue "
                              f"with a {_species(first.species)} {first.genome_build} one")
-    strains = {(r.reference_context.strain, r.reference_context.strain_taxon_id)
-               for c in catalogs for r in c.records if r.reference_context is not None}
+    # A merged input is merged again from its source records.
+    sources = [[m for r in c.records for m in (r.members or (r,))] for c in catalogs]
+    strains = {_strain(m) for records in sources for m in records}
     if len(strains) > 1:
-        raise ValueError("Cannot merge catalogues for different strains")
+        raise ValueError("Cannot merge catalogues for different or unknown strains: "
+                         + ", ".join(sorted(str(s[0]) for s in strains)))
     seen = set()
-    for catalog in catalogs:
-        sources = {r.source for r in catalog.records}
-        if sources & seen:
-            raise ValueError(f"Two catalogues contain {min(sources & seen)} records; "
-                             "merge one release of each source")
-        seen |= sources
+    for records in sources:
+        names = {m.source for m in records}
+        if names & seen:
+            raise ValueError(f"Two catalogues contain {min(names & seen)} records; merge one release of each source")
+        seen |= names
     groups, by_key = [], {}
-    for index, catalog in enumerate(catalogs):
-        for record in catalog.records:
-            # A record joins the first same-key ORF from another catalogue; a source's own records stay apart.
-            candidates = by_key.setdefault(_merge_key(record), [])
-            group = next((g for g in candidates if index not in g[0]), None)
-            if group is None:
-                group = (set(), [])
-                candidates.append(group)
-                groups.append(group)
-            group[0].add(index)
-            group[1].append(record)
+    for record in (m for records in sources for m in records):
+        eligible = [g for g in by_key.setdefault(_merge_key(record), []) if record.source not in g[0]]
+        forms = set(_id_forms(record.transcript_id))
+        group = next((g for g in eligible if any(forms & set(_id_forms(m.transcript_id)) for m in g[1])),
+                     eligible[0] if eligible else None)
+        if group is None:
+            group = (set(), [])
+            by_key[_merge_key(record)].append(group)
+            groups.append(group)
+        group[0].add(record.source)
+        group[1].append(record)
     uses = Counter(orf_id for _, members in groups for orf_id in {m.orf_id for m in members})
     records = []
     for _, members in groups:
@@ -665,18 +696,24 @@ def merge_catalogs(catalogs):
         if len(members) == 1 and orf_id == primary.orf_id:
             records.append(primary)
             continue
+        pinned = {None if m.reference_context is None else m.reference_context.key for m in members}
         records.append(replace(
-            primary, orf_id=orf_id,
-            ribosome_studies=tuple(dict.fromkeys(x for m in members for x in m.ribosome_studies)),
-            peptides=tuple(dict.fromkeys(x for m in members for x in m.peptides)),
-            summaries=tuple(x for m in members for x in m.summaries), members=tuple(members)))
+            primary, orf_id=orf_id, members=tuple(members), initiation_context=_shared_context(primary, members),
+            # Sources pinned to different annotations of one assembly leave the ORF unpinned.
+            reference_context=primary.reference_context if len(pinned) == 1 else None, **_union(members)))
+    paths = {}
+    for record in records:
+        paths.setdefault(_path_key(record), set()).add((_merge_key(record), record.orf_id))
+    conflicts = [sorted(i for _, i in found) for found in paths.values() if len({k for k, _ in found}) > 1]
     metadata = dict(
         species=first.species, taxon_id=first.taxon_id, genome_build=first.genome_build,
         coordinates="1-based-inclusive",
         sources=[s for c in catalogs for s in c.metadata.get("sources", ())],
         merged_from=[dict(source=c.source, records=len(c.records),
-                          sha256=hashlib.sha256(json.dumps(c.to_dict(), sort_keys=True).encode()).hexdigest())
-                     for c in catalogs])
+                          sha256=hashlib.sha256(json.dumps(c.to_dict(), sort_keys=True).encode()).hexdigest(),
+                          metadata={k: v for k, v in c.metadata.items() if k != "sources"})
+                     for c in catalogs],
+        conflicts=sorted(conflicts))
     return ORFCatalog(records, metadata)
 
 

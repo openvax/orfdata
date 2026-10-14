@@ -7,9 +7,10 @@
   the union of their evidence. The others' IDs appear as `source:id` in
   `equivalent_ids` on placements and proteome entries and in FASTA headers.
   `ORFCatalog.get` and `ExtraORFs.for_orf` accept any source's ID; an ID two
-  sources use for different ORFs is qualified, and the bare ID raises. Merged
-  catalogues round-trip through JSON. `orfdata proteome` takes repeated
-  `--catalog` files.
+  sources use for different ORFs is qualified, and the bare ID raises. Merges
+  require one strain, record ORFs that share a path but differ in protein or
+  code as conflicts, and can be repeated. Merged catalogues round-trip through
+  JSON. `orfdata proteome` takes repeated `--catalog` files.
 - `ORFCatalog.source` gives the release label that proteome layers record.
 
 # 0.21.0
