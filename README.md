@@ -33,14 +33,16 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
 
 ```text
-{'annotated': 245535, 'extra_orf': 2140} 46
+{'annotated': 245535, 'extra_orf': 2181} 5
 ```
 
-This takes every protein in the Ensembl 115 annotation and adds the 2,140
-bundled human ORFs that have supporting mass-spectrometry peptides and bind
-exactly to Ensembl 115 transcripts. The other 46 selected ORFs are listed in
-`proteome.excluded` with the reason. Use `evidence="ribosome"` for all 7,108
-ribosome-profiling ORFs that bind. From the command line:
+This takes every protein in the Ensembl 115 annotation and adds the 2,181
+bundled human ORFs that have supporting mass-spectrometry peptides and are
+encoded by an Ensembl 115 transcript. Each entry lists every transcript encoding
+it; the other 5 selected ORFs are listed in `proteome.excluded` with the
+reason. Use `evidence="ribosome"` for all 7,239 encoded ribosome-profiling ORFs.
+`proteome.save(path)` writes a checksummed snapshot that `Proteome.load` reads
+offline. From the command line:
 
 ```sh
 orfdata proteome --species human --release 115 --output human-e115.fasta

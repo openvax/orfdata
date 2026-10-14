@@ -176,13 +176,14 @@ class ORFRecord:
             initiation_context=initiation_context,
         )
 
-    def bind(self, transcript, *, context=None, placement="source"):
+    def bind(self, transcript, *, context=None, any_transcript=False):
         """Validate and bind this ORF to a PyEnsembl transcript without relabelling it.
 
-        ``placement="compatible"`` binds to a transcript other than the source's
-        host when its spliced coding path and sequence are identical.
+        By default the transcript must be the one the source names. With
+        ``any_transcript=True``, any transcript carrying the identical spliced
+        coding path and sequence is accepted.
         """
-        return TranscriptORF(self, transcript, context=context, placement=placement)
+        return TranscriptORF(self, transcript, context=context, any_transcript=any_transcript)
 
     def to_dict(self):
         """Return a serializable copy of this record."""

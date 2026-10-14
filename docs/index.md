@@ -32,16 +32,16 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
 
 ```text
-{'annotated': 245535, 'extra_orf': 2140} 46
+{'annotated': 245535, 'extra_orf': 2181} 5
 ```
 
 `Proteome.from_genome` takes every protein in the Ensembl 115 annotation.
-`with_extra_orfs(evidence="ms")` adds the 2,186 bundled human ORFs that have
-supporting mass-spectrometry (MS) peptides. The 2,140 that bind exactly to
-Ensembl 115 transcripts are added. The other 46 are listed in
-`proteome.excluded` with the reason: their transcript is absent from this
-release, or its splice path changed. Building this human proteome takes about a
-minute.
+`with_extra_orfs(evidence="ms")` adds the bundled human ORFs that have
+supporting mass-spectrometry (MS) peptides: 2,181 of the 2,186 are encoded by
+an Ensembl 115 transcript, which must contain the ORF's exact spliced coding
+path. The other 5 are listed in `proteome.excluded` with the reason. Each entry
+lists every transcript encoding it. Building this human proteome takes under a
+minute, and `proteome.save(path)` keeps it as a checksummed snapshot.
 
 The same proteome from the command line:
 
@@ -51,12 +51,12 @@ orfdata proteome --species human --release 115 --output human-e115.fasta
 
 ## Choose the evidence
 
-| `evidence=` | Selects ORFs with | Human ORFs | Bound to Ensembl 115 |
+| `evidence=` | Selects ORFs with | Human ORFs | Encoded in Ensembl 115 |
 | --- | --- | ---: | ---: |
-| `"ribosome"` | Ribosome profiling (all bundled ORFs) | 7,264 | 7,108 |
-| `"ms"` (default) | Any supporting MS peptide | 2,186 | 2,140 |
-| `"hla"` | Peptides presented by HLA molecules | 1,881 | 1,843 |
-| `"shotgun"` | Peptides from protease-digest MS | 73 | 71 |
+| `"ribosome"` | Ribosome profiling (all bundled ORFs) | 7,264 | 7,239 |
+| `"ms"` (default) | Any supporting MS peptide | 2,186 | 2,181 |
+| `"hla"` | Peptides presented by HLA molecules | 1,881 | 1,879 |
+| `"shotgun"` | Peptides from protease-digest MS | 73 | 72 |
 
 Most MS support in the bundled human catalogue comes from HLA
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
@@ -82,13 +82,14 @@ c7riboseqorf56 uORF MPSRRRGGSSLIPDVGYLSEVDCPWPEHFPKIILSKISV
 True
 ```
 
-`extra_orfs(genome)` binds the catalogue to every matching transcript of this
-genome; without `evidence=`, it includes every catalogue ORF. Each result is a
-`TranscriptORF`: the source ORF, its evidence and the original PyEnsembl
-transcript, after checking the spliced coding path and protein sequence. One RNA
-can have several ORFs, even when Ensembl annotates it as noncoding; the
-transcript's biotype and annotated protein are unchanged. Add
-`include_annotated=True` to list the transcript's annotated CDS alongside them.
+`extra_orfs(genome)` places every catalogue ORF on every transcript of this
+genome that carries its exact coding path; without `evidence=`, it includes
+every catalogue ORF. Each result is a `TranscriptORF`: the source ORF, its
+evidence and the original PyEnsembl transcript, with `start` and `end` slicing
+the transcript sequence. One RNA can have several ORFs, even when Ensembl
+annotates it as noncoding; the transcript's biotype and annotated protein are
+unchanged. Add `include_annotated=True` to list the annotated CDSs on that
+transcript alongside them.
 
 ## Species
 

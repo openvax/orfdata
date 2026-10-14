@@ -37,11 +37,13 @@ from .pairing import (
     compare_orthologs,
 )
 from .proteome import (
-    ExcludedORF,
+    BindingFailure,
     ExtraORFs,
+    Occurrence,
     Proteome,
     ProteomeEntry,
     ViralProteome,
+    annotated_orfs,
     extra_orfs,
 )
 from .reference import ReferenceContext, ScopedTarget
@@ -55,9 +57,11 @@ __all__ = [
     "Proteome",
     "ProteomeEntry",
     "ViralProteome",
+    "Occurrence",
     "extra_orfs",
+    "annotated_orfs",
     "ExtraORFs",
-    "ExcludedORF",
+    "BindingFailure",
     "GeneticCode",
     "genetic_code",
     "EVIDENCE_METHODS",

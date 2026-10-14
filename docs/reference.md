@@ -37,65 +37,94 @@ transcripts. One RNA can carry several ORFs.
 
 ## Objects and queries
 
-A `TranscriptORF` is one ORF placement on one PyEnsembl transcript. It covers
-both the transcript's own annotated CDS and the catalogue's extra ORFs, so all
-the ORFs on an RNA can be handled the same way. `ReferenceORF` is the same
-class under its original name. Each has:
+A `TranscriptORF` is one ORF on one PyEnsembl transcript. It covers both
+annotated CDSs and the catalogue's extra ORFs, so all the ORFs on an RNA are
+handled the same way. `ReferenceORF` is the same class under its original
+name. Each has:
 
-- `kind`: `"annotated"` for the transcript's annotated CDS, `"extra_orf"` for a
-  catalogue ORF.
+- `kind`: `"annotated"` for an annotated CDS, `"extra_orf"` for a catalogue ORF.
 - `orf_id`: the source ORF ID, or the versioned protein ID of an annotated CDS.
-- `transcript`, `transcript_id`, `gene`, `gene_id` and `gene_name`, from the
-  annotation you loaded. The transcript keeps its biotype and annotated protein.
-- `coding_sequence`, `protein_sequence`, `coding_blocks` and `cdna_interval`.
-- `orf_type`, `model` and `evidence`: the source's category, model and
-  evidence. An annotated CDS has none of these.
-- `placement`, `start_complete` and `stop_complete` (described below).
+- `start` and `end`: Python slice coordinates into the transcript's spliced
+  sequence, so `transcript.sequence[orf.start:orf.end] == orf.coding_sequence`.
+  The coding sequence includes the stop codon when there is one. The genomic
+  path is in `coding_blocks`, 1-based and inclusive.
+- `transcript`, `transcript_id`, `gene`, `gene_id` and `gene_name`: the
+  transcript carrying the ORF and its gene in the annotation you loaded.
+- `source_transcript_id`, `source_gene_id` and `source_gene_name`: what the ORF's
+  source says, and `on_source_transcript`: whether this is that transcript.
+- `protein_sequence`, `orf_type`, `model` and `evidence`. An annotated CDS has
+  no `orf_type`, `model` or evidence of its own.
+- `start_complete` and `stop_complete`, and for an annotated CDS
+  `equivalent_ids`: other annotated proteins with the identical placement.
 
 An extra ORF is checked strictly: the assembly, available species information,
-transcript identity, the full spliced coding path, the protein sequence and the
-terminal stop must all match. A matching gene name alone is insufficient, and
-an incompatible annotation raises an error. An annotated CDS is taken as the
-annotation defines it, with the annotation's protein. Annotations include
-selenoproteins and CDSs without marked start or stop codons, so translation is
-not re-checked; `start_complete` and `stop_complete` report what the annotation
-marks.
+the full spliced coding path, the protein sequence and the terminal stop must
+all match. An annotated CDS is taken as the annotation defines it, with the
+annotation's protein. Annotations include selenoproteins and CDSs without
+marked start or stop codons, so translation is not re-checked;
+`start_complete` and `stop_complete` report what the annotation marks.
 
 ```python
-from orfdata import TranscriptORF, extra_orfs
+from orfdata import extra_orfs
 
-orfs = extra_orfs(genome)  # Every catalogue ORF bound to this genome.
+orfs = extra_orfs(genome)  # Every catalogue ORF, on every transcript carrying it.
 tpst1 = genome.transcript_by_id("ENST00000304842")
 for orf in orfs.for_transcript(tpst1, include_annotated=True):
-    print(orf.kind, orf.orf_id, orf.orf_type, orf.cdna_interval)
+    print(orf.kind, orf.orf_id, orf.orf_type, orf.start, orf.end, len(orf.equivalent_ids))
 ```
 
 ```text
-extra_orf c7riboseqorf56 uORF (149, 269)
-annotated ENSP00000302413.5 None (290, 1403)
+extra_orf c7riboseqorf56 uORF 149 269 0
+annotated ENSP00000399642.1 None 290 415 0
+annotated ENSP00000391338.1 None 290 712 0
+annotated ENSP00000302413.5 None 290 1403 21
 ```
 
-Results come in RNA order: here the uORF ends 21 bases before the annotated
-CDS starts. `TranscriptORF.from_annotation(transcript)` gives the annotated CDS
-alone.
+Results come in RNA order: the uORF ends 21 bases before the annotated CDS
+starts. The two shorter annotated CDSs belong to other TPST1 transcripts whose
+coding paths this RNA also carries, and 21 other proteins share TPST1's main
+placement exactly. `annotated_orfs(transcript)` gives just the annotated ones;
+`TranscriptORF.from_annotation(transcript)` gives one transcript's own CDS.
 
-`orfs.overlapping(contig, start, end, genome_build=...)` finds the bound ORFs
-whose coding path overlaps a 1-based inclusive interval; introns between coding
+`orfs.overlapping(contig, start, end, genome_build=...)` finds ORFs whose coding
+path overlaps a 1-based inclusive genomic interval; introns between coding
 blocks don't count. Add `include_initiation_context=True` to include an ORF's
 spliced start flanks, for example for a Kozak-position variant.
 
-### Placements
+### Transcripts carrying an ORF
 
-A catalogue names one host transcript per ORF (`placement="source"`). Other
-transcripts often carry the identical spliced coding path. In Ensembl 115, the
-7,108 bound ORFs have 60,421 such placements on other transcripts.
-`extra_orfs(genome, placements="all")` binds those too, as
-`placement="compatible"`, after the same path, sequence and protein checks. A
-compatible placement lets a consumer find coding effects on sibling isoforms.
-It is not evidence that the ORF is translated from that isoform, and its
-`evidence` is still the source ORF's evidence. Source binding failures remain in
-`excluded`, even when a compatible placement exists. Building all placements
-for human takes about a minute.
+An ORF is placed on every transcript that contains its exact spliced coding path
+and translates to its protein, not only on the transcript its source names. In
+Ensembl 115 the bundled ORFs have 67,529 such placements; only 1,314 ORFs are
+carried by a single transcript. `on_source_transcript` marks the one the source
+names. Another carrying transcript is not evidence that the ORF is translated
+from it, and the ORF's `evidence` is the same on every placement.
+
+`orfs.source_failures` lists ORFs whose source transcript is absent from this
+annotation or no longer carries them, with the reason. Most are still placed
+elsewhere: of 156 such ORFs in Ensembl 115, only the 25 in `orfs.excluded` are
+carried by no transcript. `record.bind(transcript)` still binds strictly to
+the source's transcript.
+
+Annotated CDSs can also lie in other transcripts. MIURF's CDS sits in the
+"5′ UTR" of MIEF1's mRNA, for example, and SNURF's in SNRPN's:
+
+```python
+mief1 = genome.transcript_by_id("ENST00000325301")
+for orf in orfs.for_transcript(mief1, include_annotated=True):
+    print(orf.kind, orf.orf_id, orf.source_gene_name, orf.start, orf.end, orf.on_source_transcript)
+```
+
+```text
+extra_orf c22riboseqorf42 MIEF1 72 132 True
+annotated ENSP00000490747.1 MIURF 176 389 False
+annotated ENSP00000390029.1 MIEF1 487 615 False
+annotated ENSP00000327124.2 MIEF1 487 1879 True
+extra_orf c22norep69 MIEF1 527 677 True
+```
+
+MIURF's protein keeps its own ID and gene while sitting on MIEF1's RNA, so it is
+not mistaken for a new protein.
 
 ### Catalogue records
 
@@ -129,9 +158,8 @@ source's labels with `source=True`. `for_transcript` and `for_gene` reject a
 transcript or gene from another reference, and a versioned Ensembl ID must match
 the loaded version.
 
-The host is one of possibly several transcripts that carry the same ORF. In
-Ensembl 115, 5,830 of the 7,108 bound ORFs have an identical spliced coding
-path on at least one other transcript. orfdata binds only the source's host.
+The host is one of possibly several transcripts that carry the same ORF; see
+[transcripts carrying an ORF](#transcripts-carrying-an-orf).
 
 ## Evidence
 

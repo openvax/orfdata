@@ -3,6 +3,7 @@
 The genome, catalogue and virus below are synthetic API fixtures, not observations.
 """
 
+import gzip
 import io
 import json
 from dataclasses import replace
@@ -22,10 +23,12 @@ from orfdata import (
     ReferenceORF,
     TranscriptORF,
     ViralProteome,
+    annotated_orfs,
     extra_orfs,
     load_catalog,
 )
 from orfdata.cli import run
+from orfdata.proteome import _sha256
 
 LNCRNA = "CCCATGAAACCCGGGTAAATGAAATAA"  # Start codon spans the exon junction.
 CODING = "ATGAAACCCTAA"
@@ -34,7 +37,7 @@ ENS_RNA, ENS_GENE = "ENSMUST00000000001", "ENSMUSG00000000001"  # Synthetic Ense
 
 
 def write_genome(path, reference_name="GRCm39", species="mus_musculus", *, lnc_id="test_rna",
-                 lnc_gene="test_gene", version="1"):
+                 lnc_gene="test_gene", version="1", twin=False):
     path.mkdir(parents=True, exist_ok=True)
     rows, genes = [], {}
 
@@ -61,16 +64,24 @@ def write_genome(path, reference_name="GRCm39", species="mus_musculus", *, lnc_i
     # A longer isoform of the same gene carrying the identical spliced ORF paths.
     add("1", lnc_id + "_long", lnc_gene, "lncRNA", ((95, 104), (205, 226)))
     add("1", "mixed_rna", "mixed_gene", "protein_coding", ((2000, 2020),), (2012, 2017), "mixed_protein", True)
+    # Another gene's RNA whose sequence contains mixed_rna's CDS, as MIEF1's mRNA contains MIURF's.
+    add("1", "host_rna", "host_gene", "lncRNA", ((1995, 2025),))
     add("1", "coding_rna", "coding_gene", "protein_coding", ((1000, 1011),), (1000, 1008), "coding_protein")
+    if twin:  # A second transcript and protein ID with the identical CDS.
+        add("1", "twin_rna", "coding_gene", "protein_coding", ((1000, 1011),), (1000, 1008), "twin_protein")
     add("JH584304.1", "alt_rna", "alt_gene", "protein_coding", ((50, 61),), (50, 58), "alt_protein")
     rows += [f"{contig}\tfixture\tgene\t{a}\t{b}\t.\t+\t.\t{attrs}\n" for contig, a, b, attrs in genes.values()]
     gtf = path / "genome.gtf"
     gtf.write_text("".join(rows))
     cdna = path / "cdna.fa"
     cdna.write_text(f">{lnc_id}.{version}\n{LNCRNA}\n>{lnc_id}_long.{version}\nGGGGG{LNCRNA}\n"
-                    f">coding_rna.{version}\n{CODING}\n>alt_rna.{version}\n{CODING}\n>mixed_rna.{version}\n{MIXED}\n")
+                    f">coding_rna.{version}\n{CODING}\n>alt_rna.{version}\n{CODING}\n>mixed_rna.{version}\n{MIXED}\n"
+                    f">host_rna.{version}\nCCCCC{MIXED}GGGGG\n")
+    if twin:
+        with cdna.open("a") as handle:
+            handle.write(f">twin_rna.{version}\n{CODING}\n")
     pep = path / "pep.fa"
-    pep.write_text(">coding_protein.1\nMKP\n>alt_protein.1\nMKP\n>mixed_protein.1\nMP\n")
+    pep.write_text(">coding_protein.1\nMKP\n>alt_protein.1\nMKP\n>mixed_protein.1\nMP\n>twin_protein.1\nMKP\n")
     genome = Genome(reference_name, "synthetic", "1", gtf_path_or_url=str(gtf),
                     transcript_fasta_paths_or_urls=[str(cdna)], protein_fasta_paths_or_urls=[str(pep)],
                     cache_directory_path=str(path))
@@ -138,55 +149,88 @@ def test_annotated_proteome_matches_the_genome_annotation(genome):
     assert [(e.accession, e.sequence, e.kind, e.contig) for e in proteome] == [
         ("alt_protein.1", "MKP", "annotated", "JH584304.1"), ("coding_protein.1", "MKP", "annotated", "1"),
         ("mixed_protein.1", "MP", "annotated", "1")]
-    entry = proteome.entries[1]
-    assert (entry.transcript_id, entry.gene_id, entry.transcript_biotype, entry.orf_type, entry.taxon_id) == (
+    coding, mixed = proteome.entries[1], proteome.entries[2]
+    assert (coding.transcript_id, coding.gene_id, coding.transcript_biotype, coding.orf_type, coding.taxon_id) == (
         "coding_rna.1", "coding_gene", "protein_coding", None, 10090)
+    # Coordinates slice the transcript sequence; this CDS has no stop codon feature.
+    occurrence, = mixed.occurrences
+    assert (occurrence.start, occurrence.end, occurrence.coding_blocks) == (12, 21, ((2012, 2020),))
+    assert MIXED[occurrence.start:occurrence.end] == "ATGCCCTAA" and occurrence.on_source_transcript
+    assert (coding.occurrences[0].start, coding.occurrences[0].end) == (0, 9)
+    # Identical proteins from different genes stay separate entries, grouped on request.
+    assert [e.gene_id for e in proteome.by_sequence()["MKP"]] == ["alt_gene", "coding_gene"]
     assert proteome.summary()["distinct_sequences"] == 2
-    assert [dict(layer)["kind"] for layer in proteome.layers] == ["annotated"]
+    assert [layer["role"] for layer in proteome.layers] == ["host"]
     primary = proteome.filter(lambda e: "." not in e.contig, description="primary contigs")
     assert [e.accession for e in primary] == ["coding_protein.1", "mixed_protein.1"]
-    assert dict(primary.layers[-1]) == dict(kind="filter", description="primary contigs", removed=1, added=0)
+    assert dict(primary.layers[-1]) == dict(kind="filter", role="filter", description="primary contigs",
+                                            removed=1, added=0)
 
 
-def test_extra_orfs_are_selected_by_evidence_and_unbound_ones_are_reported(genome, catalog):
+def test_extra_orfs_sit_on_every_transcript_carrying_their_coding_path(genome, catalog):
+    found = extra_orfs(genome, catalog=catalog)
+    assert [(o.orf_id, o.transcript.id, o.on_source_transcript) for o in found] == [
+        ("ms-orf", "test_rna", True), ("ms-orf", "test_rna_long", False),
+        ("ribo-orf", "test_rna", True), ("ribo-orf", "test_rna_long", False),
+        ("absent-orf", "test_rna", False), ("absent-orf", "test_rna_long", False)]
+    long_form = found.orfs[1]
+    assert (long_form.start, long_form.end) == (8, 23)
+    assert long_form.transcript.sequence[long_form.start:long_form.end] == long_form.coding_sequence
+    assert long_form.protein_sequence == "MKPG" and long_form.source_transcript_id == "test_rna"
+    # Source-binding history is kept even when another transcript carries the ORF.
+    assert {f.orf_id: f.reason for f in found.source_failures} == {
+        "absent-orf": "Transcript absent from this annotation", "changed-orf": "ORF reference protein/stop mismatch"}
+    assert [f.orf_id for f in found.excluded] == ["changed-orf"]
+    with pytest.raises(ValueError, match="identity mismatch"):
+        catalog.get("ms-orf").bind(genome.transcript_by_id("test_rna_long"))  # bind() stays strict.
+    bound = found.orfs[0]
+    assert (bound.orf_id, bound.id, bound.orf_type, bound.transcript_id) == ("ms-orf", "ms-orf", "lncRNA", "test_rna")
+    # Gene fields describe this genome; the source's own labels are kept alongside.
+    assert (bound.gene_id, bound.gene_name, bound.source_gene_name) == ("test_gene", "TEST_GENE", "TEST")
+    assert bound.gene.id == "test_gene" and bound.coding_blocks == ((103, 104), (205, 217))
+    exported = json.loads(json.dumps(bound.to_dict()))
+    assert (exported["start"], exported["end"], exported["on_source_transcript"]) == (3, 18, True)
+
+
+def test_proteome_entries_keep_every_occurrence_and_source_binding(genome, catalog):
     base = Proteome.from_genome(genome)
     proteome = base.with_extra_orfs(catalog=catalog)  # MS support by default
-    extra = [e for e in proteome if e.kind == "extra_orf"]
-    # The host transcript's biotype and the source ORF class are separate fields.
-    assert [(e.accession, e.sequence, e.evidence, e.transcript_biotype, e.orf_type) for e in extra] == [
-        ("ms-orf", "MKPG", ("shotgun",), "lncRNA", "lncRNA")]
-    assert extra[0].orf.transcript.biotype == "lncRNA" and extra[0].transcript_id == "test_rna.1"
-    # Gene fields describe this genome; the source's own labels stay on the model.
-    assert (extra[0].gene_name, extra[0].orf.model.gene_name) == ("TEST_GENE", "TEST")
-    reasons = {e.orf_id: e.reason for e in proteome.excluded}
-    assert reasons == {"absent-orf": "Transcript absent from this annotation", "changed-orf": "ORF reference protein/stop mismatch"}
+    extra = {e.accession: e for e in proteome if e.kind == "extra_orf"}
+    assert set(extra) == {"ms-orf", "absent-orf"}
+    ms = extra["ms-orf"]
+    # The host transcript's biotype and the source ORF category are separate fields.
+    assert (ms.sequence, ms.evidence, ms.transcript_biotype, ms.orf_type, ms.source_binding) == (
+        "MKPG", ("shotgun",), "lncRNA", "lncRNA", None)
+    assert [(o.transcript_id, o.on_source_transcript, o.start, o.end) for o in ms.occurrences] == [
+        ("test_rna.1", True, 3, 18), ("test_rna_long.1", False, 8, 23)]
+    assert ms.evidence_detail["peptides"][0]["sequence"] == "KPG"
+    rescued = extra["absent-orf"]
+    assert rescued.source_binding == "Transcript absent from this annotation"
+    assert [o.on_source_transcript for o in rescued.occurrences] == [False, False]
+    assert [f.orf_id for f in proteome.excluded] == ["changed-orf"]
     layer = dict(proteome.layers[-1])
-    assert (layer["evidence"], layer["selected"], layer["added"], layer["excluded"]) == ("ms", 3, 1, 2)
-    assert layer["source"] == "orfdata-catalog:fixture-v1"
+    assert (layer["role"], layer["evidence"], layer["selected"], layer["added"], layer["excluded"],
+            layer["not_on_source_transcript"]) == ("host", "ms", 3, 2, 1, 1)
+    assert layer["source"] == "orfdata-catalog:fixture-v1" and len(layer["catalog"]["sha256"]) == 64
     everything = base.with_extra_orfs(None, catalog=catalog)
-    assert {e.accession for e in everything if e.kind == "extra_orf"} == {"ms-orf", "ribo-orf"}
+    assert {e.accession for e in everything if e.kind == "extra_orf"} == {"ms-orf", "ribo-orf", "absent-orf"}
     ribosome = base.with_extra_orfs("ribosome", catalog=catalog)
     assert [e.accession for e in ribosome if e.kind == "extra_orf"] == ["ribo-orf"]
-    assert base.with_extra_orfs("ms", catalog=catalog, require_resolved=True).layers[-1]["added"] == 1
+    assert base.with_extra_orfs("ms", catalog=catalog, require_resolved=True).layers[-1]["added"] == 2
     with pytest.raises(ValueError, match="Duplicate proteome accessions"):
         proteome.with_extra_orfs(catalog=catalog)
 
 
 def test_extra_orfs_lookup_by_transcript_and_gene(genome, catalog):
     found = extra_orfs(genome, catalog=catalog)
-    assert [o.model.orf_id for o in found] == ["ms-orf", "ribo-orf"]
     transcript = genome.transcript_by_id("test_rna")
-    assert found.for_transcript(transcript) == found.for_transcript("test_rna.1") == found.orfs
+    on_test_rna = found.for_transcript(transcript)
+    assert [o.orf_id for o in on_test_rna] == ["absent-orf", "ms-orf", "ribo-orf"]  # RNA order.
+    assert found.for_transcript("test_rna.1") == on_test_rna
+    assert found.for_transcript("test_rna.2") == ()  # Not an Ensembl version: no stripping.
     # The genome names this gene TEST_GENE; the source catalogue calls it TEST.
     assert found.for_gene("TEST_GENE") == found.for_gene("TEST", source=True) == found.orfs
     assert found.for_gene("TEST") == found.for_gene("coding_gene") == found.for_gene("") == ()
-    assert found.for_transcript("test_rna.1") == found.orfs
-    assert found.for_transcript("test_rna.2") == ()  # Not an Ensembl version: no stripping.
-    bound = found.orfs[0]
-    assert (bound.orf_id, bound.id, bound.orf_type, bound.transcript_id) == ("ms-orf", "ms-orf", "lncRNA", "test_rna")
-    assert (bound.gene_id, bound.gene_name, bound.model.gene_name) == ("test_gene", "TEST_GENE", "TEST")
-    assert bound.gene.id == "test_gene" and bound.coding_blocks == ((103, 104), (205, 217))
-    assert {e.orf_id for e in found.excluded} == {"absent-orf", "changed-orf"}
 
 
 def mixed_catalog():
@@ -201,8 +245,10 @@ def mixed_catalog():
 def test_annotated_cds_is_a_transcript_orf_taken_as_annotated(genome):
     assert ReferenceORF is TranscriptORF  # The original name still works for Varcode and Isovar.
     complete = TranscriptORF.from_annotation(genome.transcript_by_id("mixed_rna"))
-    assert (complete.kind, complete.orf_id, complete.id, complete.placement) == ("annotated", "mixed_protein.1", "mixed_protein.1", "source")
-    assert (complete.coding_sequence, complete.protein_sequence, complete.cdna_interval) == ("ATGCCCTAA", "MP", (12, 21))
+    assert (complete.kind, complete.orf_id, complete.id, complete.on_source_transcript) == (
+        "annotated", "mixed_protein.1", "mixed_protein.1", True)
+    assert (complete.coding_sequence, complete.protein_sequence, complete.start, complete.end) == (
+        "ATGCCCTAA", "MP", 12, 21)
     assert complete.start_complete and complete.stop_complete and complete.coding_blocks == ((2012, 2020),)
     assert complete.model is None and complete.orf_type is None and complete.genetic_code is None
     assert not complete.evidence.has_evidence("ribosome") and complete.gene_id == "mixed_gene"
@@ -216,14 +262,45 @@ def test_annotated_cds_is_a_transcript_orf_taken_as_annotated(genome):
         TranscriptORF.from_annotation(genome.transcript_by_id("test_rna"))
 
 
+def test_another_genes_annotated_cds_on_a_carrying_transcript(genome):
+    # Like MIURF's CDS in MIEF1's mRNA: same coding path, a different gene's RNA.
+    host = genome.transcript_by_id("host_rna")
+    carried = TranscriptORF.from_annotation(genome.transcript_by_id("mixed_rna"), on=host)
+    assert (carried.orf_id, carried.transcript_id, carried.start, carried.end) == ("mixed_protein.1", "host_rna", 17, 26)
+    assert (carried.gene_id, carried.source_gene_id, carried.source_transcript_id) == ("host_gene", "mixed_gene", "mixed_rna.1")
+    assert not carried.on_source_transcript and host.sequence[17:26] == carried.coding_sequence
+    assert annotated_orfs(host) == (carried,) and carried.equivalent_ids == ()
+    with pytest.raises(ValueError, match="not one contiguous part"):
+        TranscriptORF.from_annotation(genome.transcript_by_id("mixed_rna"), on=genome.transcript_by_id("test_rna"))
+
+
+def test_identical_annotated_placements_are_reported_once_with_their_ids(tmp_path):
+    genome = write_genome(tmp_path / "twins", twin=True)
+    try:
+        coding = genome.transcript_by_id("coding_rna")
+        placement, = annotated_orfs(coding)
+        assert (placement.orf_id, placement.on_source_transcript, placement.equivalent_ids) == (
+            "coding_protein.1", True, ("twin_protein.1",))
+        twin, = annotated_orfs(genome.transcript_by_id("twin_rna"))
+        assert (twin.orf_id, twin.equivalent_ids) == ("twin_protein.1", ("coding_protein.1",))
+        # The proteome keeps both proteins: they are distinct annotated identities.
+        assert {"coding_protein.1", "twin_protein.1"} <= {e.accession for e in Proteome.from_genome(genome)}
+    finally:
+        genome.close()
+
+
 def test_one_transcript_lists_its_annotated_cds_with_extra_orfs_in_rna_order(genome):
     found = extra_orfs(genome, catalog=mixed_catalog())
     transcript = genome.transcript_by_id("mixed_rna")
     assert [o.orf_id for o in found.for_transcript(transcript)] == ["mixed-uorf"]
     every = found.for_transcript(transcript, include_annotated=True)
-    assert [(o.kind, o.orf_id, o.cdna_interval) for o in every] == [
-        ("extra_orf", "mixed-uorf", (0, 9)), ("annotated", "mixed_protein.1", (12, 21))]
+    assert [(o.kind, o.orf_id, o.start, o.end) for o in every] == [
+        ("extra_orf", "mixed-uorf", 0, 9), ("annotated", "mixed_protein.1", 12, 21)]
     assert found.for_transcript("mixed_rna.1", include_annotated=True) == every
+    # The other gene's RNA carries both the uORF and the annotated CDS.
+    on_host = found.for_transcript("host_rna", include_annotated=True)
+    assert [(o.kind, o.orf_id, o.start, o.on_source_transcript) for o in on_host] == [
+        ("extra_orf", "mixed-uorf", 5, False), ("annotated", "mixed_protein.1", 17, False)]
     assert found.for_transcript("coding_rna", include_annotated=True)[0].orf_id == "coding_protein.1"
     assert found.for_transcript("test_rna", include_annotated=True) == ()  # Noncoding, no catalogue ORFs.
     detached = ExtraORFs(found.orfs, (), found.catalog, found.reference)
@@ -235,10 +312,10 @@ def test_overlapping_uses_coding_paths_and_optional_initiation_flanks(genome, ca
     found = extra_orfs(genome, catalog=catalog)
 
     def at(start, end, **kw):
-        return [o.orf_id for o in found.overlapping("chr1", start, end, genome_build="GRCm39", **kw)]
+        return sorted({o.orf_id for o in found.overlapping("chr1", start, end, genome_build="GRCm39", **kw)})
 
     assert at(105, 204) == []  # Intron between the ORF's coding blocks.
-    assert at(100, 103) == ["ms-orf"] and at(217, 218) == ["ms-orf", "ribo-orf"]
+    assert at(100, 103) == ["absent-orf", "ms-orf"] and at(218, 218) == ["ribo-orf"]
     assert at(101, 101) == [] and at(101, 101, include_initiation_context=True) == ["ms-orf"]
     assert found.overlapping("2", 1, 10**6, genome_build="GRCm39") == ()
     with pytest.raises(ValueError, match="Expected genome build GRCm39"):
@@ -247,38 +324,69 @@ def test_overlapping_uses_coding_paths_and_optional_initiation_flanks(genome, ca
         found.overlapping("1", 103, 100, genome_build="GRCm39")
 
 
-def test_compatible_placements_are_opt_in_and_marked(genome, catalog):
-    source = extra_orfs(genome, catalog=catalog)
-    assert {o.placement for o in source} == {"source"} and source.placements == "source"
-    every = extra_orfs(genome, catalog=catalog, placements="all")
-    placed = sorted((o.orf_id, o.transcript.id, o.placement) for o in every)
-    assert placed == [
-        ("absent-orf", "test_rna", "compatible"), ("absent-orf", "test_rna_long", "compatible"),
-        ("ms-orf", "test_rna", "source"), ("ms-orf", "test_rna_long", "compatible"),
-        ("ribo-orf", "test_rna", "source"), ("ribo-orf", "test_rna_long", "compatible")]
-    # The source host failures stay reported even when the path occurs elsewhere.
-    assert {e.orf_id for e in every.excluded} == {"absent-orf", "changed-orf"}
-    long_form = next(o for o in every if o.transcript.id == "test_rna_long" and o.orf_id == "ms-orf")
-    assert long_form.cdna_interval == (8, 23) and long_form.protein_sequence == "MKPG"
-    assert long_form.to_dict()["placement"] == "compatible"
-    with pytest.raises(ValueError, match="identity mismatch"):
-        catalog.get("ms-orf").bind(genome.transcript_by_id("test_rna_long"))  # Source placement is strict.
-    proteome = Proteome.from_genome(genome).with_extra_orfs(catalog=catalog, placements="all")
-    rescued = {e.accession: e for e in proteome if e.kind == "extra_orf"}
-    assert (rescued["absent-orf"].placement, rescued["absent-orf"].transcript_id) == ("compatible", "test_rna.1")
-    assert rescued["ms-orf"].placement == "source" and "placement=" not in rescued["ms-orf"].fasta_header()
-    assert "placement=compatible" in rescued["absent-orf"].fasta_header()
-    assert [e.orf_id for e in proteome.excluded] == ["changed-orf"]
-    layer = dict(proteome.layers[-1])
-    assert (layer["added"], layer["excluded"], layer["compatible_placements"]) == (2, 1, 1)
+def test_snapshot_round_trips_offline_and_rejects_corruption(genome, catalog, tmp_path):
+    proteome = Proteome.from_genome(genome).with_extra_orfs(catalog=catalog).with_viral(virus())
+    path = tmp_path / "proteome.json.gz"
+    identity = proteome.save(path)
+    loaded = Proteome.load(path)
+    assert identity == proteome.identity == loaded.identity and loaded.genome is None
+    assert [e.to_dict() for e in loaded] == [e.to_dict() for e in proteome]
+    assert loaded.excluded == proteome.excluded and loaded.layers == proteome.layers
+    assert [e.kind for e in loaded.host()] == ["annotated"] * 3 + ["extra_orf"] * 2
+    # Identity is content-based: re-saving gives new bytes but the same identity.
+    assert loaded.save(tmp_path / "again.json.gz") == identity
+    with pytest.raises(ValueError, match="bind to a genome"):
+        loaded.with_extra_orfs(catalog=catalog)
+    snapshot = json.loads(gzip.decompress(path.read_bytes()))
+    snapshot["content"]["entries"][0]["sequence"] = "MKA"
+    corrupt = tmp_path / "corrupt.json"
+    corrupt.write_text(json.dumps(snapshot))
+    with pytest.raises(ValueError, match="does not match its identity"):
+        Proteome.load(corrupt)
+
+
+def test_snapshot_identity_follows_content_selection_and_catalogue(genome, catalog):
+    base = Proteome.from_genome(genome)
+    ms = base.with_extra_orfs(catalog=catalog)
+    assert ms.identity == base.with_extra_orfs(catalog=make_catalog()).identity
+    assert ms.identity != base.with_extra_orfs("ribosome", catalog=catalog).identity
+    assert ms.identity != ms.filter(lambda e: e.kind == "annotated").identity
+    # The same selected ORFs from a different catalogue release are a different reference.
+    changed = make_catalog()
+    changed = ORFCatalog(changed.records, dict(changed.metadata, dataset_version="fixture-v2"))
+    assert ms.identity != base.with_extra_orfs(catalog=changed).identity
+
+
+def test_snapshot_rejects_wrong_species_and_reference_declarations(genome, catalog, tmp_path):
+    proteome = Proteome.from_genome(genome).with_extra_orfs(catalog=catalog).with_viral(virus())
+    content = proteome._content()
+
+    def load(content):
+        path = tmp_path / "edited.json"
+        path.write_text(json.dumps(dict(schema="orfdata.proteome.v1", identity=_sha256(content), content=content)))
+        return Proteome.load(path)
+
+    human = json.loads(json.dumps(content))
+    human["entries"][3]["taxon_id"] = 9606
+    with pytest.raises(ValueError, match="from another species"):
+        load(human)
+    orphan = json.loads(json.dumps(content))
+    orphan["layers"] = [layer for layer in orphan["layers"] if layer["role"] != "viral"]
+    with pytest.raises(ValueError, match="no host layer"):
+        load(orphan)
+    elsewhere = json.loads(json.dumps(content))
+    elsewhere["layers"][0]["reference"] = "ref:" + "0" * 64
+    with pytest.raises(ValueError, match="different reference"):
+        load(elsewhere)
 
 
 def test_transcript_lookup_keeps_version_and_reference_identity(ensembl_style):
     # Regression for #62: lookups once stripped versions and ignored the query's genome.
     genome = ensembl_style("main")
     found = extra_orfs(genome, catalog=make_catalog(ENS_RNA))
-    assert [o.orf_id for o in found.for_transcript(ENS_RNA)] == ["ms-orf", "ribo-orf"]
-    assert found.for_transcript(ENS_RNA + ".6") == found.for_transcript(genome.transcript_by_id(ENS_RNA)) == found.orfs
+    on_rna = found.for_transcript(ENS_RNA)
+    assert [o.orf_id for o in on_rna] == ["absent-orf", "ms-orf", "ribo-orf"]
+    assert found.for_transcript(ENS_RNA + ".6") == found.for_transcript(genome.transcript_by_id(ENS_RNA)) == on_rna
     with pytest.raises(ValueError, match=r"ENSMUST00000000001\.999 requested; this reference has ENSMUST00000000001\.6"):
         found.for_transcript(ENS_RNA + ".999")
     for name, changes in (("old-assembly", dict(reference_name="GRCm38")),
@@ -314,8 +422,11 @@ def test_gene_lookup_separates_this_annotation_from_source_labels(ensembl_style)
 
 def test_empty_collection_keeps_its_reference(ensembl_style):
     genome = ensembl_style("main")
-    empty = extra_orfs(genome, catalog=make_catalog("ENSMUST00000099999"))  # Nothing binds.
-    assert len(empty) == 0 and len(empty.excluded) == 4 and empty.reference.genome_build == "GRCm39"
+    nowhere = ORFRecord.from_model(ORFModel("nowhere", "ENSMUST00000099999", "g", "G", "1", "+", ((5000, 5008),), "MK",
+                                            "lncRNA", "GRCm39", 10090, "mus_musculus", source="synthetic"))
+    catalog = ORFCatalog([nowhere], make_catalog().metadata)
+    empty = extra_orfs(genome, catalog=catalog)  # No transcript carries this path.
+    assert len(empty) == 0 and len(empty.excluded) == 1 and empty.reference.genome_build == "GRCm39"
     other = ensembl_style("old-assembly", reference_name="GRCm38")
     with pytest.raises(ValueError, match="not from this collection's reference"):
         empty.for_transcript(other.transcript_by_id(ENS_RNA))
@@ -398,7 +509,11 @@ def test_fasta_export_round_trips_sequences_and_provenance(genome, catalog):
         else:
             records[header] += line
     assert records == {e.fasta_header(): e.sequence for e in proteome}
-    assert ">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE transcript=test_rna.1 contig=1 transcript_biotype=lncRNA orf_type=lncRNA evidence=shotgun" in records
+    assert (">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE "
+            "transcript=test_rna.1 contig=1 transcript_biotype=lncRNA orf_type=lncRNA evidence=shotgun transcripts=2") in records
+    # An ORF whose source transcript is gone names it, beside the transcript that carries it.
+    assert any(h.startswith(">absent-orf ") and "transcript=test_rna.1 " in h and "source_transcript=missing_rna" in h
+               for h in records)
 
 
 def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, monkeypatch):
@@ -410,12 +525,13 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     output = tmp_path / "proteome.fa"
     run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--output", str(output)])
     summary = json.loads(capsys.readouterr().err)
-    assert summary["kinds"] == {"annotated": 3, "extra_orf": 1}
-    assert {e["orf_id"] for e in summary["excluded_orfs"]} == {"absent-orf", "changed-orf"}
-    assert output.read_text().count(">") == 4
-    run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--placements", "all"])
-    captured = capsys.readouterr()
-    assert "placement=compatible" in captured.out and json.loads(captured.err)["kinds"]["extra_orf"] == 2
+    assert summary["kinds"] == {"annotated": 3, "extra_orf": 2}
+    assert [e["orf_id"] for e in summary["excluded_orfs"]] == ["changed-orf"]
+    assert output.read_text().count(">") == 5
+    snapshot = tmp_path / "proteome.json.gz"
+    run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--output", str(output),
+         "--snapshot", str(snapshot)])
+    assert Proteome.load(snapshot).identity == json.loads(capsys.readouterr().err)["identity"]
     run(["proteome", "--species", "mouse", "--release", "1", "--extra-orf-evidence", "none"])
     captured = capsys.readouterr()
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"annotated": 3}

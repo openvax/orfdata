@@ -2,24 +2,29 @@
 
 A proteome starts from the proteins annotated in one PyEnsembl genome. Extra
 ORFs and viral proteins are separate, opt-in layers. Each layer keeps its
-source and selection, and every catalogue ORF that cannot be bound to the
-genome is reported rather than dropped silently.
+source and selection, every transcript a protein is encoded on is kept, and
+every catalogue ORF that cannot be placed on the genome is reported rather
+than dropped silently. A proteome can be saved as a checksummed snapshot and
+reloaded offline.
 """
 
 import gzip
 import hashlib
+import json
 import re
 from bisect import bisect_left, bisect_right
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from types import MappingProxyType
 from typing import Mapping, Optional
 
+from . import _structure
 from .catalog import EVIDENCE_METHODS, load_catalog
-from .model import TranscriptORF, _contig, _species
+from .model import TranscriptORF, _contig, _layout_offset, _species, _versioned
 from .reference import ReferenceContext
 
+SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
 # Evidence labels reported for an included ORF; "mhc" includes human HLA.
 _EVIDENCE_LABELS = ("ribosome", "shotgun", "mhc", "ms_unclassified")
 # PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
@@ -27,46 +32,8 @@ _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 
 
 @dataclass(frozen=True)
-class ProteomeEntry:
-    """One protein sequence and where it came from.
-
-    ``kind`` is ``"annotated"``, ``"extra_orf"`` or ``"viral"``. Gene and
-    transcript fields, including ``transcript_biotype``, come from the genome
-    the proteome was built from; an extra ORF's source labels stay on
-    ``orf.model``. ``orf_type`` is an extra ORF's source class, such as uORF
-    or lncRNA, kept verbatim. ``evidence`` lists its supporting evidence types.
-    ``placement`` is ``"compatible"`` when an extra ORF sits on a transcript
-    other than its source's host, with the identical spliced coding path.
-    """
-
-    accession: str
-    sequence: str
-    kind: str
-    taxon_id: int
-    source: str
-    gene_id: Optional[str] = None
-    gene_name: Optional[str] = None
-    transcript_id: Optional[str] = None
-    contig: Optional[str] = None
-    transcript_biotype: Optional[str] = None
-    orf_type: Optional[str] = None
-    evidence: tuple = ()
-    placement: Optional[str] = None
-    orf: Optional[TranscriptORF] = field(default=None, compare=False, repr=False)
-
-    def fasta_header(self):
-        fields = dict(kind=self.kind, taxon=self.taxon_id, source=self.source, gene=self.gene_id,
-                      gene_name=self.gene_name, transcript=self.transcript_id, contig=self.contig,
-                      transcript_biotype=self.transcript_biotype, orf_type=self.orf_type,
-                      evidence=",".join(self.evidence) or None,
-                      placement=self.placement if self.placement == "compatible" else None)
-        described = " ".join(f"{k}={str(v).replace(' ', '_')}" for k, v in fields.items() if v is not None)
-        return f">{self.accession} {described}"
-
-
-@dataclass(frozen=True)
-class ExcludedORF:
-    """A selected catalogue ORF that did not bind to this genome, and why."""
+class BindingFailure:
+    """A catalogue ORF that did not bind to a transcript, and why."""
 
     orf_id: str
     transcript_id: str
@@ -74,16 +41,132 @@ class ExcludedORF:
 
 
 @dataclass(frozen=True)
-class ExtraORFs:
-    """Catalogue ORFs bound to the transcripts of one genome and reference.
+class Occurrence:
+    """One transcript encoding a protein, with the coding path's coordinates.
 
-    ``reference`` is the resolved reference context, kept even when no ORF
-    binds. Lookups never return an ORF bound to another reference or version.
-    ``placements`` is ``"source"`` (each ORF on its source's host transcript)
-    or ``"all"`` (also on every other transcript with the identical spliced
-    coding path, as ``placement="compatible"``). ``excluded`` lists selected
-    ORFs whose source host did not bind; with ``"all"``, some of those still
-    have compatible placements.
+    ``start`` and ``end`` slice the transcript's spliced sequence; the genomic
+    ``coding_blocks`` are 1-based inclusive. ``on_source_transcript`` says
+    whether the protein's source defines it on this transcript.
+    """
+
+    transcript_id: str
+    gene_id: str
+    gene_name: Optional[str]
+    transcript_biotype: Optional[str]
+    contig: str
+    strand: str
+    start: int
+    end: int
+    coding_blocks: tuple
+    on_source_transcript: bool
+
+    @classmethod
+    def from_orf(cls, orf):
+        transcript = orf.transcript
+        return cls(_versioned(transcript), transcript.gene_id, transcript.gene_name or None,
+                   transcript.biotype, transcript.contig, transcript.strand, orf.start, orf.end,
+                   tuple(tuple(b) for b in orf.coding_blocks), orf.on_source_transcript)
+
+
+_OCCURRENCE_FIELDS = ("transcript_id", "gene_id", "gene_name", "transcript_biotype", "contig", "strand",
+                      "start", "end", "coding_blocks", "on_source_transcript")
+
+
+@dataclass(frozen=True)
+class ProteomeEntry:
+    """One protein: its sequence, identity, source and every transcript encoding it.
+
+    ``kind`` is ``"annotated"``, ``"extra_orf"`` or ``"viral"``. ``accession``
+    is the versioned protein ID, the source ORF ID or the viral protein ID.
+    ``occurrences`` lists every transcript of this genome encoding the protein,
+    the source's own transcript first; viral proteins have none. ``gene_id``,
+    ``gene_name``, ``transcript_id``, ``contig`` and ``transcript_biotype``
+    describe the first occurrence. ``source_binding`` explains why an extra ORF
+    could not be placed on its source's own transcript; it is None when it was.
+    ``orf_type`` is an extra ORF's source category, kept verbatim, and
+    ``evidence`` lists its supporting evidence types; ``evidence_detail`` holds
+    the source's evidence records.
+    """
+
+    accession: str
+    sequence: str
+    kind: str
+    taxon_id: int
+    source: str
+    orf_type: Optional[str] = None
+    evidence: tuple = ()
+    evidence_detail: Optional[Mapping] = field(default=None, compare=False)
+    occurrences: tuple = ()
+    source_transcript_id: Optional[str] = None
+    source_binding: Optional[str] = None
+    orf: Optional[TranscriptORF] = field(default=None, compare=False, repr=False)
+
+    @property
+    def _first(self):
+        return self.occurrences[0] if self.occurrences else None
+
+    @property
+    def gene_id(self):
+        return self._first and self._first.gene_id
+
+    @property
+    def gene_name(self):
+        return self._first and self._first.gene_name
+
+    @property
+    def transcript_id(self):
+        return self._first and self._first.transcript_id
+
+    @property
+    def contig(self):
+        return self._first and self._first.contig
+
+    @property
+    def transcript_biotype(self):
+        return self._first and self._first.transcript_biotype
+
+    def fasta_header(self):
+        first = self._first
+        fields = dict(kind=self.kind, taxon=self.taxon_id, source=self.source, gene=self.gene_id,
+                      gene_name=self.gene_name, transcript=self.transcript_id, contig=self.contig,
+                      transcript_biotype=self.transcript_biotype, orf_type=self.orf_type,
+                      evidence=",".join(self.evidence) or None,
+                      source_transcript=self.source_transcript_id
+                      if first is not None and not first.on_source_transcript else None,
+                      transcripts=len(self.occurrences) if len(self.occurrences) > 1 else None)
+        described = " ".join(f"{k}={str(v).replace(' ', '_')}" for k, v in fields.items() if v is not None)
+        return f">{self.accession} {described}"
+
+    def to_dict(self):
+        return dict(accession=self.accession, sequence=self.sequence, kind=self.kind,
+                    taxon_id=self.taxon_id, source=self.source, orf_type=self.orf_type,
+                    evidence=list(self.evidence), evidence_detail=self.evidence_detail,
+                    occurrences=[[getattr(o, name) for name in _OCCURRENCE_FIELDS] for o in self.occurrences],
+                    source_transcript_id=self.source_transcript_id, source_binding=self.source_binding)
+
+    @classmethod
+    def from_dict(cls, record):
+        record = dict(record)
+        record["evidence"] = tuple(record.get("evidence", ()))
+        occurrences = []
+        for values in record.get("occurrences", ()):
+            o = dict(zip(_OCCURRENCE_FIELDS, values))
+            o["coding_blocks"] = tuple(tuple(b) for b in o["coding_blocks"])
+            occurrences.append(Occurrence(**o))
+        record["occurrences"] = tuple(occurrences)
+        return cls(**record)
+
+
+@dataclass(frozen=True)
+class ExtraORFs:
+    """Catalogue ORFs on the transcripts of one genome and reference.
+
+    Each ORF appears once for every transcript carrying its exact spliced
+    coding path and protein; ``orf.on_source_transcript`` marks the transcript
+    its source names. ``source_failures`` lists ORFs whose source transcript
+    did not carry them, and ``excluded`` those found on no transcript at all.
+    ``reference`` is kept even when nothing binds. Lookups never return an ORF
+    bound to another reference or version.
     """
 
     orfs: tuple
@@ -92,18 +175,16 @@ class ExtraORFs:
     reference: ReferenceContext
     evidence: Optional[str] = None
     filters: Mapping = field(default_factory=dict)
-    placements: str = "source"
+    source_failures: tuple = ()
     genome: object = field(default=None, repr=False, compare=False)
 
     def __post_init__(self):
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("ExtraORFs requires its resolved ReferenceContext")
-        if any(o.context.key != self.reference.key for o in self.orfs):
+        if any(o.context != self.reference and o.context.key != self.reference.key for o in self.orfs):
             raise ValueError("Every ORF in a collection must be bound to its reference")
         if any(o.kind != "extra_orf" for o in self.orfs):
             raise ValueError("ExtraORFs holds catalogue ORFs; annotated CDSs come from the transcript")
-        if self.placements not in ("source", "all"):
-            raise ValueError("placements must be 'source' or 'all'")
         # Per-contig spans, including initiation flanks, sorted for interval lookup.
         spans = {}
         for orf in self.orfs:
@@ -125,14 +206,15 @@ class ExtraORFs:
         return len(self.orfs)
 
     def for_transcript(self, transcript, *, include_annotated=False):
-        """Bound ORFs on one transcript of this reference, in RNA order.
+        """ORFs on one transcript of this reference, in RNA order.
 
         A string matches a transcript ID exactly. An unversioned Ensembl ID
         means this annotation's version; a versioned one must match it. A
         transcript object must come from this reference and version.
         Incompatible requests raise rather than return another reference's ORF.
-        ``include_annotated=True`` adds the transcript's own annotated CDS, if
-        it has one, as a ``TranscriptORF`` with ``kind="annotated"``.
+        ``include_annotated=True`` adds every annotated CDS on this transcript:
+        its own, and any other transcript's CDS whose spliced coding path it
+        carries, such as a bicistronic RNA's upstream protein.
         """
         if isinstance(transcript, str):
             found = tuple(o for o in self.orfs
@@ -144,14 +226,13 @@ class ExtraORFs:
                 raise ValueError(f"Transcript {_versioned(transcript)} differs from this reference's "
                                  f"{_versioned(found[0].transcript)}")
         if include_annotated:
-            parent = transcript if not isinstance(transcript, str) else (
+            host = transcript if not isinstance(transcript, str) else (
                 found[0].transcript if found else self._transcript_by_id(transcript))
-            if parent.protein_id:
-                found += (TranscriptORF.from_annotation(parent, context=self.reference),)
-        return tuple(sorted(found, key=lambda o: (o.cdna_interval, o.orf_id)))
+            found += annotated_orfs(host, context=self.reference)
+        return tuple(sorted(found, key=lambda o: (o.start, o.end, o.orf_id)))
 
     def overlapping(self, contig, start, end, *, genome_build, include_initiation_context=False):
-        """Bound ORFs whose coding path overlaps a 1-based inclusive interval.
+        """ORFs whose coding path overlaps a 1-based inclusive genomic interval.
 
         ``genome_build`` must be this collection's assembly. Introns between
         coding blocks do not count. With ``include_initiation_context``, an
@@ -171,15 +252,8 @@ class ExtraORFs:
                 found.append(orf)
         return tuple(found)
 
-    def _transcript_by_id(self, transcript_id):
-        if self.genome is None:
-            raise ValueError("Pass a transcript object: this collection has no genome to resolve IDs")
-        transcript = self.genome.transcript_by_id(transcript_id)
-        self._check_genome(transcript, "Transcript")
-        return transcript
-
     def for_gene(self, gene, *, source=False):
-        """Bound ORFs on transcripts of one gene in this genome.
+        """ORFs on transcripts of one gene in this genome.
 
         ``gene`` is a gene object, ID or name, resolved like transcripts. With
         ``source=True``, a string instead matches the source catalogue's own
@@ -200,11 +274,48 @@ class ExtraORFs:
                              f"{_versioned(found[0].transcript.gene)}")
         return found
 
+    def _transcript_by_id(self, transcript_id):
+        if self.genome is None:
+            raise ValueError("Pass a transcript object: this collection has no genome to resolve IDs")
+        transcript = self.genome.transcript_by_id(transcript_id)
+        self._check_genome(transcript, "Transcript")
+        return transcript
+
     def _check_genome(self, feature, label):
         try:
             self.reference.validate_genome(feature.genome)
         except ValueError as error:
             raise ValueError(f"{label} {feature.id} is not from this collection's reference: {error}") from None
+
+
+def annotated_orfs(transcript, *, context=None):
+    """Every annotated CDS on one transcript, as ``TranscriptORF`` objects.
+
+    That is the transcript's own CDS and any other transcript's CDS whose exact
+    spliced coding path and sequence this transcript carries, such as another
+    gene's protein in a bicistronic RNA. Annotated proteins with an identical
+    placement and sequence are reported once: the transcript's own if it is
+    among them, with the others' protein IDs in ``equivalent_ids``.
+    """
+    found = {}
+    candidates = transcript.genome.transcripts_at_locus(
+        transcript.contig, transcript.start, transcript.end, strand=transcript.strand)
+    for other in candidates:
+        if not other.protein_id:
+            continue
+        try:
+            orf = TranscriptORF.from_annotation(
+                other, on=None if other.id == transcript.id else transcript, context=context)
+        except ValueError:
+            continue  # This transcript does not carry that CDS.
+        found.setdefault((orf.start, orf.end, orf.protein_sequence), []).append(orf)
+    placements = []
+    for same in found.values():
+        same.sort(key=lambda o: (not o.on_source_transcript, o.source_transcript_id))
+        first = same[0]
+        first._set(equivalent_ids=tuple(o.orf_id for o in same[1:]))
+        placements.append(first)
+    return tuple(sorted(placements, key=lambda o: (o.start, o.end, o.orf_id)))
 
 
 @dataclass(frozen=True)
@@ -263,19 +374,35 @@ class Proteome:
 
     Start with :meth:`from_genome`; add layers with :meth:`with_extra_orfs` and
     :meth:`with_viral`. Each method returns a new proteome. ``layers`` records
-    every addition and ``excluded`` the selected ORFs that did not bind.
+    every addition with its role (``"host"``, ``"viral"`` or ``"filter"``),
+    source and selection; ``excluded`` lists selected ORFs found on no
+    transcript. :meth:`save` writes a checksummed snapshot that :meth:`load`
+    reads back offline, and ``identity`` changes whenever the content does.
     """
 
     def __init__(self, reference, entries, layers=(), excluded=(), genome=None):
+        if not isinstance(reference, ReferenceContext):
+            raise TypeError("A proteome requires a ReferenceContext")
         self.reference = reference
         self.entries = tuple(entries)
-        self.layers = tuple(MappingProxyType(dict(layer)) for layer in layers)
+        self.layers = tuple(MappingProxyType(_json(dict(layer))) for layer in layers)
         self.excluded = tuple(excluded)
         self.genome = genome
         accessions = Counter(e.accession for e in self.entries)
         duplicated = sorted(a for a, n in accessions.items() if n > 1)
         if duplicated:
             raise ValueError("Duplicate proteome accessions: " + ", ".join(duplicated[:5]))
+        hosts = {layer["source"]: layer.get("host_taxon_ids", ()) for layer in self.layers
+                 if layer["role"] == "viral"}
+        for entry in self.entries:
+            if entry.kind == "viral":
+                if reference.taxon_id not in hosts.get(entry.source, ()):
+                    raise ValueError(f"Viral protein {entry.accession} has no host layer for this species")
+            elif entry.taxon_id != reference.taxon_id:
+                raise ValueError(f"Host protein {entry.accession} is from another species")
+        for layer in self.layers:
+            if layer.get("reference") not in (None, reference.key):
+                raise ValueError("A layer declares a different reference")
 
     @classmethod
     def from_genome(cls, genome, *, context=None):
@@ -289,26 +416,29 @@ class Proteome:
         reference = ReferenceContext.from_genome(genome, context=context)
         source = f"{reference.annotation_name}:{reference.annotation_version}"
         entries = []
-        for transcript in genome.transcripts():
-            if not transcript.protein_id:
-                continue
-            sequence = transcript.protein_sequence
+        for structure in _coding_structures(genome):
+            accession = structure.protein_id + (
+                "" if structure.protein_version is None else f".{structure.protein_version}")
+            sequence = genome.protein_sequence(accession)
             if not sequence:
                 continue
-            version = transcript.protein.protein_version
+            offset = _layout_offset(structure.layout, structure.strand, structure.cds_blocks)
+            length = sum(b - a + 1 for a, b in structure.cds_blocks)
+            occurrence = Occurrence(
+                structure.versioned_id, structure.gene_id, structure.gene_name, structure.biotype,
+                structure.contig, structure.strand, offset, None if offset is None else offset + length,
+                structure.cds_blocks if offset is not None else (), True)
             entries.append(ProteomeEntry(
-                accession=transcript.protein_id + ("" if version is None else f".{version}"),
-                sequence=sequence, kind="annotated", taxon_id=reference.taxon_id, source=source,
-                gene_id=transcript.gene_id, gene_name=transcript.gene_name or None,
-                transcript_id=getattr(transcript, "versioned_id", transcript.id),
-                contig=transcript.contig, transcript_biotype=transcript.biotype,
-            ))
-        layer = dict(kind="annotated", source=source, reference=reference.key, added=len(entries))
+                accession=accession, sequence=sequence, kind="annotated", taxon_id=reference.taxon_id,
+                source=source, occurrences=(occurrence,), source_transcript_id=structure.versioned_id))
+        entries.sort(key=lambda e: e.source_transcript_id)
+        layer = dict(kind="annotated", role="host", source=source, reference=reference.key,
+                     added=len(entries))
         return cls(reference, entries, (layer,), genome=genome)
 
     def with_extra_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
-                        require_unique=False, require_reviewed=False, placements="source"):
-        """Add catalogue ORFs with the chosen evidence that bind to this genome.
+                        require_unique=False, require_reviewed=False):
+        """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
         ``evidence`` is ``"ms"`` (any supporting MS peptide), ``"ribosome"``,
         ``"shotgun"``, ``"mhc"``, ``"hla"``, ``"ms_unclassified"``, or ``None``
@@ -316,39 +446,43 @@ class Proteome:
         as in ``ORFCatalog.query``. Without ``catalog``, the catalogue covering
         this species and assembly is used; a species without one raises.
 
-        Each ORF is added once. With ``placements="all"``, an ORF whose source
-        host transcript does not bind is placed on another transcript with the
-        identical spliced coding path instead, and marked ``"compatible"``.
+        Each ORF becomes one entry listing every transcript that carries its
+        exact spliced coding path. An ORF whose source transcript is gone or
+        changed is still added when another transcript carries it, with
+        ``source_binding`` saying why; ORFs found on no transcript are excluded.
         """
         if self.genome is None:
             raise ValueError("Extra ORFs bind to a genome; build this proteome with from_genome")
         found = extra_orfs(self.genome, evidence, catalog=catalog, context=self.reference,
                            require_resolved=require_resolved, require_unique=require_unique,
-                           require_reviewed=require_reviewed, placements=placements)
-        chosen = {}
-        for orf in sorted(found, key=lambda o: o.placement != "source"):
-            chosen.setdefault(orf.orf_id, orf)
-        excluded = tuple(e for e in found.excluded if e.orf_id not in chosen)
+                           require_reviewed=require_reviewed)
+        failures = {f.orf_id: f.reason for f in found.source_failures}
+        grouped = {}
+        for orf in found:
+            grouped.setdefault(orf.orf_id, []).append(orf)
         source = _catalog_source(found.catalog)
         annotated = {e.sequence for e in self.entries if e.kind == "annotated"}
-        added = tuple(ProteomeEntry(
-            accession=orf.model.orf_id, sequence=orf.protein_sequence, kind="extra_orf",
-            taxon_id=orf.model.taxon_id, source=source, gene_id=orf.transcript.gene_id,
-            gene_name=orf.transcript.gene_name or None,
-            transcript_id=getattr(orf.transcript, "versioned_id", orf.transcript.id),
-            contig=orf.transcript.contig, transcript_biotype=orf.transcript.biotype,
-            orf_type=orf.model.orf_type,
-            evidence=tuple(m for m in _EVIDENCE_LABELS if orf.evidence.has_evidence(m)),
-            placement=orf.placement, orf=orf,
-        ) for orf in chosen.values())
-        layer = dict(kind="extra_orf", source=source, evidence=evidence, filters=dict(found.filters),
-                     selected=len(chosen) + len(excluded), added=len(added), excluded=len(excluded),
+        added = []
+        for orf_id, orfs in grouped.items():
+            orfs.sort(key=lambda o: (not o.on_source_transcript, _versioned(o.transcript)))
+            first = orfs[0]
+            added.append(ProteomeEntry(
+                accession=orf_id, sequence=first.protein_sequence, kind="extra_orf",
+                taxon_id=first.model.taxon_id, source=source, orf_type=first.model.orf_type,
+                evidence=tuple(m for m in _EVIDENCE_LABELS if first.evidence.has_evidence(m)),
+                evidence_detail=_json(first.evidence.to_dict()),
+                occurrences=tuple(Occurrence.from_orf(o) for o in orfs),
+                source_transcript_id=first.model.transcript_id,
+                source_binding=failures.get(orf_id), orf=first,
+            ))
+        layer = dict(kind="extra_orf", role="host", source=source, reference=self.reference.key,
+                     catalog=_catalog_identity(found.catalog), evidence=evidence,
+                     filters=dict(found.filters), selected=len(added) + len(found.excluded),
+                     added=len(added), excluded=len(found.excluded),
+                     not_on_source_transcript=sum(e.source_binding is not None for e in added),
                      identical_to_annotated=sum(e.sequence in annotated for e in added))
-        if placements != "source":
-            layer.update(placements=placements,
-                         compatible_placements=sum(o.placement == "compatible" for o in chosen.values()))
-        return Proteome(self.reference, self.entries + added, self.layers + (layer,),
-                        self.excluded + excluded, self.genome)
+        return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
+                        self.excluded + found.excluded, self.genome)
 
     def with_viral(self, viral):
         """Add a viral proteome whose recorded hosts include this species."""
@@ -362,7 +496,7 @@ class Proteome:
         source = f"viral:{viral.name}"
         added = tuple(ProteomeEntry(accession, sequence, "viral", viral.taxon_id, source)
                       for accession, sequence in viral.proteins)
-        layer = dict(kind="viral", source=source, taxon_id=viral.taxon_id,
+        layer = dict(kind="viral", role="viral", source=source, taxon_id=viral.taxon_id,
                      host_taxon_ids=sorted(viral.host_taxon_ids), host_source=viral.host_source,
                      provenance=viral.source, source_sha256=viral.source_sha256, added=len(added))
         return Proteome(self.reference, self.entries + added, self.layers + (layer,),
@@ -371,9 +505,20 @@ class Proteome:
     def filter(self, predicate, *, description=None):
         """Keep entries for which ``predicate(entry)`` is true; layers are retained."""
         kept = tuple(e for e in self.entries if predicate(e))
-        layer = dict(kind="filter", description=description, removed=len(self.entries) - len(kept),
-                     added=0)
+        layer = dict(kind="filter", role="filter", description=description,
+                     removed=len(self.entries) - len(kept), added=0)
         return Proteome(self.reference, kept, self.layers + (layer,), self.excluded, self.genome)
+
+    def host(self):
+        """The host's own proteins: annotated and extra ORFs, without viral layers."""
+        return self.filter(lambda e: e.kind != "viral", description="host proteins")
+
+    def by_sequence(self):
+        """Entries grouped by identical protein sequence, in first-seen order."""
+        groups = {}
+        for entry in self.entries:
+            groups.setdefault(entry.sequence, []).append(entry)
+        return {sequence: tuple(entries) for sequence, entries in groups.items()}
 
     def __iter__(self):
         return iter(self.entries)
@@ -384,11 +529,53 @@ class Proteome:
     def summary(self):
         """Counts by kind and layer, without sequences."""
         return dict(
-            reference=self.reference.to_dict(), entries=len(self.entries),
+            reference=self.reference.to_dict(), identity=self.identity, entries=len(self.entries),
             distinct_sequences=len({e.sequence for e in self.entries}),
             kinds=dict(Counter(e.kind for e in self.entries)),
             layers=[dict(layer) for layer in self.layers], excluded=len(self.excluded),
         )
+
+    def _content(self):
+        return dict(
+            reference=self.reference.to_dict(),
+            layers=[dict(layer) for layer in self.layers],
+            entries=[e.to_dict() for e in self.entries],
+            excluded=[asdict(e) for e in self.excluded],
+        )
+
+    @property
+    def identity(self):
+        """SHA-256 of the canonical content: sequences, occurrences, layers and exclusions."""
+        identity = self.__dict__.get("_identity")
+        if identity is None:
+            identity = _sha256(self._content())
+            self.__dict__["_identity"] = identity
+        return identity
+
+    def save(self, path):
+        """Write a gzipped JSON snapshot that :meth:`load` reads offline."""
+        content = self._content()
+        snapshot = dict(schema=SNAPSHOT_SCHEMA, identity=_sha256(content), content=content)
+        with gzip.open(path, "wt", encoding="utf-8", compresslevel=6) as handle:
+            json.dump(snapshot, handle, sort_keys=True, separators=(",", ":"))
+        return snapshot["identity"]
+
+    @classmethod
+    def load(cls, path):
+        """Read a snapshot offline; corrupted or inconsistent content raises."""
+        raw = Path(path).read_bytes()
+        snapshot = json.loads(gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw)
+        if snapshot.get("schema") != SNAPSHOT_SCHEMA:
+            raise ValueError(f"Unsupported proteome snapshot schema: {snapshot.get('schema')!r}")
+        content = snapshot["content"]
+        if _sha256(content) != snapshot.get("identity"):
+            raise ValueError("Proteome snapshot content does not match its identity")
+        proteome = cls(ReferenceContext(**content["reference"]),
+                       (ProteomeEntry.from_dict(e) for e in content["entries"]),
+                       content["layers"], (BindingFailure(**e) for e in content["excluded"]))
+        if proteome.identity != snapshot["identity"]:
+            raise ValueError("Proteome snapshot does not round-trip to its identity")
+        return proteome
 
     def write_fasta(self, path_or_handle, *, width=60):
         """Write every entry as FASTA with a descriptive header."""
@@ -405,20 +592,14 @@ class Proteome:
 
 
 def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_resolved=False,
-               require_unique=False, require_reviewed=False, placements="source"):
-    """Bind catalogue ORFs to every matching transcript of a PyEnsembl genome.
+               require_unique=False, require_reviewed=False):
+    """Place catalogue ORFs on every transcript of a PyEnsembl genome that carries them.
 
-    Without ``catalog``, the catalogue covering this species and assembly is
-    used; a species without one raises. ``evidence=None`` selects every
-    catalogue ORF. Selected ORFs whose source transcript is absent or disagrees
-    with this annotation are returned in ``excluded`` with the reason.
-    ``placements="all"`` also binds each ORF to every other transcript with the
-    identical spliced coding path and sequence, as ``placement="compatible"``;
-    that finds coding effects on sibling isoforms but is not evidence of
-    translation on them.
+    A transcript carries an ORF when it contains the ORF's exact spliced coding
+    path and its sequence translates to the ORF's protein. Without ``catalog``,
+    the catalogue covering this species and assembly is used; a species
+    without one raises. ``evidence=None`` selects every catalogue ORF.
     """
-    if placements not in ("source", "all"):
-        raise ValueError("placements must be 'source' or 'all'")
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)
     if catalog is None:
@@ -432,45 +613,117 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
         raise ValueError(f"Unknown evidence method: {evidence}")
     filters = {k: v for k, v in dict(require_resolved=require_resolved, require_unique=require_unique,
                                      require_reviewed=require_reviewed).items() if v}
-    bound, excluded, transcripts = [], [], {}
-    for record in catalog.query(evidence=evidence, **filters):
-        transcript_id = record.transcript_id.split(".")[0]
+    records = catalog.query(evidence=evidence, **filters)
+    spans = {r.orf_id: (r.contig, r.strand, r.coding_blocks[0][0], r.coding_blocks[-1][1]) for r in records}
+    try:
+        containing = _structure.transcripts_containing(genome, spans)
+    except AttributeError:  # No SQLite index to read in bulk: query each locus.
+        containing = {}
+        for orf_id, (contig, strand, start, end) in spans.items():
+            try:
+                containing[orf_id] = genome.transcript_ids_at_locus(contig, start, end, strand=strand)
+            except ValueError:
+                containing[orf_id] = ()
+    candidates = {r.orf_id: sorted(set(containing[r.orf_id]) | {r.transcript_id.split(".")[0]})
+                  for r in records}
+    layouts = _layouts(genome, {i for ids in candidates.values() for i in ids})
+    transcripts = {}
+
+    def transcript_by_id(transcript_id):
         if transcript_id not in transcripts:
             try:
                 transcripts[transcript_id] = genome.transcript_by_id(transcript_id)
             except ValueError:
                 transcripts[transcript_id] = None
-        transcript = transcripts[transcript_id]
-        if transcript is None:
-            excluded.append(ExcludedORF(record.orf_id, record.transcript_id,
-                                        "Transcript absent from this annotation"))
+        return transcripts[transcript_id]
+
+    bound, failures, excluded = [], [], []
+    for record in records:
+        model = record.model
+        placed, reason = [], None
+        source_id = record.transcript_id.split(".")[0]
+        source = transcript_by_id(source_id) if source_id in layouts else None
+        if source is None:
+            reason = "Transcript absent from this annotation"
         else:
             try:
-                bound.append(record.bind(transcript, context=reference))
+                placed.append(TranscriptORF(record, source, context=reference, _layout=layouts[source_id]))
             except ValueError as error:
-                excluded.append(ExcludedORF(record.orf_id, record.transcript_id, str(error)))
-        if placements == "all":
-            bound.extend(_compatible_placements(genome, record, reference, transcript_id))
+                reason = str(error)
+        for transcript_id in candidates[record.orf_id]:
+            layout = layouts.get(transcript_id)
+            if transcript_id == source_id or layout is None:
+                continue
+            if _layout_offset(layout, model.strand, model.coding_blocks) is None:
+                continue
+            transcript = transcript_by_id(transcript_id)
+            try:
+                placed.append(TranscriptORF(record, transcript, context=reference, any_transcript=True,
+                                            _layout=layout))
+            except ValueError:
+                continue  # Same path, different sequence or protein.
+        if reason is not None:
+            failures.append(BindingFailure(record.orf_id, record.transcript_id, reason))
+            if not placed:
+                excluded.append(failures[-1])
+        bound.extend(placed)
     return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, evidence,
-                     MappingProxyType(filters), placements, genome)
+                     MappingProxyType(filters), tuple(failures), genome)
 
 
-def _compatible_placements(genome, record, reference, source_transcript_id):
-    """Bind a record to other transcripts carrying its exact spliced coding path."""
-    model = record.model
-    candidates = genome.transcripts_at_locus(
-        model.contig, model.coding_blocks[0][0], model.coding_blocks[-1][1], strand=model.strand)
-    for transcript in sorted(candidates, key=lambda t: t.id):
-        if transcript.id == source_transcript_id:
-            continue
-        try:
-            yield record.bind(transcript, context=reference, placement="compatible")
-        except ValueError:
-            continue  # Not a carrier of this exact path and sequence.
+def _coding_structures(genome):
+    """Exon and CDS structure of every transcript with an annotated protein."""
+    try:
+        found = [s for s in _structure.structures(genome) if s.protein_id]
+    except AttributeError:  # No SQLite index to read in bulk: use transcript objects.
+        found = [_structure_from_transcript(t) for t in genome.transcripts() if t.protein_id]
+    return found
 
 
-def _versioned(feature):
-    return str(getattr(feature, "versioned_id", None) or feature.id)
+def _layouts(genome, transcript_ids):
+    """Exon layouts by transcript ID, for the IDs this genome has."""
+    try:
+        return {s.transcript_id: s.layout for s in _structure.structures(genome, transcript_ids=transcript_ids)}
+    except AttributeError:
+        layouts = {}
+        for transcript_id in transcript_ids:
+            try:
+                layouts[transcript_id] = _structure_from_transcript(genome.transcript_by_id(transcript_id)).layout
+            except ValueError:
+                continue
+        return layouts
+
+
+def _structure_from_transcript(transcript):
+    from .model import _exon_layout, _merge
+
+    exons, offsets, length = _exon_layout(transcript)
+    version = getattr(transcript.protein, "protein_version", None) if transcript.protein_id else None
+    return _structure.Structure(
+        transcript.id, _versioned(transcript), transcript.gene_id, transcript.gene_name or None,
+        transcript.biotype, transcript.contig, transcript.strand, tuple(exons), tuple(offsets), length,
+        _merge(transcript.coding_sequence_position_ranges) if transcript.protein_id else (),
+        transcript.protein_id, version, transcript.contains_start_codon if transcript.protein_id else False,
+        transcript.contains_stop_codon if transcript.protein_id else False)
+
+
+def _json(value):
+    """Plain JSON form, so identities do not depend on tuples versus lists."""
+    return json.loads(json.dumps(value))
+
+
+def _sha256(content):
+    text = json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(text.encode("ascii")).hexdigest()
+
+
+def _catalog_identity(catalog):
+    identity = getattr(catalog, "_orfdata_identity", None)
+    if identity is None:
+        identity = dict(source=_catalog_source(catalog), records=len(catalog.records),
+                        sha256=_sha256(catalog.to_dict()))
+        catalog._orfdata_identity = identity
+    return identity
 
 
 def _same_id(query, bare, versioned):
