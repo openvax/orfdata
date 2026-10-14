@@ -1,3 +1,16 @@
+# 0.21.0
+
+- Set Ribo-seq and MS stringency separately with evidence rules (#73):
+  `RiboSeq(min_studies=2)` and `MS(min_peptides=2, unique=True, methods=...)`,
+  combined with `&` (both) or `|` (either). `with_extra_orfs`, `extra_orfs`,
+  `ORFCatalog.query` and `has_evidence` accept them. Method names such as
+  `"ms"` and `"hla"` are the simplest rules and select exactly as before.
+  Peptides count once per sequence; a source's aggregate count stands for one
+  observation. Proteome layers store the rule as data, replacing the separate
+  `filters` field, and `ExtraORFs.evidence` holds the rule.
+- `orfdata proteome` takes `--min-ribo-seq-studies`, `--min-ms-peptides`,
+  `--ms-methods` and `--either`.
+
 # 0.20.0
 
 - Describe ORFs by RNA coordinates with `TranscriptORF.at`: declared non-AUG

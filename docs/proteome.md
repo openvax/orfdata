@@ -70,6 +70,41 @@ properties come from different sources, no bundled peptide has both.
 `require_resolved` excludes support that consists only of aggregate counts.
 See [ORFs and evidence](reference.md#evidence) for the full definitions.
 
+### Separate Ribo-seq and MS stringency
+
+For more control, pass a rule. `RiboSeq(min_studies=n)` needs ribosome
+profiling in at least `n` independent studies the source names, and
+`MS(min_peptides=n, unique=..., reviewed=..., methods=...)` needs at least `n`
+distinct supporting peptide sequences. `&` requires both rules and `|` accepts
+either:
+
+```python
+from orfdata import MS, RiboSeq
+
+annotated.with_extra_orfs(RiboSeq(min_studies=2))                        # replicated Ribo-seq
+annotated.with_extra_orfs(RiboSeq(min_studies=2) & MS())                 # Ribo-seq and MS
+annotated.with_extra_orfs(RiboSeq(min_studies=2) | MS())                 # either
+annotated.with_extra_orfs(MS(methods=("shotgun", "ms_unclassified")))     # not HLA-only
+```
+
+| Rule | Human ORFs | Encoded in Ensembl 115 |
+| --- | ---: | ---: |
+| `RiboSeq(min_studies=2)` | 3,085 | 3,072 |
+| `RiboSeq(min_studies=3)` | 1,675 | 1,671 |
+| `MS(min_peptides=2)` | 916 | 914 |
+| `MS(methods=("shotgun", "ms_unclassified"))` | 610 | 607 |
+| `RiboSeq(min_studies=2) & MS()` | 1,296 | 1,293 |
+| `RiboSeq(min_studies=2) & MS(min_peptides=2)` | 600 | 599 |
+| `RiboSeq(min_studies=2) \| MS()` | 3,975 | 3,960 |
+
+GENCODE's `c…riboseqorf…` IDs are the 3,085 ORFs seen in two or more studies.
+Each method name above is the simplest rule: `"ms"` is `MS()`, `"hla"` is
+`MS(methods=("hla",))` and `"ribosome"` is `RiboSeq()`. A peptide seen by two
+assay types counts once. A source's aggregate count stands for one observation:
+it satisfies `RiboSeq()` and `MS()` but never `min_studies` or `min_peptides`
+above 1, `unique`, `reviewed` or `resolved=True`. The layer stores the rule,
+so a snapshot records exactly how its ORFs were chosen.
+
 A translated ORF or a detected peptide does not by itself establish a stable,
 functional protein. Missing evidence does not establish that an ORF is never
 translated.
@@ -199,7 +234,17 @@ orfdata proteome --species mouse --release 115 --extra-orf-evidence none
 `--extra-orf-evidence` accepts the evidence names above, `all` for every
 catalogue ORF, or `none` for annotated proteins only. `--require-unique`,
 `--require-reviewed`, `--require-resolved` and `--catalog FILE` match the Python
-options. The FASTA goes to `--output` or standard output; `--snapshot FILE`
+options. Rules have their own options:
+
+```sh
+orfdata proteome --species human --release 115 --min-ribo-seq-studies 2 --min-ms-peptides 1
+orfdata proteome --species human --release 115 --min-ribo-seq-studies 3 --min-ms-peptides 2 --either
+orfdata proteome --species human --release 115 --min-ms-peptides 1 --ms-methods shotgun,ms_unclassified
+```
+
+Given both a Ribo-seq and an MS requirement, an ORF needs both unless
+`--either` is set. `--require-unique` and `--require-reviewed` refine the MS
+requirement. The FASTA goes to `--output` or standard output; `--snapshot FILE`
 also saves a snapshot. A JSON summary of the layers, identity and excluded ORFs
 goes to standard error.
 

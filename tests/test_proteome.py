@@ -13,6 +13,7 @@ import pytest
 from pyensembl import Genome
 
 from orfdata import (
+    MS,
     ExtraORFs,
     InitiationContext,
     ORFCatalog,
@@ -23,6 +24,7 @@ from orfdata import (
     Proteome,
     ReferenceContext,
     ReferenceORF,
+    RiboSeq,
     TranscriptORF,
     ViralProteome,
     annotated_orfs,
@@ -220,7 +222,7 @@ def test_proteome_entries_keep_every_occurrence_and_source_binding(genome, catal
     assert [f.orf_id for f in proteome.excluded] == ["changed-orf"]
     layer = dict(proteome.layers[-1])
     assert (layer["role"], layer["evidence"], layer["selected"], layer["added"], layer["excluded"],
-            layer["not_on_source_transcript"]) == ("host", "ms", 3, 2, 1, 1)
+            layer["not_on_source_transcript"]) == ("host", MS().to_dict(), 3, 2, 1, 1)
     assert layer["source"] == "orfdata-catalog:fixture-v1" and len(layer["catalog"]["sha256"]) == 64
     everything = base.with_extra_orfs(None, catalog=catalog)
     assert {e.accession for e in everything if e.kind == "extra_orf"} == {"ms-orf", "ribo-orf", "absent-orf"}
@@ -503,6 +505,22 @@ def test_uninstalled_annotation_is_never_downloaded_or_indexed(tmp_path):
     assert not (tmp_path / "empty-cache").exists()
 
 
+def test_extra_orfs_follow_separate_ribo_seq_and_ms_rules(genome, catalog):
+    base = Proteome.from_genome(genome)
+
+    def added(rule):
+        return sorted(e.accession for e in base.with_extra_orfs(rule, catalog=catalog) if e.kind == "extra_orf")
+
+    assert added(RiboSeq()) == ["ribo-orf"] and added(RiboSeq(min_studies=2)) == []
+    assert added(MS(methods="shotgun")) == ["absent-orf", "ms-orf"]
+    assert added(RiboSeq() | MS()) == ["absent-orf", "ms-orf", "ribo-orf"] and added(RiboSeq() & MS()) == []
+    layer = base.with_extra_orfs(RiboSeq() | MS(), catalog=catalog).layers[-1]
+    assert layer["evidence"] == {"any": [RiboSeq().to_dict(), MS().to_dict()]}
+    assert extra_orfs(genome, RiboSeq() | MS(), catalog=catalog).evidence == RiboSeq() | MS()
+    with pytest.raises(ValueError, match="on the rule itself"):
+        base.with_extra_orfs(MS(), catalog=catalog, require_unique=True)
+
+
 def test_species_without_a_catalogue_or_mismatched_catalogue_fails(genome):
     base = Proteome.from_genome(genome)
     with pytest.raises(ValueError, match=r"No ORF catalogue covers mus_musculus GRCm39\. "
@@ -606,3 +624,18 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     with pytest.raises(SystemExit):
         run(["proteome", "--species", "mouse", "--release", "1"])  # No mouse catalogue yet.
     assert "No ORF catalogue covers mus_musculus GRCm39" in capsys.readouterr().err
+    rules = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path)]
+    for options, kinds in ((["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1", "--either"], 3),
+                           (["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1"], 0),
+                           (["--min-ms-peptides", "1", "--ms-methods", "shotgun", "--require-resolved"], 2)):
+        run(rules + options)
+        summary = json.loads(capsys.readouterr().err)
+        assert summary["kinds"].get("extra_orf", 0) == kinds
+    for options, message in ((["--either", "--min-ms-peptides", "1"], "--either needs both"),
+                             (["--extra-orf-evidence", "ms", "--min-ms-peptides", "2"], "not both"),
+                             (["--min-ribo-seq-studies", "2", "--require-unique"], "need an MS requirement"),
+                             (["--min-ms-peptides", "0"], "min_peptides must be a positive integer"),
+                             (["--ms-methods", "ribosome"], "MS methods must be drawn from")):
+        with pytest.raises(SystemExit):
+            run(rules + options)
+        assert message in capsys.readouterr().err
