@@ -1,8 +1,3 @@
-# 0.20.1
-
-- Clarify catalogue and measurement guides and move maintainer design notes
-  outside the published documentation, retaining the current proteome examples.
-
 # 0.20.0
 
 - Describe ORFs by RNA coordinates with `TranscriptORF.at`: declared non-AUG
