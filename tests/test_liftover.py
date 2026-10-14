@@ -11,7 +11,8 @@ from orfdata import ORFCatalog, ReferenceContext, extra_orfs, load_catalog
 from orfdata.liftover import ChainFile, lift_catalog
 
 # GRCm38-like chr1 [1000, 1400) aligns ungapped to GRCm39-like 1 [0, 400); 2 [0, 90) aligns reversed onto 5.
-CHAINS = """chain 100 chr1 10000 + 1000 1400 1 10000 + 0 400 1
+CHAINS = """##matrix=axtChain 16 91,-114,-31,-123,-114,100,-125,-31,-31,-125,100,-114,-123,-31,-114,91
+chain 100 chr1 10000 + 1000 1400 1 10000 + 0 400 1
 400
 
 chain 100 1 10000 + 1000 1400 1 10000 + 0 400 1
@@ -24,8 +25,17 @@ chain 50 chr2 5000 + 0 100 5 1000 - 900 1000 2
 chain 10 chr3 5000 + 0 100 3 1000 + 0 100 3
 100
 
-chain 10 chr3 5000 + 50 100 4 1000 + 0 50 4
+chain 10 chr3 5000 + 50 100 HG1_PATCH 1000 + 0 50 4
 50
+
+chain 10 chr6 5000 + 0 100 7 1000 + 0 100 5
+100
+
+chain 10 chr6 5000 + 0 100 8 1000 + 0 100 6
+100
+
+chain 10 chr9 5000 + 0 100 NC_000009.12 1000 + 0 100 7
+100
 """
 
 
@@ -33,7 +43,13 @@ chain 10 chr3 5000 + 50 100 4 1000 + 0 50 4
 def chain(tmp_path):
     path = tmp_path / "GRCm38ToGRCm39.over.chain.gz"
     path.write_bytes(gzip.compress(CHAINS.encode()))
-    return ChainFile(path, source_build="GRCm38", target_build="GRCm39")
+    chain = ChainFile(path, source_build="GRCm38", target_build="GRCm39")
+    chain.path = path
+    return chain
+
+
+def chain_path(chain):
+    return chain.path
 
 
 def test_chain_blocks_map_whole_intervals_only(chain):
@@ -44,8 +60,13 @@ def test_chain_blocks_map_whole_intervals_only(chain):
     assert chain.map("2", 1, 40) == ("5", "-", 61, 100)
     assert chain.map("2", 51, 60) == ("5", "-", 41, 50)
     assert chain.map("2", 35, 55) is None  # Spans the alignment gap.
-    assert chain.map("3", 60, 70) is None  # Two chains claim it.
-    assert chain.map("3", 10, 20) == ("3", "+", 10, 20)
+    # chr3 also aligns to a fix patch: the same-named contig wins. chr6 aligns to two others: no answer.
+    assert chain.map("3", 60, 70) == ("3", "+", 60, 70) and chain.map("3", 10, 20) == ("3", "+", 10, 20)
+    assert chain.locate("6", 10, 20) == ([("7", "+", 10, 20), ("8", "+", 10, 20)], False)
+    assert chain.map("6", 10, 20) is None and chain.locate("5", 10, 20) == ([], False)
+    renamed = ChainFile(chain_path(chain), source_build="GRCm38", target_build="GRCm39",
+                        contig_names={"NC_000009.12": "9"})
+    assert renamed.map("9", 1, 10) == ("9", "+", 1, 10) and chain.map("9", 1, 10)[0] == "NC_000009.12"
     assert chain.liftover.source_build == "GRCm38" and len(chain.liftover.sha256) == 64
 
 
@@ -64,7 +85,8 @@ def test_lifted_catalogue_places_like_the_native_one(chain, genome, tmp_path):  
     lifted = lift_catalog(old, chain)
     assert lifted.genome_build == "GRCm39" and lifted.source == "orfdata-catalog:fixture-v1@GRCm39"
     assert lifted.metadata["liftover"]["unmapped"] == [
-        dict(orf_id="beyond", reason="A coding block is not inside one ungapped alignment block")]
+        dict(orf_id="beyond", reason="A coding block crosses an alignment gap or edge")]
+    assert lifted.metadata["liftover"]["input"]["metadata"]["genome_build"] == "GRCm38"
     for record in lifted.records:
         original = native.get(record.orf_id)
         assert (record.contig, record.coding_blocks) == ("1", original.coding_blocks)
@@ -122,3 +144,26 @@ def test_a_missing_assembly_names_the_catalogue_to_lift():
     with pytest.raises(ValueError, match=r"homo_sapiens GRCh37.*lift_catalog\(load_catalog\(species='homo_sapiens', "
                                          r"genome_build='GRCh38'\), ChainFile"):
         load_catalog(species="human", genome_build="GRCh37")
+
+
+def test_flanks_out_of_order_strains_and_unaligned_blocks(tmp_path):
+    # The coding path lifts in place; the upstream flank lands elsewhere, out of order.
+    path = tmp_path / "split.chain"
+    path.write_text("chain 1 chr1 10000 + 102 300 1 10000 + 1102 1300 1\n198\n\n"
+                    "chain 1 chr1 10000 + 90 102 1 10000 + 5000 5012 2\n12\n")
+    chain = ChainFile(path, source_build="GRCm38", target_build="GRCm39")
+    ms = make_catalog().get("ms-orf")
+    strain = ReferenceContext(10090, "mus_musculus", "GRCm38", "synthetic", "1", strain="C3H")
+    old = ORFCatalog([replace(ms, genome_build="GRCm38", reference_context=strain),
+                      replace(orf("far", blocks=((4001, 4009),), protein="MK"), genome_build="GRCm38")],
+                     dict(make_catalog().metadata, genome_build="GRCm38"))
+    lifted = lift_catalog(old, chain)
+    record, = lifted.records
+    assert record.coding_blocks == ((1103, 1104), (1205, 1217))
+    assert record.initiation_context.genomic_positions == () and record.initiation_context.upstream == "CCC"
+    pin = record.reference_context
+    assert (pin.strain, pin.genome_build, pin.annotation_name, pin.source_sha256) == (
+        "C3H", "GRCm39", None, chain.liftover.sha256)
+    assert lifted.metadata["liftover"]["unmapped"] == [dict(orf_id="far", reason="A coding block is not aligned")]
+    with pytest.raises(ValueError, match="keeps its original"):
+        replace(record, protein_sequence="MKPA")

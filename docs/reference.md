@@ -287,9 +287,10 @@ dataset `2026-10-08.2`. New code should use the broader `load_catalog()` API.
 [ReferenceContext and ScopedTarget](species.md) keep taxa, strains, assemblies
 and annotation versions separate. Custom genomes without species/taxonomy need
 an explicit context when binding; source-pinned contexts require an exact match
-for `record.bind`. `extra_orfs`, which places ORFs by their exact coding path and
-protein, also accepts a record pinned to another annotation release of the same
-species, strain and assembly. ORFs on another assembly can be
+for `record.bind(transcript)`. With `any_transcript=True`, as `extra_orfs` uses
+to place ORFs by their exact coding path and protein, a record pinned to
+another annotation release of the same species, strain and assembly is also
+accepted. ORFs on another assembly can be
 [lifted over](catalogs.md#lifting-a-catalogue-to-another-assembly).
 
 `load_catalog(species="mouse")` returns a species' catalogue: the bundled one,

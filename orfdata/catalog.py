@@ -127,6 +127,11 @@ class ORFRecord:
         object.__setattr__(self, "members", tuple(self.members))
         if (self.lifted_from is None) != (self.liftover is None):
             raise ValueError("A lifted record names both its original record and the chain")
+        original = self.lifted_from
+        if original is not None and any(getattr(self, name) != getattr(original, name) for name in (
+                "orf_id", "protein_sequence", "translation_table", "start_codon", "source",
+                "ribosome_studies", "peptides", "summaries")):
+            raise ValueError(f"A lifted record keeps its original's ID, protein and evidence: {self.orf_id}")
         if self.members:
             # Each member validated its own summaries against its own identity.
             key = _merge_key(self)
