@@ -174,3 +174,60 @@ def test_the_packaged_mouse_release_is_built_from_openprot_never_downloaded():
     row = next(s for s in catalog_status() if s.name == "openprot-mouse")
     assert (row.species, row.genome_build, row.installed, row.acquire, row.selected) == (
         "mus_musculus", "GRCm39", None, "build", True)
+
+
+def test_a_built_release_opens_inspects_and_queries_like_a_download(catalog, tmp_path, capsys):
+    import json
+
+    from orfdata.cli import run
+
+    registry, _ = fixture_registry(tmp_path)
+    assert registry.open("openprot-mouse").records == catalog.records
+    assert registry.inspect("openprot-mouse").status == "available"
+    definitions = tmp_path / "registry.json"
+    definitions.write_text(json.dumps(registry._definitions))
+    run(["catalogs", "--registry", str(definitions), "--cache-root", str(tmp_path / "cache"), "query",
+         "openprot-mouse", "--orf-id", "II_085990"])
+    assert [r["orf_id"] for r in json.loads(capsys.readouterr().out)["records"]] == ["II_085990"]
+    # A split accession's bare ID names its records.
+    with pytest.raises(ValueError, match=r"IP_824771 names several ORFs: IP_824771@ENSMUST00000187264.2, "
+                                         r"IP_824771@ENSMUST00000188314.2"):
+        catalog.get("IP_824771")
+    with pytest.raises(ValueError, match="build it from its pinned sources .*'openprot-mouse', '2.2-1'"):
+        registry.download("openprot-mouse")
+
+
+def test_a_damaged_build_says_to_rebuild(catalog, tmp_path):
+    registry, paths = fixture_registry(tmp_path)
+    built = next((tmp_path / "cache").rglob("catalog.json.gz"))
+    built.chmod(0o644)
+    built.write_bytes(built.read_bytes() + b"x")
+    assert next(s for s in catalog_status(registry=registry) if s.name == "openprot-mouse").installed == "damaged"
+    for expected in (None, "0" * 64):
+        with pytest.raises(ValueError, match=r"is damaged; build it again .*force=True.* --force'"):
+            load_catalog(species="mouse", registry=registry, expected_sha256=expected)
+    registry.build("openprot-mouse", source_paths=paths, force=True)
+    assert load_catalog(species="mouse", registry=registry).records == catalog.records
+
+
+def test_without_datacache_a_missing_build_says_what_to_install(monkeypatch):
+    monkeypatch.setitem(__import__("sys").modules, "datacache", None)
+    with pytest.raises(ValueError, match="is not installed; install orfdata.data., then build it"):
+        load_catalog(species="mouse")
+    row = next(s for s in catalog_status() if s.name == "openprot-mouse")
+    assert (row.installed, row.acquire) == (None, "build")
+
+
+def test_a_build_only_default_leaves_published_releases_working(tmp_path):
+    from orfdata import CatalogRegistry
+
+    registry, _ = fixture_registry(tmp_path)
+    definitions = registry._definitions
+    release = definitions["openprot-mouse"]["versions"]["2.2-1"]
+    older = dict(release, manifest=dict(release["manifest"], version="2.2-0"),
+                 assets={"catalog.json.gz": dict(url="https://example.invalid/c.json.gz", sha256="a" * 64, size=1)})
+    definitions["openprot-mouse"]["versions"]["2.2-0"] = older
+    registry = CatalogRegistry(definitions, cache_root=tmp_path / "cache")
+    assert registry.inspect("openprot-mouse", "2.2-0").status == "missing"
+    assert registry.inspect("openprot-mouse").status == "missing"  # The build-only default, not yet built.
+    assert {s.version for s in catalog_status(registry=registry) if s.name == "openprot-mouse"} == {"2.2-0", "2.2-1"}

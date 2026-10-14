@@ -64,6 +64,6 @@ def run(argv=None, prog=None):
         else:
             method = registry.open_build if args.built else registry.open
             return _query(args, query_parser, lambda _: method(args.name, args.version))
-    except (ValueError, TypeError, KeyError, OSError) as error:
+    except (ValueError, TypeError, KeyError, OSError, ImportError) as error:
         parser.error(str(error))
     print(json.dumps(output, indent=2, sort_keys=True))

@@ -120,18 +120,22 @@ class CatalogRegistry:
         return bool(self._definitions[name]["versions"][version]["assets"])
 
     def _published(self, name, version):
+        version = self._version(name, version)
         if not self.published(name, version):
-            raise ValueError(f"The {name} {self._version(name, version)} ORF catalogue has no published artifact; "
-                             f"build it from its pinned sources with CatalogRegistry().build({name!r}) or "
-                             f"'orfdata catalogs build {name}'")
-        return self._version(name, version)
+            raise ValueError(f"The {name} {version} ORF catalogue has no published artifact; build it from its "
+                             f"pinned sources with CatalogRegistry().build({name!r}, {version!r}) or "
+                             f"'orfdata catalogs build {name} --version {version}'")
+        return version
 
     def _data_registry(self):
         if self._registry is None:
-            definitions = {name: dict(default_version=entry["default_version"], versions={
-                version: release["assets"] for version, release in entry["versions"].items() if release["assets"]})
-                for name, entry in self._definitions.items()}
-            definitions = {name: entry for name, entry in definitions.items() if entry["versions"]}
+            definitions = {}
+            for name, entry in self._definitions.items():
+                published = {v: r["assets"] for v, r in entry["versions"].items() if r["assets"]}
+                if published:  # Every call names its version; the default only has to be a published one.
+                    default = entry["default_version"]
+                    definitions[name] = dict(default_version=default if default in published else min(published),
+                                             versions=published)
 
             def store_path(name, version):
                 release = self._definitions[name]["versions"][version]
@@ -141,6 +145,9 @@ class CatalogRegistry:
         return self._registry
 
     def inspect(self, name, version=None, *, verify_files=True):
+        """The installed artifact, or for a release that is only built, its local build."""
+        if not self.published(name, version):
+            return self.inspect_build(name, version, verify_files=verify_files)
         return self._data_registry().inspect(name, self._published(name, version), verify_files=verify_files)
 
     def download(self, name, version=None, *, force=False, source_paths=None, **options):
@@ -149,7 +156,12 @@ class CatalogRegistry:
                                              source_paths=source_paths, **options)
 
     def open(self, name, version=None, *, verify_files=True):
-        """Validate installed bytes and content, then return an offline ORFCatalog."""
+        """Validate installed bytes and content, then return an offline ORFCatalog.
+
+        A release that is only built locally opens its build.
+        """
+        if not self.published(name, version):
+            return self.open_build(name, version, verify_files=verify_files)
         manifest = self.info(name, version)
         path = self._data_registry().local_path(name, self._published(name, version), asset=_ASSET,
                                                 verify_files=verify_files)

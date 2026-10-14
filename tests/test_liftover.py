@@ -366,3 +366,17 @@ def test_a_genome_build_alone_picks_the_catalogue(capsys):
     with pytest.raises(SystemExit):
         run(["--genome-build", "GRCh37", "--gene", "TPST1"])
     assert "No ORF catalogue covers homo_sapiens GRCh37" in capsys.readouterr().err
+
+
+def test_placement_on_another_version_of_the_source_transcript_says_so(genome):  # noqa: F811
+    from orfdata import Proteome
+
+    older = ReferenceContext(10090, "mus_musculus", "GRCm39", "synthetic", "0")
+    base = Proteome.from_genome(genome)
+    for transcript_id, binding in (("test_rna.1", None), ("test_rna.2", "ORF transcript version mismatch")):
+        record = replace(make_catalog().get("ms-orf"), transcript_id=transcript_id, reference_context=older)
+        proteome = base.with_extra_orfs(None, catalog=ORFCatalog([record], make_catalog().metadata))
+        entry, = [e for e in proteome if e.kind == "extra_orf"]
+        assert entry.source_binding == binding
+        assert any(o.on_source_transcript for o in entry.occurrences) is (binding is None)
+        assert proteome.layers[-1]["not_on_source_transcript"] == (binding is not None)

@@ -755,6 +755,8 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             try:
                 placed.append(TranscriptORF(record, source, context=reference, any_transcript=elsewhere,
                                             _layout=layouts[source_id]))
+                if not placed[-1].on_source_transcript:  # Placed by path on another version of it.
+                    reason = "ORF transcript version mismatch"
             except ValueError as error:
                 reason = str(error)
         for transcript_id in candidates[record.orf_id]:

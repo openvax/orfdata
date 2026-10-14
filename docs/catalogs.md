@@ -100,8 +100,13 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
   transcripts is one record, placed on each of them. `orf_type` is OpenProt's
   protein type.
 - **Not imported.** The 4,571 rows on RefSeq transcripts are listed in
-  `metadata["unresolved"]`, because no RefSeq annotation is pinned; only one
-  protein, IP_957586, has no Ensembl row.
+  `metadata["unresolved"]`, because no RefSeq annotation is pinned. Every
+  protein still has a record: the one accession with only RefSeq rows,
+  IP_957586, has the same sequence and path as II_957586, which is imported.
+- **Genes.** OpenProt gives Ensembl gene IDs, not names, so query the
+  catalogue by gene ID (`--gene ENSMUSG00000020149`); proteome entries and
+  placements take gene names from the PyEnsembl annotation. A split
+  accession's bare ID, such as `IP_824771`, names all of its records.
 - **Coordinates.** Coding blocks come from OpenProt's BED file. Its README
   calls the TSV's genomic coordinates 1-based, but they are one lower than the
   BED's and Ensembl's at both ends
@@ -118,8 +123,10 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
   translation-event score (a count of studies) become aggregate summaries for
   the protein, not peptides or named studies. So `MS()` selects every record
   and `RiboSeq()` the 137 placed on Ensembl 115 with translation evidence,
-  but `MS(min_peptides=2)` and `RiboSeq(min_studies=2)` select none: a sum
-  over studies is not a count of distinct peptides.
+  but `MS(min_peptides=2)` and `RiboSeq(min_studies=2)` select none. A sum of
+  per-study peptide counts is not a count of distinct peptides, and a count
+  of studies names no studies, so neither can show two independent
+  observations.
 - **Other assemblies.** For GRCm38, lift the built catalogue with
   `orfdata lift --species mouse --to GRCm38 --output FILE` after downloading
   UCSC's chain (non-commercial terms). 2,975 records lift, and 2,856 place on

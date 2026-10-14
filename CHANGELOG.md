@@ -11,15 +11,21 @@
   - MS and translation-event scores are aggregate summaries.
   - Every row is checked against the verified coordinate offset.
 - A registry release with no published artifact is built locally from its
-  pinned sources; `load_catalog` opens such a build, and its error says to
-  build it.
+  pinned sources. `load_catalog`, `CatalogRegistry.open`/`inspect` and
+  `orfdata catalogs query` open such a build. A missing or damaged
+  installation gives the build or download command, `--force` included.
+  Without `orfdata[data]` the error says to install it, instead of raising
+  ImportError.
+- A source accession split across several coding paths (`IP_1@ENSMUST…`)
+  answers to its bare ID, which names all of its records.
 - `catalog_status()` and `orfdata catalogs status` list every catalogue,
   bundled included, with species, assembly, record count, installation and
   which is selected (#70).
 - `extra_orfs` places a record pinned to another release of the assembly by
   path and protein on its own transcript too, so exclusions give the real
   reason (for example "sequence unavailable") instead of the release
-  mismatch.
+  mismatch. On another version of that transcript, `source_binding` says
+  "ORF transcript version mismatch".
 - Tests run with a private `ORFDATA_CACHE`.
 
 # 0.25.0

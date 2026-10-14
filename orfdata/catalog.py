@@ -411,6 +411,8 @@ class ORFCatalog:
         self._aliases = {}
         for r in self.records:
             names = {f"{m.source}:{m.orf_id}" for m in r.members or (r,)} | {m.orf_id for m in r.members}
+            # A source accession split by coding path, "IP_1@ENST...", still answers to "IP_1".
+            names |= {m.orf_id.split("@")[0] for m in r.members or (r,) if "@" in m.orf_id}
             for alias in names - {r.orf_id}:
                 self._aliases.setdefault(alias, []).append(r)
         for r in self.records:
@@ -919,7 +921,7 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     Otherwise the one catalogue in ``registry`` (by default the packaged
     :class:`CatalogRegistry`) covering the species is opened offline, at its
     default release unless only another release covers the assembly; it must
-    already be downloaded and is never downloaded here. A species without a
+    already be downloaded or built and is never fetched here. A species without a
     catalogue raises, naming those that exist. Absence from a catalogue is
     never evidence of absence.
 
@@ -1007,27 +1009,45 @@ def _releases(found):
 
 
 def _installed(choice):
-    """How a registered release is installed locally: "downloaded", "built" or None. Offline."""
+    """How a registered release is installed: "downloaded", "built", "damaged" or None. Offline, unhashed."""
     registry, name, version = choice.registry, choice.name, choice.version
-    if registry.published(name, version) and registry.inspect(name, version, verify_files=False).status != "missing":
-        return "downloaded"
-    if registry.inspect_build(name, version, verify_files=False).status != "missing":
+    try:
+        damaged = False
+        if registry.published(name, version):
+            status = registry.inspect(name, version, verify_files=False).status
+            if status == "available":
+                return "downloaded"
+            damaged = status != "missing"
+        status = registry.inspect_build(name, version, verify_files=False).status
+    except ImportError:  # Without DataCache nothing can have been downloaded or built.
+        return None
+    if status == "available":
         return "built"
-    return None
+    return "damaged" if damaged or status != "missing" else None
 
 
 def _open_registered(choice, expected_sha256):
     """A published download if installed, else a local build from the pinned sources."""
     registry, name, version = choice.registry, choice.name, choice.version
     installed = _installed(choice)
-    if installed is None:
-        how = (f"download it first with CatalogRegistry().download({name!r}, {version!r}) or "
-               f"'orfdata catalogs download {name} --version {version}'" if registry.published(name, version) else
-               f"build it from its pinned sources with CatalogRegistry().build({name!r}, {version!r}) or "
-               f"'orfdata catalogs build {name} --version {version}'")
-        raise ValueError(f"The {name} {version} ORF catalogue is not installed; {how}")
+    if installed in (None, "damaged"):
+        verb = "download" if registry.published(name, version) else "build"
+        when = " again" if installed else (" first" if verb == "download" else " from its pinned sources")
+        how = (f"{verb} it{when} with CatalogRegistry().{verb}({name!r}, {version!r}"
+               f"{', force=True' if installed else ''}) or 'orfdata catalogs {verb} {name} --version {version}"
+               f"{' --force' if installed else ''}'")
+        try:
+            from .datasets import _datacache
+
+            _datacache()
+        except ImportError:
+            how = "install orfdata[data], then " + how
+        state = "damaged" if installed else "not installed"
+        raise ValueError(f"The {name} {version} ORF catalogue is {state}; {how}")
     if installed == "built":
         inspected = registry.inspect_build(name, version)
+        if inspected.status != "available":
+            return registry.open_build(name, version)  # Raises with what is wrong.
         if expected_sha256 is not None and hashlib.sha256(
                 Path(inspected.files["catalog.json.gz"].path).read_bytes()).hexdigest() != expected_sha256:
             raise ValueError("ORF catalogue checksum mismatch")
@@ -1045,7 +1065,7 @@ class CatalogStatus:
 
     ``selected`` marks the one ``load_catalog(species=..., genome_build=...)``
     opens for its species and assembly. ``installed`` is ``"bundled"``,
-    ``"downloaded"``, ``"built"`` or None; ``acquire`` names the explicit step
+    ``"downloaded"``, ``"built"``, ``"damaged"`` or None; ``acquire`` names the explicit step
     that installs a missing one, ``"download"`` or ``"build"``.
     """
 
