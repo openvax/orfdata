@@ -915,14 +915,21 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
 
     ``species`` is a name such as ``"mouse"`` or ``"mus_musculus"``; as in
     PyEnsembl, it defaults to human. ``genome_build`` is needed only when
-    catalogues cover several assemblies of the species. A bundled catalogue
-    is preferred, so the default never changes when another is downloaded.
-    Otherwise the one catalogue in ``registry`` (by default the packaged
-    :class:`CatalogRegistry`) covering the species is opened offline, at its
-    default release unless only another release covers the assembly; it must
-    already be downloaded or built and is never fetched here. A species without a
-    catalogue raises, naming those that exist. Absence from a catalogue is
-    never evidence of absence.
+    catalogues cover several assemblies of the species.
+
+    Each assembly of the species contributes one catalogue: a bundled one if
+    there is one, so the default never changes when another is downloaded,
+    otherwise the one catalogue in ``registry`` (by default the packaged
+    :class:`CatalogRegistry`), at its default release unless only another
+    release covers that assembly. One on another assembly is lifted to
+    ``genome_build`` through the pinned chain files, in as many hops as
+    needed, and several are merged. Catalogues and chain files must already
+    be installed (``orfdata catalogs download``/``build``, ``orfdata chains
+    download``); nothing is downloaded here, and a missing one raises with
+    the command that installs it. Which catalogues and chains are used
+    depends only on the registry and the pins, never on what is installed. A
+    species without a catalogue raises, naming those that exist. Absence
+    from a catalogue is never evidence of absence.
 
     With ``path``, that file is loaded, and ``species`` and ``genome_build``,
     when given, must match it.
@@ -936,42 +943,78 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         if genome_build is not None and genome_build != catalog.genome_build:
             raise ValueError(f"{path} is a {catalog.genome_build} catalogue, not {genome_build}")
         return catalog
+    from .liftover import chain_downloaded, chain_routes, lift_to
+
     species = _species("human" if species is None else species)
     choices = _catalog_choices(registry)
     found = [c for c in choices if c.species == species]
     builds = sorted({c.genome_build for c in found})
-    if genome_build is None and len(builds) > 1:
-        raise ValueError(f"ORF catalogues cover several {species} assemblies ({', '.join(builds)}); "
-                         "pass genome_build")
-    found = [c for c in found if genome_build in (None, c.genome_build)]
+    known = "; ".join(f"{c.species} {c.genome_build} ({c.label})" for c in choices) or "none"
     if not found:
-        scope = species if genome_build is None else f"{species} {genome_build}"
-        known = "; ".join(f"{c.species} {c.genome_build} ({c.label})" for c in choices) or "none"
-        builds = sorted({c.genome_build for c in choices if c.species == species})
-        lift = ""
-        if builds and genome_build:
-            from .liftover import pinned_chains
+        raise ValueError(f"No ORF catalogue covers {species}{'' if genome_build is None else ' ' + genome_build}. "
+                         f"Catalogues exist for: {known}. Load a local file with load_catalog(path) or add one "
+                         "to a CatalogRegistry.")
+    if genome_build is None:
+        if len(builds) > 1:
+            raise ValueError(f"ORF catalogues cover several {species} assemblies ({', '.join(builds)}); "
+                             "pass genome_build")
+        genome_build = builds[0]
+    # One catalogue per assembly: on this one as is, on the others lifted here through pinned chains.
+    sources = [(c, () if c.genome_build == genome_build else chain_routes(species, c.genome_build).get(genome_build))
+               for c in _sources(found, genome_build)]
+    sources = [(choice, route) for choice, route in sources if route is not None]
+    if not sources:
+        raise ValueError(f"No ORF catalogue covers {species} {genome_build}, and no pinned chain files lift one "
+                         f"there. Catalogues exist for: {known}. Lift one with your own chain file: 'orfdata lift "
+                         f"--species {species} --genome-build {builds[0]} --to {genome_build} --chain FILE --output "
+                         f"FILE', or lift_catalog(load_catalog(species={species!r}, genome_build={builds[0]!r}), "
+                         f"ChainFile(path, source_build={builds[0]!r}, target_build={genome_build!r})).")
+    if expected_sha256 is not None and (len(sources) > 1 or sources[0][1]):
+        raise ValueError(f"expected_sha256 checks one catalogue file, but {species} {genome_build} ORFs are "
+                         "lifted or merged from several")
+    chains = list(dict.fromkeys(c for _, route in sources for c in route))
+    missing = [c for c in chains if not chain_downloaded(c)]
+    if missing:
+        accept = " --accept-terms" if any(c.restricted for c in missing) else ""
+        raise ValueError(f"{species} ORF catalogues reach {genome_build} by liftover, which needs the chain files "
+                         f"{', '.join(c.name for c in missing)}; download them once with 'orfdata chains download "
+                         f"--species {species}{accept}' or download_chains(species={species!r}"
+                         f"{', accept_terms=True' if accept else ''})")
+    catalogs = [lift_to(_open_choice(choice, expected_sha256), genome_build) if route
+                else _open_choice(choice, expected_sha256) for choice, route in sources]
+    return catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
 
-            pinned = any((c.species, c.source_build, c.target_build) == (species, builds[0], genome_build)
-                         for c in pinned_chains())
-            chain = (f"load_chain({builds[0]!r}, {genome_build!r})" if pinned else
-                     f"ChainFile(path, source_build={builds[0]!r}, target_build={genome_build!r})")
-            lift = (f" Or lift one: 'orfdata lift --species {species} --genome-build {builds[0]} --to {genome_build}"
-                    f"{'' if pinned else ' --chain FILE'} --output FILE', or lift_catalog(load_catalog("
-                    f"species={species!r}, genome_build={builds[0]!r}), {chain}).")
-        raise ValueError(f"No ORF catalogue covers {scope}. Catalogues exist for: {known}. "
-                         f"Load a local file with load_catalog(path) or add one to a CatalogRegistry.{lift} "
-                         "For a proteome of annotated proteins only, pass extra_orfs=False "
-                         "(orfdata proteome --extra-orf-evidence none).")
-    bundled = [c for c in found if c.registry is None]
-    if bundled:
-        return _load_catalog(expected_sha256=expected_sha256, resource=bundled[0].resource)
-    found = _releases(found)
-    if len(found) > 1:
-        raise ValueError(f"Several ORF catalogues cover {species} {found[0].genome_build} "
-                         f"({', '.join(c.label for c in found)}); open one with "
-                         "CatalogRegistry().open(name, version)")
-    return _open_registered(found[0], expected_sha256)
+
+def _sources(found, genome_build):
+    """The catalogues load_catalog combines for ``genome_build``, the requested assembly's first.
+
+    One release per catalogue, so two releases of one source never count
+    twice: its release on ``genome_build`` if it has one, else its default.
+    Then one catalogue per assembly: a bundled one if there is one, else the
+    one registered catalogue; two are never chosen between.
+    """
+    chosen = [c for c in found if c.registry is None]
+    for name in dict.fromkeys(c.name for c in found if c.registry is not None):
+        releases = [c for c in found if c.name == name and c.registry is not None]
+        here = [c for c in releases if c.genome_build == genome_build]
+        default = releases[0].registry.info(name).version
+        chosen.extend(_releases(here) if here else [c for c in releases if c.version == default] or releases[:1])
+    result = []
+    for build in sorted({c.genome_build for c in chosen}, key=lambda b: (b != genome_build, b)):
+        here = [c for c in chosen if c.genome_build == build]
+        here = [c for c in here if c.registry is None][:1] or here
+        if len(here) > 1:
+            raise ValueError(f"Several ORF catalogues cover {here[0].species} {build} "
+                             f"({', '.join(c.label for c in here)}); open one with "
+                             "CatalogRegistry().open(name, version)")
+        result.append(here[0])
+    return result
+
+
+def _open_choice(choice, expected_sha256):
+    if choice.registry is None:
+        return _load_catalog(expected_sha256=expected_sha256, resource=choice.resource)
+    return _open_registered(choice, expected_sha256)
 
 
 class _Choice(NamedTuple):
@@ -1063,9 +1106,11 @@ class CatalogStatus:
     """One ORF catalogue load_catalog can open, and whether it is ready offline.
 
     ``selected`` marks the one ``load_catalog(species=..., genome_build=...)``
-    opens for its species and assembly. ``installed`` is ``"bundled"``,
+    uses for its species and assembly. ``installed`` is ``"bundled"``,
     ``"downloaded"``, ``"built"``, ``"damaged"`` or None; ``acquire`` names the explicit step
-    that installs a missing one, ``"download"`` or ``"build"``.
+    that installs a missing one, ``"download"`` or ``"build"``. ``lifts_to``
+    lists the other assemblies the pinned chains reach, each with its chains
+    and whether they are all downloaded.
     """
 
     species: str
@@ -1077,6 +1122,20 @@ class CatalogStatus:
     selected: bool
     installed: Optional[str]
     acquire: Optional[str]
+    lifts_to: tuple = ()
+
+
+def _lifts(species, genome_build):
+    from .liftover import chain_downloaded, chain_routes
+
+    def downloaded(chain):
+        try:
+            return chain_downloaded(chain)
+        except ImportError:  # Without DataCache nothing can be downloaded.
+            return False
+
+    return tuple(dict(genome_build=build, chains=[c.name for c in route], downloaded=all(map(downloaded, route)))
+                 for build, route in sorted(chain_routes(species, genome_build).items()))
 
 
 def catalog_status(*, registry=None):
@@ -1100,10 +1159,11 @@ def catalog_status(*, registry=None):
             manifest = json.loads(files("orfdata").joinpath(f"data/{c.resource}/manifest.json").read_text())
             rows.append(CatalogStatus(c.species, c.genome_build, c.name, manifest["dataset_version"],
                                       "Bundled ORF catalogue", manifest["statistics"]["records"], c in selected,
-                                      "bundled", None))
+                                      "bundled", None, _lifts(c.species, c.genome_build)))
             continue
         info = c.registry.info(c.name, c.version)
         rows.append(CatalogStatus(c.species, c.genome_build, c.name, c.version, info.title, info.coverage["records"],
                                   c in selected, _installed(c),
-                                  "download" if c.registry.published(c.name, c.version) else "build"))
+                                  "download" if c.registry.published(c.name, c.version) else "build",
+                                  _lifts(c.species, c.genome_build)))
     return tuple(rows)

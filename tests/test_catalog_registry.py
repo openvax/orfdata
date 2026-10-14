@@ -304,10 +304,11 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
     human = load_catalog()
     assert (human.species, human.genome_build) == ("homo_sapiens", "GRCh38")
     assert load_catalog(species="human", genome_build="GRCh38").records == human.records
-    for scope in (dict(species="dog"), dict(species="human", genome_build="GRCh37")):
-        with pytest.raises(ValueError, match=r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\); "
-                                             r"mus_musculus GRCm39 \(openprot-mouse 2.2-1\)\."):
-            load_catalog(**scope)
+    with pytest.raises(ValueError, match=r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\); "
+                                         r"mus_musculus GRCm39 \(openprot-mouse 2.2-1\)\."):
+        load_catalog(species="dog")
+    with pytest.raises(ValueError, match="reach GRCh37 by liftover, which needs the chain files GRCh38_to_GRCh37"):
+        load_catalog(species="human", genome_build="GRCh37")
     with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 ORF catalogue is not installed; build it from its "
                                          r"pinned sources .* 'orfdata catalogs build openprot-mouse --version 2.2-1'"):
         load_catalog(species="mouse")
@@ -325,7 +326,8 @@ def test_load_catalog_never_guesses_between_catalogues(tmp_path):
         load_catalog(species="mouse", registry=registry)
     with pytest.raises(ValueError, match="Several ORF catalogues cover mus_musculus .*mouse-second"):
         load_catalog(species="mouse", genome_build=manifest.genome_build, registry=registry)
-    with pytest.raises(ValueError, match="mouse-grcm38 1 ORF catalogue is not installed"):
+    # GRCm38 would also take a GRCm39 catalogue, lifted; there are two, so neither is guessed.
+    with pytest.raises(ValueError, match="Several ORF catalogues cover mus_musculus GRCm39 .*mouse-second"):
         load_catalog(species="mouse", genome_build="GRCm38", registry=registry)
 
 

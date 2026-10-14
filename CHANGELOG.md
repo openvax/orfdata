@@ -1,3 +1,23 @@
+# 0.27.0
+
+- Catalogues on other assemblies are lifted automatically. `load_catalog`,
+  `extra_orfs(genome)` and `Proteome.build(genome)` now work on every human
+  and mouse assembly PyEnsembl knows, once the chains are downloaded:
+  - Human GRCh37 places 6,857 ORFs and NCBI36 4,195.
+  - Mouse GRCm38 places 2,856 and NCBIM37 1,620, the latter in two hops
+    through GRCm38.
+  - Each catalogue contributes one release; one per assembly is used, and
+    catalogues from several assemblies are merged.
+  - Missing catalogues or chains raise an error with the command that
+    installs them. Nothing is downloaded while loading.
+- `orfdata chains download` with no assemblies downloads every pinned chain
+  (`download_chains()`). UCSC's restricted ones are skipped without
+  `--accept-terms`.
+- Ensembl's GRCh38↔NCBI36 and GRCm38↔NCBIM37 chains are pinned.
+- `chain_routes`, `lift_to` and multi-hop `orfdata lift`.
+- `catalog_status()` reports the assemblies each catalogue reaches, and
+  whether their chains are downloaded.
+
 # 0.26.0
 
 - Mouse noncanonical ORFs from OpenProt 2.2 (#18, #55):

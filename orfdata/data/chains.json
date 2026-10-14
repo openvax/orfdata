@@ -23,6 +23,18 @@
     "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
     "restricted": false
   },
+  "GRCh38_to_NCBI36": {
+    "species": "homo_sapiens",
+    "source_build": "GRCh38",
+    "target_build": "NCBI36",
+    "url": "https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/GRCh38_to_NCBI36.chain.gz",
+    "sha256": "eed324edba01ee31c0bdb581cff1d37b947416a1805d71fbb84375febb378b16",
+    "size": 265908,
+    "provider": "Ensembl",
+    "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "restricted": false
+  },
   "GRCm38_to_GRCm39": {
     "species": "mus_musculus",
     "source_build": "GRCm38",
@@ -35,6 +47,18 @@
     "terms_url": "https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/README.txt",
     "restricted": true
   },
+  "GRCm38_to_NCBIM37": {
+    "species": "mus_musculus",
+    "source_build": "GRCm38",
+    "target_build": "NCBIM37",
+    "url": "https://ftp.ensembl.org/pub/assembly_mapping/mus_musculus/GRCm38_to_NCBIM37.chain.gz",
+    "sha256": "d4e40e3225d1afc2d7fb22845bcd62a59171f3aba02d2bc32f6d29ecbd450bd4",
+    "size": 79389,
+    "provider": "Ensembl",
+    "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "restricted": false
+  },
   "GRCm39_to_GRCm38": {
     "species": "mus_musculus",
     "source_build": "GRCm39",
@@ -46,5 +70,29 @@
     "terms": "UCSC Chain Files are free for non-commercial use by independent researchers and nonprofit organizations; any other use requires a commercial license from UCSC. Redistribution must include UCSC's README with these restrictions.",
     "terms_url": "https://hgdownload.soe.ucsc.edu/goldenPath/mm39/liftOver/README.txt",
     "restricted": true
+  },
+  "NCBI36_to_GRCh38": {
+    "species": "homo_sapiens",
+    "source_build": "NCBI36",
+    "target_build": "GRCh38",
+    "url": "https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/NCBI36_to_GRCh38.chain.gz",
+    "sha256": "404ee3fe1ccd4aeda0ee402b23a69daa442f3b672e9a27239de45205637f61af",
+    "size": 178230,
+    "provider": "Ensembl",
+    "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "restricted": false
+  },
+  "NCBIM37_to_GRCm38": {
+    "species": "mus_musculus",
+    "source_build": "NCBIM37",
+    "target_build": "GRCm38",
+    "url": "https://ftp.ensembl.org/pub/assembly_mapping/mus_musculus/NCBIM37_to_GRCm38.chain.gz",
+    "sha256": "14cf12e3a5a5cc704161ee34ba0ce022ba0c6494bdf07a6cac946c65dbb22fb7",
+    "size": 45764,
+    "provider": "Ensembl",
+    "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "restricted": false
   }
 }
