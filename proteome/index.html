@@ -497,6 +497,8 @@
       
         
       
+        
+      
     
     
     
@@ -554,6 +556,34 @@
     
   
     ORFs and evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
   
 
     
@@ -1461,10 +1491,12 @@ ORFs, counted as <code>not_on_source_transcript</code> in the layer. The 5 in
 matches an annotated protein; both entries are kept because they have
 different identities and evidence. <code>proteome.by_sequence()</code> groups entries with
 identical sequences, for example before an exact peptide search.</p>
-<p>Without <code>catalog=</code>, the catalogue covering the genome's species and assembly is
-used. Only human GRCh38 has one; other species raise. Pass a catalogue from
-<a href="../catalogs/"><code>CatalogRegistry</code></a> or <code>load_catalog(path)</code> explicitly. A
-catalogue for a different species or assembly is rejected.</p>
+<p>Without <code>catalog=</code>, <code>load_catalog</code> picks the catalogue for the genome's species
+and assembly: a bundled one, or else one installed through
+<a href="../catalogs/"><code>CatalogRegistry</code></a>. Only human GRCh38 has one so far; for other
+species the error names the catalogues that exist. Pass <code>catalog=</code> to use
+another, such as <code>load_catalog(path)</code>. A catalogue for a different species or
+assembly is rejected.</p>
 <h2 id="viral-proteomes">Viral proteomes<a class="headerlink" href="#viral-proteomes" title="Permanent link">&para;</a></h2>
 <p>A <code>ViralProteome</code> holds one virus's proteins, its NCBI taxon, and the NCBI
 species taxa recorded as its hosts, with the source of that host range. It can
@@ -1537,9 +1569,10 @@ goes to standard error.</p>
 <h2 id="not-yet-included">Not yet included<a class="headerlink" href="#not-yet-included" title="Permanent link">&para;</a></h2>
 <p>Mouse and dog noncanonical ORFs, and translated endogenous retrovirus (ERV)
 ORFs without annotated transcripts, need new source data; see the
-<a href="https://github.com/openvax/orfdata/issues/3">data roadmap</a>. Translation
-products from circular RNAs, stop-codon readthrough or fusions are outside this
-reference.</p>
+<a href="https://github.com/openvax/orfdata/issues/3">data roadmap</a>. Products from
+circular RNAs, stop-codon readthrough or non-AUG starts can be described with
+<code>TranscriptORF.at</code> and <code>SourceRNA</code> (see the <a href="../examples/">examples</a>), but no
+bundled catalogue supplies them yet, so proteomes do not include them.</p>
 
 
 

@@ -353,6 +353,8 @@
       
         
       
+        
+      
     
     
     
@@ -408,6 +410,34 @@
     
   
     ORFs and evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
   
 
     
@@ -1189,8 +1219,15 @@
 <p>The bundled human catalogue is available through <code>load_catalog()</code> without
 downloads. <code>CatalogRegistry</code> manages additional versioned ORF catalogues, with
 the same explicit discovery, download, build and offline-open workflow as
-<code>DatasetRegistry</code>. It returns the existing <code>ORFCatalog</code>; query results still
-bind to the original PyEnsembl transcript through <code>ReferenceORF</code>.</p>
+<code>DatasetRegistry</code>. Once a species' catalogue in the packaged registry is
+downloaded, <code>load_catalog(species=...)</code> opens it, so <code>extra_orfs(genome)</code> and
+<code>Proteome.with_extra_orfs()</code> use it without <code>catalog=</code>; pass
+<code>load_catalog(species=..., registry=...)</code> as <code>catalog=</code> for your own registry.
+A bundled catalogue is preferred, a catalogue's default release is opened
+unless only another release covers the assembly, and two registered catalogues
+for one species and assembly are never chosen between; open one by name
+instead. It returns the existing <code>ORFCatalog</code>; query results still bind to the
+original PyEnsembl transcript through <code>ReferenceORF</code>.</p>
 <p>The default optional registry currently has no released entries. The examples
 below use a caller-supplied registry; they do not imply a published
 experimental catalogue for another species.</p>
