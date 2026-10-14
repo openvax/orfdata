@@ -238,7 +238,26 @@ selection, catalogue or exclusion changes, but not with file compression or
 formatting. Loading rejects a snapshot whose content does not match its
 identity, host proteins from another species, viral proteins without a
 matching host layer and layers declaring another reference. The human Ensembl
-115 proteome with MS-supported ORFs is a 57 MB snapshot.
+115 proteome with MS-supported ORFs is a 57 MB snapshot that loads in about 7 s.
+
+### Cache a built proteome
+
+`Proteome.build` makes the usual proteome in one call: `from_genome`, then
+`with_extra_orfs(evidence, catalog=...)` and `with_viral` for each of `viral=`.
+With `cache=True` it keeps the result in the OpenVax DataCache root
+(`ORFDATA_CACHE`, `OPENVAX_DATA_CACHE`, or `cache_root=`):
+
+```python
+proteome = Proteome.build(genome, RiboSeq(min_studies=2) & MS(), cache=True)
+```
+
+The cache key is the reference, evidence rule, catalogue and viral
+identities, snapshot schema and orfdata version. A later identical build,
+from any program, loads that verified snapshot, so tools share one identity.
+For human Ensembl 115 with MS-supported ORFs, the first build takes about
+40 s, including saving, and later ones about 8 s. Each cached build sits next
+to a `recipe.json` recording its key and identity. Nothing is downloaded, and
+`extra_orfs=False` builds the annotated proteome alone.
 
 ## Lower-level ORF lookup
 
@@ -296,9 +315,10 @@ orfdata proteome --species human --release 115 --min-ms-peptides 1 --ms-methods 
 
 Given both a Ribo-seq and an MS requirement, an ORF needs both unless
 `--either` is set. `--require-unique` and `--require-reviewed` refine the MS
-requirement, and `--require-resolved` both. The FASTA goes to `--output` or standard output; `--snapshot FILE`
-also saves a snapshot. A JSON summary of the layers, identity and excluded ORFs
-goes to standard error.
+requirement, and `--require-resolved` both. The FASTA goes to `--output` or
+standard output; `--snapshot FILE` also saves a snapshot, and `--cache`
+reuses or keeps the build in the cache (`--cache-root DIR` to choose it). A
+JSON summary of the layers, identity and excluded ORFs goes to standard error.
 
 ## Not yet included
 

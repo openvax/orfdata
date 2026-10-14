@@ -640,3 +640,29 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
         with pytest.raises(SystemExit):
             run(rules + options)
         assert message in capsys.readouterr().err
+
+
+def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, monkeypatch, capsys):
+    from orfdata import proteome_cli
+
+    built = Proteome.build(genome, "ms", catalog=catalog, cache=True, cache_root=tmp_path)
+    assert built.identity == Proteome.from_genome(genome).with_extra_orfs("ms", catalog=catalog).identity
+    calls = []
+    original = Proteome.from_genome.__func__
+    monkeypatch.setattr(Proteome, "from_genome", classmethod(lambda cls, *a, **k: calls.append(1) or original(cls, *a, **k)))
+    again = Proteome.build(genome, "ms", catalog=catalog, cache=True, cache_root=tmp_path)
+    assert calls == [] and again.identity == built.identity and again.genome is genome
+    assert [e.accession for e in again] == [e.accession for e in built]
+    assert again.with_extra_orfs("ribosome", catalog=catalog).layers[-1]["added"] == 1  # Still bound to the genome.
+    Proteome.build(genome, MS(min_peptides=2), catalog=catalog, cache=True, cache_root=tmp_path)
+    assert calls == [1]  # Another rule is another build.
+    assert len(Proteome.build(genome, extra_orfs=False).entries) == 3
+    monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: genome)
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(catalog.to_dict()))
+    command = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--cache",
+               "--cache-root", str(tmp_path)]
+    run(command)
+    first = json.loads(capsys.readouterr().err)["identity"]
+    run(command)
+    assert json.loads(capsys.readouterr().err)["identity"] == first == built.identity and calls == [1, 1]

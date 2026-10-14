@@ -1,3 +1,13 @@
+# 0.24.0
+
+- `Proteome.build(genome, evidence, catalog=, viral=, cache=True)` builds the
+  usual proteome in one call and keeps it in the OpenVax DataCache root, keyed
+  by reference, evidence rule, catalogue and viral identities, snapshot schema
+  and orfdata version; an identical later build loads the verified snapshot
+  (#74). `orfdata proteome --cache [--cache-root DIR]` does the same.
+- Snapshots load faster: the human Ensembl 115 proteome with MS-supported ORFs
+  loads in about 7 s instead of 11 s. Loading still verifies the content hash.
+
 # 0.23.0
 
 - Lift catalogues between assemblies of one species with `ChainFile` and

@@ -5,7 +5,7 @@ import json
 import sys
 
 from .catalog import load_catalog
-from .evidence import EVIDENCE_METHODS, MS, RiboSeq
+from .evidence import EVIDENCE_METHODS, MS, RiboSeq, evidence_rule
 from .proteome import Proteome
 
 
@@ -42,18 +42,21 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--catalog", action="append",
                         help="Use a local JSON/JSON.gz ORF catalogue for this genome; repeat to merge several")
     parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
+    parser.add_argument("--cache", action="store_true",
+                        help="Reuse an identical earlier build from the OpenVax DataCache, or keep this one there")
+    parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", help="FASTA path; standard output by default")
     args = parser.parse_args(argv)
     try:
         evidence, options = _evidence(args)
-        genome = (genome_loader or _ensembl_genome)(args.release, args.species)
-        proteome = Proteome.from_genome(genome)
-        if args.extra_orf_evidence != "none":
-            proteome = proteome.with_extra_orfs(
-                evidence, catalog=[load_catalog(path) for path in args.catalog] if args.catalog else None,
-                **options)
-        elif args.catalog or any(options.values()):
+        extra = args.extra_orf_evidence != "none"
+        if not extra and (args.catalog or any(options.values())):
             raise ValueError("Extra-ORF options require --extra-orf-evidence other than 'none'")
+        genome = (genome_loader or _ensembl_genome)(args.release, args.species)
+        proteome = Proteome.build(
+            genome, evidence_rule(evidence, **options) if extra else None, extra_orfs=extra,
+            catalog=[load_catalog(path) for path in args.catalog] if args.catalog else None,
+            cache=args.cache, cache_root=args.cache_root)
         proteome.write_fasta(args.output or sys.stdout)
         if args.snapshot:
             proteome.save(args.snapshot)
