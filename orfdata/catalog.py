@@ -556,6 +556,19 @@ class ORFCatalog:
             records=[r.to_dict() for r in self.records],
         )
 
+    def save(self, path):
+        """Write the catalogue as JSON, gzipped when ``path`` ends in ``.gz``; ``load_catalog(path)`` reads it.
+
+        The same catalogue always writes the same bytes, so a file's checksum identifies it.
+        """
+        raw = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        with open(path, "wb") as handle:
+            if str(path).endswith(".gz"):
+                with gzip.GzipFile(filename="", mode="wb", fileobj=handle, mtime=0) as compressed:
+                    compressed.write(raw)
+            else:
+                handle.write(raw)
+
     def query(
         self,
         *,
@@ -934,8 +947,9 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         scope = species if genome_build is None else f"{species} {genome_build}"
         known = "; ".join(f"{c.species} {c.genome_build} ({c.label})" for c in choices) or "none"
         builds = sorted({c.genome_build for c in choices if c.species == species})
-        lift = (f" Or lift one: lift_catalog(load_catalog(species={species!r}, genome_build={builds[0]!r}), "
-                f"ChainFile(path, source_build={builds[0]!r}, target_build={genome_build!r}))."
+        lift = (f" Or lift one: 'orfdata lift --species {species} --genome-build {builds[0]} --to {genome_build} "
+                f"--output FILE', or lift_catalog(load_catalog(species={species!r}, genome_build={builds[0]!r}), "
+                f"load_chain({builds[0]!r}, {genome_build!r}))."
                 if builds and genome_build else "")
         raise ValueError(f"No ORF catalogue covers {scope}. Catalogues exist for: {known}. "
                          f"Load a local file with load_catalog(path) or add one to a CatalogRegistry.{lift} "

@@ -7,6 +7,10 @@ left out with the reason. A lifted record keeps the original record in
 ``lifted_from`` and the chain file's identity in ``liftover``. Placement on the
 target genome then re-checks the exact coding path and protein, so a lift that
 changes the sequence is excluded rather than trusted.
+
+Chain files are never downloaded implicitly. :func:`download_chain` fetches
+one of the pinned files listed by :func:`pinned_chains` and verifies its checksum;
+:func:`load_chain` then opens it offline.
 """
 
 import gzip
@@ -15,6 +19,7 @@ import json
 import re
 from bisect import bisect_left
 from dataclasses import asdict, dataclass, replace
+from importlib.resources import files
 from pathlib import Path
 
 
@@ -120,6 +125,88 @@ class ChainFile:
         hits = [(target, strand, a + 1, b) for target, strand, a, b in hits]
         same = [h for h in hits if h[0] == source]
         return (same if len(hits) > 1 and len(same) == 1 else hits), partial
+
+
+@dataclass(frozen=True)
+class PinnedChain:
+    """A published chain file orfdata can download, pinned by URL, size and SHA-256."""
+
+    name: str
+    species: str
+    source_build: str
+    target_build: str
+    url: str
+    sha256: str
+    size: int
+    provider: str
+    terms: str
+    terms_url: str
+    restricted: bool
+
+    @property
+    def filename(self):
+        return self.url.rsplit("/", 1)[-1]
+
+
+def _pins():
+    return json.loads(files("orfdata").joinpath("data/chains.json").read_text())
+
+
+def pinned_chains(*, species=None):
+    """The pinned chain files, without downloading any."""
+    from .catalog import _species
+
+    found = tuple(PinnedChain(name, **entry) for name, entry in sorted(_pins().items()))
+    return found if species is None else tuple(c for c in found if c.species == _species(species))
+
+
+def _pinned(source_build, target_build, species):
+    found = [c for c in pinned_chains(species=species) if (c.source_build, c.target_build) == (source_build, target_build)]
+    if not found:
+        known = ", ".join(c.name for c in pinned_chains(species=species)) or "none"
+        raise ValueError(f"No pinned chain file maps {source_build} to {target_build} (pinned: {known}); "
+                         "pass your own file as ChainFile(path, source_build=..., target_build=...)")
+    return found[0]
+
+
+def _chain_registry(chain, cache_root):
+    from .datasets import _datacache, _digest, get_data_dir
+
+    assets = {chain.filename: dict(url=chain.url, sha256=chain.sha256, size=chain.size)}
+    return _datacache().VersionedDatasetRegistry(
+        {chain.name: dict(default_version="1", versions={"1": assets})},
+        store_path=lambda name, version: get_data_dir(cache_root) / "chains" / name / _digest(assets))
+
+
+def download_chain(source_build, target_build, *, species=None, accept_terms=False, force=False,
+                   source_path=None, cache_root=None):
+    """Download the pinned chain file from ``source_build`` to ``target_build``; return its path.
+
+    The file's SHA-256 and size must match the pin. ``source_path`` installs a
+    copy you already have instead of downloading, checked the same way. A
+    chain with usage restrictions, such as UCSC's non-commercial terms, needs
+    ``accept_terms=True``.
+    """
+    chain = _pinned(source_build, target_build, species)
+    if chain.restricted and accept_terms is not True:
+        raise ValueError(f"{chain.filename} comes from {chain.provider} with these terms: {chain.terms} "
+                         f"({chain.terms_url}). Pass accept_terms=True (or --accept-terms) to download it.")
+    registry = _chain_registry(chain, cache_root)
+    registry.download(chain.name, "1", force=force,
+                      source_paths=None if source_path is None else {chain.filename: str(source_path)})
+    return registry.local_path(chain.name, "1", asset=chain.filename)
+
+
+def load_chain(source_build, target_build, *, species=None, cache_root=None):
+    """The downloaded pinned chain file from ``source_build`` to ``target_build``, opened offline."""
+    chain = _pinned(source_build, target_build, species)
+    registry = _chain_registry(chain, cache_root)
+    if registry.inspect(chain.name, "1", verify_files=False).status == "missing":
+        raise ValueError(f"The {chain.name} chain file is not downloaded; run "
+                         f"download_chain({source_build!r}, {target_build!r}) or "
+                         f"'orfdata chains download {source_build} {target_build}'")
+    path = registry.local_path(chain.name, "1", asset=chain.filename)
+    return ChainFile(path, source_build=source_build, target_build=target_build, name=chain.filename)
 
 
 def lift_catalog(catalog, chain):

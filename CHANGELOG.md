@@ -1,3 +1,19 @@
+# 0.25.0
+
+- `orfdata lift --to BUILD` lifts the bundled catalogue, a species'
+  catalogue or a local `--catalog FILE`, writing the result and a summary of
+  what did not lift (#72). `orfdata chains list` and `orfdata chains download
+  FROM TO` manage four pinned chain files: Ensembl's GRCh37/GRCh38 pair and
+  UCSC's GRCm38/GRCm39 pair, which need `--accept-terms` for UCSC's
+  non-commercial licence. In Python, `pinned_chains()`, `download_chain()` and
+  `load_chain()`. A chain is checked against its pinned size and SHA-256 and
+  never downloaded implicitly; `--source-path` installs a local copy the same
+  way.
+- `ORFCatalog.save(path)` writes JSON or gzipped JSON deterministically.
+- The `orfdata` query command takes `--min-ribo-seq-studies`,
+  `--min-ms-peptides`, `--ms-methods` and `--either`, like `orfdata proteome`
+  (#73). `orfdata catalogs query` takes them too.
+
 # 0.24.0
 
 - `Proteome.build(genome, evidence, catalog=, viral=, cache=True)` builds the

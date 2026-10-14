@@ -2,13 +2,21 @@
 
 import gzip
 import json
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 import pytest
 from test_proteome import genome, make_catalog, orf  # noqa: F401
 
 from orfdata import ORFCatalog, ReferenceContext, extra_orfs, load_catalog
-from orfdata.liftover import ChainFile, lift_catalog
+from orfdata.cli import run
+from orfdata.liftover import (
+    ChainFile,
+    PinnedChain,
+    download_chain,
+    lift_catalog,
+    load_chain,
+    pinned_chains,
+)
 
 # GRCm38-like chr1 [1000, 1400) aligns ungapped to GRCm39-like 1 [0, 400); 2 [0, 90) aligns reversed onto 5.
 CHAINS = """##matrix=axtChain 16 91,-114,-31,-123,-114,100,-125,-31,-31,-125,100,-114,-123,-31,-114,91
@@ -141,8 +149,9 @@ def test_merged_catalogues_lift_with_their_members(chain):
 
 
 def test_a_missing_assembly_names_the_catalogue_to_lift():
-    with pytest.raises(ValueError, match=r"homo_sapiens GRCh37.*lift_catalog\(load_catalog\(species='homo_sapiens', "
-                                         r"genome_build='GRCh38'\), ChainFile"):
+    with pytest.raises(ValueError, match=r"homo_sapiens GRCh37.*'orfdata lift --species homo_sapiens --genome-build "
+                                         r"GRCh38 --to GRCh37 --output FILE', or lift_catalog\(load_catalog\("
+                                         r"species='homo_sapiens', genome_build='GRCh38'\), load_chain\('GRCh38', 'GRCh37'\)\)"):
         load_catalog(species="human", genome_build="GRCh37")
 
 
@@ -210,3 +219,76 @@ def test_several_places_are_listed_apart_from_the_reason(chain):
     lifted = lift_catalog(ORFCatalog([record], dict(make_catalog().metadata, genome_build="GRCm38")), chain)
     entry, = lifted.metadata["liftover"]["unmapped"]
     assert (entry["reason"], entry["contigs"]) == ("A coding block aligns to several places", ["7", "8"])
+
+
+def test_pinned_chains_name_their_terms():
+    pins = {c.name: c for c in pinned_chains()}
+    assert set(pins) == {"GRCh37_to_GRCh38", "GRCh38_to_GRCh37", "GRCm38_to_GRCm39", "GRCm39_to_GRCm38"}
+    assert [c.name for c in pinned_chains(species="mouse")] == ["GRCm38_to_GRCm39", "GRCm39_to_GRCm38"]
+    assert not pins["GRCh38_to_GRCh37"].restricted and pins["GRCm39_to_GRCm38"].restricted
+    assert pins["GRCm39_to_GRCm38"].filename == "mm39ToMm10.over.chain.gz"
+    assert all(len(c.sha256) == 64 and c.size > 0 and c.url.startswith("https://") for c in pins.values())
+
+
+@pytest.fixture
+def pinned(chain, monkeypatch):
+    from orfdata import liftover
+
+    pin = PinnedChain("GRCm38_to_GRCm39", "mus_musculus", "GRCm38", "GRCm39",
+                      "https://example.invalid/" + chain.path.name, chain.liftover.sha256,
+                      chain.path.stat().st_size, "UCSC", "Non-commercial only", "https://example.invalid/README", True)
+    entry = asdict(pin)
+    pins = {entry.pop("name"): entry}
+    monkeypatch.setattr(liftover, "_pins", lambda: pins)
+    return pin
+
+
+def test_a_pinned_chain_installs_verified_and_opens_offline(chain, pinned, tmp_path):
+    cache = tmp_path / "cache"
+    with pytest.raises(ValueError, match="not downloaded.*'orfdata chains download GRCm38 GRCm39'"):
+        load_chain("GRCm38", "GRCm39", cache_root=cache)
+    with pytest.raises(ValueError, match="UCSC with these terms: Non-commercial only.*accept_terms=True"):
+        download_chain("GRCm38", "GRCm39", source_path=chain.path, cache_root=cache)
+    with pytest.raises(ValueError, match="No pinned chain file maps GRCm39 to GRCm38 .pinned: GRCm38_to_GRCm39."):
+        load_chain("GRCm39", "GRCm38", cache_root=cache)
+    wrong = tmp_path / "wrong.chain.gz"
+    wrong.write_bytes(b"x" * pinned.size)
+    with pytest.raises(ValueError, match="mismatch"):
+        download_chain("GRCm38", "GRCm39", source_path=wrong, accept_terms=True, cache_root=cache)
+    path = download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True, cache_root=cache)
+    assert path.read_bytes() == chain.path.read_bytes()
+    # The same file gives the same provenance, downloaded or not.
+    assert load_chain("GRCm38", "GRCm39", cache_root=cache).liftover == chain.liftover
+
+
+def test_cli_lifts_with_a_chain_file_or_a_downloaded_pin(chain, pinned, tmp_path, capsys):
+    native = make_catalog()
+    old = ORFCatalog([shifted(r) for r in native.records], dict(native.metadata, genome_build="GRCm38"))
+    source = tmp_path / "old.json"
+    old.save(source)
+    by_file, by_pin = tmp_path / "file.json.gz", tmp_path / "pin.json.gz"
+    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--chain", str(chain.path), "--output", str(by_file)])
+    summary = json.loads(capsys.readouterr().err)
+    assert (summary["records"], summary["lifted_records"], summary["unmapped"]) == (4, 4, 0)
+    assert summary["lifted"] == "orfdata-catalog:fixture-v1@GRCm39"
+    assert load_catalog(by_file).records == lift_catalog(old, chain).records
+    cache = str(tmp_path / "cache")
+    run(["chains", "--cache-root", cache, "download", "GRCm38", "GRCm39", "--source-path", str(chain.path),
+         "--accept-terms"])
+    assert json.loads(capsys.readouterr().out)["path"].endswith(chain.path.name)
+    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin)])
+    assert by_pin.read_bytes() == by_file.read_bytes()
+    for options, message in ((["--species", "mouse"], "not both"),
+                             (["--chain", str(chain.path), "--cache-root", cache], "does not apply with --chain"),
+                             (["--to", "GRCm40"], "No pinned chain file maps GRCm38 to GRCm40")):
+        argv = ["lift", "--catalog", str(source), "--to", "GRCm39", "--output", str(by_pin)]
+        with pytest.raises(SystemExit):
+            run(argv[:3] + argv[5:] + options if "--to" in options else argv + options)
+        assert message in capsys.readouterr().err
+
+
+def test_cli_lists_pins_without_downloading(capsys):
+    run(["chains", "list", "--species", "human"])
+    listed = json.loads(capsys.readouterr().out)
+    assert [c["name"] for c in listed] == ["GRCh37_to_GRCh38", "GRCh38_to_GRCh37"]
+    assert listed[0]["provider"] == "Ensembl" and listed[0]["restricted"] is False
