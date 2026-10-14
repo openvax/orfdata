@@ -125,7 +125,9 @@ extra_orf c22norep69 MIEF1 527 677 True
 ```
 
 MIURF's protein keeps its own ID and gene while sitting on MIEF1's RNA, so it is
-not mistaken for a new protein.
+not mistaken for a new protein. The [examples](examples.md) cover non-AUG starts,
+recoded stop codons, frameshifts, circular RNAs, precursor products and IRES
+elements.
 
 ### Catalogue records
 
@@ -257,17 +259,19 @@ the packaged source-specific filters; this is not a count of proven functional
 proteins. Packaged manifests retain source accessions, checksums, licenses,
 processing rules and dataset version.
 
-The current binder accepts complete ORFs with a terminal stop under NCBI
-tables 1, 2 or 3 and their initiation codons; see
-[genetic codes](species.md#genetic-codes). All bundled models use table 1 and start
-at ATG. Other genetic codes, initiation conventions and incomplete ORFs need
-additional support. Transcript-boundary contexts can be partial; initiation efficiency and
-effects on the main coding region are not established by these data.
+Catalogue models bind as complete ORFs with a terminal stop under NCBI tables
+1, 2 or 3 and their initiation codons, or a start codon the model declares with
+`start_codon`; see [genetic codes](species.md#genetic-codes). All bundled models
+use table 1 and start at ATG. Transcript-boundary contexts can be partial;
+initiation efficiency and effects on the main coding region are not established
+by these data.
 
-Circular-RNA translation, stop-codon readthrough and translation from new
-transcripts or fusions are not covered by this reference catalogue. Those need
-additional source data and, where necessary, model support. ORF discovery is
-outside the current API.
+ORFs that a source defines on an RNA rather than in genomic coordinates use
+`TranscriptORF.at`: non-AUG starts, fragments without a known start, stop codons
+read through, and ORFs on circular or other source RNAs (`SourceRNA`). See the
+[examples](examples.md). The bundled catalogue contains none of these. Fusions,
+edited RNAs and programmed frameshifts in catalogue models need further model
+support, and ORF discovery is outside the current API.
 
 `load_uorf_catalog()` preserves Isovar's upstream-only snapshot: 3,771 models,
 dataset `2026-10-08.2`. New code should use the broader `load_catalog()` API.

@@ -1,3 +1,22 @@
+# 0.20.0
+
+- Describe ORFs by RNA coordinates with `TranscriptORF.at`: declared non-AUG
+  starts, fragments without a known start, recoded stop codons such as
+  readthrough and selenocysteine, and ORFs across circular-RNA junctions on a
+  `SourceRNA` (#64, #65, #66). Catalogue models can declare `start_codon`.
+- Annotated CDSs report `start_codon`, `stop_codon`, decoded internal stop
+  codons and sub-codon introns, such as programmed frameshifts. Start and stop
+  completeness no longer depends only on Ensembl's codon rows, which omit
+  GUG, ACG and AUU starts.
+- `cds_relation` relates any ORF to its transcript's annotated CDS (upstream,
+  internal, N-terminal extension and so on), alongside the source's category.
+- `ProteinProduct` and `products_from_uniprot` map precursor products such as
+  POMC's hormones to codons and genomic positions (#67).
+- `RNAFeature` and `rfam_ires` locate reported IRES elements from the bundled
+  Rfam 15.1 human cellular seeds (CC0) on transcripts (#63).
+- An examples page covers bicistronic RNAs, ORF categories, non-AUG starts,
+  recoding, frameshifts, ERV proteins, circular RNAs, precursors and IRESs.
+
 # 0.19.0
 
 - Build layered reference proteomes from a PyEnsembl genome: annotated proteins,

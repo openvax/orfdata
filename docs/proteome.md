@@ -205,6 +205,7 @@ goes to standard error.
 
 Mouse and dog noncanonical ORFs, and translated endogenous retrovirus (ERV)
 ORFs without annotated transcripts, need new source data; see the
-[data roadmap](https://github.com/openvax/orfdata/issues/3). Translation
-products from circular RNAs, stop-codon readthrough or fusions are outside this
-reference.
+[data roadmap](https://github.com/openvax/orfdata/issues/3). Products from
+circular RNAs, stop-codon readthrough or non-AUG starts can be described with
+`TranscriptORF.at` and `SourceRNA` (see the [examples](examples.md)), but no
+bundled catalogue supplies them yet, so proteomes do not include them.
