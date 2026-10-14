@@ -23,6 +23,7 @@ nav:
       - Build a reference proteome: proteome.md
   - Noncanonical ORFs:
       - ORFs and evidence: reference.md
+      - Examples: examples.md
       - Species, references and genetic codes: species.md
       - Optional ORF catalogues: catalogs.md
   - Quantitative data:

@@ -55,9 +55,10 @@ peptides presented by HLA molecules.
 ## Species
 
 The bundled noncanonical ORF catalogue is human GRCh38 only. Mouse, dog and
-yeast proteomes contain their PyEnsembl-annotated proteins; `with_extra_orfs()`
-raises for them until a qualified catalogue is released. Human evidence is never
-transferred to another species. Viral proteomes can be added with
+yeast proteomes contain their PyEnsembl-annotated proteins.
+`load_catalog(species=...)` and `with_extra_orfs()` pick the catalogue for a
+species and raise for those three until a qualified catalogue is released.
+Human evidence is never transferred to another species. Viral proteomes can be added with
 `with_viral(...)`, but only to a proteome for one of the virus's recorded hosts.
 orfdata also provides [RNA, ribosome and protein measurements](https://openvax.github.io/orfdata/measurements/)
 for human, mouse, dog and yeast.

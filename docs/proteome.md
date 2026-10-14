@@ -107,10 +107,12 @@ matches an annotated protein; both entries are kept because they have
 different identities and evidence. `proteome.by_sequence()` groups entries with
 identical sequences, for example before an exact peptide search.
 
-Without `catalog=`, the catalogue covering the genome's species and assembly is
-used. Only human GRCh38 has one; other species raise. Pass a catalogue from
-[`CatalogRegistry`](catalogs.md) or `load_catalog(path)` explicitly. A
-catalogue for a different species or assembly is rejected.
+Without `catalog=`, `load_catalog` picks the catalogue for the genome's species
+and assembly: a bundled one, or else one installed through
+[`CatalogRegistry`](catalogs.md). Only human GRCh38 has one so far; for other
+species the error names the catalogues that exist. Pass `catalog=` to use
+another, such as `load_catalog(path)`. A catalogue for a different species or
+assembly is rejected.
 
 ## Viral proteomes
 
@@ -205,6 +207,7 @@ goes to standard error.
 
 Mouse and dog noncanonical ORFs, and translated endogenous retrovirus (ERV)
 ORFs without annotated transcripts, need new source data; see the
-[data roadmap](https://github.com/openvax/orfdata/issues/3). Translation
-products from circular RNAs, stop-codon readthrough or fusions are outside this
-reference.
+[data roadmap](https://github.com/openvax/orfdata/issues/3). Products from
+circular RNAs, stop-codon readthrough or non-AUG starts can be described with
+`TranscriptORF.at` and `SourceRNA` (see the [examples](examples.md)), but no
+bundled catalogue supplies them yet, so proteomes do not include them.

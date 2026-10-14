@@ -6,7 +6,7 @@ from typing import Optional
 
 from .initiation_context import annotate_initiation_context
 from .reference import ReferenceContext, canonical_species, species_taxon
-from .sequence import genetic_code
+from .sequence import CODONS, genetic_code, read_orf
 
 
 @dataclass(frozen=True)
@@ -18,6 +18,8 @@ class ORFModel:
     ``translation_table`` is an NCBI genetic-code ID, not inferred from species
     or a contig name. Binding supports tables 1, 2 and 3 (standard, vertebrate
     and yeast mitochondrial); other declared codes fail when bound.
+    ``start_codon`` declares a source-supported start outside the code's
+    initiation codons, such as GTG or ACG; it reads as methionine.
     """
 
     orf_id: str
@@ -35,8 +37,11 @@ class ORFModel:
     translation_table: int = 1
     source: str = ""
     reference_context: Optional[ReferenceContext] = None
+    start_codon: Optional[str] = None
 
     def __post_init__(self):
+        if self.start_codon is not None and (len(self.start_codon) != 3 or set(self.start_codon) - set("ACGT")):
+            raise ValueError("A declared start codon is three A/C/G/T bases")
         if type(self.taxon_id) is not int or self.taxon_id < 1 or not self.species:
             raise ValueError("An explicit species and positive NCBI taxon_id are required")
         known = species_taxon(self.species)
@@ -77,6 +82,8 @@ class ORFModel:
         result = asdict(self)
         if self.reference_context is None:
             result.pop("reference_context")
+        if self.start_codon is None:
+            result.pop("start_codon")
         return result
 
 
@@ -130,6 +137,29 @@ def _layout_position(layout, strand, offset):
         if first <= offset <= first + b - a:
             return a + offset - first if strand == "+" else b - (offset - first)
     raise ValueError(f"Offset {offset} is outside the transcript")
+
+
+def _rna_layout(rna):
+    """Exons in RNA order with offsets and length, for a PyEnsembl transcript or a ``SourceRNA``."""
+    layout = getattr(rna, "layout", None)
+    return layout if layout is not None else _exon_layout(rna)
+
+
+def _layout_blocks(layout, strand, offsets, *, ordered=False):
+    """Genomic blocks of the bases at these RNA offsets: ascending, or in RNA order."""
+    exons, starts, _ = layout
+    runs = []
+    for offset in offsets:
+        index = next(i for i in range(len(exons) - 1, -1, -1) if starts[i] <= offset)
+        a, b = exons[index]
+        position = a + (offset - starts[index]) if strand == "+" else b - (offset - starts[index])
+        step = 1 if strand == "+" else -1
+        if runs and position == runs[-1][1] + step:
+            runs[-1][1] = position
+        else:
+            runs.append([position, position])
+    blocks = tuple((min(a, b), max(a, b)) for a, b in runs)
+    return blocks if ordered else _merge(blocks)
 
 
 def path_offset(transcript, blocks, *, layout=None):
@@ -259,7 +289,7 @@ class TranscriptORF:
         coding = str(transcript.sequence[start : start + length]).upper()
         if any(b not in "ACGT" for b in coding):
             raise ValueError("ORF reference sequence is ambiguous")
-        if code.translate(coding) != model.protein_sequence + "*":
+        if code.translate(coding, start_codon=model.start_codon) != model.protein_sequence + "*":
             raise ValueError("ORF reference protein/stop mismatch")
         self._set(record=record, transcript=transcript, start=start, end=start + length,
                   coding_sequence=coding, context=resolved_context, kind="extra_orf",
@@ -301,19 +331,26 @@ class TranscriptORF:
             raise ValueError(f"Annotated CDS of {transcript.id} is not one contiguous part of {host.id}")
         length = sum(b - a + 1 for a, b in blocks)
         coding = str(host.sequence[start : start + length]).upper()
-        start_complete, stop_complete = transcript.contains_start_codon, transcript.contains_stop_codon
         if on is not None:
             own = path_offset(transcript, blocks)
             if own is None or str(transcript.sequence[own : own + length]).upper() != coding:
                 raise ValueError(f"Annotated CDS of {transcript.id} differs in sequence on {host.id}")
-            # Without a marked start or stop, the CDS is the same ORF on another RNA only if
-            # that RNA continues the same way beyond it; otherwise translation reads on.
-            if _versioned(on) != _versioned(transcript) and (
-                    (not start_complete and str(host.sequence[:start]) != str(transcript.sequence[:own]))
-                    or (not stop_complete and str(host.sequence[start + length :])
-                        != str(transcript.sequence[own + length :]))):
-                raise ValueError(f"Annotated CDS of {transcript.id} lacks a marked start or stop codon "
-                                 f"and {host.id} continues differently beyond it")
+        else:
+            own = start
+        # Ensembl marks only ATG/CTG/TTG starts with start_codon rows; a CDS beginning
+        # after its RNA's first base has an annotated start whatever the codon.
+        start_complete = bool(transcript.contains_start_codon or own > 0)
+        stop_complete = bool(transcript.contains_stop_codon or (
+            start_complete and length % 3 == 0 and CODONS.get(coding[-3:]) == "*"))
+        # Without a marked start or stop, the CDS is the same ORF on another RNA only if
+        # that RNA continues the same way beyond it; otherwise translation reads on.
+        if on is not None and _versioned(on) != _versioned(transcript) and (
+                (not start_complete and str(host.sequence[:start]) != str(transcript.sequence[:own]))
+                or (not stop_complete and str(host.sequence[start + length :])
+                    != str(transcript.sequence[own + length :]))):
+            raise ValueError(f"Annotated CDS of {transcript.id} lacks a marked start or stop codon "
+                             f"and {host.id} continues differently beyond it")
+        source = f"{resolved_context.annotation_name}:{resolved_context.annotation_version}"
         version = transcript.protein.protein_version
         orf = object.__new__(cls)
         orf._set(record=None, transcript=host, start=start, end=start + length, coding_sequence=coding,
@@ -322,7 +359,49 @@ class TranscriptORF:
                  annotation_id=transcript.protein_id + ("" if version is None else f".{version}"),
                  source_transcript_id=_versioned(transcript), equivalent_ids=(), _blocks=blocks,
                  _source_gene=(transcript.gene_id, transcript.gene_name),
-                 _protein=transcript.protein_sequence)
+                 _protein=transcript.protein_sequence, _source=source)
+        return orf
+
+    @classmethod
+    def at(cls, rna, start, *, orf_id, source, protein=None, start_codon=None, recoded=None,
+           translation_table=1, orf_type=None, evidence=None, context=None, start_complete=True):
+        """A source-defined ORF read from ``start`` in an RNA's spliced sequence.
+
+        ``rna`` is a PyEnsembl transcript or a :class:`SourceRNA`. Codons are read
+        from the slice offset ``start`` to the first stop codon, across the
+        junction of a circular RNA. ``start_codon`` declares a source-supported
+        start outside the genetic code's initiation codons, such as GTG; it reads
+        as methionine. ``recoded`` maps codon indexes to the residue of each stop
+        codon the source says is read through, for example ``{48: "U"}`` for a
+        selenocysteine. When ``protein`` is given, the translation must equal it.
+        A linear RNA ending before a stop gives ``stop_complete=False``. For a
+        fragment whose start the source does not establish, pass
+        ``start_complete=False``: the first codon is read as an ordinary codon.
+        """
+        from .catalog import ORFEvidence
+
+        code = genetic_code(translation_table)
+        reference = getattr(rna, "reference", None)
+        if not isinstance(reference, ReferenceContext):
+            reference = ReferenceContext.from_genome(rna.genome, context=context)
+        circular = getattr(rna, "topology", "linear") == "circular"
+        coding, translated, stopped = read_orf(rna.sequence, start, code=code, start_codon=start_codon,
+                                               recoded=recoded, circular=circular, initiation=start_complete)
+        if not coding:
+            raise ValueError(f"No complete codon follows offset {start}")
+        if protein is not None and translated != protein:
+            raise ValueError(f"{orf_id} does not translate to the source protein from offset {start}")
+        size = len(rna.sequence)
+        offsets = [(start + i) % size for i in range(len(coding))]
+        layout = _rna_layout(rna)
+        orf = object.__new__(cls)
+        orf._set(record=None, transcript=rna, start=start, end=offsets[-1] + 1, coding_sequence=coding,
+                 context=reference, kind="extra_orf", start_complete=start_complete, stop_complete=stopped,
+                 annotation_id=orf_id, source_transcript_id=_versioned(rna), equivalent_ids=(),
+                 _blocks=_layout_blocks(layout, rna.strand, offsets) if layout[0] else (),
+                 _source_gene=(rna.gene_id, rna.gene_name), _protein=translated, _orf_type=orf_type,
+                 _evidence=evidence if evidence is not None else ORFEvidence(), _source=source,
+                 _table=translation_table)
         return orf
 
     def _set(self, **values):
@@ -343,7 +422,10 @@ class TranscriptORF:
         """Forward-genomic position of every base of the transcript, in RNA order."""
         positions = self.__dict__.get("_positions")
         if positions is None:
-            positions = transcript_positions(self.transcript)
+            layout = _rna_layout(self.transcript)
+            positions = tuple(
+                p for (a, b) in layout[0]
+                for p in (range(a, b + 1) if self.transcript.strand == "+" else range(b, a - 1, -1)))
             object.__setattr__(self, "_positions", positions)
         return positions
 
@@ -364,14 +446,129 @@ class TranscriptORF:
                 low = max(0, self.start - 9)
                 window = str(self.transcript.sequence[low : self.start + 9])
                 context = annotate_initiation_context(window, self.start - low)
-                layout = self.__dict__.get("_layout") or _exon_layout(self.transcript)
+                layout = self.__dict__.get("_layout") or _rna_layout(self.transcript)
                 positions = tuple(_layout_position(layout, self.transcript.strand, offset)
                                   for offset in range(low, low + len(context.upstream + context.start_codon
-                                                                     + context.downstream)))
+                                                                     + context.downstream))) if layout[0] else ()
                 context = replace(context, genomic_positions=positions, start_offset=self.start,
                                   source_transcript_id=_versioned(self.transcript))
             object.__setattr__(self, "_initiation", context)
         return self._initiation
+
+    @property
+    def segments(self):
+        """Slices of the RNA sequence read in order: two when crossing a circular junction."""
+        if self.wraps_junction:
+            return (self.start, len(self.transcript.sequence)), (0, self.end)
+        return ((self.start, self.end),)
+
+    @property
+    def wraps_junction(self):
+        """Whether the ORF continues across a circular RNA's junction."""
+        return self.end <= self.start
+
+    @property
+    def source(self):
+        """The ORF's source: catalogue, annotation release or the declared source."""
+        return self.model.source if self.record is not None else self._source
+
+    @property
+    def start_codon(self):
+        return self.coding_sequence[:3] if self.start_complete else None
+
+    @property
+    def stop_codon(self):
+        return self.coding_sequence[-3:] if self.stop_complete else None
+
+    @property
+    def decoded_stop_codons(self):
+        """``(codon_index, codon, residue)`` for internal stop codons the protein reads through.
+
+        Stops are judged by the ORF's code, or the standard code for an annotated
+        CDS, which declares none: selenocysteine ``U``, readthrough residues and
+        mitochondrial TGA tryptophan all appear here. A fragment read with
+        ``at(..., start_complete=False)`` is checked from its first codon. Empty
+        when the reading frame is unknown.
+        """
+        origin = self._origin
+        if origin is None:
+            return ()
+        code = self.genetic_code
+        codons = code.codons if code is not None else CODONS
+        protein, coding = self.protein_sequence, self.coding_sequence
+        first = 1 if self.start_complete else 0  # A complete start codon reads as methionine.
+        return tuple((i, coding[origin + 3 * i : origin + 3 * i + 3], protein[i])
+                     for i in range(first, len(protein))
+                     if origin + 3 * i >= 0 and codons.get(coding[origin + 3 * i : origin + 3 * i + 3]) == "*")
+
+    @property
+    def _origin(self):
+        """Offset in ``coding_sequence`` of the codon for protein residue 0.
+
+        Negative when an annotated CDS begins with a partial codon, which
+        Ensembl translates as ``X``; None when the frame is unknown.
+        """
+        if self.start_complete or self.kind != "annotated":
+            return 0
+        if not self.stop_complete:
+            return None
+        phase = len(self.coding_sequence) % 3
+        leading = len(self.protein_sequence) - (len(self.coding_sequence) - phase) // 3 + 1
+        return phase - 3 * leading if leading in (0, 1) else None
+
+    @property
+    def subcodon_introns(self):
+        """``(coding_offset, genomic_start, genomic_end, frame_shift)`` for 1-2 nt gaps in the coding path.
+
+        Ensembl models programmed ribosomal frameshifts, such as OAZ1's, as such
+        gaps; they also mark some reference-sequence corrections. ``coding_offset``
+        is where the skip falls in the coding sequence.
+        """
+        forward, found, before = self.transcript.strand == "+", [], 0
+        if self.wraps_junction:  # Each side of a circular junction is read separately.
+            layout = _rna_layout(self.transcript)
+            segments = [_layout_blocks(layout, self.transcript.strand, range(a, b), ordered=True)
+                        for a, b in self.segments]
+        else:
+            segments = [self.coding_blocks if forward else self.coding_blocks[::-1]]
+        for blocks in segments:
+            for (a, b), (c, d) in zip(blocks, blocks[1:]):
+                before += b - a + 1
+                gap = c - b - 1 if forward else a - d - 1
+                if gap in (1, 2):
+                    found.append((before, b + 1 if forward else d + 1, c - 1 if forward else a - 1,
+                                  1 if gap == 1 else -1))
+            before += blocks[-1][1] - blocks[-1][0] + 1 if blocks else 0
+        return tuple(sorted(found, key=lambda x: x[1]))
+
+    @property
+    def cds_relation(self):
+        """Where this ORF lies relative to its transcript's own annotated CDS.
+
+        One of ``"annotated_cds"``, ``"upstream"``, ``"upstream_overlapping"``,
+        ``"internal"`` (another frame inside the CDS), ``"downstream_overlapping"``,
+        ``"downstream"``, ``"N_terminal_extension"``, ``"N_terminal_truncation"``,
+        ``"C_terminal_extension"``, ``"C_terminal_truncation"``,
+        ``"in_frame_overlapping"``, or ``"no_cds"`` when the transcript has no
+        annotated CDS. Computed for the loaded annotation; ``orf_type`` keeps the
+        source's own category.
+        """
+        if "_relation" in self.__dict__:
+            return self._relation
+        relation = None
+        if not self.transcript.protein_id:
+            relation = "no_cds"
+        elif not self.wraps_junction:
+            try:
+                cds = TranscriptORF.from_annotation(self.transcript, context=self.context)
+            except ValueError:
+                cds = None
+            if cds is not None:
+                origin = cds._origin
+                relation = _relation(self.start, self.end, cds.start, cds.end,
+                                     None if origin is None else cds.start + origin)
+        object.__setattr__(self, "_relation", relation)
+        return relation
 
     @property
     def model(self):
@@ -382,9 +579,12 @@ class TranscriptORF:
     def evidence(self):
         """Source evidence; an annotated CDS carries none from orfdata."""
         if self.record is None:
-            from .catalog import ORFEvidence
+            evidence = self.__dict__.get("_evidence")
+            if evidence is None:
+                from .catalog import ORFEvidence
 
-            return ORFEvidence()
+                evidence = ORFEvidence()
+            return evidence
         return self.record.evidence
 
     @property
@@ -397,7 +597,10 @@ class TranscriptORF:
 
         None for an annotated CDS: the annotation does not declare its code.
         """
-        return None if self.record is None else genetic_code(self.model.translation_table)
+        if self.record is None:
+            table = self.__dict__.get("_table")
+            return None if table is None else genetic_code(table)
+        return genetic_code(self.model.translation_table)
 
     @property
     def orf_id(self):
@@ -409,7 +612,7 @@ class TranscriptORF:
     @property
     def orf_type(self):
         """Source ORF category, kept verbatim; None for an annotated CDS."""
-        return None if self.record is None else self.model.orf_type
+        return self.__dict__.get("_orf_type") if self.record is None else self.model.orf_type
 
     @property
     def coding_blocks(self):
@@ -448,6 +651,7 @@ class TranscriptORF:
     def to_dict(self):
         transcript = self.transcript
         genome = transcript.genome
+        species = getattr(genome, "species", None)
         return dict(
             kind=self.kind,
             orf_id=self.orf_id,
@@ -470,18 +674,46 @@ class TranscriptORF:
                 id=transcript.id,
                 version=getattr(transcript, "version", None),
                 release=getattr(genome, "release", None),
-                genome_build=genome.reference_name,
-                species=_species(genome.species) if getattr(genome, "species", None) else None,
+                genome_build=self.context.genome_build,
+                species=_species(species) if species else None,
                 biotype=getattr(transcript, "biotype", None),
+                topology=getattr(transcript, "topology", "linear"),
             ),
+            source=self.source,
             start=self.start,
             end=self.end,
+            segments=self.segments,
             cdna_interval=self.cdna_interval,
             coding_blocks=self.coding_blocks,
             start_complete=self.start_complete,
             stop_complete=self.stop_complete,
+            start_codon=self.start_codon,
+            stop_codon=self.stop_codon,
+            decoded_stop_codons=self.decoded_stop_codons,
+            subcodon_introns=self.subcodon_introns,
             coordinates="0-based-half-open-cdna;1-based-inclusive-genome",
         )
+
+
+def _relation(start, end, cds_start, cds_end, frame):
+    """``frame`` is any slice offset in the CDS's reading frame, or None if unknown."""
+    if (start, end) == (cds_start, cds_end):
+        return "annotated_cds"
+    if end <= cds_start:
+        return "upstream"
+    if start >= cds_end:
+        return "downstream"
+    if frame is None:
+        return None
+    if (start - frame) % 3 == 0:
+        if end == cds_end:
+            return "N_terminal_extension" if start < cds_start else "N_terminal_truncation"
+        if start == cds_start:
+            return "C_terminal_extension" if end > cds_end else "C_terminal_truncation"
+        return "in_frame_overlapping"
+    if start < cds_start:
+        return "upstream_overlapping"
+    return "internal" if end <= cds_end else "downstream_overlapping"
 
 
 def _merge(ranges):

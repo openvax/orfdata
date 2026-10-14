@@ -7,6 +7,7 @@ import gzip
 import io
 import json
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 from pyensembl import Genome
@@ -187,6 +188,9 @@ def test_extra_orfs_sit_on_every_transcript_carrying_their_coding_path(genome, c
     assert {f.orf_id: f.reason for f in found.source_failures} == {
         "absent-orf": "Transcript absent from this annotation", "changed-orf": "ORF reference protein/stop mismatch"}
     assert [f.orf_id for f in found.excluded] == ["changed-orf"]
+    assert [o.transcript.id for o in found.for_orf("absent-orf")] == ["test_rna", "test_rna_long"]
+    assert [o.on_source_transcript for o in found.for_orf("ms-orf")] == [True, False]
+    assert found.for_orf("changed-orf") == ()
     with pytest.raises(ValueError, match="identity mismatch"):
         catalog.get("ms-orf").bind(genome.transcript_by_id("test_rna_long"))  # bind() stays strict.
     bound = found.orfs[0]
@@ -501,10 +505,31 @@ def test_uninstalled_annotation_is_never_downloaded_or_indexed(tmp_path):
 
 def test_species_without_a_catalogue_or_mismatched_catalogue_fails(genome):
     base = Proteome.from_genome(genome)
-    with pytest.raises(ValueError, match="No extra-ORF catalogue is available for mus_musculus GRCm39"):
+    with pytest.raises(ValueError, match=r"No ORF catalogue covers mus_musculus GRCm39\. "
+                                         r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\)"):
         base.with_extra_orfs()
     with pytest.raises(ValueError, match="cannot bind"):
         base.with_extra_orfs(catalog=load_catalog())
+
+
+def test_a_registered_catalogue_is_the_default_for_its_species(genome, monkeypatch):
+    class OneCatalogue:
+        def list(self):
+            return (SimpleNamespace(catalog_id="mouse-orfs", version="1", genome_build="GRCm39",
+                                    references=(SimpleNamespace(species="mus_musculus"),)),)
+
+        def info(self, name, version=None):
+            return self.list()[0]
+
+        def inspect(self, name, version=None, verify_files=True):
+            return SimpleNamespace(status="available")
+
+        def open(self, name, version=None):
+            return make_catalog()
+
+    monkeypatch.setattr("orfdata.catalogs.CatalogRegistry", OneCatalogue)
+    base = Proteome.from_genome(genome)
+    assert base.with_extra_orfs(None).identity == base.with_extra_orfs(None, catalog=make_catalog()).identity
 
 
 def test_bundled_human_catalogue_is_the_default_for_grch38(tmp_path):
@@ -580,4 +605,4 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"annotated": 3}
     with pytest.raises(SystemExit):
         run(["proteome", "--species", "mouse", "--release", "1"])  # No mouse catalogue yet.
-    assert "No extra-ORF catalogue" in capsys.readouterr().err
+    assert "No ORF catalogue covers mus_musculus GRCm39" in capsys.readouterr().err

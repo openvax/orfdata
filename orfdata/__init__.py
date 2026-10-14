@@ -48,6 +48,7 @@ from .proteome import (
 )
 from .reference import ReferenceContext, ScopedTarget
 from .reference_mapping import MappedMeasurement, ReferenceMapping
+from .rna import IRES, ProteinProduct, RNAFeature, SourceRNA, products_from_uniprot, rfam_ires
 from .search_reference import SearchMembership, SearchReference, SearchReferenceSpec, SearchSequence
 from .sequence import GeneticCode, genetic_code
 from .version import __version__
@@ -64,6 +65,12 @@ __all__ = [
     "BindingFailure",
     "GeneticCode",
     "genetic_code",
+    "SourceRNA",
+    "RNAFeature",
+    "IRES",
+    "ProteinProduct",
+    "products_from_uniprot",
+    "rfam_ires",
     "EVIDENCE_METHODS",
     "ORFCatalog",
     "ORFRecord",
