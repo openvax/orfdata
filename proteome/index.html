@@ -1,0 +1,1599 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reference proteomes with evidence-backed noncanonical ORFs on PyEnsembl genomes">
+      
+      
+      
+        <link rel="canonical" href="https://openvax.github.io/orfdata/proteome/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../reference/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Build a reference proteome - orfdata</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/docs.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#build-a-reference-proteome" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="orfdata" class="md-header__button md-logo" aria-label="orfdata" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            orfdata
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Build a reference proteome
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/openvax/orfdata" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    openvax/orfdata
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="orfdata" class="md-nav__button md-logo" aria-label="orfdata" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    orfdata
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/openvax/orfdata" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    openvax/orfdata
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proteomes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Proteomes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build a reference proteome
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build a reference proteome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#annotated-proteins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Annotated proteins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choose-the-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choose the evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#every-transcript-and-excluded-orfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Every transcript, and excluded ORFs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viral-proteomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viral proteomes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#save-and-reload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save and reload
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lower-level-orf-lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lower-level ORF lookup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fasta-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FASTA headers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command line
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-yet-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not yet included
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Noncanonical ORFs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Noncanonical ORFs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ORFs and evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../species/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Species, references and genetic codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../catalogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ORF catalogues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quantitative data
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quantitative data
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../measurements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pairing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparing RNA, ribosome and protein
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../source-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source references and mappings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../search-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protein search references
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Released data and gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasets
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Datasets
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../human-tissue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Human tissue RNA and protein
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pfizer-protein/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Human, mouse and dog protein
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pfizer-rna/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dog and mouse RNA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../copy-yeast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Yeast protein and RNA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingolia-yeast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Yeast RNA and ribosome occupancy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/openvax/orfdata/blob/main/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/openvax/orfdata/issues/3" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#annotated-proteins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Annotated proteins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choose-the-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choose the evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#every-transcript-and-excluded-orfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Every transcript, and excluded ORFs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viral-proteomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viral proteomes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#save-and-reload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save and reload
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lower-level-orf-lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lower-level ORF lookup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fasta-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FASTA headers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command line
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-yet-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not yet included
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="build-a-reference-proteome">Build a reference proteome<a class="headerlink" href="#build-a-reference-proteome" title="Permanent link">&para;</a></h1>
+<p>A <code>Proteome</code> holds protein sequences for one species and genome. It is built
+in explicit layers: annotated proteins first, then optional extra ORFs and
+viral proteins. Each method returns a new proteome. <code>proteome.layers</code> records
+every addition with its role (<code>host</code>, <code>viral</code> or <code>filter</code>), source, selection
+and counts, and each entry lists every transcript that encodes it.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyensembl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnsemblRelease</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span>
+
+<span class="n">genome</span> <span class="o">=</span> <span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">)</span>  <span class="c1"># Installed with pyensembl install.</span>
+<span class="n">annotated</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">from_genome</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">evidence</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
+</code></pre></div>
+<p>The examples on this page continue that Python session.</p>
+<h2 id="annotated-proteins">Annotated proteins<a class="headerlink" href="#annotated-proteins" title="Permanent link">&para;</a></h2>
+<p><code>Proteome.from_genome(genome)</code> takes every transcript with an annotated protein
+sequence. For Ensembl this matches the annotation's protein FASTA: Ensembl 115
+has 245,535 human proteins with 160,811 distinct sequences. They include
+nonsense-mediated-decay and immunoglobulin/T-cell receptor segment translations,
+and 11,540 proteins on patch, haplotype and unplaced contigs. Each entry
+records its accession, gene, transcript, contig and transcript biotype, so you
+can restrict them explicitly:</p>
+<div class="highlight"><pre><span></span><code><span class="n">primary</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">23</span><span class="p">)}</span> <span class="o">|</span> <span class="p">{</span><span class="s2">"X"</span><span class="p">,</span> <span class="s2">"Y"</span><span class="p">,</span> <span class="s2">"MT"</span><span class="p">}</span>
+<span class="n">chromosomes</span> <span class="o">=</span> <span class="n">annotated</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">contig</span> <span class="ow">in</span> <span class="n">primary</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">"primary chromosomes"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">))</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>233995
+</code></pre></div>
+<p><code>filter</code> records its description and the number of removed entries as a layer.
+Mouse, dog, yeast and other PyEnsembl species work the same way; mouse Ensembl
+115 has 66,668 annotated proteins. orfdata does not download or index
+annotation data. An uninstalled genome raises an error naming the
+<code>pyensembl install</code> command.</p>
+<h2 id="choose-the-evidence">Choose the evidence<a class="headerlink" href="#choose-the-evidence" title="Permanent link">&para;</a></h2>
+<p><code>with_extra_orfs(evidence=...)</code> selects catalogue ORFs by evidence and adds each
+one that a transcript of this genome encodes: the transcript contains the ORF's
+exact spliced coding path and translates to its protein. Counts below are for
+the bundled human catalogue (dataset <code>2026-10-11.1</code>) and Ensembl 115:</p>
+<table>
+<thead>
+<tr>
+<th>Selection</th>
+<th style="text-align: right;">Human ORFs</th>
+<th style="text-align: right;">Encoded in Ensembl 115</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>evidence=None</code> or <code>"ribosome"</code>: translated in ribosome profiling</td>
+<td style="text-align: right;">7,264</td>
+<td style="text-align: right;">7,239</td>
+</tr>
+<tr>
+<td><code>evidence="ms"</code> (default): any supporting MS peptide</td>
+<td style="text-align: right;">2,186</td>
+<td style="text-align: right;">2,181</td>
+</tr>
+<tr>
+<td><code>evidence="hla"</code> or <code>"mhc"</code>: peptides presented by HLA</td>
+<td style="text-align: right;">1,881</td>
+<td style="text-align: right;">1,879</td>
+</tr>
+<tr>
+<td><code>evidence="ms_unclassified"</code>: MS with an unreported assay type</td>
+<td style="text-align: right;">537</td>
+<td style="text-align: right;">535</td>
+</tr>
+<tr>
+<td><code>evidence="shotgun"</code>: protease-digest MS</td>
+<td style="text-align: right;">73</td>
+<td style="text-align: right;">72</td>
+</tr>
+<tr>
+<td><code>"ms"</code> with <code>require_unique=True</code></td>
+<td style="text-align: right;">1,623</td>
+<td style="text-align: right;">1,621</td>
+</tr>
+<tr>
+<td><code>"ms"</code> with <code>require_reviewed=True</code></td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">44</td>
+</tr>
+</tbody>
+</table>
+<p>All bundled ORFs come from ribosome-profiling catalogues, so <code>"ribosome"</code>
+selects all of them. An MS-supported ORF can have peptides from several assay
+types. <code>require_unique</code> keeps peptides that map to one protein <em>within the MS
+source's search</em>, which is not uniqueness across every possible protein; in
+this catalogue only the author HLA mappings report it. <code>require_reviewed</code>
+keeps peptides with convincing community spectrum reviews. Because those two
+properties come from different sources, no bundled peptide has both.
+<code>require_resolved</code> excludes support that consists only of aggregate counts.
+See <a href="../reference/#evidence">ORFs and evidence</a> for the full definitions.</p>
+<p>A translated ORF or a detected peptide does not by itself establish a stable,
+functional protein. Missing evidence does not establish that an ORF is never
+translated.</p>
+<h2 id="every-transcript-and-excluded-orfs">Every transcript, and excluded ORFs<a class="headerlink" href="#every-transcript-and-excluded-orfs" title="Permanent link">&para;</a></h2>
+<p>Each extra ORF is one entry, whatever the number of transcripts encoding it.
+<code>entry.occurrences</code> lists them, the transcript the source names first. Each
+<code>Occurrence</code> has the transcript and gene, <code>start</code> and <code>end</code> slicing the
+transcript sequence, the genomic <code>coding_blocks</code> and <code>on_source_transcript</code>.
+Annotated entries have one occurrence, on their own transcript.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="n">ms_orfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">proteome</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"extra_orf"</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">occurrences</span><span class="p">),</span> <span class="mi">5</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">ms_orfs</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">reason</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">proteome</span><span class="o">.</span><span class="n">excluded</span><span class="p">))</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>Counter({5: 1253, 1: 345, 2: 254, 3: 184, 4: 145})
+Counter({'ORF splice path mismatch': 5})
+</code></pre></div>
+<p>More than half of the MS-supported ORFs, 1,253 of 2,181, are encoded by five
+or more Ensembl 115 transcripts. The bundled models were validated against Ensembl 101, and later
+releases retire or change some of their transcripts. When an ORF's source
+transcript is gone or changed but another transcript still encodes it, the ORF
+is added and <code>entry.source_binding</code> gives the reason: 41 of the MS-supported
+ORFs, counted as <code>not_on_source_transcript</code> in the layer. The 5 in
+<code>proteome.excluded</code> are encoded by no Ensembl 115 transcript.
+<code>identical_to_annotated</code> in the layer counts added ORFs whose protein now
+matches an annotated protein; both entries are kept because they have
+different identities and evidence. <code>proteome.by_sequence()</code> groups entries with
+identical sequences, for example before an exact peptide search.</p>
+<p>Without <code>catalog=</code>, the catalogue covering the genome's species and assembly is
+used. Only human GRCh38 has one; other species raise. Pass a catalogue from
+<a href="../catalogs/"><code>CatalogRegistry</code></a> or <code>load_catalog(path)</code> explicitly. A
+catalogue for a different species or assembly is rejected.</p>
+<h2 id="viral-proteomes">Viral proteomes<a class="headerlink" href="#viral-proteomes" title="Permanent link">&para;</a></h2>
+<p>A <code>ViralProteome</code> holds one virus's proteins, its NCBI taxon, and the NCBI
+species taxa recorded as its hosts, with the source of that host range. It can
+only be added to a proteome for one of those hosts:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViralProteome</span>
+
+<span class="c1"># Template: substitute your FASTA, the virus taxon and your host-range source.</span>
+<span class="n">hpv16</span> <span class="o">=</span> <span class="n">ViralProteome</span><span class="o">.</span><span class="n">from_fasta</span><span class="p">(</span>
+    <span class="s2">"hpv16-proteins.fasta"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"HPV16"</span><span class="p">,</span> <span class="n">taxon_id</span><span class="o">=</span><span class="mi">333760</span><span class="p">,</span>
+    <span class="n">host_taxon_ids</span><span class="o">=</span><span class="p">{</span><span class="mi">9606</span><span class="p">},</span> <span class="n">host_source</span><span class="o">=</span><span class="s2">"Host range source and date"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">with_virus</span> <span class="o">=</span> <span class="n">proteome</span><span class="o">.</span><span class="n">with_viral</span><span class="p">(</span><span class="n">hpv16</span><span class="p">)</span>
+</code></pre></div>
+<p>Adding it to a mouse or dog proteome raises an error. orfdata does not infer
+hosts from a virus's name or from related viruses. Viral entries keep the
+virus's taxon, and their layer has the role <code>viral</code>; <code>proteome.host()</code> returns
+the host's own proteins without them, for example as a self reference.</p>
+<h2 id="save-and-reload">Save and reload<a class="headerlink" href="#save-and-reload" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">identity</span> <span class="o">=</span> <span class="n">proteome</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>
+<span class="n">same</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>  <span class="c1"># Offline: no genome or catalogue needed.</span>
+<span class="k">assert</span> <span class="n">same</span><span class="o">.</span><span class="n">identity</span> <span class="o">==</span> <span class="n">identity</span>
+</code></pre></div>
+<p>A snapshot holds every entry with its occurrences and evidence, the layers with
+their selections and catalogue identities, and the excluded ORFs. <code>identity</code> is
+the SHA-256 of that content, so it changes when any sequence, occurrence,
+selection, catalogue or exclusion changes, but not with file compression or
+formatting. Loading rejects a snapshot whose content does not match its
+identity, host proteins from another species, viral proteins without a
+matching host layer and layers declaring another reference. The human Ensembl
+115 proteome with MS-supported ORFs is a 57 MB snapshot.</p>
+<h2 id="lower-level-orf-lookup">Lower-level ORF lookup<a class="headerlink" href="#lower-level-orf-lookup" title="Permanent link">&para;</a></h2>
+<p><code>extra_orfs(genome, evidence=None)</code> returns every catalogue ORF on every
+transcript carrying it, as <a href="../reference/#objects-and-queries"><code>TranscriptORF</code></a>
+objects, with <code>source_failures</code> and <code>excluded</code>. Its default selects no evidence
+level: use it for annotation, such as variant effects on uORFs, where the
+proteome's MS default would be the wrong scope. Look ORFs up with
+<code>for_transcript</code> and <code>for_gene</code>; see <a href="../reference/#identifiers">identifiers</a>
+for how versions and references are checked.
+<code>for_transcript(transcript, include_annotated=True)</code> adds the annotated CDSs
+on that transcript, and <code>overlapping(...)</code> finds ORFs at a genomic interval.</p>
+<h2 id="fasta-headers">FASTA headers<a class="headerlink" href="#fasta-headers" title="Permanent link">&para;</a></h2>
+<p><code>write_fasta</code> writes 60-column sequences. The first word of each header is the
+accession: an Ensembl protein ID with its version, a source ORF ID or a viral
+protein ID. Fields that apply follow as <code>key=value</code>:</p>
+<div class="highlight"><pre><span></span><code>&gt;ENSP00000269305.4 kind=annotated taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
+&gt;c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,mhc transcripts=18
+&gt;c10riboseqorf115 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,mhc source_transcript=ENST00000277895 transcripts=10
+</code></pre></div>
+<p>For extra ORFs, the accession is the source ORF ID, <code>transcript</code> is its host
+transcript in this genome, and <code>gene</code>, <code>gene_name</code> and <code>transcript_biotype</code>
+describe that transcript in this genome. <code>orf_type</code> is the source's ORF
+category, kept verbatim; see <a href="../reference/#orf-categories">ORF categories</a>.
+<code>evidence</code> lists the supporting evidence types; <code>mhc</code> includes HLA.
+<code>transcripts</code> counts the encoding transcripts when there are several, and
+<code>source_transcript</code> names the source's transcript when the header's transcript
+is a different one, as for ABLIM1 above, whose source transcript is gone. See
+also <a href="../reference/#identifiers">identifiers</a>. The snapshot keeps every
+occurrence; the FASTA header shows the first.</p>
+<h2 id="command-line">Command line<a class="headerlink" href="#command-line" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--output<span class="w"> </span>human-e115.fasta
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--extra-orf-evidence<span class="w"> </span>all
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>mouse<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--extra-orf-evidence<span class="w"> </span>none
+</code></pre></div>
+<p><code>--extra-orf-evidence</code> accepts the evidence names above, <code>all</code> for every
+catalogue ORF, or <code>none</code> for annotated proteins only. <code>--require-unique</code>,
+<code>--require-reviewed</code>, <code>--require-resolved</code> and <code>--catalog FILE</code> match the Python
+options. The FASTA goes to <code>--output</code> or standard output; <code>--snapshot FILE</code>
+also saves a snapshot. A JSON summary of the layers, identity and excluded ORFs
+goes to standard error.</p>
+<h2 id="not-yet-included">Not yet included<a class="headerlink" href="#not-yet-included" title="Permanent link">&para;</a></h2>
+<p>Mouse and dog noncanonical ORFs, and translated endogenous retrovirus (ERV)
+ORFs without annotated transcripts, need new source data; see the
+<a href="https://github.com/openvax/orfdata/issues/3">data roadmap</a>. Translation
+products from circular RNAs, stop-codon readthrough or fusions are outside this
+reference.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.indexes", "navigation.expand", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1708 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Reference proteomes with evidence-backed noncanonical ORFs on PyEnsembl genomes">
+      
+      
+      
+        <link rel="canonical" href="https://openvax.github.io/orfdata/reference/">
+      
+      
+        <link rel="prev" href="../proteome/">
+      
+      
+        <link rel="next" href="../species/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>ORFs and evidence - orfdata</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/docs.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#orfs-and-evidence" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="orfdata" class="md-header__button md-logo" aria-label="orfdata" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            orfdata
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ORFs and evidence
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/openvax/orfdata" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    openvax/orfdata
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="orfdata" class="md-nav__button md-logo" aria-label="orfdata" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    orfdata
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/openvax/orfdata" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    openvax/orfdata
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proteomes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Proteomes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../proteome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build a reference proteome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Noncanonical ORFs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Noncanonical ORFs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ORFs and evidence
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ORFs and evidence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#orf-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ORF categories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#objects-and-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Objects and queries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Objects and queries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transcripts-carrying-an-orf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transcripts carrying an ORF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catalogue-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Catalogue records
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identifiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variants-and-rna-products" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variants and RNA products
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-and-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data and limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-species" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other species
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rebuild-and-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rebuild and verify
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../species/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Species, references and genetic codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../catalogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optional ORF catalogues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quantitative data
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quantitative data
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../measurements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Measurements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pairing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparing RNA, ribosome and protein
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../source-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source references and mappings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../search-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protein search references
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Released data and gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasets
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Datasets
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../human-tissue/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Human tissue RNA and protein
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pfizer-protein/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Human, mouse and dog protein
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pfizer-rna/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dog and mouse RNA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../copy-yeast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Yeast protein and RNA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingolia-yeast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Yeast RNA and ribosome occupancy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/openvax/orfdata/blob/main/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/openvax/orfdata/issues/3" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#orf-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ORF categories
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#objects-and-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Objects and queries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Objects and queries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transcripts-carrying-an-orf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transcripts carrying an ORF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catalogue-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Catalogue records
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identifiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variants-and-rna-products" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variants and RNA products
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-and-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data and limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-species" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other species
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rebuild-and-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rebuild and verify
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="orfs-and-evidence">ORFs and evidence<a class="headerlink" href="#orfs-and-evidence" title="Permanent link">&para;</a></h1>
+<p>The bundled human catalogue is the
+<a href="https://www.gencodegenes.org/pages/riboseq_orfs/">GENCODE Ribo-seq ORF</a>
+Phase 1 set: 7,264 GRCh38 ORFs that ribosome-profiling studies found translated
+but that the reference annotation (GENCODE v35) did not annotate as proteins.
+2,186 also have supporting MS peptides. "Noncanonical" is relative to an
+annotation and transcript: in Ensembl 115, 34 of the 7,108 ORFs that bind encode
+a protein identical to an annotated ENSP, and an ORF can be annotated in one
+transcript model but not another. The catalogue is source-backed; it does not
+discover every possible ORF. The larger Phase 2 set is planned
+(<a href="https://github.com/openvax/orfdata/issues/16">#16</a>). Most users start with a
+<a href="../proteome/">reference proteome</a> or <code>extra_orfs(genome)</code>; this page describes
+the objects and evidence underneath.</p>
+<h2 id="orf-categories">ORF categories<a class="headerlink" href="#orf-categories" title="Permanent link">&para;</a></h2>
+<p>Each ORF keeps its source category verbatim as <code>orf_type</code>. The terms follow
+<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9757701/#T2">Mudge et al. 2022, Table 2</a>:</p>
+<table>
+<thead>
+<tr>
+<th><code>orf_type</code></th>
+<th>Position</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uORF</code></td>
+<td>Within the 5′ UTR of a protein-coding gene's transcript</td>
+</tr>
+<tr>
+<td><code>uoORF</code></td>
+<td>Begins in the 5′ UTR and overlaps the annotated coding sequence in a different frame</td>
+</tr>
+<tr>
+<td><code>intORF</code></td>
+<td>Entirely within the annotated coding sequence, in a different frame</td>
+</tr>
+<tr>
+<td><code>dORF</code></td>
+<td>Within the 3′ UTR</td>
+</tr>
+<tr>
+<td><code>doORF</code></td>
+<td>Begins within the annotated coding sequence and ends in the 3′ UTR, in a different frame</td>
+</tr>
+<tr>
+<td><code>lncRNA</code></td>
+<td>On a transcript annotated as a long noncoding RNA</td>
+</tr>
+<tr>
+<td><code>processed_transcript</code></td>
+<td>On a transcript annotated as <code>processed_transcript</code>, with no annotated protein</td>
+</tr>
+</tbody>
+</table>
+<p>The category, the host transcript's biotype and the evidence are separate
+properties. The category describes the source's annotation; a bound ORF's
+<code>transcript.biotype</code> describes the annotation you loaded. In Ensembl 115, for
+example, most <code>processed_transcript</code> ORFs are on <code>protein_coding_CDS_not_defined</code>
+or <code>retained_intron</code> transcripts, and 48 uORFs are on nonsense-mediated-decay
+transcripts. One RNA can carry several ORFs.</p>
+<h2 id="objects-and-queries">Objects and queries<a class="headerlink" href="#objects-and-queries" title="Permanent link">&para;</a></h2>
+<p>A <code>TranscriptORF</code> is one ORF on one PyEnsembl transcript. It covers both
+annotated CDSs and the catalogue's extra ORFs, so all the ORFs on an RNA are
+handled the same way. <code>ReferenceORF</code> is the same class under its original
+name. Each has:</p>
+<ul>
+<li><code>kind</code>: <code>"annotated"</code> for an annotated CDS, <code>"extra_orf"</code> for a catalogue ORF.</li>
+<li><code>orf_id</code>: the source ORF ID, or the versioned protein ID of an annotated CDS.</li>
+<li><code>start</code> and <code>end</code>: Python slice coordinates into the transcript's spliced
+  sequence, so <code>transcript.sequence[orf.start:orf.end] == orf.coding_sequence</code>.
+  The coding sequence includes the stop codon when there is one. The genomic
+  path is in <code>coding_blocks</code>, 1-based and inclusive.</li>
+<li><code>transcript</code>, <code>transcript_id</code>, <code>gene</code>, <code>gene_id</code> and <code>gene_name</code>: the
+  transcript carrying the ORF and its gene in the annotation you loaded.</li>
+<li><code>source_transcript_id</code>, <code>source_gene_id</code> and <code>source_gene_name</code>: what the ORF's
+  source says, and <code>on_source_transcript</code>: whether this is that transcript.</li>
+<li><code>protein_sequence</code>, <code>orf_type</code>, <code>model</code> and <code>evidence</code>. An annotated CDS has
+  no <code>orf_type</code>, <code>model</code> or evidence of its own.</li>
+<li><code>start_complete</code> and <code>stop_complete</code>, and for an annotated CDS
+  <code>equivalent_ids</code>: other annotated proteins with the identical placement.</li>
+</ul>
+<p>An extra ORF is checked strictly: the assembly, available species information,
+the full spliced coding path, the protein sequence and the terminal stop must
+all match. An annotated CDS is taken as the annotation defines it, with the
+annotation's protein. Annotations include selenoproteins and CDSs without
+marked start or stop codons, so translation is not re-checked;
+<code>start_complete</code> and <code>stop_complete</code> report what the annotation marks.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">extra_orfs</span>
+
+<span class="n">orfs</span> <span class="o">=</span> <span class="n">extra_orfs</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>  <span class="c1"># Every catalogue ORF, on every transcript carrying it.</span>
+<span class="n">tpst1</span> <span class="o">=</span> <span class="n">genome</span><span class="o">.</span><span class="n">transcript_by_id</span><span class="p">(</span><span class="s2">"ENST00000304842"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">orf</span> <span class="ow">in</span> <span class="n">orfs</span><span class="o">.</span><span class="n">for_transcript</span><span class="p">(</span><span class="n">tpst1</span><span class="p">,</span> <span class="n">include_annotated</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">orf</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">orf_id</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">orf_type</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">end</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">orf</span><span class="o">.</span><span class="n">equivalent_ids</span><span class="p">))</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>extra_orf c7riboseqorf56 uORF 149 269 0
+annotated ENSP00000302413.5 None 290 1403 21
+</code></pre></div>
+<p>Results come in RNA order: the uORF ends 21 bases before the annotated CDS
+starts, and 21 other proteins share TPST1's annotated placement exactly.
+Another transcript's CDS is listed only when this RNA encodes the same ORF. A
+CDS without a marked start or stop codon, such as a fragment on a truncated
+transcript, is listed only when this RNA continues identically beyond that end;
+otherwise translation would read on. Two such TPST1 fragments are not listed here. <code>annotated_orfs(transcript)</code> gives just the annotated ones;
+<code>TranscriptORF.from_annotation(transcript)</code> gives one transcript's own CDS.</p>
+<p><code>orfs.overlapping(contig, start, end, genome_build=...)</code> finds ORFs whose coding
+path overlaps a 1-based inclusive genomic interval; introns between coding
+blocks don't count. Add <code>include_initiation_context=True</code> to include an ORF's
+spliced start flanks, for example for a Kozak-position variant. Flanks come
+from the transcript each placement is on (<code>orf.initiation_context</code>), since
+transcripts sharing a coding path can differ upstream of the start codon.</p>
+<h3 id="transcripts-carrying-an-orf">Transcripts carrying an ORF<a class="headerlink" href="#transcripts-carrying-an-orf" title="Permanent link">&para;</a></h3>
+<p>An ORF is placed on every transcript that contains its exact spliced coding path
+and translates to its protein, not only on the transcript its source names. In
+Ensembl 115 the bundled ORFs have 67,529 such placements; only 1,314 ORFs are
+carried by a single transcript. <code>on_source_transcript</code> marks the one the source
+names. Another carrying transcript is not evidence that the ORF is translated
+from it, and the ORF's <code>evidence</code> is the same on every placement.</p>
+<p><code>orfs.source_failures</code> lists ORFs whose source transcript is absent from this
+annotation or no longer carries them, with the reason. Most are still placed
+elsewhere: of 156 such ORFs in Ensembl 115, only the 25 in <code>orfs.excluded</code> are
+carried by no transcript. <code>record.bind(transcript)</code> still binds strictly to
+the source's transcript.</p>
+<p>Annotated CDSs can also lie in other transcripts. MIURF's CDS sits in the
+"5′ UTR" of MIEF1's mRNA, for example, and SNURF's in SNRPN's:</p>
+<div class="highlight"><pre><span></span><code><span class="n">mief1</span> <span class="o">=</span> <span class="n">genome</span><span class="o">.</span><span class="n">transcript_by_id</span><span class="p">(</span><span class="s2">"ENST00000325301"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">orf</span> <span class="ow">in</span> <span class="n">orfs</span><span class="o">.</span><span class="n">for_transcript</span><span class="p">(</span><span class="n">mief1</span><span class="p">,</span> <span class="n">include_annotated</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">orf</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">orf_id</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">source_gene_name</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">end</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">on_source_transcript</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>extra_orf c22riboseqorf42 MIEF1 72 132 True
+annotated ENSP00000490747.1 MIURF 176 389 False
+annotated ENSP00000327124.2 MIEF1 487 1879 True
+extra_orf c22norep69 MIEF1 527 677 True
+</code></pre></div>
+<p>MIURF's protein keeps its own ID and gene while sitting on MIEF1's RNA, so it is
+not mistaken for a new protein.</p>
+<h3 id="catalogue-records">Catalogue records<a class="headerlink" href="#catalogue-records" title="Permanent link">&para;</a></h3>
+<p><code>load_catalog()</code> loads the bundled human records offline using only the Python
+standard library, and <code>catalog.for_transcript(transcript)</code> binds the catalogue
+ORFs on one transcript. To inspect source records without a genome:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_catalog</span>
+
+<span class="n">catalog</span> <span class="o">=</span> <span class="n">load_catalog</span><span class="p">()</span>
+<span class="n">records</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">gene</span><span class="o">=</span><span class="s2">"TPST1"</span><span class="p">,</span> <span class="n">evidence</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="identifiers">Identifiers<a class="headerlink" href="#identifiers" title="Permanent link">&para;</a></h2>
+<p>Bundled ORF IDs are the source's GENCODE Phase I IDs. They start with the
+chromosome: <code>c7riboseqorf56</code> is on chromosome 7. The 3,085 <code>c…riboseqorf…</code>
+ORFs were detected in two or more ribosome-profiling studies, and the 4,179
+<code>c…norep…</code> ORFs in one. They are not Ensembl stable IDs.</p>
+<p>Each record names one host transcript (<code>transcript_id</code>, an unversioned ENST)
+and that transcript's gene (<code>gene_id</code>, an ENSG), as validated against Ensembl
+101. For an ORF on an mRNA, this is the gene of the transcript's annotated
+protein. Later releases can change both: of the 7,108 ORFs that bind to Ensembl
+115, 87 host transcripts now belong to a different ENSG and 796 gene symbols
+changed. A bound ORF's <code>gene_id</code>, <code>gene_name</code> and <code>transcript</code> describe the
+genome you loaded; <code>orf.model</code> keeps the source's labels. In
+<code>extra_orfs(genome)</code>, <code>for_gene</code> matches genes in the loaded annotation, or the
+source's labels with <code>source=True</code>. <code>for_transcript</code> and <code>for_gene</code> reject a
+transcript or gene from another reference, and a versioned Ensembl ID must match
+the loaded version.</p>
+<p>The host is one of possibly several transcripts that carry the same ORF; see
+<a href="#transcripts-carrying-an-orf">transcripts carrying an ORF</a>.</p>
+<h2 id="evidence">Evidence<a class="headerlink" href="#evidence" title="Permanent link">&para;</a></h2>
+<p>Use <code>orf.evidence.has_evidence("ribosome")</code>, <code>"shotgun"</code> (protease-digest MS),
+<code>"mhc"</code> (including human HLA), or <code>"ms"</code> (any supporting MS observation).
+<code>"hla"</code> selects human HLA observations specifically. Source observations whose
+MS assay type is unspecified remain labelled <code>"ms_unclassified"</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">orf</span><span class="o">.</span><span class="n">evidence</span><span class="o">.</span><span class="n">has_evidence</span><span class="p">(</span><span class="s2">"ms"</span><span class="p">,</span> <span class="n">require_unique</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">require_reviewed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>This requires a supporting spectrum review and a single protein mapping
+<strong>within that source's search scope</strong>. It does not imply uniqueness across every
+possible protein. Inspect <code>orf.evidence.peptides</code> for peptide sequences, source
+accessions, matching intervals, mapping counts and review quality. Missing counts
+remain unknown; low or mixed spectrum reviews do not count as supporting MS.</p>
+<p>Some sources provide only aggregate support counts. <code>EvidenceSummary</code> keeps the
+native metric, definition, value, source/release, source checksum and explicitly
+scoped entity. For example, <a href="https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.readme.html">OpenProt's native metrics</a>
+include an MS score that sums study-specific unique-peptide
+counts; it is neither global peptide uniqueness nor protein abundance. Its
+translation score counts studies with significant translation detection.
+<code>None</code> means unknown and remains distinct from a reported zero.</p>
+<p>Positive summaries in <code>orf.evidence.summaries</code> can satisfy general evidence
+queries. To require actual peptide records or named ribosome studies, use:</p>
+<div class="highlight"><pre><span></span><code><span class="n">orf</span><span class="o">.</span><span class="n">evidence</span><span class="o">.</span><span class="n">has_evidence</span><span class="p">(</span><span class="s2">"ms"</span><span class="p">,</span> <span class="n">require_resolved</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">catalog</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">evidence</span><span class="o">=</span><span class="s2">"ribosome"</span><span class="p">,</span> <span class="n">require_resolved</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>The CLI uses <code>--evidence ms --require-resolved</code>. Uniqueness and review filters
+always require resolved peptide observations. Summaries never create peptide
+sequences, residue coverage, retained variant peptides or mutant-translation
+evidence. Their protein checksum and species/reference checks prevent attaching
+them to a different protein or incompatible source context.</p>
+<p>A sequence-level summary may have several transcript assignments. Those records
+share the summary's <code>key</code>; <code>catalog.evidence_summaries</code> returns each native metric
+once and rejects conflicting facts for the same identity. Native accession
+aliases must be resolved explicitly by the source adapter. Counts from different
+metrics and sources are not summed, and a later peptide-resolved snapshot is not
+an additional independent experiment merely because it has more detail.</p>
+<p>This API includes source-backed OpenProt human, mouse and yeast test slices.
+It does not yet publish those species' OpenProt ORF catalogues; coordinate and
+sequence qualification remains tracked in <a href="https://github.com/openvax/orfdata/issues/18">#18</a>.</p>
+<p>The distinction between translation, peptide detection and functional protein
+evidence follows the <a href="https://www.nature.com/articles/s41586-026-10459-x">TransCODE study</a>.
+Source evidence stays at its declared ORF or protein-sequence scope. It is not
+automatically evidence for another isoform, a mutant protein, a fusion or
+another species.</p>
+<h2 id="variants-and-rna-products">Variants and RNA products<a class="headerlink" href="#variants-and-rna-products" title="Permanent link">&para;</a></h2>
+<p>Varcode keeps the reference object alongside its modification:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyensembl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnsemblRelease</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_catalog</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">varcode</span><span class="w"> </span><span class="kn">import</span> <span class="n">Variant</span><span class="p">,</span> <span class="n">annotate_orf_variants</span>
+
+<span class="n">genome</span> <span class="o">=</span> <span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">95</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">)</span>  <span class="c1"># already downloaded and indexed</span>
+<span class="n">transcript</span> <span class="o">=</span> <span class="n">genome</span><span class="o">.</span><span class="n">transcript_by_id</span><span class="p">(</span><span class="s2">"ENST00000304842"</span><span class="p">)</span>
+<span class="n">orf</span><span class="p">,</span> <span class="o">=</span> <span class="n">load_catalog</span><span class="p">()</span><span class="o">.</span><span class="n">for_transcript</span><span class="p">(</span><span class="n">transcript</span><span class="p">)</span>
+<span class="n">variant</span> <span class="o">=</span> <span class="n">Variant</span><span class="p">(</span><span class="s2">"7"</span><span class="p">,</span> <span class="mi">66205486</span><span class="p">,</span> <span class="s2">"C"</span><span class="p">,</span> <span class="s2">"G"</span><span class="p">,</span> <span class="n">genome</span><span class="o">=</span><span class="n">genome</span><span class="p">)</span>
+<span class="n">annotation</span> <span class="o">=</span> <span class="n">annotate_orf_variants</span><span class="p">([</span><span class="n">variant</span><span class="p">],</span> <span class="n">orf</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">annotation</span><span class="o">.</span><span class="n">reference</span> <span class="ow">is</span> <span class="n">orf</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">annotation</span><span class="o">.</span><span class="n">effect</span><span class="p">)</span>  <span class="c1"># P2A in the TPST1 upstream ORF</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">annotation</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>  <span class="c1"># reference, evidence and altered products</span>
+</code></pre></div>
+<p>Isovar's <code>annotate_sv_orf_evidence</code> attaches the same reference annotations to
+reconstructed RNA products and preserves each candidate's RNA support. For
+example, the native TPST1 peptide KIILSKISV is absent from the Sid TPST1–CRCP
+alternatives, so its MS evidence does not support those altered products.</p>
+<p>The reference integration, including strict reference-context validation, is
+available in Varcode 10.13.0 and Isovar 1.51.0.</p>
+<h2 id="data-and-limits">Data and limits<a class="headerlink" href="#data-and-limits" title="Permanent link">&para;</a></h2>
+<p>The bundled human GRCh38 catalogue, dataset <code>2026-10-11.1</code>, draws on the
+<a href="https://www.nature.com/articles/s41587-022-01369-0">GENCODE Phase I reference</a>,
+<a href="https://www.nature.com/articles/s41586-026-10459-x">TransCODE author exports</a>,
+and the <a href="https://www.nature.com/articles/s41467-025-68002-x">community microprotein spectrum benchmark</a>.
+All 7,264 ORF paths and proteins were checked against Ensembl 101 GTF, coding RNA
+and noncoding RNA FASTAs. The 2,186 models with supporting MS observations use
+the packaged source-specific filters; this is not a count of proven functional
+proteins. Packaged manifests retain source accessions, checksums, licenses,
+processing rules and dataset version.</p>
+<p>The current binder accepts complete ORFs with a terminal stop under NCBI
+tables 1, 2 or 3 and their initiation codons; see
+<a href="../species/#genetic-codes">genetic codes</a>. All bundled models use table 1 and start
+at ATG. Other genetic codes, initiation conventions and incomplete ORFs need
+additional support. Transcript-boundary contexts can be partial; initiation efficiency and
+effects on the main coding region are not established by these data.</p>
+<p>Circular-RNA translation, stop-codon readthrough and translation from new
+transcripts or fusions are not covered by this reference catalogue. Those need
+additional source data and, where necessary, model support. ORF discovery is
+outside the current API.</p>
+<p><code>load_uorf_catalog()</code> preserves Isovar's upstream-only snapshot: 3,771 models,
+dataset <code>2026-10-08.2</code>. New code should use the broader <code>load_catalog()</code> API.</p>
+<h2 id="other-species">Other species<a class="headerlink" href="#other-species" title="Permanent link">&para;</a></h2>
+<p><a href="../species/">ReferenceContext and ScopedTarget</a> keep taxa, strains, assemblies
+and annotation versions separate. Custom genomes without species/taxonomy need
+an explicit context when binding; source-pinned contexts require an exact match.</p>
+<p><code>load_catalog(path)</code> reads a custom versioned JSON catalogue. Each catalogue is
+scoped to one species and assembly; each model records its NCBI taxon, scientific
+name, assembly, translation table and source. Human evidence is never transferred
+to a mouse ortholog. Mouse bindings are tested with synthetic ORFs on PyEnsembl
+transcripts; there is no bundled mouse evidence.</p>
+<p>To build a catalogue, create <code>ORFModel</code> objects from source coordinates and
+sequences, attach source observations with <code>ORFRecord.from_model(model, evidence)</code>,
+and construct <code>ORFCatalog(records, metadata)</code>. Its <code>to_dict()</code> produces the
+<code>orfdata.catalog.v1</code> JSON representation. Genomic coding blocks are 1-based,
+inclusive, sorted by genomic position, and include the terminal stop codon.</p>
+<p><a href="https://archive.openprot.org/p/help">OpenProt</a> is a possible source for further species,
+with organism/assembly-specific models, transcript mappings and experimental
+evidence. A future importer must pin releases, preserve ambiguity and licensing,
+and validate coordinate conventions. No OpenProt importer is included yet.</p>
+<h2 id="rebuild-and-verify">Rebuild and verify<a class="headerlink" href="#rebuild-and-verify" title="Permanent link">&para;</a></h2>
+<p>From a development checkout with the PyEnsembl dependency installed:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s1">'.[dev]'</span>
+python<span class="w"> </span>-m<span class="w"> </span>orfdata.build<span class="w"> </span>--source-dir<span class="w"> </span>/path/to/sources<span class="w"> </span>--prepare-sources<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--all-orfs<span class="w"> </span>--output<span class="w"> </span>orfdata/data/orf-evidence
+./lint.sh
+./test.sh
+</code></pre></div>
+<p>Source preparation downloads pinned public inputs and needs Rscript to extract
+the author export. Ordinary queries need neither R nor spreadsheet libraries.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.indexes", "navigation.expand", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
