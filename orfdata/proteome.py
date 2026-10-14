@@ -20,7 +20,7 @@ from types import MappingProxyType
 from typing import Mapping, Optional
 
 from . import _structure
-from .catalog import load_catalog
+from .catalog import ORFCatalog, load_catalog, merge_catalogs
 from .evidence import EvidenceRule, evidence_rule
 from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _versioned
 from .reference import ReferenceContext
@@ -94,7 +94,8 @@ class ProteomeEntry:
     could not be placed on its source's own transcript; it is None when it was.
     ``orf_type`` is an extra ORF's source category, kept verbatim, and
     ``evidence`` lists its supporting evidence types; ``evidence_detail`` holds
-    the source's evidence records.
+    the source's evidence records. ``equivalent_ids`` lists other sources'
+    ``source:id`` for the same extra ORF when catalogues were merged.
     """
 
     accession: str
@@ -108,6 +109,7 @@ class ProteomeEntry:
     occurrences: tuple = ()
     source_transcript_id: Optional[str] = None
     source_binding: Optional[str] = None
+    equivalent_ids: tuple = ()
     orf: Optional[TranscriptORF] = field(default=None, compare=False, repr=False)
 
     @property
@@ -142,6 +144,7 @@ class ProteomeEntry:
                       evidence=",".join(self.evidence) or None,
                       source_transcript=self.source_transcript_id
                       if first is not None and not first.on_source_transcript else None,
+                      equivalent=",".join(self.equivalent_ids) or None,
                       transcripts=len(self.occurrences) if len(self.occurrences) > 1 else None)
         described = " ".join(f"{k}={str(v).replace(' ', '_')}" for k, v in fields.items() if v is not None)
         return f">{self.accession} {described}"
@@ -151,12 +154,14 @@ class ProteomeEntry:
                     taxon_id=self.taxon_id, source=self.source, orf_type=self.orf_type,
                     evidence=list(self.evidence), evidence_detail=self.evidence_detail,
                     occurrences=[[getattr(o, name) for name in _OCCURRENCE_FIELDS] for o in self.occurrences],
-                    source_transcript_id=self.source_transcript_id, source_binding=self.source_binding)
+                    source_transcript_id=self.source_transcript_id, source_binding=self.source_binding,
+                    **({"equivalent_ids": list(self.equivalent_ids)} if self.equivalent_ids else {}))
 
     @classmethod
     def from_dict(cls, record):
         record = dict(record)
         record["evidence"] = tuple(record.get("evidence", ()))
+        record["equivalent_ids"] = tuple(record.get("equivalent_ids", ()))
         occurrences = []
         for values in record.get("occurrences", ()):
             o = dict(zip(_OCCURRENCE_FIELDS, values))
@@ -261,7 +266,16 @@ class ExtraORFs:
         return tuple(found)
 
     def for_orf(self, orf_id):
-        """Every transcript placement of one ORF, the source's own transcript first."""
+        """Every transcript placement of one ORF, the source's own transcript first.
+
+        After merging catalogues, any source's ID finds the ORF, bare or as
+        ``source:id``; a bare ID two sources use for different ORFs raises.
+        """
+        if self.catalog is not None:
+            try:
+                orf_id = self.catalog.get(orf_id).orf_id
+            except KeyError:
+                return ()
         return tuple(sorted((o for o in self.orfs if o.orf_id == orf_id),
                             key=lambda o: (not o.on_source_transcript, _versioned(o.transcript))))
 
@@ -478,7 +492,7 @@ class Proteome:
         grouped = {}
         for orf in found:
             grouped.setdefault(orf.orf_id, []).append(orf)
-        source = _catalog_source(found.catalog)
+        source = found.catalog.source
         annotated = {e.sequence for e in self.entries if e.kind == "annotated"}
         added = []
         for orf_id, orfs in grouped.items():
@@ -491,7 +505,7 @@ class Proteome:
                 evidence_detail=_json(first.evidence.to_dict()),
                 occurrences=tuple(Occurrence.from_orf(o) for o in orfs),
                 source_transcript_id=first.model.transcript_id,
-                source_binding=failures.get(orf_id), orf=first,
+                source_binding=failures.get(orf_id), equivalent_ids=first.equivalent_ids, orf=first,
             ))
         layer = dict(kind="extra_orf", role="host", source=source, reference=self.reference.key,
                      catalog=_catalog_identity(found.catalog),
@@ -625,6 +639,8 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     reference = ReferenceContext.from_genome(genome, context=context)
     if catalog is None:
         catalog = load_catalog(species=reference.species, genome_build=reference.genome_build)
+    elif not isinstance(catalog, ORFCatalog):
+        catalog = merge_catalogs(catalog)
     if (catalog.taxon_id, catalog.genome_build) != (reference.taxon_id, reference.genome_build):
         raise ValueError(
             f"Catalogue for {catalog.species} {catalog.genome_build} cannot bind to "
@@ -738,7 +754,7 @@ def _sha256(content):
 def _catalog_identity(catalog):
     identity = getattr(catalog, "_orfdata_identity", None)
     if identity is None:
-        identity = dict(source=_catalog_source(catalog), records=len(catalog.records),
+        identity = dict(source=catalog.source, records=len(catalog.records),
                         sha256=_sha256(catalog.to_dict()))
         catalog._orfdata_identity = identity
     return identity
@@ -774,9 +790,3 @@ def _require_installed(genome):
         raise ValueError(f"{genome.reference_name} annotation is {status}; install it first with: {install}")
 
 
-def _catalog_source(catalog):
-    metadata = catalog.metadata
-    manifest = metadata.get("catalog_manifest")
-    if manifest:
-        return f"{manifest['catalog_id']}:{manifest['version']}"
-    return f"orfdata-catalog:{metadata.get('dataset_version', 'unversioned')}"

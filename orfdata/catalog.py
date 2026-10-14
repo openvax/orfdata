@@ -7,6 +7,7 @@ These are reference observations, not evidence for a patient's mutant protein.
 import gzip
 import hashlib
 import json
+from collections import Counter
 from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 from importlib.resources import files
@@ -116,13 +117,25 @@ class ORFRecord:
     reference_context: Optional[ReferenceContext] = None
     summaries: tuple = ()
     start_codon: Optional[str] = None
+    members: tuple = ()
 
     def __post_init__(self):
         object.__setattr__(self, "summaries", unique_summaries(self.summaries))
-        if self.summaries:
+        object.__setattr__(self, "members", tuple(self.members))
+        if self.members:
+            # Each member validated its own summaries against its own identity.
+            key = _merge_key(self)
+            if any(m.members or _merge_key(m) != key for m in self.members):
+                raise ValueError(f"Members of {self.orf_id} must be source records of one ORF")
+        elif self.summaries:
             model = self.model
             for summary in self.summaries:
                 summary.validate_orf(model)
+
+    @property
+    def source_ids(self):
+        """``source:id`` for each source record of this ORF, in catalogue order."""
+        return tuple(f"{m.source}:{m.orf_id}" for m in self.members or (self,))
 
     @property
     def model(self):
@@ -186,6 +199,10 @@ class ORFRecord:
             result.pop("start_codon")
         if self.initiation_context is not None:
             result["initiation_context"] = self.initiation_context.to_dict()
+        if self.members:
+            result["members"] = [m.to_dict() for m in self.members]
+        else:
+            result.pop("members")
         return result
 
     def map_initiation_position(self, position, *, genome_build):
@@ -368,6 +385,12 @@ class ORFCatalog:
         self._by_id = {r.orf_id: r for r in self.records}
         if len(self._by_id) != len(self.records):
             raise ValueError("Duplicate ORF identifiers")
+        self._aliases = {}
+        for r in self.records:
+            for m in r.members:
+                for alias in (f"{m.source}:{m.orf_id}", m.orf_id):
+                    if alias != r.orf_id:
+                        self._aliases.setdefault(alias, []).append(r)
         for r in self.records:
             if r.genome_build != self.genome_build or r.strand not in ("+", "-"):
                 raise ValueError(f"Invalid assembly or strand for {r.orf_id}")
@@ -453,8 +476,31 @@ class ORFCatalog:
         return deepcopy(self._metadata)
 
     def get(self, orf_id):
-        """Return an exact source ORF ID; unknown IDs raise KeyError."""
-        return self._by_id[orf_id]
+        """Return the ORF with this ID; unknown IDs raise KeyError.
+
+        In a merged catalogue every source's ID also works, bare or as
+        ``source:id``. A bare ID that two sources use for different ORFs
+        raises rather than choosing one.
+        """
+        if orf_id in self._by_id:
+            return self._by_id[orf_id]
+        found = self._aliases.get(orf_id, ())
+        if len(found) > 1:
+            raise ValueError(f"{orf_id} names several ORFs: {', '.join(r.orf_id for r in found)}")
+        if not found:
+            raise KeyError(orf_id)
+        return found[0]
+
+    @property
+    def source(self):
+        """The catalogue's release label, as proteome layers and entries record it."""
+        metadata = self._metadata
+        if metadata.get("merged_from"):
+            return "+".join(m["source"] for m in metadata["merged_from"])
+        manifest = metadata.get("catalog_manifest")
+        if manifest:
+            return f"{manifest['catalog_id']}:{manifest['version']}"
+        return f"orfdata-catalog:{metadata.get('dataset_version', 'unversioned')}"
 
     def for_transcript(self, transcript, *, context=None, **filters):
         """Return validated ORFs on this transcript, with optional evidence filters.
@@ -556,6 +602,84 @@ class ORFCatalog:
         )
 
 
+def _merge_key(record):
+    """What makes two source records one ORF: path, protein and translation."""
+    return (_contig(record.contig), record.strand, record.coding_blocks, record.protein_sequence,
+            record.translation_table, record.start_codon, record.genome_build, record.taxon_id)
+
+
+def merge_catalogs(catalogs):
+    """Merge ORF catalogues for one species and assembly into one catalogue.
+
+    Records from different catalogues with the same spliced coding path,
+    protein, genetic code and declared start codon are one ORF; records within
+    one catalogue stay as the source gave them. The ORF's record keeps every source record in
+    ``members``, in catalogue order, and the union of their evidence; a peptide
+    or study reported by two sources is listed once. Different starts, stops or
+    proteins stay separate ORFs. Each ORF keeps the first source's ID; when two
+    sources use one ID for different ORFs, both become ``source:id``. Every
+    source's ID still finds the ORF through ``get``.
+
+    Catalogues must share species and assembly and must not repeat a source,
+    such as two releases of one catalogue. Studies that two sources name
+    differently are counted twice by ``RiboSeq(min_studies=...)``.
+    """
+    catalogs = tuple(catalogs)
+    if not catalogs or any(not isinstance(c, ORFCatalog) for c in catalogs):
+        raise TypeError("merge_catalogs needs one or more ORFCatalog objects")
+    if len(catalogs) == 1:
+        return catalogs[0]
+    first = catalogs[0]
+    for catalog in catalogs[1:]:
+        if (catalog.taxon_id, catalog.genome_build) != (first.taxon_id, first.genome_build):
+            raise ValueError(f"Cannot merge a {_species(catalog.species)} {catalog.genome_build} catalogue "
+                             f"with a {_species(first.species)} {first.genome_build} one")
+    strains = {(r.reference_context.strain, r.reference_context.strain_taxon_id)
+               for c in catalogs for r in c.records if r.reference_context is not None}
+    if len(strains) > 1:
+        raise ValueError("Cannot merge catalogues for different strains")
+    seen = set()
+    for catalog in catalogs:
+        sources = {r.source for r in catalog.records}
+        if sources & seen:
+            raise ValueError(f"Two catalogues contain {min(sources & seen)} records; "
+                             "merge one release of each source")
+        seen |= sources
+    groups, by_key = [], {}
+    for index, catalog in enumerate(catalogs):
+        for record in catalog.records:
+            # A record joins the first same-key ORF from another catalogue; a source's own records stay apart.
+            candidates = by_key.setdefault(_merge_key(record), [])
+            group = next((g for g in candidates if index not in g[0]), None)
+            if group is None:
+                group = (set(), [])
+                candidates.append(group)
+                groups.append(group)
+            group[0].add(index)
+            group[1].append(record)
+    uses = Counter(orf_id for _, members in groups for orf_id in {m.orf_id for m in members})
+    records = []
+    for _, members in groups:
+        primary = members[0]
+        orf_id = primary.orf_id if uses[primary.orf_id] == 1 else f"{primary.source}:{primary.orf_id}"
+        if len(members) == 1 and orf_id == primary.orf_id:
+            records.append(primary)
+            continue
+        records.append(replace(
+            primary, orf_id=orf_id,
+            ribosome_studies=tuple(dict.fromkeys(x for m in members for x in m.ribosome_studies)),
+            peptides=tuple(dict.fromkeys(x for m in members for x in m.peptides)),
+            summaries=tuple(x for m in members for x in m.summaries), members=tuple(members)))
+    metadata = dict(
+        species=first.species, taxon_id=first.taxon_id, genome_build=first.genome_build,
+        coordinates="1-based-inclusive",
+        sources=[s for c in catalogs for s in c.metadata.get("sources", ())],
+        merged_from=[dict(source=c.source, records=len(c.records),
+                          sha256=hashlib.sha256(json.dumps(c.to_dict(), sort_keys=True).encode()).hexdigest())
+                     for c in catalogs])
+    return ORFCatalog(records, metadata)
+
+
 def _load_catalog(path=None, *, expected_sha256=None, resource="orf-evidence"):
     """Load the packaged reference offline, or a compatible JSON/JSON.gz file.
 
@@ -591,42 +715,40 @@ def _load_catalog(path=None, *, expected_sha256=None, resource="orf-evidence"):
         metadata = dict(metadata, taxon_id=9606, species="homo_sapiens")
     elif not metadata.get("sources"):
         raise ValueError("Generic catalogues require source provenance")
-    records = []
-    for row in data["records"]:
-        row = dict(row)
-        if legacy:
-            row.update(
-                taxon_id=9606, species="homo_sapiens", translation_table=1, source="gencode_phase1"
-            )
-        elif not all(
-            k in row for k in ("taxon_id", "species", "translation_table", "genome_build", "source")
-        ):
-            raise ValueError(
-                "Generic ORF records require explicit species, assembly, genetic code and source"
-            )
-        row["coding_blocks"] = tuple(tuple(x) for x in row["coding_blocks"])
-        row["ribosome_studies"] = tuple(row["ribosome_studies"])
-        if row.get("reference_context") is not None:
-            row["reference_context"] = ReferenceContext(**row["reference_context"])
-        if row.get("initiation_context") is not None:
-            context = dict(row["initiation_context"])
-            assessment = context.pop("assessment", None)
-            context["genomic_positions"] = tuple(context.get("genomic_positions", ()))
-            row["initiation_context"] = InitiationContext(**context)
-            if assessment is not None and assessment != row["initiation_context"].assessment:
-                raise ValueError("Initiation-context assessment disagrees with sequence")
-        peptides = []
-        for p in row["peptides"]:
-            p = dict(p)
-            p["protein_intervals"] = tuple(tuple(x) for x in p["protein_intervals"])
-            p["datasets"] = tuple(p.get("datasets", ()))
-            p["review_ratings"] = tuple(tuple(x) for x in p.get("review_ratings", ()))
-            p["spectrum_ids"] = tuple(p.get("spectrum_ids", ()))
-            peptides.append(PeptideEvidence(**p))
-        row["peptides"] = tuple(peptides)
-        row["summaries"] = tuple(EvidenceSummary.from_dict(s) for s in row.get("summaries", ()))
-        records.append(ORFRecord(**row))
+    records = [_record(row, legacy) for row in data["records"]]
     return ORFCatalog(records, metadata)
+
+
+def _record(row, legacy=False):
+    """One ORFRecord from its JSON form, including a merged record's members."""
+    row = dict(row)
+    if legacy:
+        row.update(taxon_id=9606, species="homo_sapiens", translation_table=1, source="gencode_phase1")
+    elif not all(k in row for k in ("taxon_id", "species", "translation_table", "genome_build", "source")):
+        raise ValueError("Generic ORF records require explicit species, assembly, genetic code and source")
+    row["coding_blocks"] = tuple(tuple(x) for x in row["coding_blocks"])
+    row["ribosome_studies"] = tuple(row["ribosome_studies"])
+    if row.get("reference_context") is not None:
+        row["reference_context"] = ReferenceContext(**row["reference_context"])
+    if row.get("initiation_context") is not None:
+        context = dict(row["initiation_context"])
+        assessment = context.pop("assessment", None)
+        context["genomic_positions"] = tuple(context.get("genomic_positions", ()))
+        row["initiation_context"] = InitiationContext(**context)
+        if assessment is not None and assessment != row["initiation_context"].assessment:
+            raise ValueError("Initiation-context assessment disagrees with sequence")
+    peptides = []
+    for p in row["peptides"]:
+        p = dict(p)
+        p["protein_intervals"] = tuple(tuple(x) for x in p["protein_intervals"])
+        p["datasets"] = tuple(p.get("datasets", ()))
+        p["review_ratings"] = tuple(tuple(x) for x in p.get("review_ratings", ()))
+        p["spectrum_ids"] = tuple(p.get("spectrum_ids", ()))
+        peptides.append(PeptideEvidence(**p))
+    row["peptides"] = tuple(peptides)
+    row["summaries"] = tuple(EvidenceSummary.from_dict(s) for s in row.get("summaries", ()))
+    row["members"] = tuple(_record(m) for m in row.get("members", ()))
+    return ORFRecord(**row)
 
 
 # The released Isovar API was explicitly human/GRCh38 and upstream-only. Keep

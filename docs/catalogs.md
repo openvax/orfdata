@@ -11,7 +11,9 @@ A bundled catalogue is preferred, a catalogue's default release is opened
 unless only another release covers the assembly, and two registered catalogues
 for one species and assembly are never chosen between; open one by name
 instead. It returns the existing `ORFCatalog`; query results still bind to the
-original PyEnsembl transcript through `ReferenceORF`.
+original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
+for one species together, see
+[merging catalogues](proteome.md#merging-catalogues).
 
 The default optional registry currently has no released entries. The examples
 below use a caller-supplied registry; they do not imply a published

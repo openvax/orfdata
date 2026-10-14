@@ -39,7 +39,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
                         help="Require a peptide with one protein mapping in its MS source")
     parser.add_argument("--require-reviewed", action="store_true",
                         help="Require convincing reviewed spectra (benchmark scores 4-5)")
-    parser.add_argument("--catalog", help="Use a local JSON/JSON.gz ORF catalogue for this genome")
+    parser.add_argument("--catalog", action="append",
+                        help="Use a local JSON/JSON.gz ORF catalogue for this genome; repeat to merge several")
     parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
     parser.add_argument("--output", help="FASTA path; standard output by default")
     args = parser.parse_args(argv)
@@ -49,7 +50,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
         proteome = Proteome.from_genome(genome)
         if args.extra_orf_evidence != "none":
             proteome = proteome.with_extra_orfs(
-                evidence, catalog=load_catalog(args.catalog) if args.catalog else None, **options)
+                evidence, catalog=[load_catalog(path) for path in args.catalog] if args.catalog else None,
+                **options)
         elif args.catalog or any(options.values()):
             raise ValueError("Extra-ORF options require --extra-orf-evidence other than 'none'")
         proteome.write_fasta(args.output or sys.stdout)

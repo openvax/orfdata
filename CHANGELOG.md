@@ -1,3 +1,17 @@
+# 0.22.0
+
+- `merge_catalogs` and `catalog=[...]` combine ORF catalogues for one species
+  and assembly (#71, #72). Records from different catalogues with the same
+  spliced coding path, protein, genetic code and declared start are one ORF:
+  it keeps the first catalogue's ID, every source's record in `members`, and
+  the union of their evidence. The others' IDs appear as `source:id` in
+  `equivalent_ids` on placements and proteome entries and in FASTA headers.
+  `ORFCatalog.get` and `ExtraORFs.for_orf` accept any source's ID; an ID two
+  sources use for different ORFs is qualified, and the bare ID raises. Merged
+  catalogues round-trip through JSON. `orfdata proteome` takes repeated
+  `--catalog` files.
+- `ORFCatalog.source` gives the release label that proteome layers record.
+
 # 0.21.0
 
 - Set Ribo-seq and MS stringency separately with evidence rules (#73):

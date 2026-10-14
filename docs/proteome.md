@@ -159,6 +159,36 @@ species the error names the catalogues that exist. Pass `catalog=` to use
 another, such as `load_catalog(path)`. A catalogue for a different species or
 assembly is rejected.
 
+### Merging catalogues
+
+Pass several catalogues for one species and assembly to use their ORFs together:
+
+```python
+from orfdata import load_catalog, merge_catalogs
+
+catalogs = [load_catalog(), load_catalog("study-orfs.json.gz")]  # The bundled one and a local file.
+proteome = annotated.with_extra_orfs("ms", catalog=catalogs)  # Or merge_catalogs(catalogs).
+```
+
+Records from different catalogues are one ORF when they have the same spliced
+coding path, protein, genetic code and declared start codon. Records within
+one catalogue stay as their source gave them.
+
+- **IDs.** The merged ORF keeps the first catalogue's ID. Every source's record
+  stays in `record.members`, and the others' IDs are in `equivalent_ids` as
+  `source:id`. `catalog.get` and `ExtraORFs.for_orf` accept any of them.
+- **ID collisions.** When two sources use one ID for different ORFs, both
+  become `source:id`, and the bare ID raises rather than picking one.
+- **Evidence.** Each source's evidence is kept, and evidence rules see the union:
+  a peptide counts once per sequence. Studies that two sources name
+  differently count twice toward `RiboSeq(min_studies=...)`.
+- **Releases.** Catalogues must not repeat a source, so two releases of one
+  catalogue can't both be merged.
+
+The layer's `source` joins the catalogues' releases, such as
+`orfdata-catalog:2026-10-11.1+orfdata-catalog:study-v1`. On the command line, repeat
+`--catalog FILE`.
+
 ## Viral proteomes
 
 A `ViralProteome` holds one virus's proteins, its NCBI taxon, and the NCBI
