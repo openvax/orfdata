@@ -27,7 +27,7 @@ from .measurements import (
     SourceAsset,
     TargetMapping,
 )
-from .model import ORFModel, ReferenceORF
+from .model import ORFModel, ReferenceORF, TranscriptORF
 from .pairing import (
     AssayPair,
     MatchedMeasurements,
@@ -36,13 +36,34 @@ from .pairing import (
     TargetRelation,
     compare_orthologs,
 )
+from .proteome import (
+    BindingFailure,
+    ExtraORFs,
+    Occurrence,
+    Proteome,
+    ProteomeEntry,
+    ViralProteome,
+    annotated_orfs,
+    extra_orfs,
+)
 from .reference import ReferenceContext, ScopedTarget
 from .reference_mapping import MappedMeasurement, ReferenceMapping
 from .search_reference import SearchMembership, SearchReference, SearchReferenceSpec, SearchSequence
+from .sequence import GeneticCode, genetic_code
 from .version import __version__
 
 __all__ = [
     "__version__",
+    "Proteome",
+    "ProteomeEntry",
+    "ViralProteome",
+    "Occurrence",
+    "extra_orfs",
+    "annotated_orfs",
+    "ExtraORFs",
+    "BindingFailure",
+    "GeneticCode",
+    "genetic_code",
     "EVIDENCE_METHODS",
     "ORFCatalog",
     "ORFRecord",
@@ -53,6 +74,7 @@ __all__ = [
     "EvidenceSummary",
     "PeptideEvidence",
     "ORFModel",
+    "TranscriptORF",
     "ReferenceORF",
     "ReferenceContext",
     "ScopedTarget",

@@ -15,9 +15,9 @@ from typing import Optional
 
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
-from .model import ORFModel, ReferenceORF, _species
+from .model import ORFModel, TranscriptORF, _contig, _id_forms, _species, _transcript_match
 from .reference import ReferenceContext
-from .sequence import CODONS, reverse_complement_dna
+from .sequence import genetic_code, reverse_complement_dna
 
 EVIDENCE_METHODS = ("ribosome", "shotgun", "mhc", "hla", "ms_unclassified", "ms")
 
@@ -25,13 +25,6 @@ EVIDENCE_METHODS = ("ribosome", "shotgun", "mhc", "hla", "ms_unclassified", "ms"
 def _positive_integer(value, name):
     if type(value) is not int or value < 1:
         raise ValueError(f"{name} must be a positive integer")
-
-
-def _contig(value):
-    value = str(value)
-    if value.startswith("chr"):
-        value = value[3:]
-    return "MT" if value in ("M", "MT") else value
 
 
 @dataclass(frozen=True)
@@ -183,9 +176,14 @@ class ORFRecord:
             initiation_context=initiation_context,
         )
 
-    def bind(self, transcript, *, context=None):
-        """Validate and bind this ORF to a PyEnsembl transcript without relabelling it."""
-        return ReferenceORF(self, transcript, context=context)
+    def bind(self, transcript, *, context=None, any_transcript=False):
+        """Validate and bind this ORF to a PyEnsembl transcript without relabelling it.
+
+        By default the transcript must be the one the source names. With
+        ``any_transcript=True``, any transcript carrying the identical spliced
+        coding path and sequence is accepted.
+        """
+        return TranscriptORF(self, transcript, context=context, any_transcript=any_transcript)
 
     def to_dict(self):
         """Return a serializable copy of this record."""
@@ -292,9 +290,7 @@ class ORFRecord:
             offset = start + (relative - 1) // 3 * 3
             before, after = sequence[offset : offset + 3], altered[offset : offset + 3]
             if len(before) == 3 and all(b in "ACGT" for b in before + after):
-                if self.translation_table != 1:
-                    raise ValueError("Unsupported ORF translation table")
-                table = CODONS
+                table = genetic_code(self.translation_table).codons
                 codons = {
                     "reference_codon": before,
                     "alternate_codon": after,
@@ -398,7 +394,7 @@ class ORFCatalog:
             if (
                 context is not None
                 and context.source_transcript_id is not None
-                and context.source_transcript_id.split(".")[0] != r.transcript_id
+                and not set(_id_forms(context.source_transcript_id)) & set(_id_forms(r.transcript_id))
             ):
                 raise ValueError("Initiation-context transcript identity disagrees with ORF")
             if context is not None and context.genomic_positions:
@@ -485,7 +481,7 @@ class ORFCatalog:
         return tuple(
             record.bind(transcript, context=resolved)
             for record in self.query(**filters)
-            if record.transcript_id.split(".")[0] == str(transcript.id).split(".")[0]
+            if _transcript_match(record.transcript_id, transcript) is not None
         )
 
     def to_dict(self):

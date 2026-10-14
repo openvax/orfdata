@@ -1,7 +1,9 @@
 """Managed catalogues preserve the existing reference objects and source scope."""
 
+import csv
 import gzip
 import hashlib
+import io
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -12,10 +14,13 @@ from datacache import FileValidationError
 from orfdata import (
     CatalogManifest,
     CatalogRegistry,
+    EvidenceSummary,
     ORFCatalog,
+    ORFEvidence,
     ORFModel,
     ORFRecord,
     ReferenceContext,
+    ScopedTarget,
     SourceAsset,
     build_catalog,
     load_catalog,
@@ -25,12 +30,18 @@ from orfdata.cli import run
 SPECIES = ("homo_sapiens", "mus_musculus", "canis_lupus_familiaris", "saccharomyces_cerevisiae")
 
 
-def setup_release(tmp_path, species="mus_musculus"):
+def setup_release(tmp_path, species="mus_musculus", *, summarize=False):
     # Native reference slices test annotation identity; no experimental support is invented.
     data = json.loads((Path(__file__).parent / "data/references" / (species + ".json")).read_text())
     fields = data["model"]
     fields["reference_context"] = reference = ReferenceContext(**fields["reference_context"])
-    record = ORFRecord.from_model(ORFModel(**fields))
+    model = ORFModel(**fields)
+    summaries = (EvidenceSummary(
+        "synthetic", "1", ScopedTarget(reference, "protein", "fixture", "synthetic"),
+        hashlib.sha256(model.protein_sequence.encode()).hexdigest(), "ms", "support count", None,
+        "Synthetic unknown count, not experimental data", "protein_sequence",
+        "https://example.invalid/fixture", "a" * 64),) if summarize else ()
+    record = ORFRecord.from_model(model, ORFEvidence(summaries=summaries))
     catalog = ORFCatalog([record], dict(genome_build=record.genome_build, taxon_id=record.taxon_id,
         species=species, coordinates="1-based-inclusive", dataset_version="native-fixture",
         sources=[dict(id="native-reference-slice", scope="annotation fixture, no new experimental evidence")]))
@@ -41,7 +52,8 @@ def setup_release(tmp_path, species="mus_musculus"):
                         "Source-backed reference fixture; upstream provenance in tests/data/references")
     manifest = CatalogManifest(species, "1", "Native reference fixture", (reference,), (asset,),
         ("https://github.com/openvax/orfdata/tree/main/tests/data/references",),
-        dict(records=1, distinct_protein_sequences=1, evidence_summaries=0, experimental_evidence=False),
+        dict(records=1, distinct_protein_sequences=1, evidence_summaries=len(summaries),
+             experimental_evidence=False),
         dict(importer="catalog-copy-v1", catalog_asset="source.json"))
     return manifest, source, catalog
 
@@ -107,6 +119,22 @@ def test_catalogue_cli_reuses_evidence_locus_and_export_options(tmp_path, capsys
     assert json.loads(capsys.readouterr().out)["records"][0]["orf_id"] == record.orf_id
     with pytest.raises(SystemExit):
         run(query + ["--catalog", str(source)])
+
+
+@pytest.mark.parametrize("summarize", (False, True))
+def test_catalogue_cli_tsv_exports_aggregate_evidence(tmp_path, capsys, summarize):
+    # Regression for #58 through the managed-catalogue query path.
+    manifest, source, original = setup_release(tmp_path, summarize=summarize)
+    config = tmp_path / "registry.json"
+    config.write_text(json.dumps(definition(manifest)))
+    prefix = ["catalogs", "--registry", str(config), "--cache-root", str(tmp_path / "cache")]
+    run(prefix + ["build", manifest.catalog_id, "--source-path", "source.json=" + str(source)])
+    capsys.readouterr()
+    run(prefix + ["query", manifest.catalog_id, "--built", "--format", "tsv"])
+    row, = csv.DictReader(io.StringIO(capsys.readouterr().out), delimiter="\t")
+    summaries = json.loads(row["summaries_json"])
+    assert summaries == [s.to_dict() for s in original.records[0].summaries]
+    assert [s["value"] for s in summaries] == ([None] if summarize else [])
 
 
 def test_changed_source_or_unqualified_record_cannot_publish_a_build(tmp_path):

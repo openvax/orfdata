@@ -225,6 +225,6 @@ def test_real_reference_slices_bind_to_pyensembl(tmp_path, species):
         # These fixtures are annotation/sequence checks, not new MS evidence.
         assert not bound.evidence.has_evidence("ms")
         with pytest.raises(ValueError, match="translation table"):
-            replace(record, translation_table=3).bind(parent)
+            replace(record, translation_table=4).bind(parent)
     finally:
         genome.close()

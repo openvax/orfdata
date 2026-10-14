@@ -1,22 +1,28 @@
 # RNA, ribosome and protein measurements
 
-ORFdata adds evidence to PyEnsembl's reference transcripts and proteins. Its
-quantitative layer stores measurements of genes, transcripts, reference ORFs,
-proteins, protein groups, peptides and source-defined regions. A measurement stays
-at the resolution the experiment supports. Parent-gene RNA abundance is useful context for an ORF;
-it is not a separate measurement of each ORF in that gene.
+The quantitative layer of orfdata stores measurements of genes, transcripts,
+reference ORFs, proteins, protein groups, peptides and source-defined regions.
+A measurement stays at the resolution the experiment supports. Parent-gene RNA
+abundance is useful context for an ORF; it is not a separate measurement of each
+ORF in that gene.
 
-Install `orfdata[data]` to manage datasets. The registry includes downloadable
-[Pfizer/Oziolor human, mouse and dog protein summaries](pfizer-protein.md);
-[native dog/mouse RNA](pfizer-rna.md), [matched human tissues](human-tissue.md),
-[yeast RNA/protein calibration](copy-yeast.md) and
-[yeast RNA/ribosome occupancy](ingolia-yeast.md) use the same objects.
-See [released coverage and gaps](coverage.md);
-the [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
+Released datasets, each with its own guide:
+
+- [Human, mouse and dog protein abundance](pfizer-protein.md) (Pfizer/Oziolor atlas)
+- [Dog and mouse RNA abundance](pfizer-rna.md) (Pfizer/Oziolor atlas)
+- [Matched human tissue RNA and protein](human-tissue.md) (Wang et al.)
+- [Yeast protein and RNA abundance](copy-yeast.md) (CoPY)
+- [Yeast RNA and ribosome occupancy](ingolia-yeast.md) (Ingolia et al.)
+
+See [released coverage and gaps](coverage.md); the
+[data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
 imports. The bundled human ORF evidence catalogue remains available offline.
 Its pooled PSM counts describe spectra, not sample-level protein abundance.
 
 ## Discover, download and query
+
+Install `orfdata[data]` to manage datasets. Creating a registry and listing
+releases reads metadata only:
 
 ```python
 from orfdata import DatasetRegistry, ScopedTarget
@@ -25,18 +31,25 @@ registry = DatasetRegistry()  # Metadata only; no download.
 releases = registry.list(species="dog", assay="digest_ms")
 ```
 
-For a registered release, use `registry.info(name, version)` for its immutable
-manifest, `registry.download(name, version)` to fetch it, and
-`registry.open(name, version)` to read it offline. `inspect` reports missing,
-available or invalid files without downloading or repairing them.
-`download_metadata` returns the artifact's access terms and file hashes/sizes.
-An invalid cache
-requires an explicit `download(..., force=True)`; old reader paths survive.
-Python download options such as timeout, retries and progress go to DataCache.
+For a registered release:
+
+| Call | What it does |
+| --- | --- |
+| `registry.info(name, version)` | Returns its immutable manifest. |
+| `registry.download(name, version)` | Fetches and verifies it. |
+| `registry.open(name, version)` | Reads it offline. |
+| `registry.inspect(name, version)` | Reports missing, available or invalid files without downloading or repairing them. |
+| `registry.download_metadata(name, version)` | Returns the artifact's access terms and file hashes and sizes. |
+
+An invalid cache requires an explicit `download(..., force=True)`; old reader
+paths survive. Python download options such as timeout, retries and progress go
+to DataCache.
+
+Query an opened dataset by an exact, reference-scoped target. Here `transcript`
+is a PyEnsembl Transcript in the dataset's exact reference context:
 
 ```python
-# dataset = registry.open(name, version)
-# transcript is a PyEnsembl Transcript in the dataset's exact reference context.
+dataset = registry.open(name, version)
 target = ScopedTarget.from_pyensembl(
     transcript, kind="transcript", namespace="ensembl:110"
 )
@@ -129,13 +142,19 @@ substitute for the data files' terms.
 
 An importer calls `QuantitativeDataset.create(path, manifest, samples=...,
 assays=..., measurements=..., mappings=...)`. These inputs may be generators;
-measurements are written incrementally. Every observation names a source asset
-or earlier input measurements. Derived inputs precede outputs in the same
-dataset release. `input_measurements` names IDs within the output reference;
-`input_references` instead uses `MeasurementReference` records with each input's
-dataset, version, reference and ID. The two forms cannot be mixed. Cross-species
-derived abundance is rejected. Duplicate IDs, broken foreign keys, wrong dataset releases
-and cross-reference links fail the import. Failed builds do not replace data.
+measurements are written incrementally.
+
+Every observation names a source asset or earlier input measurements. Derived
+inputs precede outputs in the same dataset release. A derived measurement names
+its inputs in one of two forms, which cannot be mixed:
+
+- `input_measurements`: IDs within the output reference.
+- `input_references`: `MeasurementReference` records with each input's dataset,
+  version, reference and ID.
+
+Cross-species derived abundance is rejected. Duplicate IDs, broken foreign keys,
+wrong dataset releases and cross-reference links fail the import. Failed builds
+do not replace data.
 
 Use `build_dataset(manifest, builder, ...)` for a managed local import.
 `builder(source_paths, output_path)` reads the verified inputs and creates that
@@ -162,6 +181,8 @@ definitions = {
 
 CLI users can supply this JSON with `orfdata datasets --registry FILE ...`.
 
+## Rebuilding a release from source
+
 Rebuild supported releases from their pinned original inputs with
 `registry.build(name, version, source_paths={"asset_id": "/local/file"})` or
 `orfdata datasets build NAME --source-path ASSET=PATH`. Local overrides still
@@ -179,19 +200,26 @@ orfdata datasets query DATASET --version RELEASE --built --unit counts
 ```
 
 `pairs --built` also uses the local rebuild. Read operations never acquire or
-repair data. Build inspection checks source pins, transform identity and output
-bytes against the saved receipt, even after local source overrides have been
-removed. Its `verified` field remains false because a build receipt is not an
-independent published output checksum. Both cache origins retain their original
-paths and provenance; explicit force rebuilding preserves existing readers.
+repair data.
 
-`ORFDATA_CACHE`, then `OPENVAX_DATA_CACHE`, then the platform's OpenVax cache
-select the root. ORFdata owns its `orfdata/` child. Release cache identities
-include manifest/reference and content hashes. SQLite partitions every table
-by reference key, with composite foreign keys; human, mouse, dog, yeast and
-arbitrary other taxa use the same schema. The core API needs neither pandas nor
-PyArrow. Optional `orfdata[columnar]` enables `dataset.export_parquet(path)`;
-query columns accompany full measurement JSON, preserving exact values and
-provenance even when a floating-point analysis column cannot represent an
-integer exactly. [Compact storage and compatibility](storage.md) describes
-new SQLite v4 writes, legacy readers and actual-source size/query benchmarks.
+Build inspection checks source pins, transform identity and output bytes against
+the saved receipt, even after local source overrides have been removed. Its
+`verified` field remains false because a build receipt is not an independent
+published output checksum. Both cache origins retain their original paths and
+provenance; explicit force rebuilding preserves existing readers.
+
+## Cache location and storage
+
+The cache root is `ORFDATA_CACHE`, then `OPENVAX_DATA_CACHE`, then the
+platform's OpenVax cache. orfdata owns its `orfdata/` child. Release cache
+identities include manifest/reference and content hashes.
+
+Datasets are SQLite files. Every table is partitioned by reference key, with
+composite foreign keys, so human, mouse, dog, yeast and arbitrary other taxa use
+the same schema. [Compact storage and compatibility](storage.md) describes new
+SQLite v4 writes, legacy readers and actual-source size/query benchmarks.
+
+The core API needs neither pandas nor PyArrow. The optional `orfdata[columnar]`
+extra enables `dataset.export_parquet(path)`. Its query columns accompany the
+full measurement JSON, preserving exact values and provenance even when a
+floating-point analysis column cannot represent an integer exactly.

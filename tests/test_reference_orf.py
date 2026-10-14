@@ -102,7 +102,7 @@ def test_species_and_assembly_are_not_inferred_from_shared_ids(mouse_transcript)
     with pytest.raises(ValueError, match="assembly"):
         ORFRecord.from_model(model(genome_build="GRCm38")).bind(mouse_transcript)
     with pytest.raises(ValueError, match="translation table"):
-        ORFRecord.from_model(model(translation_table=3)).bind(mouse_transcript)
+        ORFRecord.from_model(model(translation_table=4)).bind(mouse_transcript)
 
 
 def test_custom_species_catalogue_roundtrip_and_missing_identity(tmp_path):
