@@ -38,10 +38,9 @@ def run(argv=None, prog=None, *, genome_loader=None):
     args = parser.parse_args(argv)
     try:
         extra = args.extra_orf_evidence != "none"
-        if not extra and (args.catalog or args.either or args.ms_methods is not None or any(
-                getattr(args, name) not in (None, False) for name in (
-                    "min_ribo_seq_studies", "min_ms_peptides", "require_resolved", "require_unique",
-                    "require_reviewed"))):
+        if not extra and (args.catalog or args.either or args.require_resolved or args.require_unique
+                          or args.require_reviewed or any(value is not None for value in (
+                              args.min_ribo_seq_studies, args.min_ms_peptides, args.ms_methods))):
             raise ValueError("Extra-ORF options require --extra-orf-evidence other than 'none'")
         rule = _rule(args, args.extra_orf_evidence, "--extra-orf-evidence", default="ms") if extra else None
         genome = (genome_loader or _ensembl_genome)(args.release, args.species)

@@ -245,7 +245,7 @@ def pinned(chain, monkeypatch):
 
 def test_a_pinned_chain_installs_verified_and_opens_offline(chain, pinned, tmp_path):
     cache = tmp_path / "cache"
-    with pytest.raises(ValueError, match="not downloaded.*'orfdata chains download GRCm38 GRCm39'"):
+    with pytest.raises(ValueError, match="not downloaded; download it with download_chain"):
         load_chain("GRCm38", "GRCm39", cache_root=cache)
     with pytest.raises(ValueError, match="UCSC with these terms: Non-commercial only.*accept_terms=True"):
         download_chain("GRCm38", "GRCm39", source_path=chain.path, cache_root=cache)
@@ -292,3 +292,71 @@ def test_cli_lists_pins_without_downloading(capsys):
     listed = json.loads(capsys.readouterr().out)
     assert [c["name"] for c in listed] == ["GRCh37_to_GRCh38", "GRCh38_to_GRCh37"]
     assert listed[0]["provider"] == "Ensembl" and listed[0]["restricted"] is False
+
+
+def test_a_pinned_file_must_be_used_in_its_own_direction_and_species(chain, pinned):
+    with pytest.raises(ValueError, match="is the pinned mus_musculus GRCm38 to GRCm39 chain, not GRCm39 to GRCm38"):
+        ChainFile(chain.path, source_build="GRCm39", target_build="GRCm38")
+    with pytest.raises(ValueError, match="not from GRCm38 to itself"):
+        ChainFile(chain.path, source_build="GRCm38", target_build="GRCm38")
+    pinned_file = ChainFile(chain.path, source_build="GRCm38", target_build="GRCm39")
+    assert pinned_file.species == "mus_musculus" and chain.species is None  # The fixture was read before the pin.
+    human = [replace(shifted(r), taxon_id=9606, species="homo_sapiens") for r in make_catalog().records]
+    catalog = ORFCatalog(human, dict(make_catalog().metadata, genome_build="GRCm38", taxon_id=9606,
+                                     species="homo_sapiens"))
+    with pytest.raises(ValueError, match="is a mus_musculus chain; the catalogue is homo_sapiens"):
+        lift_catalog(catalog, pinned_file)
+
+
+def test_cli_rejects_a_lift_to_the_same_assembly_or_against_the_pin(chain, pinned, tmp_path, capsys):
+    native = make_catalog()
+    source = tmp_path / "old.json"
+    ORFCatalog([shifted(r) for r in native.records], dict(native.metadata, genome_build="GRCm38")).save(source)
+    for to, message in (("GRCm38", "already on GRCm38"), ("GRCm40", "is the pinned mus_musculus GRCm38 to GRCm39")):
+        with pytest.raises(SystemExit):
+            run(["lift", "--catalog", str(source), "--to", to, "--chain", str(chain.path),
+                 "--output", str(tmp_path / "out.json")])
+        assert message in capsys.readouterr().err
+
+
+def test_damaged_and_missing_chains_say_how_to_download_again(chain, pinned, tmp_path):
+    cache = tmp_path / "cache"
+    with pytest.raises(ValueError, match=rf"download_chain\('GRCm38', 'GRCm39', accept_terms=True, "
+                                         rf"cache_root='{cache}'\) or 'orfdata chains --cache-root {cache} "
+                                         r"download GRCm38 GRCm39 --accept-terms'"):
+        load_chain("GRCm38", "GRCm39", cache_root=cache)
+    path = download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True, cache_root=cache)
+    path.chmod(0o644)
+    path.write_bytes(b"x" * path.stat().st_size)
+    for call in (lambda: load_chain("GRCm38", "GRCm39", cache_root=cache),
+                 lambda: download_chain("GRCm38", "GRCm39", accept_terms=True, cache_root=cache)):
+        with pytest.raises(ValueError, match="damaged.*force=True.*--force'"):
+            call()
+    download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True, force=True, cache_root=cache)
+    assert load_chain("GRCm38", "GRCm39", cache_root=cache).liftover == chain.liftover
+
+
+def test_an_assembly_without_a_pinned_chain_suggests_a_chain_file():
+    with pytest.raises(ValueError, match=r"--to T2T-CHM13v2.0 --chain FILE --output FILE', or lift_catalog\(.*"
+                                         r"ChainFile\(path, source_build='GRCh38', target_build='T2T-CHM13v2.0'\)"):
+        load_catalog(species="human", genome_build="T2T-CHM13v2.0")
+
+
+def test_lifted_and_merged_catalogues_export_as_tsv(chain, tmp_path, capsys):
+    import csv
+    import io
+
+    from orfdata import merge_catalogs
+
+    native = make_catalog()
+    old = ORFCatalog([shifted(r) for r in native.records], dict(native.metadata, genome_build="GRCm38"))
+    other = ORFCatalog([replace(old.get("ms-orf"), orf_id="IP_1", source="other")], dict(
+        old.metadata, dataset_version="other-v1", sources=[dict(id="other", scope="t")]))
+    path = tmp_path / "lifted.json"
+    lift_catalog(merge_catalogs([old, other]), chain).save(path)
+    run(["--catalog", str(path), "--format", "tsv"])
+    rows = list(csv.DictReader(io.StringIO(capsys.readouterr().out), delimiter="\t"))
+    merged = next(r for r in rows if r["orf_id"] == "ms-orf")
+    assert json.loads(merged["liftover_json"])["target_build"] == "GRCm39"
+    assert [m["orf_id"] for m in json.loads(merged["members_json"])] == ["ms-orf", "IP_1"]
+    assert json.loads(merged["lifted_from_json"])["genome_build"] == "GRCm38"

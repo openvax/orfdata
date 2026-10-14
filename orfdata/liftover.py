@@ -61,14 +61,25 @@ class ChainFile:
     for example from the RefSeq accessions UCSC uses for GCF assemblies, using
     the NCBI assembly report. Check each file's terms of use before
     redistributing what it produces.
+
+    The builds can't be read from a chain file, so they are checked only when
+    the file is one of the pinned ones: then they must be its builds, and
+    ``species`` is its species. Otherwise ``species`` is None.
     """
 
     def __init__(self, path, *, source_build, target_build, name=None, contig_names=None):
         from .model import _contig
 
+        if source_build == target_build:
+            raise ValueError(f"A chain maps between two assemblies, not from {source_build} to itself")
         raw = Path(path).read_bytes()
         self.liftover = Liftover(source_build, target_build, name or Path(path).name,
                                  hashlib.sha256(raw).hexdigest())
+        pin = next((c for c in pinned_chains() if c.sha256 == self.liftover.sha256), None)
+        if pin is not None and (pin.source_build, pin.target_build) != (source_build, target_build):
+            raise ValueError(f"{self.liftover.chain} is the pinned {pin.species} {pin.source_build} to "
+                             f"{pin.target_build} chain, not {source_build} to {target_build}")
+        self.species = None if pin is None else pin.species
         text = (gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw).decode()
         renamed = dict(contig_names or {})
         blocks = {}
@@ -165,7 +176,8 @@ def _pinned(source_build, target_build, species):
     if not found:
         known = ", ".join(c.name for c in pinned_chains(species=species)) or "none"
         raise ValueError(f"No pinned chain file maps {source_build} to {target_build} (pinned: {known}); "
-                         "pass your own file as ChainFile(path, source_build=..., target_build=...)")
+                         "use your own: ChainFile(path, source_build=..., target_build=...), or "
+                         "'orfdata lift --chain FILE'")
     return found[0]
 
 
@@ -192,20 +204,40 @@ def download_chain(source_build, target_build, *, species=None, accept_terms=Fal
         raise ValueError(f"{chain.filename} comes from {chain.provider} with these terms: {chain.terms} "
                          f"({chain.terms_url}). Pass accept_terms=True (or --accept-terms) to download it.")
     registry = _chain_registry(chain, cache_root)
-    registry.download(chain.name, "1", force=force,
-                      source_paths=None if source_path is None else {chain.filename: str(source_path)})
+    try:
+        registry.download(chain.name, "1", force=force,
+                          source_paths=None if source_path is None else {chain.filename: str(source_path)})
+    except ValueError as error:
+        if force or registry.inspect(chain.name, "1", verify_files=False).status == "missing":
+            raise
+        raise ValueError(f"The installed {chain.name} chain file is damaged ({error}); "
+                         f"{_download_hint(chain, cache_root, force=True)}") from error
     return registry.local_path(chain.name, "1", asset=chain.filename)
+
+
+def _download_hint(chain, cache_root, *, force=False):
+    root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
+    cli_root = "" if cache_root is None else f" --cache-root {cache_root}"
+    flags = (", force=True", " --force") if force else ("", "")
+    terms = (", accept_terms=True", " --accept-terms") if chain.restricted else ("", "")
+    return (f"download it again with download_chain({chain.source_build!r}, {chain.target_build!r}"
+            f"{terms[0]}{flags[0]}{root}) or 'orfdata chains{cli_root} download {chain.source_build} "
+            f"{chain.target_build}{terms[1]}{flags[1]}'")
 
 
 def load_chain(source_build, target_build, *, species=None, cache_root=None):
     """The downloaded pinned chain file from ``source_build`` to ``target_build``, opened offline."""
     chain = _pinned(source_build, target_build, species)
     registry = _chain_registry(chain, cache_root)
-    if registry.inspect(chain.name, "1", verify_files=False).status == "missing":
-        raise ValueError(f"The {chain.name} chain file is not downloaded; run "
-                         f"download_chain({source_build!r}, {target_build!r}) or "
-                         f"'orfdata chains download {source_build} {target_build}'")
-    path = registry.local_path(chain.name, "1", asset=chain.filename)
+    status = registry.inspect(chain.name, "1", verify_files=False).status
+    if status == "missing":
+        raise ValueError(f"The {chain.name} chain file is not downloaded; "
+                         f"{_download_hint(chain, cache_root).replace('download it again', 'download it', 1)}")
+    try:
+        path = registry.local_path(chain.name, "1", asset=chain.filename)
+    except ValueError as error:
+        raise ValueError(f"The downloaded {chain.name} chain file is damaged ({error}); "
+                         f"{_download_hint(chain, cache_root, force=True)}") from error
     return ChainFile(path, source_build=source_build, target_build=target_build, name=chain.filename)
 
 
@@ -217,9 +249,13 @@ def lift_catalog(catalog, chain):
     followed by ``@`` and the target assembly.
     """
     from .catalog import ORFCatalog
+    from .model import _species
 
     if catalog.genome_build != chain.liftover.source_build:
         raise ValueError(f"The chain maps from {chain.liftover.source_build}, not {catalog.genome_build}")
+    if getattr(chain, "species", None) not in (None, _species(catalog.species)):
+        raise ValueError(f"{chain.liftover.chain} is a {chain.species} chain; the catalogue is "
+                         f"{_species(catalog.species)}")
     lifted, unmapped = [], []
     for record in catalog.records:
         try:

@@ -226,11 +226,14 @@ def _query(args, parser, catalog_loader):
             "initiation_context_json",
         )
         scoped = not isinstance(catalog, UORFCatalog)
+        provenance = ("members", "liftover", "lifted_from")
         if scoped:
-            fields += ("reference_context_json", "summaries_json")
+            fields += ("reference_context_json", "summaries_json") + tuple(f + "_json" for f in provenance)
         elif any(r.summaries for r in records):
             # The released upstream-only columns have no place for aggregate counts.
             parser.error("The legacy upstream-ORF TSV cannot export aggregate evidence; use --format json")
+        elif any(r.members or r.liftover for r in records):
+            parser.error("The legacy upstream-ORF TSV cannot export merged or lifted records; use --format json")
         writer = csv.DictWriter(sys.stdout, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for r in records:
@@ -241,6 +244,8 @@ def _query(args, parser, catalog_loader):
                 row["reference_context_json"] = json.dumps(row.pop("reference_context", None), separators=(",", ":"))
                 # Full native records keep source, metric definition, None/0 and shared keys.
                 row["summaries_json"] = json.dumps(row.pop("summaries", []), separators=(",", ":"))
+                for field in provenance:  # Present only on merged or lifted records.
+                    row[field + "_json"] = json.dumps(row.pop(field, None), separators=(",", ":"))
             writer.writerow(row)
 
 

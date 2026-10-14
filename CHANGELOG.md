@@ -9,7 +9,12 @@
   `load_chain()`. A chain is checked against its pinned size and SHA-256 and
   never downloaded implicitly; `--source-path` installs a local copy the same
   way.
-- `ORFCatalog.save(path)` writes JSON or gzipped JSON deterministically.
+- `ChainFile` checks a pinned file's direction and species, so the wrong
+  file can't silently relabel a catalogue; `orfdata lift` also refuses a lift
+  to the catalogue's own assembly.
+- `ORFCatalog.save(path)` writes JSON or gzipped JSON deterministically. TSV
+  exports of merged or lifted catalogues include `members_json`,
+  `liftover_json` and `lifted_from_json` instead of failing.
 - The `orfdata` query command takes `--min-ribo-seq-studies`,
   `--min-ms-peptides`, `--ms-methods` and `--either`, like `orfdata proteome`
   (#73). `orfdata catalogs query` takes them too.

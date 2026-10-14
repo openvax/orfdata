@@ -80,7 +80,9 @@ orfdata lift --species human --to GRCh37 --output orfs-grch37.json.gz
 `orfdata lift` writes the lifted catalogue and prints a summary to standard
 error. `--catalog FILE` lifts a local catalogue instead, and `--chain FILE` uses
 your own chain file instead of a downloaded pin. Pass the result back with
-`--catalog`, for example to `orfdata proteome`. In Python:
+`--catalog`, for example to `orfdata proteome`; JSON and TSV exports include
+each record's original and the chain. Downloading chains needs the
+`orfdata[data]` extra, which adds DataCache. In Python:
 
 ```python
 from orfdata import download_chain, extra_orfs, lift_catalog, load_catalog, load_chain
@@ -105,7 +107,11 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
   installs a copy you already have after checking it against the pin.
   Ensembl publishes no GRCm38/GRCm39 chain, and no chain is pinned for dog.
 - **Other chain files.** `ChainFile(path, source_build=..., target_build=...)`
-  reads any UCSC or Ensembl chain file, gzipped or not. UCSC's chains to GCF
+  reads any UCSC or Ensembl chain file, gzipped or not. A chain file doesn't
+  name its assemblies, so you declare them. When the file is one of the
+  pinned ones, its direction and species are checked, so a GRCh37-to-GRCh38
+  file can't lift a GRCh38 catalogue; any other file is taken at your word.
+  UCSC's chains to GCF
   assemblies, such as `canFam3ToGCF_014441545.1.over.chain.gz` for dog
   ROS_Cfam_1.0, name contigs by RefSeq accession, so pass `contig_names=` built
   from NCBI's assembly report to match the genome's names. Check each file's
