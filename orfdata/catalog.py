@@ -127,6 +127,7 @@ class ORFRecord:
     source: str = ""
     reference_context: Optional[ReferenceContext] = None
     summaries: tuple = ()
+    start_codon: Optional[str] = None
 
     def __post_init__(self):
         object.__setattr__(self, "summaries", unique_summaries(self.summaries))
@@ -154,6 +155,7 @@ class ORFRecord:
             translation_table=self.translation_table,
             source=self.source,
             reference_context=self.reference_context,
+            start_codon=self.start_codon,
         )
 
     @property
@@ -192,6 +194,8 @@ class ORFRecord:
             result.pop("summaries")
         if self.reference_context is None:
             result.pop("reference_context")
+        if self.start_codon is None:
+            result.pop("start_codon")
         if self.initiation_context is not None:
             result["initiation_context"] = self.initiation_context.to_dict()
         return result

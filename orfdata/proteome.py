@@ -252,6 +252,11 @@ class ExtraORFs:
                 found.append(orf)
         return tuple(found)
 
+    def for_orf(self, orf_id):
+        """Every transcript placement of one ORF, the source's own transcript first."""
+        return tuple(sorted((o for o in self.orfs if o.orf_id == orf_id),
+                            key=lambda o: (not o.on_source_transcript, _versioned(o.transcript))))
+
     def for_gene(self, gene, *, source=False):
         """ORFs on transcripts of one gene in this genome.
 

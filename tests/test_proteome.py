@@ -187,6 +187,9 @@ def test_extra_orfs_sit_on_every_transcript_carrying_their_coding_path(genome, c
     assert {f.orf_id: f.reason for f in found.source_failures} == {
         "absent-orf": "Transcript absent from this annotation", "changed-orf": "ORF reference protein/stop mismatch"}
     assert [f.orf_id for f in found.excluded] == ["changed-orf"]
+    assert [o.transcript.id for o in found.for_orf("absent-orf")] == ["test_rna", "test_rna_long"]
+    assert [o.on_source_transcript for o in found.for_orf("ms-orf")] == [True, False]
+    assert found.for_orf("changed-orf") == ()
     with pytest.raises(ValueError, match="identity mismatch"):
         catalog.get("ms-orf").bind(genome.transcript_by_id("test_rna_long"))  # bind() stays strict.
     bound = found.orfs[0]
