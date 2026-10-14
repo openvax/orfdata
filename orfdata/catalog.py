@@ -695,7 +695,8 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     catalogues cover several assemblies of the species. A bundled catalogue
     is preferred, so the default never changes when another is downloaded.
     Otherwise the one catalogue in ``registry`` (by default the packaged
-    :class:`CatalogRegistry`) covering the species is opened offline; it must
+    :class:`CatalogRegistry`) covering the species is opened offline, at its
+    default release unless only another release covers the assembly; it must
     already be downloaded and is never downloaded here. A species without a
     catalogue raises, naming those that exist. Absence from a catalogue is
     never evidence of absence.
@@ -722,16 +723,18 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     found = [c for c in found if genome_build in (None, c.genome_build)]
     if not found:
         scope = species if genome_build is None else f"{species} {genome_build}"
-        known = "; ".join(f"{c.species} {c.genome_build} ({c.name})" for c in choices) or "none"
+        known = "; ".join(f"{c.species} {c.genome_build} ({c.label})" for c in choices) or "none"
         raise ValueError(f"No ORF catalogue covers {scope}. Catalogues exist for: {known}. "
                          "Load a local file with load_catalog(path) or add one to a CatalogRegistry.")
     bundled = [c for c in found if c.registry is None]
     if bundled:
         return _load_catalog(expected_sha256=expected_sha256, resource=bundled[0].resource)
+    found = _releases(found)
     if len(found) > 1:
         raise ValueError(f"Several ORF catalogues cover {species} {found[0].genome_build} "
-                         f"({', '.join(c.name for c in found)}); open one with CatalogRegistry().open(name)")
-    return _open_registered(found[0].registry, found[0].name, expected_sha256)
+                         f"({', '.join(c.label for c in found)}); open one with "
+                         "CatalogRegistry().open(name, version)")
+    return _open_registered(found[0], expected_sha256)
 
 
 class _Choice(NamedTuple):
@@ -740,26 +743,41 @@ class _Choice(NamedTuple):
     name: str
     registry: object = None
     resource: Optional[str] = None
+    version: Optional[str] = None
+
+    @property
+    def label(self):
+        return self.name if self.version is None else f"{self.name} {self.version}"
 
 
 def _catalog_choices(registry):
-    """Every catalogue load_catalog can open: bundled ones, then the registry's."""
-    choices = []
-    if registry is None:
-        from .catalogs import CatalogRegistry
+    """Every catalogue load_catalog can open: the bundled ones, then each registry release."""
+    from .catalogs import CatalogRegistry
 
-        choices = [_Choice(s, b, "bundled", resource=r) for (s, b), r in _BUNDLED.items()]
-        registry = CatalogRegistry()
-    return choices + [_Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry)
-                      for m in registry.list()]
+    registry = CatalogRegistry() if registry is None else registry
+    return [_Choice(s, b, "bundled", resource=r) for (s, b), r in _BUNDLED.items()] + [
+        _Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry, version=m.version)
+        for m in registry.list()]
 
 
-def _open_registered(registry, name, expected_sha256):
-    if registry.inspect(name, verify_files=False).status == "missing":
-        raise ValueError(f"The {name} ORF catalogue is not installed; download it first with "
-                         f"CatalogRegistry().download({name!r}) or 'orfdata catalogs download {name}'")
+def _releases(found):
+    """One release per registered catalogue: its default version if it qualifies, else its only one."""
+    chosen = []
+    for name in dict.fromkeys(c.name for c in found):
+        releases = [c for c in found if c.name == name]
+        default = releases[0].registry.info(name).version
+        chosen.extend([c for c in releases if c.version == default] or releases)
+    return chosen
+
+
+def _open_registered(choice, expected_sha256):
+    registry, name, version = choice.registry, choice.name, choice.version
+    if registry.inspect(name, version, verify_files=False).status == "missing":
+        raise ValueError(f"The {name} {version} ORF catalogue is not installed; download it first with "
+                         f"CatalogRegistry().download({name!r}, {version!r}) or "
+                         f"'orfdata catalogs download {name} --version {version}'")
     if expected_sha256 is not None:
-        pinned = registry.download_metadata(name)["assets"]["catalog.json.gz"]["sha256"]
+        pinned = registry.download_metadata(name, version)["assets"]["catalog.json.gz"]["sha256"]
         if pinned != expected_sha256:
             raise ValueError("ORF catalogue checksum mismatch")
-    return registry.open(name)
+    return registry.open(name, version)

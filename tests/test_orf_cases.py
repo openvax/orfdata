@@ -13,6 +13,7 @@ from pyensembl import Genome
 from orfdata import (
     IRES,
     ORFEvidence,
+    ProteinProduct,
     RNAFeature,
     SourceRNA,
     TranscriptORF,
@@ -21,6 +22,7 @@ from orfdata import (
     products_from_uniprot,
     rfam_ires,
 )
+from orfdata.sequence import CODONS
 
 DATA = Path(__file__).parent / "data" / "references"
 ENSEMBL = json.loads((DATA / "ensembl115.json").read_text())
@@ -237,3 +239,57 @@ def test_fragments_without_a_known_start(genome):
     assert fragment.protein_sequence == pomc.protein_sequence[137:]
     assert (fragment.start_complete, fragment.start_codon, fragment.end) == (False, None, pomc.end)
     assert fragment.decoded_stop_codons == ()  # The reading frame is the source's assertion; no recoding claimed.
+
+
+def test_start_incomplete_cds_keeps_its_reading_frame(genome):
+    # RPL18's CDS begins with a partial codon, which Ensembl translates as X; it has a stop codon.
+    rpl18 = genome.transcript_by_id("ENST00000084795")
+    cds = TranscriptORF.from_annotation(rpl18)
+    assert (cds.start_complete, cds.stop_complete, cds.protein_sequence[0]) == (False, True, "X")
+    first = cds.start + (cds.end - cds.start) % 3  # The first complete codon, read back from the stop.
+    product = ProteinProduct("p", "probe", "chain", 10, 20, "test")
+    a, b = product.coding_slice(cds)
+    assert (a, b) == (first + 27, first + 57)
+    assert "".join(CODONS[rpl18.sequence[i : i + 3]] for i in range(a, b, 3)) == product.sequence(cds)
+    with pytest.raises(ValueError, match="partial codon"):
+        ProteinProduct("x", "probe", "chain", 0, 5, "test").coding_slice(cds)
+    truncation = TranscriptORF.at(rpl18, first + 30, orf_id="t", source="test", start_complete=False)
+    assert truncation.end == cds.end and truncation.cds_relation == "N_terminal_truncation"
+    shifted = TranscriptORF.at(rpl18, first + 31, orf_id="s", source="test", start_complete=False)
+    assert shifted.cds_relation in ("internal", "downstream_overlapping")
+
+
+def test_fragments_decode_declared_recoding_and_need_a_codon(genome):
+    gpx1 = genome.transcript_by_id("ENST00000419783")
+    cds = TranscriptORF.from_annotation(gpx1)
+    sec = cds.protein_sequence.index("U")
+    fragment = TranscriptORF.at(gpx1, cds.start + 30, orf_id="f", source="test", start_complete=False,
+                                recoded={sec - 10: "U"})
+    assert fragment.decoded_stop_codons == ((sec - 10, "TGA", "U"),)
+    tail = SourceRNA("tail", "ATGAAACC", fragment.context, "synthetic")
+    with pytest.raises(ValueError, match="No complete codon"):
+        TranscriptORF.at(tail, 6, orf_id="t", source="test", start_complete=False)
+
+
+def test_a_circular_junction_is_not_a_frameshift(genome):
+    reference = TranscriptORF.from_annotation(genome.transcript_by_id("ENST00000419783")).context
+    sequence = "GCCGCCTAA" + "C" + "ATG" + "GCC" * 95 + "CCC"  # 301 nt; the ORF ends at the TAA after the junction.
+    circ = SourceRNA("c", sequence, reference, "synthetic", topology="circular", contig="1",
+                     strand="+", exons=((1000, 1300),))
+    orf = TranscriptORF.at(circ, 10, orf_id="c", source="test")
+    assert orf.wraps_junction and orf.coding_blocks == ((1000, 1008), (1010, 1300))
+    assert orf.subcodon_introns == ()
+    for exons, strand in ((((1200, 1300), (1000, 1199)), "+"), (((1000, 1100), (1101, 1300)), "-"),
+                          (((1000, 1150), (1100, 1249)), "+")):
+        with pytest.raises(ValueError, match="RNA order"):
+            SourceRNA("c", sequence[: sum(b - a + 1 for a, b in exons)], reference, "synthetic", contig="1",
+                      strand=strand, exons=exons)
+
+
+def test_nested_rfam_seeds_give_one_element(genome):
+    hspa5 = genome.transcript_by_id("ENST00000324460")
+    elements = rfam_ires(hspa5)
+    assert [e.feature_id.split(":")[0] for e in elements] == ["RF00223"]
+    element, = elements
+    assert (element.start, element.end) == (2, 250)
+    assert "X59969.1" in element.evidence and "BC020235.1" in element.evidence

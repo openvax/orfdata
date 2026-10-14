@@ -515,13 +515,16 @@ def test_species_without_a_catalogue_or_mismatched_catalogue_fails(genome):
 def test_a_registered_catalogue_is_the_default_for_its_species(genome, monkeypatch):
     class OneCatalogue:
         def list(self):
-            return (SimpleNamespace(catalog_id="mouse-orfs", genome_build="GRCm39",
+            return (SimpleNamespace(catalog_id="mouse-orfs", version="1", genome_build="GRCm39",
                                     references=(SimpleNamespace(species="mus_musculus"),)),)
 
-        def inspect(self, name, verify_files=True):
+        def info(self, name, version=None):
+            return self.list()[0]
+
+        def inspect(self, name, version=None, verify_files=True):
             return SimpleNamespace(status="available")
 
-        def open(self, name):
+        def open(self, name, version=None):
             return make_catalog()
 
     monkeypatch.setattr("orfdata.catalogs.CatalogRegistry", OneCatalogue)

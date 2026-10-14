@@ -5,11 +5,16 @@
   readthrough and selenocysteine, and ORFs across circular-RNA junctions on a
   `SourceRNA` (#64, #65, #66). Catalogue models can declare `start_codon`.
 - Annotated CDSs report `start_codon`, `stop_codon`, decoded internal stop
-  codons and sub-codon introns, such as programmed frameshifts. Start and stop
-  completeness no longer depends only on Ensembl's codon rows, which omit
-  GUG, ACG and AUU starts.
+  codons and sub-codon introns, such as programmed frameshifts. Ensembl omits
+  start-codon rows for GUG, ACG and AUU starts, so a CDS that begins after its
+  RNA's first base now counts as started whatever its codon. One at the first
+  base without a row is still reported incomplete, because PyEnsembl does not
+  keep the `cds_start_NF` tag that would tell the two apart (20 human Ensembl
+  115 transcripts, such as GNAS `ENST00000306120`).
 - `cds_relation` relates any ORF to its transcript's annotated CDS (upstream,
   internal, N-terminal extension and so on), alongside the source's category.
+  For a CDS that begins with a partial codon, the frame is read back from its
+  stop codon; protein residues count from Ensembl's leading `X`.
 - `ProteinProduct` and `products_from_uniprot` map precursor products such as
   POMC's hormones to codons and genomic positions (#67).
 - `RNAFeature` and `rfam_ires` locate reported IRES elements from the bundled
@@ -18,10 +23,11 @@
   recoding, frameshifts, ERV proteins, circular RNAs, precursors and IRESs.
 - `load_catalog(species=..., genome_build=...)` picks a species' ORF catalogue:
   the bundled one, or else one downloaded through `CatalogRegistry`. It defaults
-  to human, as PyEnsembl does, and never downloads. `extra_orfs` and
-  `with_extra_orfs` use it, so an installed mouse or dog catalogue needs no
-  `catalog=`. A species without a catalogue gets an error naming those that
-  exist. The ORF query CLI takes `--species`.
+  to human, as PyEnsembl does, never downloads, and opens each registered
+  catalogue's default release unless the assembly needs another. `extra_orfs`
+  and `with_extra_orfs` use it, so a mouse or dog catalogue added to the packaged
+  registry and downloaded needs no `catalog=`. A species without a catalogue
+  gets an error naming those that exist. The ORF query CLI takes `--species`.
 
 # 0.19.0
 

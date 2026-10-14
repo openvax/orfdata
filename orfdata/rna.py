@@ -56,6 +56,10 @@ class SourceRNA:
                 raise ValueError("Genomic exons need a contig and strand")
             if any(a < 1 or b < a for a, b in self.exons):
                 raise ValueError("Exons are 1-based inclusive blocks")
+            ascending = sorted(self.exons)
+            if list(self.exons) != (ascending[::-1] if self.strand == "-" else ascending) or any(
+                    b >= c for (_, b), (c, _) in zip(ascending, ascending[1:])):
+                raise ValueError("Exons must be in RNA order, descending on the minus strand, without overlaps")
             if sum(b - a + 1 for a, b in self.exons) != len(self.sequence):
                 raise ValueError("Exons must cover the RNA sequence exactly once")
 
@@ -207,11 +211,20 @@ class ProteinProduct:
         return protein[self.start : self.end]
 
     def coding_slice(self, orf):
-        """``(start, end)`` slicing the RNA sequence to this product's codons."""
+        """``(start, end)`` slicing the RNA sequence to this product's codons.
+
+        For an annotated CDS that begins with a partial codon, residues are
+        counted from Ensembl's leading ``X``, which has no complete codon.
+        """
         self.sequence(orf)
         if getattr(orf, "wraps_junction", False):
             raise ValueError("Products of an ORF crossing a circular junction have no single slice")
-        return orf.start + 3 * self.start, orf.start + 3 * self.end
+        origin = orf._origin
+        if origin is None:
+            raise ValueError(f"The reading frame of {orf.orf_id} is unknown")
+        if origin + 3 * self.start < 0:
+            raise ValueError(f"{self.product_id} starts at a partial codon")
+        return orf.start + origin + 3 * self.start, orf.start + origin + 3 * self.end
 
     def genomic_blocks(self, orf):
         """1-based inclusive genomic blocks of this product's codons, ascending."""
@@ -243,15 +256,23 @@ def rfam_ires(rna):
     found = []
     for family in data["families"]:
         pmids = ", ".join(r["pmid"] for r in family["references"])
+        matches = {}
         for seed in family["seeds"]:
             start = sequence.find(seed["sequence"])
             while start >= 0:
-                found.append(RNAFeature(
-                    f"{family['accession']}:{seed['seed_names'][0]}", *IRES, rna, start,
-                    start + len(seed["sequence"]), f"Rfam {release} {family['accession']} {family['id']}",
-                    f"Reported IRES: Rfam seed {', '.join(seed['seed_names'])}; PMID {pmids}. "
-                    "Activity in this transcript or condition is not established."))
+                matches.setdefault((start, start + len(seed["sequence"])), []).extend(seed["seed_names"])
                 start = sequence.find(seed["sequence"], start + 1)
+        # Seeds of one family can lie inside each other: report each element once, at its widest.
+        spans = sorted(matches, key=lambda span: (span[0], -span[1]))
+        for start, end in spans:
+            if any(s <= start and end <= e and (s, e) != (start, end) for s, e in spans):
+                continue
+            names = list(dict.fromkeys(n for s, e in spans if start <= s and e <= end for n in matches[s, e]))
+            found.append(RNAFeature(
+                f"{family['accession']}:{names[0]}", *IRES, rna, start, end,
+                f"Rfam {release} {family['accession']} {family['id']}",
+                f"Reported IRES: Rfam seed {', '.join(names)}; PMID {pmids}. "
+                "Activity in this transcript or condition is not established."))
     return tuple(sorted(found, key=lambda f: (f.start, f.end, f.feature_id)))
 
 

@@ -387,6 +387,8 @@ class TranscriptORF:
         circular = getattr(rna, "topology", "linear") == "circular"
         coding, translated, stopped = read_orf(rna.sequence, start, code=code, start_codon=start_codon,
                                                recoded=recoded, circular=circular, initiation=start_complete)
+        if not coding:
+            raise ValueError(f"No complete codon follows offset {start}")
         if protein is not None and translated != protein:
             raise ValueError(f"{orf_id} does not translate to the source protein from offset {start}")
         size = len(rna.sequence)
@@ -484,16 +486,35 @@ class TranscriptORF:
 
         Stops are judged by the ORF's code, or the standard code for an annotated
         CDS, which declares none: selenocysteine ``U``, readthrough residues and
-        mitochondrial TGA tryptophan all appear here. Empty when the reading
-        frame is unknown because the start is incomplete.
+        mitochondrial TGA tryptophan all appear here. A fragment read with
+        ``at(..., start_complete=False)`` is checked from its first codon. Empty
+        when the reading frame is unknown.
         """
-        if not self.start_complete:
+        origin = self._origin
+        if origin is None:
             return ()
         code = self.genetic_code
         codons = code.codons if code is not None else CODONS
         protein, coding = self.protein_sequence, self.coding_sequence
-        return tuple((i, coding[3 * i : 3 * i + 3], protein[i]) for i in range(1, len(protein))
-                     if codons.get(coding[3 * i : 3 * i + 3]) == "*")
+        first = 1 if self.start_complete else 0  # A complete start codon reads as methionine.
+        return tuple((i, coding[origin + 3 * i : origin + 3 * i + 3], protein[i])
+                     for i in range(first, len(protein))
+                     if origin + 3 * i >= 0 and codons.get(coding[origin + 3 * i : origin + 3 * i + 3]) == "*")
+
+    @property
+    def _origin(self):
+        """Offset in ``coding_sequence`` of the codon for protein residue 0.
+
+        Negative when an annotated CDS begins with a partial codon, which
+        Ensembl translates as ``X``; None when the frame is unknown.
+        """
+        if self.start_complete or self.kind != "annotated":
+            return 0
+        if not self.stop_complete:
+            return None
+        phase = len(self.coding_sequence) % 3
+        leading = len(self.protein_sequence) - (len(self.coding_sequence) - phase) // 3 + 1
+        return phase - 3 * leading if leading in (0, 1) else None
 
     @property
     def subcodon_introns(self):
@@ -503,14 +524,22 @@ class TranscriptORF:
         gaps; they also mark some reference-sequence corrections. ``coding_offset``
         is where the skip falls in the coding sequence.
         """
-        blocks, found = self.coding_blocks, []
-        lengths = [b - a + 1 for a, b in blocks]
-        for i, ((_, end), (start, _)) in enumerate(zip(blocks, blocks[1:])):
-            gap = start - end - 1
-            if gap in (1, 2):
-                before = sum(lengths[: i + 1]) if self.transcript.strand == "+" else sum(lengths[i + 1 :])
-                found.append((before, end + 1, start - 1, 1 if gap == 1 else -1))
-        return tuple(found)
+        forward, found, before = self.transcript.strand == "+", [], 0
+        if self.wraps_junction:  # Each side of a circular junction is read separately.
+            layout = _rna_layout(self.transcript)
+            segments = [_layout_blocks(layout, self.transcript.strand, range(a, b), ordered=True)
+                        for a, b in self.segments]
+        else:
+            segments = [self.coding_blocks if forward else self.coding_blocks[::-1]]
+        for blocks in segments:
+            for (a, b), (c, d) in zip(blocks, blocks[1:]):
+                before += b - a + 1
+                gap = c - b - 1 if forward else a - d - 1
+                if gap in (1, 2):
+                    found.append((before, b + 1 if forward else d + 1, c - 1 if forward else a - 1,
+                                  1 if gap == 1 else -1))
+            before += blocks[-1][1] - blocks[-1][0] + 1 if blocks else 0
+        return tuple(sorted(found, key=lambda x: x[1]))
 
     @property
     def cds_relation(self):
@@ -535,7 +564,9 @@ class TranscriptORF:
             except ValueError:
                 cds = None
             if cds is not None:
-                relation = _relation(self.start, self.end, cds.start, cds.end)
+                origin = cds._origin
+                relation = _relation(self.start, self.end, cds.start, cds.end,
+                                     None if origin is None else cds.start + origin)
         object.__setattr__(self, "_relation", relation)
         return relation
 
@@ -664,14 +695,17 @@ class TranscriptORF:
         )
 
 
-def _relation(start, end, cds_start, cds_end):
+def _relation(start, end, cds_start, cds_end, frame):
+    """``frame`` is any slice offset in the CDS's reading frame, or None if unknown."""
     if (start, end) == (cds_start, cds_end):
         return "annotated_cds"
     if end <= cds_start:
         return "upstream"
     if start >= cds_end:
         return "downstream"
-    if (start - cds_start) % 3 == 0:
+    if frame is None:
+        return None
+    if (start - frame) % 3 == 0:
         if end == cds_end:
             return "N_terminal_extension" if start < cds_start else "N_terminal_truncation"
         if start == cds_start:

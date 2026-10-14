@@ -285,9 +285,12 @@ def test_load_catalog_selects_the_installed_catalogue_for_a_species(tmp_path):
     missing = CatalogRegistry(definition(manifest, artifact), cache_root=tmp_path / "empty")
     with pytest.raises(ValueError, match="not installed; download it first"):
         load_catalog(species="mouse", registry=missing)
-    with pytest.raises(ValueError, match=rf"No ORF catalogue covers canis_lupus_familiaris\. "
-                                         rf"Catalogues exist for: mus_musculus {manifest.genome_build}"):
+    with pytest.raises(ValueError, match=rf"No ORF catalogue covers canis_lupus_familiaris\. Catalogues exist "
+                                         rf"for: homo_sapiens GRCh38 \(bundled\); mus_musculus {manifest.genome_build} "
+                                         r"\(mus_musculus 1\)"):
         load_catalog(species="dog", registry=registry)
+    # The bundled catalogue is always available, and preferred, alongside a registry.
+    assert len(load_catalog(registry=registry).records) == 7264
     assert load_catalog(source, species="mouse").records == original.records
     with pytest.raises(ValueError, match="is a mus_musculus catalogue, not homo_sapiens"):
         load_catalog(source, species="human")
@@ -318,7 +321,22 @@ def test_load_catalog_never_guesses_between_catalogues(tmp_path):
         load_catalog(species="mouse", registry=registry)
     with pytest.raises(ValueError, match="Several ORF catalogues cover mus_musculus .*mouse-second"):
         load_catalog(species="mouse", genome_build=manifest.genome_build, registry=registry)
-    with pytest.raises(ValueError, match="mouse-grcm38 ORF catalogue is not installed"):
+    with pytest.raises(ValueError, match="mouse-grcm38 1 ORF catalogue is not installed"):
+        load_catalog(species="mouse", genome_build="GRCm38", registry=registry)
+
+
+def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path):
+    registry, manifest, source, artifact, original = installed_release(tmp_path)
+    name, build = manifest.catalog_id, manifest.genome_build
+    releases = definition(manifest, artifact)
+    newer = replace(manifest, version="2")
+    older = replace(manifest, version="0", references=(replace(manifest.references[0], genome_build="GRCm38"),))
+    for other in (newer, older):
+        releases[name]["versions"].update(definition(other, artifact)[name]["versions"])
+    registry = CatalogRegistry(releases, cache_root=tmp_path / "download")
+    # Version 1, the default, is installed; version 2 of the same assembly is not chosen over it.
+    assert load_catalog(species="mouse", genome_build=build, registry=registry).records == original.records
+    with pytest.raises(ValueError, match=rf"{name} 0 ORF catalogue is not installed.*--version 0"):
         load_catalog(species="mouse", genome_build="GRCm38", registry=registry)
 
 
