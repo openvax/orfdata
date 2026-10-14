@@ -1,7 +1,6 @@
-# General ORF reference and evidence layer
+# Design notes
 
-Status: architectural correction to the unmerged oncoref/Varcode/Isovar PRs.
-Working distribution name: orfdata. No release is authorized by this document.
+These notes record the library boundaries that the public API follows.
 
 ## Ownership
 
@@ -32,6 +31,9 @@ API is needed to bind a Transcript; avoid reverse dependencies or monkey-patchin
   gene, locus, class or evidence. for_transcript(transcript) validates and returns
   ReferenceORFs. Load custom versioned catalogues offline. The initial bundled
   human data is identified as human-only; no implied mouse evidence.
+- Proteome: annotated proteins of one PyEnsembl genome, with opt-in layers for
+  evidence-selected catalogue ORFs and host-restricted viral proteins. Every
+  layer records its source and counts; unbound ORFs are reported, not dropped.
 - Varcode ORFAnnotation: reference ORF plus effect and realized products. Exports
   separately identify reference model/evidence and modifications, preserving
   phase/splice alternatives. A private transcript-engine adapter permits reuse
@@ -60,25 +62,9 @@ assembly/species mismatches and unknown translation tables. Synthetic examples
 are identified as test fixtures, never scientific observations. OpenProt already
 publishes multiple species with Ensembl/RefSeq mappings and evidence filters.
 
-## Review corrections
-
-Remove the oncoref runtime dependency from both consumers and withdraw its ORF
-PR when the replacement is reviewable. Keep unrelated lint fixes independently.
-Review evidence retention for duplicate reference codons (retain all copies),
-explicit translation tables and noncoding parents; preserve all Sid alternatives.
-Document unsupported de novo initiation discovery and partial ORFs honestly.
-
-## Verification
-
-New library: existing evidence/context/builder tests, generic data round-trip,
-PyEnsembl binding and multi-species isolation, independently installed wheel.
-Varcode/Isovar: focused tests then required full lint/test scripts. Regenerate
-Sid outputs from the original packaged reads. Existing human evidence counts and
-native peptide attribution must remain unchanged. Do not claim release until CI,
-merge and PyPI publication actually complete; publication remains unapproved.
-
 Primary sources:
-- https://www.nature.com/articles/s41587-022-01369-0
-- https://www.nature.com/articles/s41586-026-10459-x
-- https://archive.openprot.org/p/help
-- https://github.com/openvax/pyensembl
+
+- <https://www.nature.com/articles/s41587-022-01369-0>
+- <https://www.nature.com/articles/s41586-026-10459-x>
+- <https://archive.openprot.org/p/help>
+- <https://github.com/openvax/pyensembl>

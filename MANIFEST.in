@@ -1,5 +1,5 @@
-include lint.sh test.sh deploy.sh
-recursive-include docs *.md
+include lint.sh test.sh deploy.sh docs.sh mkdocs.yml
+recursive-include docs *.md *.css
 recursive-include tests *.py *.json *.md *.tsv *.fasta
 recursive-include tests/data/copy *.xlsx *.gz *.soft *.xml *.pdf
 recursive-include tests/data/storage *.sqlite

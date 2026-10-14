@@ -1,94 +1,73 @@
+[![Tests](https://github.com/openvax/orfdata/actions/workflows/tests.yml/badge.svg)](https://github.com/openvax/orfdata/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/orfdata.svg)](https://pypi.org/project/orfdata/)
+
 # orfdata
 
-orfdata is a catalogue of open reading frames (ORFs) that standard protein
-annotations leave out, with the experimental evidence that they are translated
-or produce detectable peptides. It attaches each ORF, its protein sequence and
-its evidence to the corresponding [PyEnsembl](https://github.com/openvax/pyensembl)
-transcript, and provides downloadable RNA, ribosome and protein measurement
-datasets through the same species-scoped API.
+orfdata builds the protein reference for a species: the proteins annotated in
+a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus open reading
+frames (ORFs) that ribosome-profiling studies found translated outside those
+annotations. These include upstream and downstream ORFs, ORFs in other reading
+frames of a coding sequence, and ORFs on RNAs annotated as noncoding. Each added
+ORF stays bound to its PyEnsembl transcript, with its source, category and
+evidence.
 
-## Install
+## Installation
+
+Use Python 3.9 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-pip install 'orfdata[pyensembl]'
+python -m pip install 'orfdata[pyensembl]'
+pyensembl install --release 115 --species human
 ```
 
-The bundled catalogue itself uses only the Python standard library; the
-`pyensembl` extra is needed to attach ORFs to transcripts.
-
-## Look up ORFs and their evidence
-
-The bundled human GRCh38 catalogue loads offline, with no download:
-
-```python
-from orfdata import load_catalog
-
-catalog = load_catalog()
-for record in catalog.query(gene="TPST1", evidence="ms"):
-    print(record.orf_id, record.transcript_id, record.protein_sequence)
-```
-
-To attach ORFs to a PyEnsembl transcript, first download and index that
-annotation (`pyensembl install --release 95 --species human`), then:
+## Example
 
 ```python
 from pyensembl import EnsemblRelease
-from orfdata import load_catalog
+from orfdata import Proteome
 
-genome = EnsemblRelease(95, species="human")
-catalog = load_catalog()
-transcript = genome.transcript_by_id("ENST00000304842")  # TPST1
-
-for orf in catalog.for_transcript(transcript):
-    print(orf.model.orf_id, orf.protein_sequence)
-    print(orf.evidence.has_evidence("ms"))
-    assert orf.transcript is transcript
+genome = EnsemblRelease(115, species="human")
+proteome = Proteome.from_genome(genome).with_extra_orfs(evidence="ms")
+proteome.write_fasta("human-e115.fasta")
+print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
 
-Each returned `ReferenceORF` keeps its model, evidence and original PyEnsembl
-transcript together, after checking its coordinates and sequence against that
-transcript. The transcript's biotype and annotated protein stay intact, and one
-RNA can have several ORFs. The same call works for a noncoding parent, such as
-NUTM2B-AS1 (`ENST00000483080`).
+```text
+{'annotated': 245535, 'extra_orf': 2181} 5
+```
 
-## Which ORFs are included?
+This takes every protein in the Ensembl 115 annotation and adds the 2,181
+bundled human ORFs that have supporting mass-spectrometry peptides and are
+encoded by an Ensembl 115 transcript. Each entry lists every transcript encoding
+it; the other 5 selected ORFs are listed in `proteome.excluded` with the
+reason. Use `evidence="ribosome"` for all 7,239 encoded ribosome-profiling ORFs.
+`proteome.save(path)` writes a checksummed snapshot that `Proteome.load` reads
+offline. From the command line:
 
-The bundled catalogue includes:
+```sh
+orfdata proteome --species human --release 115 --output human-e115.fasta
+```
 
-- Upstream ORFs (uORFs), before the main protein-coding region.
-- Overlapping ORFs, extending into or out of the main coding region.
-- Internal ORFs, in alternative reading frames within the main coding region.
-- Downstream ORFs (dORFs), after the main coding region.
-- ORFs on noncoding RNAs, including long noncoding RNAs (lncRNAs) and processed
-  transcripts without an annotated protein.
+A translated ORF or a detected peptide does not by itself establish a stable,
+functional protein. Most MS support in the bundled catalogue comes from
+peptides presented by HLA molecules.
 
-It currently contains 7,264 human GRCh38 ORFs, of which 2,186 have reported
-supporting mass-spectrometry observations. It is a source-backed reference
-catalogue; it does not discover every possible ORF. See
-[data sources and current limits](docs/reference.md#data-and-limits).
+## Species
 
-## What does the evidence mean?
-
-| Evidence | What it supports |
-| --- | --- |
-| Ribosome profiling | Translation of the ORF. |
-| Protease-digest mass spectrometry (MS) | Detection of peptides matching its protein sequence. |
-| MHC/HLA peptidomics | Detection of matching peptides presented by MHC molecules. |
-
-These observations have different strengths. A translated ORF or detected
-peptide does not by itself establish a stable, functional protein, and missing
-evidence does not establish that an ORF is never translated. Peptide matches can
-be ambiguous, so orfdata keeps their source, mapping and quality information.
-See [evidence interpretation](docs/reference.md#evidence).
-
-Varcode describes changes to a reference ORF, and Isovar connects it to observed
-RNA products. Reference evidence stays separate from evidence for a variant or
-fusion; see [variants and RNA products](docs/reference.md#variants-and-rna-products).
+The bundled noncanonical ORF catalogue is human GRCh38 only. Mouse, dog and
+yeast proteomes contain their PyEnsembl-annotated proteins.
+`load_catalog(species=...)` and `with_extra_orfs()` pick the catalogue for a
+species and raise for those three until a qualified catalogue is released.
+Human evidence is never transferred to another species. Viral proteomes can be added with
+`with_viral(...)`, but only to a proteome for one of the virus's recorded hosts.
+orfdata also provides [RNA, ribosome and protein measurements](https://openvax.github.io/orfdata/measurements/)
+for human, mouse, dog and yeast.
 
 ## Measurement datasets
 
-RNA, ribosome and protein measurements are separate, downloadable datasets.
-Install the `data` extra, then download and query one:
+RNA, ribosome and protein measurements are separate, downloadable datasets with
+the same species-scoped API. Install the `data` extra, then download and query
+one:
 
 ```sh
 pip install 'orfdata[data]'
@@ -96,47 +75,32 @@ orfdata datasets list
 orfdata datasets download ingolia-yeast-rna-ribo
 ```
 
-```python
-from orfdata import DatasetRegistry, ScopedTarget
-
-dataset = DatasetRegistry().open("ingolia-yeast-rna-ribo")
-reference, = dataset.manifest.references
-target = ScopedTarget(reference, "region", "HRA1", "Ingolia2009:feature")
-for measurement in dataset.measurements(target=target, unit="RPKM"):
-    print(measurement.sample_id, measurement.quantity, measurement.value)
-```
-
 | Guide | Species | Measurements |
 | --- | --- | --- |
-| [Protein abundance](docs/pfizer-protein.md) | Human, mouse, dog | TMT protein groups (Oziolor et al.) |
-| [RNA abundance](docs/pfizer-rna.md) | Dog, mouse | Native gene counts (Oziolor et al.) |
-| [Matched human tissues](docs/human-tissue.md) | Human | RNA and protein from adjacent cryosections (Wang et al.) |
-| [Yeast protein and RNA](docs/copy-yeast.md) | Budding yeast | Calibrated protein and RNA abundance (CoPY) |
-| [Yeast RNA and ribosome occupancy](docs/ingolia-yeast.md) | Budding yeast | Source regions, including UTR and ncRNA labels (Ingolia et al.) |
+| [Protein abundance](https://openvax.github.io/orfdata/pfizer-protein/) | Human, mouse, dog | TMT protein groups (Oziolor et al.) |
+| [RNA abundance](https://openvax.github.io/orfdata/pfizer-rna/) | Dog, mouse | Native gene counts (Oziolor et al.) |
+| [Matched human tissues](https://openvax.github.io/orfdata/human-tissue/) | Human | RNA and protein from adjacent cryosections (Wang et al.) |
+| [Yeast protein and RNA](https://openvax.github.io/orfdata/copy-yeast/) | Budding yeast | Calibrated protein and RNA abundance (CoPY) |
+| [Yeast RNA and ribosome occupancy](https://openvax.github.io/orfdata/ingolia-yeast/) | Budding yeast | Source regions, including UTR and ncRNA labels (Ingolia et al.) |
 
 Gene RNA and canonical protein measurements do not establish noncanonical ORF
-abundance. See [released coverage and gaps](docs/coverage.md); the
-[data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further RNA
-abundance, ribosome occupancy, absolute quantification and protein releases.
-
-## Other species
-
-The catalogue API supports other species, with explicit species and assembly
-checks, but the bundled experimental ORF catalogue is currently human-only.
-Offline tests bind real human, mouse, dog and yeast reference slices; those
-fixtures are not experimental ORF catalogues. See
-[species and reference identity](docs/species.md).
+abundance. See [released data and gaps](https://openvax.github.io/orfdata/coverage/).
 
 ## Documentation
 
-- [Using orfdata](docs/reference.md): objects, evidence queries, Varcode and Isovar, data sources and limits.
-- [Species and references](docs/species.md): `ReferenceContext`, `ScopedTarget` and binding custom genomes.
-- [Optional ORF catalogues](docs/catalogs.md): versioned catalogue downloads and source builds.
-- [Measurements](docs/measurements.md): native units, explicit samples and assays, DataCache-managed downloads and importing new sources.
-- [Comparing RNA, ribosome and protein](docs/pairing.md): matched assays, derived ratios and orthology.
-- [Source references](docs/source-references.md): source identities and explicit mappings to PyEnsembl.
-- [Native search references](docs/search-references.md): complete deposited search FASTAs, including unreported entries.
-- [Quantitative storage](docs/storage.md): SQLite storage versions and compatibility.
+The [documentation](https://openvax.github.io/orfdata/) covers:
+
+| Task | Guide |
+| --- | --- |
+| Build a proteome: evidence levels, exclusions, contigs, viral proteins | [Build a reference proteome](https://openvax.github.io/orfdata/proteome/) |
+| ORF classes, evidence definitions, Varcode and Isovar integration | [ORFs and evidence](https://openvax.github.io/orfdata/reference/) |
+| Species and reference identity, mitochondrial genetic codes | [Species, references and genetic codes](https://openvax.github.io/orfdata/species/) |
+| Versioned ORF catalogues managed through DataCache | [Optional ORF catalogues](https://openvax.github.io/orfdata/catalogs/) |
+| Quantitative datasets and what has been released | [Measurements](https://openvax.github.io/orfdata/measurements/), [released data and gaps](https://openvax.github.io/orfdata/coverage/) |
+
+The [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
+species and sources. Every PR includes a version bump, lint and tests;
+maintainers publish with `./deploy.sh` from clean `main`.
 
 ## License
 

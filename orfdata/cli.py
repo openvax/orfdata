@@ -20,9 +20,14 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         from .dataset_cli import run as dataset_run
 
         return dataset_run(argv[1:], prog=(prog or "orfdata") + " datasets")
+    if argv and argv[0] == "proteome":
+        from .proteome_cli import run as proteome_run
+
+        return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
     parser = argparse.ArgumentParser(
         description=__doc__, prog=prog,
-        epilog="Manage optional ORF catalogues with 'orfdata catalogs --help'; quantitative data with 'orfdata datasets --help'.")
+        epilog="Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
+               "catalogues with 'orfdata catalogs --help'; quantitative data with 'orfdata datasets --help'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
@@ -31,8 +36,9 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
 def _add_query_arguments(parser, *, catalog_path=True):
     if catalog_path:
         parser.add_argument("--catalog", help="Use a compatible local JSON/JSON.gz catalogue")
+        parser.add_argument("--species", help="Use this species' catalogue, e.g. human or mouse (default human)")
     else:
-        parser.set_defaults(catalog=None)
+        parser.set_defaults(catalog=None, species=None)
     parser.add_argument("--gene", help="Exact source gene symbol or identifier")
     parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
@@ -60,7 +66,7 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--ref", help="Forward-genomic SNV REF; requires --alt and --position")
     parser.add_argument("--alt", help="Forward-genomic SNV ALT; compare initiation contexts")
     parser.add_argument(
-        "--genome-build", help="Required for genomic queries; must match the selected catalogue"
+        "--genome-build", help="Required for genomic queries; selects or must match the catalogue's assembly"
     )
     parser.add_argument("--format", choices=("json", "tsv", "fasta"), default="json")
 
@@ -81,7 +87,8 @@ def _query(args, parser, catalog_loader):
     ):
         parser.error("Provide distinct single-base forward-genomic REF and ALT")
     try:
-        catalog = catalog_loader(args.catalog)
+        catalog = (catalog_loader(args.catalog, species=args.species, genome_build=args.genome_build)
+                   if args.species else catalog_loader(args.catalog))
         options = {
             "gene": args.gene,
             "transcript_id": args.transcript,
@@ -172,7 +179,10 @@ def _query(args, parser, catalog_loader):
         )
         scoped = not isinstance(catalog, UORFCatalog)
         if scoped:
-            fields += ("reference_context_json",)
+            fields += ("reference_context_json", "summaries_json")
+        elif any(r.summaries for r in records):
+            # The released upstream-only columns have no place for aggregate counts.
+            parser.error("The legacy upstream-ORF TSV cannot export aggregate evidence; use --format json")
         writer = csv.DictWriter(sys.stdout, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for r in records:
@@ -181,6 +191,8 @@ def _query(args, parser, catalog_loader):
                 row[field + "_json"] = json.dumps(row.pop(field), separators=(",", ":"))
             if scoped:
                 row["reference_context_json"] = json.dumps(row.pop("reference_context", None), separators=(",", ":"))
+                # Full native records keep source, metric definition, None/0 and shared keys.
+                row["summaries_json"] = json.dumps(row.pop("summaries", []), separators=(",", ":"))
             writer.writerow(row)
 
 

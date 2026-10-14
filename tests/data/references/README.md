@@ -19,6 +19,16 @@ that these genes lack annotated proteins. Three fixtures are minus-strand;
 mouse is plus-strand. Yeast retains its SGD identifiers and strain taxon 559292
 separately from species taxon 4932.
 
+`mitochondrial.json` holds native binding fixtures for declared genetic codes.
+OpenProt 2.2 IP_306399 (human TSV line 423554 and FASTA) is checked against the
+Ensembl 106 MT-ND4 transcript under NCBI table 2. Its genomic endpoints are
+converted from the source's zero-based values as documented in issue #55; its
+MS/translation-event counts are aggregate summaries, not peptides. Yeast
+OLI1 (Q0130, ATG start) and Q0092 (ATA start) come from the same pinned Ensembl
+115 files as ACT1 and bind under table 3. Their proteins come from the Ensembl
+protein FASTA. Ensembl 106 file checksums were checked against Ensembl's
+published `CHECKSUMS`.
+
 Sources: [Ensembl data use](https://www.ensembl.org/info/about/legal/disclaimer.html),
 [yeast assembly/annotation](https://jun2026.archive.ensembl.org/Saccharomyces_cerevisiae/Info/Annotation),
 [NCBI S288C taxonomy](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=559292).

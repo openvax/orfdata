@@ -1,0 +1,374 @@
+{
+ "schema": "orfdata.rfam_ires.v1",
+ "source": {
+  "name": "Rfam",
+  "release": "15.1",
+  "release_date": "2026-01-16",
+  "license": "CC0 1.0",
+  "file": "https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.seed.gz",
+  "retrieved": "2026-10-14T00:39:25Z",
+  "sha256": "41f014f4ab5628620935f089b1bb77987ebc162fda7c72bff368a32c9cccabac",
+  "size": 5928432
+ },
+ "selection": "Rfam families typed 'Cis-reg; IRES;' (SO:0000243) from cellular mRNAs, keeping human seed sequences that occur exactly in Ensembl 115 human cDNA. Identical seeds are merged.",
+ "families": [
+  {
+   "accession": "RF00216",
+   "id": "IRES_c-myc",
+   "description": "c-myc internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "11419940",
+     "title": "Derivation of a structural model for the c-myc IRES."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "AATTCCAGCGAGAGGCAGAGGGAGCGAGCGGGCGGCCGGCTAGGGTGGAAGAGCCGGGCGAGCAGAGCTGCGCTGCGGGCGTCCTGGGAAGGGAGATCCGGAGCGAATAGGGGGCTTCGCCTCTGGCCCAGCCCTCCCGCTGATCCCCCAGCCAGCGGTCCGCAACCCTTGCCGCATCCACGAAACTTTGCCCATAGCAGCGGGCGGGCACTTTGCACTGGAACTTACAACACCCGAGCAAGGACGCGACTCTCCCGACGCGGGGAGGCTATTCTGCCCATTTGGGGACACTTCCCCGCCGC",
+     "seed_names": [
+      "X00364.2/2502-2803",
+      "BC000917.2/3-304",
+      "J03253.1/1772-2073",
+      "K03015.1/568-869",
+      "AC103819.3/87828-88129",
+      "AY214166.1/2047-2348",
+      "M14206.1/279-580"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00223",
+   "id": "IRES_Bip",
+   "description": "bip internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "12237106",
+     "title": "Continuous heat shock enhances translational initiation directed by internal ribosomal entry site."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "CCGGCCAAGACAGCACAGACAGATTGACCTATTGGGGTGTTTCGCGAGTGTGAGAGGGAAGCGCCGCGGCCTGTATTTCTAGACCTGCCCTTCGCCTGGTTCGTGGCGCCTTGTGACCCCGGGCCCCTGCCGCCTGCAAGTCGGAAATTGCGCTGTGCTCCTGTGCTACGGCCTGTGGCTGGACTGCCTGCTGCTGCCCAACTGGCTGGCAAGATGAAGCTCTCCCTGGTGGCCGCGATGCTGCTG",
+     "seed_names": [
+      "X87949.1/10-255"
+     ]
+    },
+    {
+     "sequence": "CGCCGGCCAAGACAGCACAGACAGATTGACCTATTGGGGTGTTTCGCGAGTGTGAGAGGGAAGCGCCGCGGCCTGTATTTCTAGACCTGCCCTTCGCCTGGTTCGTGGCGCCTTGTGACCCCGGGCCCCTGCCGCCTGCAAGTCGGAAATTGCGCTGTGCTCCTGTGCTACGGCCTGTGGCTGGACTGCCTGCTGCTGCCCAACTGGCTGGCAAGATGAAGCTCTCCCTGGTGGCCGCGATGCTGCTG",
+     "seed_names": [
+      "X59969.1/379-626"
+     ]
+    },
+    {
+     "sequence": "ACAGCACAGACAGATTGACCTATTGGGGTGTTTCGCGAGTGTGAGAGGGAAGCGCCGCGGCCTGTATTTCTAGACCTGCCCTTCGCCTGGTTCGTGGCGCCTTGTGACCCCGGGCCCCTGCCGCCTGCAAGTCGGAAATTGCGCTGTGCTCCTGTGCTACGGCCTGTGGCTGGACTGCCTGCTGCTGCCCAACTGGCTGGCAAGATGAAGCTCTCCCTGGTGGCCGCGATGCTGCTG",
+     "seed_names": [
+      "BC020235.1/1-237"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00226",
+   "id": "IRES_n-myc",
+   "description": "n-myc internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "11420678",
+     "title": "N-myc translation is initiated via an internal ribosome entry segment that displays enhanced activity in neuronal cells."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "CACAAAAGGAGGGCGGGAGGGAGGGAGCGAGAGGCACAACTTCCTCCACCTTCGGGAGCAGTGGGCAGAGTGGGGGGCTTGGAGGGAAGATTGGGGAACCTGGTTAGAGGGGGCGCCCATTGCCTATCCCCTCGGTCTGCCCCGTTTGCCCACCCTCTCCGGTGTGTCTGTCGGTTGCAGTGTTGGAGGTCGGCGCCGGCCCCCGCCTTCCGCGCCCCCCACGGGAAGGAAGCACCCCCGGTATTAAAACGAACGGGGCGGAAAGAAGCCCTCAGTCGCCGGCCGGGAGGCGAGCCGATGCCGAGCTGCTCCACGTCCACCATG",
+     "seed_names": [
+      "AC010145.10/67113-67436",
+      "Y00664.1/3075-3398",
+      "M13241.1/1329-1652"
+     ]
+    },
+    {
+     "sequence": "GTCTGGACGCGCTGGGTGGATGCGGGGGGCTCCTGGGAACTGTGTTGGAGCCGAGCAAGCGCTAGCCAGGCGCAAGCGCGCACAGACTGTAGCCATCCGAGGACACCCCCGCCCCCCCGGCCCACCCGGAGACACCCGCGCAGAATCGCCTCCGGATCCCCTGCAGTCGGCGGGAGTGTTGGAGGTCGGCGCCGGCCCCCGCCTTCCGCGCCCCCCACGGGAAGGAAGCACCCCCGGTATTAAAACGAACGGGGCGGAAAGAAGCCCTCAGTCGCCGGCCGGGAGGCGAGCCGATGCCGAGCTGCTCCACGTCCACCATG",
+     "seed_names": [
+      "AF320053.1/5-324"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00387",
+   "id": "IRES_FGF1",
+   "description": "FGF-1 internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "15314170",
+     "title": "Internal Ribosome Entry Site Structural Motifs Conserved among Mammalian Fibroblast Growth Factor 1 Alternatively Spliced mRNAs."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "CGCTCCAGGGGAATCAGGGCATCGCCTCCTTTTCTGGGAGGACACTCCCTTCTGATGGTGAATGGGAACTCCCTTCCTCCTGCAGCAGCCTGCCTGCAGCTGTCCTGGTAGAACAGTGTGGACATTGCAGAAGCTGTCACTGCCCCAGAAAGAAAGCACCCCAGAGCC",
+     "seed_names": [
+      "M60515.1/145-312",
+      "Z14149.1/354-521",
+      "X59612.1/146-313"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00449",
+   "id": "IRES_HIF1",
+   "description": "HIF-1 alpha IRES",
+   "references": [
+    {
+     "pmid": "12006670",
+     "title": "Hypoxia-inducible factor-1alpha mRNA contains an internal ribosome entry site that allows efficient translation during normoxia and hypoxia."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "CTCGTCTGAGGGGACAGGAGGATCACCCTCTTCGTCGCTTCGGCCAGTGTGTCGGGCTGGGCCCTGACAAGCCACCTGAGGAGAGGCTCGGAGCCGGGCCCGGACCCCGGCGATTGCCGCCCGCTTCTCTCTAGTCTCACGAGGGGTTTCCCGCCTCGCACCCCCACCTCTGGACTTGCCTTTCCTTCTCTTCTCCGCGTGTGGAGGGAGCCAGCGCTTAGGCCGGAGCGAGCCTGGGGGCCGCCCGCCGTGAAGACATCGCGGGGACCGATTCACCATG",
+     "seed_names": [
+      "AL137129.4/84771-85050"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00462",
+   "id": "IRES_APC",
+   "description": "APC internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "12034871",
+     "title": "Attenuated APC alleles produce functional protein from internal translation initiation."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "AGTCTTCCTTTAACTGAAAATTTTTCCTTACAAACAGATATGACCAGAAGGCA",
+     "seed_names": [
+      "M74088.1/529-581"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00483",
+   "id": "IRES_IGF2",
+   "description": "Insulin-like growth factor II IRES",
+   "references": [
+    {
+     "pmid": "11903044",
+     "title": "Human insulin-like growth factor II leader 2 mediates internal initiation of translation."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "GCGACCGGGCATTGCCCCCAGTCTCCCCCAAATTTGGGCATTGTCCCCGGGTCTTCCAACGGACTGGGCGTTGCTCCCGGACACTGAGGACTGGCCCCGGGGTCTCGCTCACCTTCAGCAG",
+     "seed_names": [
+      "AC132217.15/106569-106689"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00457",
+   "id": "IRES_mnt",
+   "description": "Mnt IRES",
+   "references": [
+    {
+     "pmid": "11314024",
+     "title": "An internal ribosome entry segment in the 5' untranslated region of the mnt gene."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "TTATATTTTGCAAATATTTTGAGAGACATTGATTTTTCTCCCCGTGCTCCCCCGTTCTTCCCTGCGGAGTGCGCTGCGCCGCCCAGCCCTGTCGCCCCCCGGAGGTGATCCCTCCCTCCTGCCTGCCCGCCAGCCTGACCTGTGCCCGGCTCGCGGGCCGCAGCCTCGGCCCCGGCGCGCCCCCGGCAGCTCTCGGCGCGATG",
+     "seed_names": [
+      "Y13440.1/13-215",
+      "X96401.1/13-215"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00461",
+   "id": "IRES_VEGF_A",
+   "description": "Vascular endothelial growth factor (VEGF) IRES A",
+   "references": [
+    {
+     "pmid": "9774635",
+     "title": "Two independent internal ribosome entry sites are involved in translation initiation of vascular endothelial growth factor mRNA."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "GCTAGCTCGGGCCGGGAGGAGCCGCAGCCGGAGGAGGGGGAGGAGGAAGAAGAGAAGGAAGAGGAGAGGGGGCCGCAGTGGCGACTCGGCGCTCGGAAGCCGGGCTCATGGACGGGTGAGGCGGCGGTGTGCGCAGACAGTGCTCCAGCCGCGCGCGCTCCCCAGGCCCTGGCCCGGGCCTCGGGCCGGGGAGGAAGAGTAGCTCGCCGAGGCGCCGAGGAGAGCGGGCCGCCCCACAGCCCGAGCCGGAGAGGGAGCGCGAGCCGCGCCGGCCCCGGTCGGGCCTCCGAAACCATGAACTTTCTGCTG",
+     "seed_names": [
+      "M63971.1/3107-3415"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00495",
+   "id": "IRES_Hsp70",
+   "description": "Heat shock protein 70 (Hsp70) internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "12682055",
+     "title": "Distinctive properties of the 5'-untranslated region of human hsp70 mRNA."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "AAAACGGCCAGCCTGAGGAGCTGCTGCGAGGGTCCGCTTCGTCTTTCGAGAGTGACTCCCGCGGTCCCAAGGCTTTCCAGAGCGAACCTGTGCGGCTGCAGGCACCGGCGTGTTGAGTTTCCGGCGTTCCGAAGGACTGAGCTCTTGTCGCGGATCCCGTCCGCCGTTTCCAGCCCCCAGTCTCAGAGCGGAGCCCACAGAGCAGGGCACCGGCATGG",
+     "seed_names": [
+      "AL671762.10/35585-35802"
+     ]
+    },
+    {
+     "sequence": "ATAACGGCTAGCCTGAGGAGCTGCTGCGACAGTCCACTACCTTTTTCGAGAGTGACTCCCGTTGTCCCAAGGCTTCCCAGAGCGAACCTGTGCGGCTGCAGGCACCGGCGCGTCGAGTTTCCGGCGTCCGGAAGGACCGAGCTCTTCTCGCGGATCCAGTGTTCCGTTTCCAGCCCCCAATCTCAGAGCGGAGCCGACAGAGAGCAGGGAACCGGCATGG",
+     "seed_names": [
+      "AL671762.10/23389-23608"
+     ]
+    },
+    {
+     "sequence": "GGAGCTGCTGCGAGGGTCCGCTTCGTCTTTCGAGAGTGACTCCCGCGGTCCCAAGGCTTTCCAGAGCGAACCTGTGCGGCTGCAGGCACCGGCGTGTTGAGTTTCCGGCGTTCCGAAGGACTGAGCTCTTGTCGCGGATCCCGTCCGCCGTTTCCAGCCCCCAGTCTCAGAGCGGAGCCCACAGAGCAGGGCACCGGCATGG",
+     "seed_names": [
+      "BC063507.1/1-202"
+     ]
+    },
+    {
+     "sequence": "ATAACGGCTAGCCTGAGGAGCTGCTGCGACAGTCCACTACCTTTTTCGAGAGTGACTCCCGTTGTCCCAAGGCTTCCCAGAGCGAACCTGTGCGGCTGCAGGCACCGGCGCGTCGAGTTTCCGGCGTCCGGAAGGACCGAGCTCTTCTCGCGGATCCAGTGTTCCGTTTCCAGCCCCCAATCTCAGAGCCGAGCCGACAGAGAGCAGGGAACCGGCATGG",
+     "seed_names": [
+      "AL662834.8/79426-79645"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00547",
+   "id": "IRES_TrkB",
+   "description": "TrkB IRES",
+   "references": [
+    {
+     "pmid": "15908588",
+     "title": "Internal initiation of translation of the TrkB mRNA is mediated by multiple regions within the 5' leader."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "CCCCCATTCGCATCTAACAAGGAATCTGCGCCCCAGAGAGTCCCGGGAGCGCCGCCGGTCGGTGCCCGGCGCGCCGGGCCATGCAGCGACGGCCGCCGCGGAGCTCCGAGCAGCGGTAGCGCCCCCCTGTAAAGCGGTTCGCTATGCCGGGGCCACTGTGAACCCTGCCGCCTGCCGGAACACTCTTCGCTCCGGACCAGCTCAGCCTCTGATAAGCTGGACTCGGCACGCCCGCAACAAGCACCGAGGAGTTAAGAGAGCCGCAAGCGCAGGGAAGGCCTCCCCGCACGGGTGGGGGAAAGCGGCCGGTGCAGCGCGGGGACAGGCACTCGGGCTGGCACTGGCTGCTAGGG",
+     "seed_names": [
+      "AF410902.1/3685-4037",
+      "AL390777.13/31208-31560"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00549",
+   "id": "IRES_c-sis",
+   "description": "c-sis internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "10409733",
+     "title": "Differentiation-induced internal translation of c-sis mRNA: analysis of the cis elements and their differentiation-linked binding to the hnRNP C protein."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "CGGAGCAGCCGCAGCTCGCAGCTCGCAGCTCGCAGCCCGCAGCCCGCAGAGGACGCCCAGAGCGGCGAGCGGGCGGGCAGACGGACCGACGGACTCGCGCCGCGTCCACCTGTCGGCCGGGCCCAGCCGAGCGCGCAGCGGGCACGCCGCGCGCGCGGAGCAGCCGTGCCCGCCGCCCGGGCCCCGCGCCAGGGCGCACACGCTCCCGCCCCCCTACCCGGCCCGGGCGGGAGTTTGCACCTCTCCCTGCCCGGGTGCTCGAGCTGCCGTTGCAAAGCCAACTTTGGAAAAAGTTTTTTGGGGGAGACTTGGGCCTTGAGGTGCCCAGCTCCGCGCTTTCCGATTTTGGGGGCCTTTCCAGAAAATGTTGCAAAAAAGCTAAGCCGGCGGGCAGAGGAAAACGCCTGTAGCCGGCGAGTGAAGACGAACCATCGACTGCCGTGTTCCTTTTCCTCTTGGAGGTTGGAGTCCCCTGGGCGCCCCCACACGGCTAGACGCCTCGGCTGGTTCGCGACGCAGCCCCCCGGCCGTGGATGCTCACTCGGGCTCGGGATCCGCCCAGGTAGCGGCCTCGGACCCAGGTCCTGCGCCCAGGTCCTCCCCTGCCCCCCAGCGACGGAGCCGGGGC",
+     "seed_names": [
+      "Z81010.2/5780-6407"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF02531",
+   "id": "NRF2_IRES",
+   "description": "Nrf2 internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "19934254",
+     "title": "An internal ribosomal entry site mediates redox-sensitive translation of Nrf2."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "AGAGCCGCCCTGTCCGCGCCGCGCCTCGGCAGCCGGAACAGGGCCGCCGTCGGGGAGCCCCAACACACGGTCCACAGCTCATCATGATGGACTTGGAGCTGCCGCCGCCGGGACTCCCGTCCCAGCAG",
+     "seed_names": [
+      "BC011558.1/31-158"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF02535",
+   "id": "ODC_IRES",
+   "description": "ODC internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "15905964",
+     "title": "Alternative splicing facilitates internal ribosome entry on the ornithine decarboxylase mRNA."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "ATTGTCACTGCTGTTCCAAGGGCACACGCAGAGGGATTTGGAATTCCTGGAGAGTTGCCTTTGTGAGAAGCTGGAAATATTTCTTTCAATTCCATCTCTTAGTTTTCCATAGGAACATCAAGAAATC",
+     "seed_names": [
+      "AK292352.1/308-434"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF02664",
+   "id": "IRES_cyp24a1",
+   "description": "Cyp24a1 internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "24416388",
+     "title": "Inflammatory conditions induce IRES-dependent translation of cyp24a1."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "GACAGGAGGAAACGCAGCGCCAGCAGCATCTCATCTACCCTCCTTGACACCTCCCCGTGGCTCCAGCCAGACCCTAGAGGTCAGCCTTGCGGACCAACAGGAGGACTCCCAGCTTTCCCTTTTCAAGAGGTCCCCAGACACCGGCCACCCTCTTCCAGCCCCTGCGGCCAGTGCAAGGAGGCACCAATGCTCTGAGGCTGTCGCGTGGTGCAGCGTCGAGCATCCTCGCCGAGGTCCTTTCTGCTGCCTGTCCCGCCTCACCCCGCTCCATCACACCAGCTGGCCCTCTTTGCTTCCTTTTCCCAGAATCGTTAAGCCCCGACTCCCACTAGCACCTCGTACCAACCTCGCCCCACCCCATCCTCCTGCCTTCCCGCGCTCCGGTGTCCCCCGCTGCCATG",
+     "seed_names": [
+      "AL138805.8/76141-75741"
+     ]
+    }
+   ]
+  },
+  {
+   "accession": "RF00484",
+   "id": "IRES_Cx32",
+   "description": "Connexin-32 internal ribosome entry site (IRES)",
+   "references": [
+    {
+     "pmid": "10931843",
+     "title": "Analysis of a Charcot-Marie-Tooth disease mutation reveals an essential internal ribosome entry site element in the connexin-32 gene."
+    }
+   ],
+   "seeds": [
+    {
+     "sequence": "ATATGACTCCCCAGCACCGGGCGGTGATGAATTGGGACGCAGGCGCGGAGCCCAGGGACCACTCCCCCTGCACAGACATGAGACCATAGGGGACCTGTCTGGGTGGCCTCAGGGATAGGCGCTCCCCAAGGTAAGAGGGCTTTGTTGAGTT",
+     "seed_names": [
+      "L47127.1/400-550"
+     ]
+    },
+    {
+     "sequence": "GCGGTGATGAATTGGGACGCAGGCGCGGAGCCCAGGGACCACTCCCCCTGCACAGACATGAGACCATAGGGGACCTGTCTGGGTGGCCTCAGGGATAGGCGCTCCCCAAGGTGTGAAT",
+     "seed_names": [
+      "BC022426.1/1-118"
+     ]
+    }
+   ]
+  }
+ ]
+}

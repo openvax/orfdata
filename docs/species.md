@@ -52,7 +52,18 @@ groups and peptides. A parent's gene or RNA measurement remains at its original
 resolution; this identity layer does not copy it onto every ORF. Orthology and
 equal peptide sequences do not transfer observations between species.
 
-The binder currently supports complete stopped ORFs under NCBI table 1, with
-ATG/CTG/TTG initiation. Unsupported codes and initiation codons fail explicitly.
-In particular, yeast nuclear and mitochondrial codes differ; a contig named
-`MT` never selects a code implicitly. See [NCBI's code definitions](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi).
+## Genetic codes
+
+Each ORF declares its NCBI `translation_table`. The binder supports complete
+stopped ORFs under table 1 (standard), table 2 (vertebrate mitochondrial) and
+table 3 (yeast mitochondrial), each with that table's NCBI initiation codons.
+An initiation codon reads as methionine only at the start. Other codes and
+initiation codons fail explicitly; there is no fallback to the standard code.
+A contig named `MT` never selects a code implicitly: a human mitochondrial ORF
+must declare table 2, and a yeast one table 3. See
+[NCBI's code definitions](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi).
+
+`bound.genetic_code` returns the declared code. Tools that build modified
+products, such as Varcode and Isovar, must translate them with that code.
+For example, OpenProt's IP_306399 on human MT-ND4 begins ATA and ends AGG. It
+binds under table 2; table 1 would read those codons as isoleucine and arginine.

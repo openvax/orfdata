@@ -1,0 +1,603 @@
+{
+ "notice": "Facts from UniProt release 2026_03 and open-access papers, pinned by URL and SHA-256; used as source data for ORF tests. UniProt data CC-BY-4.0.",
+ "uniprot_release": "2026_03",
+ "sources": {
+  "sources/P01189_json/P01189.json": {
+   "url": "https://rest.uniprot.org/uniprotkb/P01189.json",
+   "retrieved": "2026-10-14T00:38:51Z",
+   "sha256": "3ccfd0bcb9ea7d30cb48c5b489daba325e0a0a29ac3d03a1a22dac9a2ee8fc30",
+   "size": 68005
+  },
+  "sources/P01189_isoforms_fasta/P01189_isoforms.fasta": {
+   "url": "https://rest.uniprot.org/uniprotkb/search?query=accession:P01189&format=fasta&includeIsoform=true",
+   "retrieved": "2026-10-14T00:38:52Z",
+   "sha256": "842a1175dc66823969d99c698c842b830e6d24b71098d21f3ce696d74147c916",
+   "size": 357
+  },
+  "sources/P09038_isoforms_fasta/P09038_isoforms.fasta": {
+   "url": "https://rest.uniprot.org/uniprotkb/search?query=accession:P09038&format=fasta&includeIsoform=true",
+   "retrieved": "2026-10-14T00:38:53Z",
+   "sha256": "4ea4a86b9177877eef3785c53f6ced69e87382c430e6860e1b5795ea41f93602",
+   "size": 1244
+  },
+  "sources/P01106_isoforms_fasta/P01106_isoforms.fasta": {
+   "url": "https://rest.uniprot.org/uniprotkb/search?query=accession:P01106&format=fasta&includeIsoform=true",
+   "retrieved": "2026-10-14T00:38:55Z",
+   "sha256": "d21472ffa1a40b9f98eb23d3d6ab0e74a48bbd1248725629ae49b77aa8a42a5b",
+   "size": 1647
+  },
+  "sources/P15692_isoforms_fasta/P15692_isoforms.fasta": {
+   "url": "https://rest.uniprot.org/uniprotkb/search?query=accession:P15692&format=fasta&includeIsoform=true",
+   "retrieved": "2026-10-14T00:38:56Z",
+   "sha256": "0503beaee735326770fcf4541b02f209f84f12c42e947344d7b7f972ddbfc9df",
+   "size": 6797
+  },
+  "sources/P78344_isoforms_fasta/P78344_isoforms.fasta": {
+   "url": "https://rest.uniprot.org/uniprotkb/search?query=accession:P78344&format=fasta&includeIsoform=true",
+   "retrieved": "2026-10-14T00:38:58Z",
+   "sha256": "8b9ef7acb537b2194bad717132fc29e2fb4a10a9eaf5e8032c82690cd7e9772a",
+   "size": 2048
+  },
+  "sources/P28347_isoforms_fasta/P28347_isoforms.fasta": {
+   "url": "https://rest.uniprot.org/uniprotkb/search?query=accession:P28347&format=fasta&includeIsoform=true",
+   "retrieved": "2026-10-14T00:38:59Z",
+   "sha256": "1b4f51d6a1bc283b724e3e21bcfa9b7cee39d80c321be7f071fe28acf9dc8f97",
+   "size": 1010
+  },
+  "sources/epmc_PMC5387670_xml/PMC5387670.xml": {
+   "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC5387670/fullTextXML",
+   "retrieved": "2026-10-14T00:47:21Z",
+   "sha256": "2bf6e6b206741d47ac4a3eeb8a39ab1206ddc58e176f2b3a779c188612e246f0",
+   "size": 213551
+  },
+  "sources/epmc_PMC4113015_xml/PMC4113015.xml": {
+   "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC4113015/fullTextXML",
+   "retrieved": "2026-10-14T00:47:25Z",
+   "sha256": "309edd814e756595bcb2b7f3f181952d9beedcaf459de0bddaf7a0c54d53787d",
+   "size": 150
+  },
+  "sources/ncbi_efetch_PMC4113015/PMC4113015_efetch.xml": {
+   "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=4113015&rettype=xml",
+   "retrieved": "2026-10-14T00:51:06Z",
+   "sha256": "40d1f64875922cbe2bf51b527cf92d4e3bcfdb3882c0602df0d8abd1556ce63e",
+   "size": 137544
+  }
+ },
+ "pomc_entry": {
+  "primaryAccession": "P01189",
+  "entryAudit": {
+   "entryVersion": 239
+  },
+  "sequence": {
+   "value": "MPRSCCSRSGALLLALLLQASMEVRGWCLESSQCQDLTTESNLLECIRACKPDLSAETPMFPGNGDEQPLTENPRKYVMGHFRWDRFGRRNSSSSGSSGAGQKREDVSAGEDCGPLPEGGPEPRSDGAKPGPREGKRSYSMEHFRWGKPVGKKRRPVKVYPNGAEDESAEAFPLEFKRELTGQRLREGDGPDGPADDGAGAQADLEHSLLVAAEKKDEGPYRMEHFRWGSPPKDKRYGGFMTSEKSQTPLVTLFKNAIIKNAYKKGE"
+  },
+  "features": [
+   {
+    "type": "Signal",
+    "location": {
+     "start": {
+      "value": 1,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 26,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "",
+    "evidences": [
+     {
+      "evidenceCode": "ECO:0000269",
+      "source": "PubMed",
+      "id": "15340161"
+     },
+     {
+      "evidenceCode": "ECO:0000269",
+      "source": "PubMed",
+      "id": "6267033"
+     },
+     {
+      "evidenceCode": "ECO:0000269",
+      "source": "PubMed",
+      "id": "6945581"
+     }
+    ]
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 27,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 102,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "NPP",
+    "featureId": "PRO_0000024966"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 77,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 87,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Melanotropin gamma",
+    "evidences": [
+     {
+      "evidenceCode": "ECO:0000269",
+      "source": "PubMed",
+      "id": "2839146"
+     }
+    ],
+    "featureId": "PRO_0000024967"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 105,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 134,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Potential peptide",
+    "featureId": "PRO_0000024968"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 138,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 176,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Corticotropin",
+    "featureId": "PRO_0000024969"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 138,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 150,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Melanocyte-stimulating hormone alpha",
+    "featureId": "PRO_0000024970"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 156,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 176,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Corticotropin-like intermediary peptide",
+    "featureId": "PRO_0000024971"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 179,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 267,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Lipotropin beta",
+    "featureId": "PRO_0000024972"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 179,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 234,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Lipotropin gamma",
+    "featureId": "PRO_0000024973"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 217,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 234,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Melanocyte-stimulating hormone beta",
+    "featureId": "PRO_0000024974"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 237,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 267,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Beta-endorphin",
+    "featureId": "PRO_0000024975"
+   },
+   {
+    "type": "Peptide",
+    "location": {
+     "start": {
+      "value": 237,
+      "modifier": "EXACT"
+     },
+     "end": {
+      "value": 241,
+      "modifier": "EXACT"
+     }
+    },
+    "description": "Met-enkephalin",
+    "featureId": "PRO_0000024976"
+   }
+  ]
+ },
+ "isoforms": {
+  "P09038-1": {
+   "gene": "FGF2",
+   "accession": "P09038",
+   "entry_version": 263,
+   "length": 210,
+   "sequence": "MGDRGRGRALPGGRLGGRGRGRAPERVGGRGRGRGTAAPRAAPAARGSRPGPAGTMAAGSITTLPALPEDGGSGAFPPGHFKDPKRLYCKNGGFFLRIHPDGRVDGVREKSDPHIKLQLQAEERGVVSIKGVCANRYLAMKEDGRLLASKCVTDECFFFERLESNNYNTYRSRKYTSWYVALKRTGQYKLGSKTGPGQKAILFLPMSAKS",
+   "documented_initiation_codon": "CUG",
+   "uniprot_evidence_text": "UniProt MISCELLANEOUS (Isoform 2): 'Starts at an alternative CUG codon' (ECO:0000305)",
+   "mappings": [
+    {
+     "transcript": "ENST00000264498.9",
+     "slice": [
+      328,
+      961
+     ],
+     "start_codon": "CTG"
+    },
+    {
+     "transcript": "ENST00000608478.1",
+     "slice": [
+      179,
+      812
+     ],
+     "start_codon": "CTG"
+    },
+    {
+     "transcript": "ENST00000644866.2",
+     "slice": [
+      179,
+      812
+     ],
+     "start_codon": "CTG"
+    }
+   ]
+  },
+  "P09038-2": {
+   "gene": "FGF2",
+   "accession": "P09038",
+   "entry_version": 263,
+   "length": 155,
+   "sequence": "MAAGSITTLPALPEDGGSGAFPPGHFKDPKRLYCKNGGFFLRIHPDGRVDGVREKSDPHIKLQLQAEERGVVSIKGVCANRYLAMKEDGRLLASKCVTDECFFFERLESNNYNTYRSRKYTSWYVALKRTGQYKLGSKTGPGQKAILFLPMSAKS",
+   "documented_initiation_codon": "AUG (implied)",
+   "uniprot_evidence_text": "no non-AUG note for Isoform 3; it is the 18 kDa form lacking residues 1-133",
+   "mappings": [
+    {
+     "transcript": "ENST00000264498.9",
+     "slice": [
+      493,
+      961
+     ],
+     "start_codon": "ATG"
+    },
+    {
+     "transcript": "ENST00000608478.1",
+     "slice": [
+      344,
+      812
+     ],
+     "start_codon": "ATG"
+    },
+    {
+     "transcript": "ENST00000644866.2",
+     "slice": [
+      344,
+      812
+     ],
+     "start_codon": "ATG"
+    }
+   ]
+  },
+  "P09038-3": {
+   "gene": "FGF2",
+   "accession": "P09038",
+   "entry_version": 263,
+   "length": 196,
+   "sequence": "MGGRGRGRAPERVGGRGRGRGTAAPRAAPAARGSRPGPAGTMAAGSITTLPALPEDGGSGAFPPGHFKDPKRLYCKNGGFFLRIHPDGRVDGVREKSDPHIKLQLQAEERGVVSIKGVCANRYLAMKEDGRLLASKCVTDECFFFERLESNNYNTYRSRKYTSWYVALKRTGQYKLGSKTGPGQKAILFLPMSAKS",
+   "documented_initiation_codon": "CUG",
+   "uniprot_evidence_text": "UniProt MISCELLANEOUS (Isoform 4): 'Starts at an alternative CUG codon' (ECO:0000305)",
+   "mappings": [
+    {
+     "transcript": "ENST00000264498.9",
+     "slice": [
+      370,
+      961
+     ],
+     "start_codon": "CTG"
+    },
+    {
+     "transcript": "ENST00000608478.1",
+     "slice": [
+      221,
+      812
+     ],
+     "start_codon": "CTG"
+    },
+    {
+     "transcript": "ENST00000644866.2",
+     "slice": [
+      221,
+      812
+     ],
+     "start_codon": "CTG"
+    }
+   ]
+  },
+  "P09038-4": {
+   "gene": "FGF2",
+   "accession": "P09038",
+   "entry_version": 263,
+   "length": 288,
+   "sequence": "MVGVGGGDVEDVTPRPGGCQISGRGARGCNGIPGAAAWEAALPRRRPRRHPSVNPRSRAAGSPRTRGRRTEERPSGSRLGDRGRGRALPGGRLGGRGRGRAPERVGGRGRGRGTAAPRAAPAARGSRPGPAGTMAAGSITTLPALPEDGGSGAFPPGHFKDPKRLYCKNGGFFLRIHPDGRVDGVREKSDPHIKLQLQAEERGVVSIKGVCANRYLAMKEDGRLLASKCVTDECFFFERLESNNYNTYRSRKYTSWYVALKRTGQYKLGSKTGPGQKAILFLPMSAKS",
+   "documented_initiation_codon": "CUG",
+   "uniprot_evidence_text": "UniProt MISCELLANEOUS (Isoform 1): 'Starts at an alternative CUG codon'",
+   "mappings": [
+    {
+     "transcript": "ENST00000264498.9",
+     "slice": [
+      94,
+      961
+     ],
+     "start_codon": "CTG"
+    }
+   ]
+  },
+  "P01106-2": {
+   "gene": "MYC",
+   "accession": "P01106",
+   "entry_version": 282,
+   "length": 454,
+   "sequence": "MDFFRVVENQQPPATMPLNVSFTNRNYDLDYDSVQPYFYCDEEENFYQQQQQSELQPPAPSEDIWKKFELLPTPPLSPSRRSGLCSPSYVAVTPFSLRGDNDGGGGSFSTADQLEMVTELLGGDMVNQSFICDPDDETFIKNIIIQDCMWSGFSAAAKLVSEKLASYQAARKDSGSPNPARGHSVCSTSSLYLQDLSAAASECIDPSVVFPYPLNDSSSPKSCASQDSSAFSPSSDSLLSSTESSPQGSPEPLVLHEETPPTTSSDSEEEQEDEEEIDVVSVEKRQAPGKRSESGSPSAGGHSKPPHSPLVLKRCHVSTHQHNYAAPPSTRKDYPAAKRVKLDSVRVLRQISNNRKCTSPRSSDTEENVKRRTHNVLERQRRNELKRSFFALRDQIPELENNEKAPKVVILKKATAYILSVQAEEQKLISEEDLLRKRREQLKHKLEQLRNSCA",
+   "documented_initiation_codon": "CUG",
+   "uniprot_evidence_text": "UniProt MISCELLANEOUS (Isoform 2): 'Produced by alternative translation initiation from a CTG codon, which is translated as Met' (ECO:0000305, PubMed:3277717)",
+   "mappings": [
+    {
+     "transcript": "ENST00000377970.6",
+     "slice": [
+      510,
+      1875
+     ],
+     "start_codon": "CTG"
+    },
+    {
+     "transcript": "ENST00000621592.8",
+     "slice": [
+      363,
+      1728
+     ],
+     "start_codon": "CTG"
+    }
+   ]
+  },
+  "P78344-1": {
+   "gene": "EIF4G2",
+   "accession": "P78344",
+   "entry_version": 220,
+   "length": 907,
+   "sequence": "MESAIAEGGASRFSASSGGGGSRGAPQHYPKTAGNSEFLGKTPGQNAQKWIPARSTRRDDNSAANNSANEKERHDAIFRKVRGILNKLTPEKFDKLCLELLNVGVESKLILKGVILLIVDKALEEPKYSSLYAQLCLRLAEDAPNFDGPAAEGQPGQKQSTTFRRLLISKLQDEFENRTRNVDVYDKRENPLLPEEEEQRAIAKIKMLGNIKFIGELGKLDLIHESILHKCIKTLLEKKKRVQLKDMGEDLECLCQIMRTVGPRLDHERAKSLMDQYFARMCSLMLSKELPARIRFLLQDTVELREHHWVPRKAFLDNGPKTINQIRQDAVKDLGVFIPAPMAQGMRSDFFLEGPFMPPRMKMDRDPLGGLADMFGQMPGSGIGTGPGVIQDRFSPTMGRHRSNQLFNGHGGHIMPPTQSQFGEMGGKFMKSQGLSQLYHNQSQGLLSQLQGQSKDMPPRFSKKGQLNADEISLRPAQSFLMNKNQVPKLQPQITMIPPSAQPPRTQTPPLGQTPQLGLKTNPPLIQEKPAKTSKKPPPSKEELLKLTETVVTEYLNSGNANEAVNGVREMRAPKHFLPEMLSKVIILSLDRSDEDKEKASSLISLLKQEGIATSDNFMQAFLNVLDQCPKLEVDIPLVKSYLAQFAARAIISELVSISELAQPLESGTHFPLFLLCLQQLAKLQDREWLTELFQQSKVNMQKMLPEIDQNKDRMLEILEGKGLSFLFPLLKLEKELLKQIKLDPSPQTIYKWIKDNISPKLHVDKGFVNILMTSFLQYISSEVNPPSDETDSSSAPSKEQLEQEKQLLLSFKPVMQKFLHDHVDLQVSALYALQVHCYNSNFPKGMLLRFFVHFYDMEIIEEEAFLAWKEDITQEFPGKGKALFQVNQWLTWLETAEEEESEEEAD",
+   "documented_initiation_codon": "GUG",
+   "uniprot_evidence_text": "UniProt CAUTION: 'According to PubMed:9049310, this sequence initiates exclusively at a GTG codon'; SEQUENCE CAUTION on BAD97268.1/CAA61857.1: 'The initiator methionine is coded by a non-canonical GTG valine codon'",
+   "mappings": [
+    {
+     "transcript": "ENST00000526148.6",
+     "slice": [
+      511,
+      3235
+     ],
+     "start_codon": "GTG"
+    },
+    {
+     "transcript": "ENST00000525681.6",
+     "slice": [
+      167,
+      2891
+     ],
+     "start_codon": "GTG"
+    },
+    {
+     "transcript": "ENST00000339995.11",
+     "slice": [
+      308,
+      3032
+     ],
+     "start_codon": "GTG"
+    }
+   ]
+  },
+  "P28347-1": {
+   "gene": "TEAD1",
+   "accession": "P28347",
+   "entry_version": 230,
+   "length": 426,
+   "sequence": "MEPSSWSGSESPAENMERMSDSADKPIDNDAEGVWSPDIEQSFQEALAIYPPCGRRKIILSDEGKMYGRNELIARYIKLRTGKTRTRKQVSSHIQVLARRKSRDFHSKLKDQTAKDKALQHMAAMSSAQIVSATAIHNKLGLPGIPRPTFPGAPGFWPGMIQTGQPGSSQDVKPFVQQAYPIQPAVTAPIPGFEPASAPAPSVPAWQGRSIGTTKLRLVEFSAFLEQQRDPDSYNKHLFVHIGHANHSYSDPLLESVDIRQIYDKFPEKKGGLKELFGKGPQNAFFLVKFWADLNCNIQDDAGAFYGVTSQYESSENMTVTCSTKVCSFGKQVVEKVETEYARFENGRFVYRINRSPMCEYMINFIHKLKHLPEKYMMNSVLENFTILLVVTNRDTQETLLCMACVFEVSNSEHGAQHHIYRLVKD",
+   "documented_initiation_codon": "AUU",
+   "uniprot_evidence_text": "UniProt SEQUENCE CAUTION on AAB00791.1: 'The initiator methionine is coded by a non-canonical ATT isoleucine codon'; CAUTION: 'It is uncertain whether Met-1 or Met-16 is the initiator'",
+   "mappings": [
+    {
+     "transcript": "ENST00000527636.7",
+     "slice": [
+      621,
+      1902
+     ],
+     "start_codon": "ATT"
+    }
+   ]
+  }
+ },
+ "circZNF609": {
+  "paper": {
+   "citation": "Legnini I et al. Circ-ZNF609 Is a Circular RNA that Can Be Translated and Functions in Myogenesis. Mol Cell 2017;66(1):22-37.e9. doi:10.1016/j.molcel.2017.02.017. PMID 28344082, PMCID PMC5387670 (CC BY-NC-ND)",
+   "read": "Europe PMC full-text JATS XML for PMC5387670 (Results 'Circ-ZNF609 Encodes a Protein', STAR Methods 'Plasmid construction', Figure 5/6 legends, Table 1, Discussion). Figures and supplementary tables were NOT read.",
+   "sources": [
+    {
+     "path": "sources/epmc_search_legnini/legnini_search.json",
+     "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:%2210.1016/j.molcel.2017.02.017%22&format=json&resultType=core",
+     "retrieved": "2026-10-14T00:47:12Z",
+     "sha256": "b14a23d3aa0ffe51c3b0a1c2c0a428026274e91b0c252c5dc5f4509307ae361f",
+     "size": 12659,
+     "http_status": 200
+    },
+    {
+     "path": "sources/epmc_PMC5387670_xml/PMC5387670.xml",
+     "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC5387670/fullTextXML",
+     "retrieved": "2026-10-14T00:47:21Z",
+     "sha256": "2bf6e6b206741d47ac4a3eeb8a39ab1206ddc58e176f2b3a779c188612e246f0",
+     "size": 213551,
+     "http_status": 200
+    }
+   ],
+   "quotes": [
+    "Circ-ZNF609 originates from the circularization of the second exon of its host gene.",
+    "A 753-nt open reading frame (ORF) is present in circ-ZNF609, spanning from the putative AUG of the host gene to a STOP codon created 3 nt after the splice junction (Figure 5A).",
+    "Inspection of the sequence indicated that a second ATG codon was present 150 nt downstream of the first one and in the same frame.",
+    "immediately upstream of the TAA codon present at position 3 in the circRNA sequence",
+    "the UTR element of circ-ZNF609, spanning from the termination to the initiation codons"
+   ],
+   "table1_row_verified": "Table 1 row: Circ-ZNF609 | chr15 | 64791491 | 64792365",
+   "table1_head_to_tail_junction_hg19": {
+    "chrom": "chr15",
+    "start": 64791491,
+    "end": 64792365,
+    "note": "Table 1 'genomic coordinates (hg19 ...) of the head-to-tail splice junction'; 64792365-64791491 = 874 = Ensembl exon length, consistent with a 0-based/BED-style start; hg19->GRCh38 offset on this segment = -292199"
+   },
+   "protein_length_stated": null,
+   "comparison": {
+    "exon": "MATCH: single exon = ZNF609 exon 2 (ENSE00001484308), 874 nt",
+    "start_codon": "MATCH: ORF starts at the annotated AUG of the linear MANE mRNA (ENST00000326648.5 CDS start 388 = circ offset 127)",
+    "orf_length": "MATCH: 753 nt including the stop codon (250 aa + stop)",
+    "stop": "MATCH with Results text: junction falls exactly between codons 249 and 250; codon 250 = CAA (Gln, circ[0:3]) then UGA stop at circ[3:6], i.e. the stop begins 3 nt after the junction. MISMATCH with STAR Methods wording 'TAA codon present at position 3': Ensembl sequence has TGA at 0-based circ[3:6] (1-based 4-6); circ[2:5] is ATG. Treat Methods wording as unverified/likely loose.",
+    "second_ATG": "MATCH: in-frame ATG at circ offset 277 = start + 150 nt -> 200-aa product",
+    "protein_length": "Paper text gives no aa length; computed 250 aa (ATG1) and 200 aa (ATG2); 249 N-terminal residues identical to linear ZNF609, plus one junction-encoded Gln."
+   }
+  },
+  "transcript": "ENST00000326648.5",
+  "circ_transcript_slice": [
+   261,
+   1135
+  ],
+  "orf": {
+   "start": 127,
+   "coding_length_incl_stop": 753,
+   "protein_length": 250,
+   "protein": "MSLSSGASGGKGVDANPVETYDSGDEWDIGVGNLIIDLDADLEKDQQKLEMSGSKEVGIPAPNAVATLPDNIKFVTPVPGPQGKEGKSKSKRSKSGKDTSKPTPGTSLFTPSEGAASKKEVQGRSGDGANAGGLVAAIAPKGSEKAAKASRSVAGSKKEKENSSSKSKKERSEGVGTCSEKDPGVLQPVPLGGRGGQYDGSAGVDTGAVEPLGSIAIEPGAALNPLGTKPEPEEGENECRLLKKVKSEKQ",
+   "start_codon": "ATG",
+   "stop_codon": "TGA",
+   "end_unrolled_exclusive": 880,
+   "wraps": true,
+   "laps_crossed": 1,
+   "stop_codon_start_in_circ": 3,
+   "stop_codon_end_in_circ_exclusive": 6,
+   "stop_straddles_junction": false,
+   "nt_after_junction_to_stop_end": 6
+  }
+ },
+ "vegf_ax": {
+  "paper": {
+   "citation": "Eswarappa SM et al. Programmed translational readthrough generates antiangiogenic VEGF-Ax. Cell 2014;157(7):1605-1618. doi:10.1016/j.cell.2014.04.033. PMID 24949972, PMCID PMC4113015 (NIHPA author manuscript)",
+   "read": "NCBI E-utilities efetch db=pmc id=4113015 full-text XML (Europe PMC fullTextXML returned HTTP 500). Figures/supplement NOT read.",
+   "sources": [
+    {
+     "path": "sources/epmc_search_eswarappa/eswarappa_search.json",
+     "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:%2210.1016/j.cell.2014.04.033%22&format=json&resultType=core",
+     "retrieved": "2026-10-14T00:47:13Z",
+     "sha256": "0a44a1d08ad8b129de367c750aab2b57800b1c486a616b05b88aa67c328c681d",
+     "size": 9708,
+     "http_status": 200
+    },
+    {
+     "path": "sources/ncbi_efetch_PMC4113015/PMC4113015_efetch.xml",
+     "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=4113015&rettype=xml",
+     "retrieved": "2026-10-14T00:51:06Z",
+     "sha256": "40d1f64875922cbe2bf51b527cf92d4e3bcfdb3882c0602df0d8abd1556ce63e",
+     "size": 137544,
+     "http_status": 200
+    },
+    {
+     "path": "sources/epmc_PMC4113015_xml/PMC4113015.xml",
+     "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC4113015/fullTextXML",
+     "retrieved": "2026-10-14T00:47:25Z",
+     "sha256": "309edd814e756595bcb2b7f3f181952d9beedcaf459de0bddaf7a0c54d53787d",
+     "size": 150,
+     "http_status": 500,
+     "note": "HTTP 500 error body; not used"
+    }
+   ],
+   "quotes": [
+    "an isoform containing a unique 22-amino acid C-terminus extension",
+    "directing the PTR by decoding the UGA stop codon as serine",
+    "In human VEGFA 3\u2032UTR we observed an evolutionarily conserved UGA stop codon 63 nt downstream and in-frame to the canonical stop codon (Figure 1D).",
+    "a 22-amino acid C-terminus extension (including an amino acid replacement of the stop codon) ending with S/RLTRKD",
+    "we generated an antibody against the unique peptide, AGLEEGASLRVSGTR",
+    "a spectrum consistent with RSAGLEEGASLR (S, Ser in place of stop codon)",
+    "replaces an exon encoding CDKPRR at the C-terminus of canonical pro-angiogenic isoforms with SLTRKD (RLTRKD in B. taurus)"
+   ],
+   "readthrough_stop_codon": "UGA",
+   "decoded_as": "Ser (S), by SRM/MS-MS of overexpressed product",
+   "extension_length_aa": 22,
+   "inter_stop_nt": 63
+  },
+  "mane": "ENST00000672860.3",
+  "cds_start": 496,
+  "extension": "SAGQEEGASLRVSGTRSLTRKD"
+ }
+}

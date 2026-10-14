@@ -1,3 +1,62 @@
+# 0.20.1
+
+- Clarify catalogue and measurement guides and move maintainer design notes
+  outside the published documentation, retaining the current proteome examples.
+
+# 0.20.0
+
+- Describe ORFs by RNA coordinates with `TranscriptORF.at`: declared non-AUG
+  starts, fragments without a known start, recoded stop codons such as
+  readthrough and selenocysteine, and ORFs across circular-RNA junctions on a
+  `SourceRNA` (#64, #65, #66). Catalogue models can declare `start_codon`.
+- Annotated CDSs report `start_codon`, `stop_codon`, decoded internal stop
+  codons and sub-codon introns, such as programmed frameshifts. Ensembl omits
+  start-codon rows for GUG, ACG and AUU starts, so a CDS that begins after its
+  RNA's first base now counts as started whatever its codon. One at the first
+  base without a row is still reported incomplete, because PyEnsembl does not
+  keep the `cds_start_NF` tag that would tell the two apart (20 human Ensembl
+  115 transcripts, such as GNAS `ENST00000306120`).
+- `cds_relation` relates any ORF to its transcript's annotated CDS (upstream,
+  internal, N-terminal extension and so on), alongside the source's category.
+  For a CDS that begins with a partial codon, the frame is read back from its
+  stop codon; protein residues count from Ensembl's leading `X`.
+- `ProteinProduct` and `products_from_uniprot` map precursor products such as
+  POMC's hormones to codons and genomic positions (#67).
+- `RNAFeature` and `rfam_ires` locate reported IRES elements from the bundled
+  Rfam 15.1 human cellular seeds (CC0) on transcripts (#63).
+- An examples page covers bicistronic RNAs, ORF categories, non-AUG starts,
+  recoding, frameshifts, ERV proteins, circular RNAs, precursors and IRESs.
+- `load_catalog(species=..., genome_build=...)` picks a species' ORF catalogue:
+  the bundled one, or else one downloaded through `CatalogRegistry`. It defaults
+  to human, as PyEnsembl does, never downloads, and opens each registered
+  catalogue's default release unless the assembly needs another. `extra_orfs`
+  and `with_extra_orfs` use it, so a mouse or dog catalogue added to the packaged
+  registry and downloaded needs no `catalog=`. A species without a catalogue
+  gets an error naming those that exist. The ORF query CLI takes `--species`.
+
+# 0.19.0
+
+- Build layered reference proteomes from a PyEnsembl genome: annotated proteins,
+  evidence-selected noncanonical ORFs and host-restricted viral proteins. Every
+  entry lists each transcript encoding it; layers record role, source,
+  selection and catalogue identity; source-binding history and exclusions are
+  kept. Checksummed snapshots reload offline (#68). Adds `orfdata proteome`.
+- `TranscriptORF` (formerly `ReferenceORF`, still available) represents annotated
+  CDSs and catalogue ORFs on a transcript, with Python-slice `start`/`end`
+  coordinates and source transcript/gene identity. `extra_orfs(genome)` places
+  each ORF on every transcript carrying its exact coding path, with
+  reference-checked transcript and gene lookups and a genomic `overlapping()`
+  query; `annotated_orfs()` finds annotated CDSs carried by a transcript, such as
+  a bicistronic RNA's upstream protein (#61, #62). A CDS without a marked
+  start or stop is placed on another transcript only where that RNA continues
+  identically beyond it. `orf.initiation_context` reads start flanks from the
+  transcript each placement is on. Transcript IDs that contain dots, such as
+  C. elegans `Y74C9A.3.1`, are compared whole.
+- Bind ORFs under declared NCBI tables 2 and 3 (vertebrate and yeast
+  mitochondrial codes), and normalize contig names as PyEnsembl does.
+- Include aggregate evidence in generic TSV exports (#58).
+- Publish documentation with MkDocs on GitHub Pages.
+
 # 0.18.0
 
 - Manage optional ORF catalogues through explicit, checksum-verified discovery,
