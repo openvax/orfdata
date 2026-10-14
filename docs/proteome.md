@@ -91,16 +91,21 @@ annotated.with_extra_orfs(MS(methods=("shotgun", "ms_unclassified")))     # not 
 | --- | ---: | ---: |
 | `RiboSeq(min_studies=2)` | 3,085 | 3,072 |
 | `RiboSeq(min_studies=3)` | 1,675 | 1,671 |
-| `MS(min_peptides=2)` | 916 | 914 |
+| `MS(min_peptides=2)` | 656 | 655 |
 | `MS(methods=("shotgun", "ms_unclassified"))` | 610 | 607 |
 | `RiboSeq(min_studies=2) & MS()` | 1,296 | 1,293 |
-| `RiboSeq(min_studies=2) & MS(min_peptides=2)` | 600 | 599 |
+| `RiboSeq(min_studies=2) & MS(min_peptides=2)` | 439 | 438 |
 | `RiboSeq(min_studies=2) \| MS()` | 3,975 | 3,960 |
 
 GENCODE's `c…riboseqorf…` IDs are the 3,085 ORFs seen in two or more studies.
 Each method name above is the simplest rule: `"ms"` is `MS()`, `"hla"` is
-`MS(methods=("hla",))` and `"ribosome"` is `RiboSeq()`. A peptide seen by two
-assay types counts once. A source's aggregate count stands for one observation:
+`MS(methods=("hla",))` and `"ribosome"` is `RiboSeq()`. A peptide counts once
+however many assay types report it, and so do peptides that differ only by I
+and L (equal in mass) or that lie inside a longer supporting peptide, such as
+HLA length variants: of the 916 ORFs with two or more distinct peptide
+sequences, 260 have only nested ones. Each rule in `&` is checked on its own:
+`MS(methods="shotgun") & MS(unique=True)` needs a shotgun peptide and a unique
+peptide, not one unique shotgun peptide. A source's aggregate count stands for one observation:
 it satisfies `RiboSeq()` and `MS()` but never `min_studies` or `min_peptides`
 above 1, `unique`, `reviewed` or `resolved=True`. The layer stores the rule,
 so a snapshot records exactly how its ORFs were chosen.
@@ -244,7 +249,7 @@ orfdata proteome --species human --release 115 --min-ms-peptides 1 --ms-methods 
 
 Given both a Ribo-seq and an MS requirement, an ORF needs both unless
 `--either` is set. `--require-unique` and `--require-reviewed` refine the MS
-requirement. The FASTA goes to `--output` or standard output; `--snapshot FILE`
+requirement, and `--require-resolved` both. The FASTA goes to `--output` or standard output; `--snapshot FILE`
 also saves a snapshot. A JSON summary of the layers, identity and excluded ORFs
 goes to standard error.
 

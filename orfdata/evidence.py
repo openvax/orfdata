@@ -17,6 +17,10 @@ EVIDENCE_METHODS = ("ribosome",) + MS_METHODS + ("ms",)
 class EvidenceRule:
     """A test on one ORF's evidence. Combine rules with ``&`` (both) and ``|`` (either)."""
 
+    def __bool__(self):
+        # ``rule_a and rule_b`` would silently keep only rule_b.
+        raise TypeError("Combine evidence rules with & (both) or | (either), not 'and' or 'or'")
+
     def __and__(self, other):
         return AllOf((self, _checked(other)))
 
@@ -41,6 +45,19 @@ def _count(value, name):
         raise ValueError(f"{name} must be a positive integer")
 
 
+def _flags(rule, *names):
+    for name in names:
+        if type(getattr(rule, name)) is not bool:
+            raise TypeError(f"{name} must be True or False")
+
+
+def _distinct(sequences):
+    """Peptides counted once: I and L are indistinguishable by mass, and a peptide
+    inside a longer one, such as an HLA length variant, is not separate support."""
+    normalized = {s.replace("I", "L") for s in sequences}
+    return {s for s in normalized if not any(s != t and s in t for t in normalized)}
+
+
 @dataclass(frozen=True)
 class RiboSeq(EvidenceRule):
     """Ribosome profiling in at least ``min_studies`` independent studies the source names.
@@ -55,6 +72,7 @@ class RiboSeq(EvidenceRule):
 
     def __post_init__(self):
         _count(self.min_studies, "min_studies")
+        _flags(self, "resolved")
 
     def matches(self, evidence):
         if len(set(evidence.ribosome_studies)) >= self.min_studies:
@@ -68,9 +86,10 @@ class RiboSeq(EvidenceRule):
 
 @dataclass(frozen=True)
 class MS(EvidenceRule):
-    """Mass spectrometry: at least ``min_peptides`` distinct supporting peptide sequences.
+    """Mass spectrometry: at least ``min_peptides`` distinct supporting peptides.
 
-    ``methods`` limits the peptide kinds (``"shotgun"``, ``"mhc"``, ``"hla"``,
+    Peptides that differ only by I and L, or that lie inside a longer
+    supporting peptide, count once. ``methods`` limits the peptide kinds (``"shotgun"``, ``"mhc"``, ``"hla"``,
     ``"ms_unclassified"``); ``"mhc"`` includes ``"hla"``. ``unique`` needs one
     protein mapping in the source, not uniqueness in every proteome.
     ``reviewed`` needs convincing reviewed spectra (benchmark scores 4-5).
@@ -86,20 +105,24 @@ class MS(EvidenceRule):
 
     def __post_init__(self):
         _count(self.min_peptides, "min_peptides")
+        _flags(self, "unique", "reviewed", "resolved")
         if self.methods is not None:
-            methods = (self.methods,) if isinstance(self.methods, str) else tuple(self.methods)
-            if not methods or set(methods) - set(MS_METHODS):
+            methods = {self.methods} if isinstance(self.methods, str) else set(self.methods)
+            if not methods or methods - set(MS_METHODS):
                 raise ValueError(f"MS methods must be drawn from {MS_METHODS}")
-            object.__setattr__(self, "methods", methods)
+            if "mhc" in methods:  # mhc already includes human hla.
+                methods.discard("hla")
+            # One canonical form, so equal rules compare and serialize the same.
+            object.__setattr__(self, "methods", tuple(m for m in MS_METHODS if m in methods))
 
     def _kind(self, method):
         return self.methods is None or method in self.methods or (method == "hla" and "mhc" in self.methods)
 
     def matches(self, evidence):
-        peptides = {p.sequence for p in evidence.peptides
-                    if p.is_supporting and self._kind(p.method)
-                    and (not self.unique or p.unique_in_source)
-                    and (not self.reviewed or p.quality == "reviewed_support")}
+        peptides = _distinct(p.sequence for p in evidence.peptides
+                             if p.is_supporting and self._kind(p.method)
+                             and (not self.unique or p.unique_in_source)
+                             and (not self.reviewed or p.quality == "reviewed_support"))
         if len(peptides) >= self.min_peptides:
             return True
         return (self.min_peptides == 1 and not (self.unique or self.reviewed or self.resolved) and any(

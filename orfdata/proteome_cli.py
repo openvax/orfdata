@@ -84,7 +84,7 @@ def _evidence(args):
         peptides = 1 if args.min_ms_peptides is None else args.min_ms_peptides
         rules.append(MS(peptides, unique=args.require_unique, reviewed=args.require_reviewed,
                         resolved=args.require_resolved,
-                        methods=args.ms_methods.split(",") if args.ms_methods else None))
+                        methods=args.ms_methods.split(",") if args.ms_methods is not None else None))
     if len(rules) == 1:
         return rules[0], {}
     return (rules[0] | rules[1] if args.either else rules[0] & rules[1]), {}

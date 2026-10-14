@@ -635,7 +635,8 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
                              (["--extra-orf-evidence", "ms", "--min-ms-peptides", "2"], "not both"),
                              (["--min-ribo-seq-studies", "2", "--require-unique"], "need an MS requirement"),
                              (["--min-ms-peptides", "0"], "min_peptides must be a positive integer"),
-                             (["--ms-methods", "ribosome"], "MS methods must be drawn from")):
+                             (["--ms-methods", "ribosome"], "MS methods must be drawn from"),
+                             (["--ms-methods", ""], "MS methods must be drawn from")):
         with pytest.raises(SystemExit):
             run(rules + options)
         assert message in capsys.readouterr().err
