@@ -507,6 +507,13 @@ def test_download_all_skips_restricted_chains_without_consent(pinned, capsys):
         assert message in capsys.readouterr().err
 
 
+def test_without_datacache_a_lift_says_what_to_install(monkeypatch):
+    monkeypatch.setitem(__import__("sys").modules, "datacache", None)
+    with pytest.raises(ValueError, match="needs the chain files GRCh38_to_GRCh37; install orfdata.data., then"):
+        load_catalog(species="human", genome_build="GRCh37")
+    assert load_catalog(species="human").genome_build == "GRCh38"  # The bundled catalogue needs nothing.
+
+
 def test_status_lists_the_assemblies_each_catalogue_reaches():
     from orfdata import catalog_status
 

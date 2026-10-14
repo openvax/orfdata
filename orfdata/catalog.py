@@ -973,12 +973,15 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         raise ValueError(f"expected_sha256 checks one catalogue file, but {species} {genome_build} ORFs are "
                          "lifted or merged from several")
     chains = list(dict.fromkeys(c for _, route in sources for c in route))
-    missing = [c for c in chains if not chain_downloaded(c)]
+    try:
+        missing, step = [c for c in chains if not chain_downloaded(c)], ""
+    except ImportError:  # Without DataCache no chain can have been downloaded.
+        missing, step = chains, "install orfdata[data], then "
     if missing:
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
         raise ValueError(f"{species} ORF catalogues reach {genome_build} by liftover, which needs the chain files "
-                         f"{', '.join(c.name for c in missing)}; download them once with 'orfdata chains download "
-                         f"--species {species}{accept}' or download_chains(species={species!r}"
+                         f"{', '.join(c.name for c in missing)}; {step}download them once with 'orfdata chains "
+                         f"download --species {species}{accept}' or download_chains(species={species!r}"
                          f"{', accept_terms=True' if accept else ''})")
     catalogs = [lift_to(_open_choice(choice, expected_sha256), genome_build) if route
                 else _open_choice(choice, expected_sha256) for choice, route in sources]
