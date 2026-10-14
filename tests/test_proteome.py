@@ -20,6 +20,7 @@ from orfdata import (
     ORFRecord,
     PeptideEvidence,
     Proteome,
+    ReferenceContext,
     ReferenceORF,
     TranscriptORF,
     ViralProteome,
@@ -37,7 +38,7 @@ ENS_RNA, ENS_GENE = "ENSMUST00000000001", "ENSMUSG00000000001"  # Synthetic Ense
 
 
 def write_genome(path, reference_name="GRCm39", species="mus_musculus", *, lnc_id="test_rna",
-                 lnc_gene="test_gene", version="1", twin=False):
+                 lnc_gene="test_gene", version="1", twin=False, fragment=False):
     path.mkdir(parents=True, exist_ok=True)
     rows, genes = [], {}
 
@@ -69,6 +70,8 @@ def write_genome(path, reference_name="GRCm39", species="mus_musculus", *, lnc_i
     add("1", "coding_rna", "coding_gene", "protein_coding", ((1000, 1011),), (1000, 1008), "coding_protein")
     if twin:  # A second transcript and protein ID with the identical CDS.
         add("1", "twin_rna", "coding_gene", "protein_coding", ((1000, 1011),), (1000, 1008), "twin_protein")
+    if fragment:  # A 3'-truncated RNA whose CDS has no stop: coding_rna reads on past it.
+        add("1", "fragment_rna", "coding_gene", "protein_coding", ((1000, 1005),), (1000, 1005), "fragment_protein")
     add("JH584304.1", "alt_rna", "alt_gene", "protein_coding", ((50, 61),), (50, 58), "alt_protein")
     rows += [f"{contig}\tfixture\tgene\t{a}\t{b}\t.\t+\t.\t{attrs}\n" for contig, a, b, attrs in genes.values()]
     gtf = path / "genome.gtf"
@@ -77,11 +80,14 @@ def write_genome(path, reference_name="GRCm39", species="mus_musculus", *, lnc_i
     cdna.write_text(f">{lnc_id}.{version}\n{LNCRNA}\n>{lnc_id}_long.{version}\nGGGGG{LNCRNA}\n"
                     f">coding_rna.{version}\n{CODING}\n>alt_rna.{version}\n{CODING}\n>mixed_rna.{version}\n{MIXED}\n"
                     f">host_rna.{version}\nCCCCC{MIXED}GGGGG\n")
-    if twin:
-        with cdna.open("a") as handle:
+    with cdna.open("a") as handle:
+        if twin:
             handle.write(f">twin_rna.{version}\n{CODING}\n")
+        if fragment:
+            handle.write(f">fragment_rna.{version}\n{CODING[:6]}\n")
     pep = path / "pep.fa"
-    pep.write_text(">coding_protein.1\nMKP\n>alt_protein.1\nMKP\n>mixed_protein.1\nMP\n>twin_protein.1\nMKP\n")
+    pep.write_text(">coding_protein.1\nMKP\n>alt_protein.1\nMKP\n>mixed_protein.1\nMP\n>twin_protein.1\nMKP\n"
+                   ">fragment_protein.1\nMK\n")
     genome = Genome(reference_name, "synthetic", "1", gtf_path_or_url=str(gtf),
                     transcript_fasta_paths_or_urls=[str(cdna)], protein_fasta_paths_or_urls=[str(pep)],
                     cache_directory_path=str(path))
@@ -275,9 +281,10 @@ def test_another_genes_annotated_cds_on_a_carrying_transcript(genome):
 
 
 def test_identical_annotated_placements_are_reported_once_with_their_ids(tmp_path):
-    genome = write_genome(tmp_path / "twins", twin=True)
+    genome = write_genome(tmp_path / "twins", twin=True, fragment=True)
     try:
         coding = genome.transcript_by_id("coding_rna")
+        # fragment_rna's stopless CDS is not an ORF on coding_rna, which reads on past it.
         placement, = annotated_orfs(coding)
         assert (placement.orf_id, placement.on_source_transcript, placement.equivalent_ids) == (
             "coding_protein.1", True, ("twin_protein.1",))
@@ -287,6 +294,36 @@ def test_identical_annotated_placements_are_reported_once_with_their_ids(tmp_pat
         assert {"coding_protein.1", "twin_protein.1"} <= {e.accession for e in Proteome.from_genome(genome)}
     finally:
         genome.close()
+
+
+def test_dotted_non_ensembl_ids_are_compared_whole(tmp_path):
+    # C. elegans transcript IDs contain dots; Y74C9A.3.1 is not version 1 of Y74C9A.3.
+    rows, rna = [], "CCCATGAAACCCGGGTAAGG"
+    for transcript_id in ("Y74C9A.3.1", "Y74C9A.3.2"):
+        attrs = (f'gene_id "WBGene1"; gene_name "gen-1"; transcript_id "{transcript_id}"; '
+                 'gene_biotype "lncRNA"; transcript_biotype "lncRNA";')
+        rows += [f"I\tfixture\ttranscript\t100\t119\t.\t+\t.\t{attrs}\n",
+                 f'I\tfixture\texon\t100\t119\t.\t+\t.\t{attrs} exon_number "1"; exon_id "{transcript_id}-e";\n']
+    rows.append('I\tfixture\tgene\t100\t119\t.\t+\t.\tgene_id "WBGene1"; gene_name "gen-1"; gene_biotype "lncRNA";\n')
+    (tmp_path / "g.gtf").write_text("".join(rows))
+    (tmp_path / "c.fa").write_text(f">Y74C9A.3.1\n{rna}\n>Y74C9A.3.2\n{rna}\n")
+    worm = Genome("WBcel235", "synthetic", "1", gtf_path_or_url=str(tmp_path / "g.gtf"),
+                  transcript_fasta_paths_or_urls=[str(tmp_path / "c.fa")], cache_directory_path=str(tmp_path))
+    worm.species = "caenorhabditis_elegans"
+    worm.index()
+    try:
+        model = ORFModel("worm-orf", "Y74C9A.3.1", "WBGene1", "gen-1", "I", "+", ((103, 117),), "MKPG", "lncRNA",
+                         "WBcel235", 6239, "caenorhabditis_elegans", source="synthetic")
+        catalog = ORFCatalog([ORFRecord.from_model(model, ORFEvidence())], dict(
+            genome_build="WBcel235", taxon_id=6239, species="caenorhabditis_elegans",
+            coordinates="1-based-inclusive", dataset_version="fixture", sources=[dict(id="s", scope="test")]))
+        context = ReferenceContext(6239, "caenorhabditis_elegans", "WBcel235", "synthetic", "1")
+        found = extra_orfs(worm, catalog=catalog, context=context)
+        assert [(o.transcript.id, o.on_source_transcript) for o in found] == [
+            ("Y74C9A.3.1", True), ("Y74C9A.3.2", False)]
+        assert found.source_failures == () and found.excluded == ()
+    finally:
+        worm.close()
 
 
 def test_one_transcript_lists_its_annotated_cds_with_extra_orfs_in_rna_order(genome):
@@ -316,7 +353,13 @@ def test_overlapping_uses_coding_paths_and_optional_initiation_flanks(genome, ca
 
     assert at(105, 204) == []  # Intron between the ORF's coding blocks.
     assert at(100, 103) == ["absent-orf", "ms-orf"] and at(218, 218) == ["ribo-orf"]
-    assert at(101, 101) == [] and at(101, 101, include_initiation_context=True) == ["ms-orf"]
+    # absent-orf has no source context; on test_rna its flanks are read from that RNA.
+    assert at(101, 101) == [] and at(101, 101, include_initiation_context=True) == ["absent-orf", "ms-orf"]
+    for orf in (o for o in found if o.orf_id == "ms-orf"):
+        context, rna = orf.initiation_context, orf.transcript_sequence
+        assert context.upstream == rna[orf.start - len(context.upstream) : orf.start]
+        assert context.source_transcript_id == (orf.record.initiation_context.source_transcript_id
+                                                if orf.on_source_transcript else orf.transcript.versioned_id)
     assert found.overlapping("2", 1, 10**6, genome_build="GRCm39") == ()
     with pytest.raises(ValueError, match="Expected genome build GRCm39"):
         found.overlapping("1", 100, 103, genome_build="GRCm38")

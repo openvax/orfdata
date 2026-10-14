@@ -1,9 +1,10 @@
 """Reference ORF identity and its binding to an annotated transcript."""
 
 import hashlib
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Optional
 
+from .initiation_context import annotate_initiation_context
 from .reference import ReferenceContext, canonical_species, species_taxon
 from .sequence import genetic_code
 
@@ -98,6 +99,37 @@ def _exon_layout(transcript):
         offsets.append(total)
         total += end - start + 1
     return exons, offsets, total
+
+
+def _transcript_match(identifier, transcript):
+    """How a source's transcript ID names a transcript.
+
+    ``"id"`` for its ID, ``"versioned"`` for its ID with its version,
+    ``"other_version"`` for its ID with another numeric version, else None. IDs
+    that contain dots, such as C. elegans ``Y74C9A.3.1``, are compared whole.
+    """
+    identifier, own = str(identifier), str(transcript.id)
+    if identifier == own:
+        return "id"
+    base, _, version = identifier.rpartition(".")
+    if base == own and version.isdigit():
+        return "versioned" if identifier == _versioned(transcript) else "other_version"
+    return None
+
+
+def _id_forms(identifier):
+    """The transcript IDs a source's ID could be: itself, or without a numeric version."""
+    base, _, version = str(identifier).rpartition(".")
+    return (str(identifier), base) if base and version.isdigit() else (str(identifier),)
+
+
+def _layout_position(layout, strand, offset):
+    """The forward-genomic position of one spliced offset."""
+    exons, offsets, _ = layout
+    for (a, b), first in zip(exons, offsets):
+        if first <= offset <= first + b - a:
+            return a + offset - first if strand == "+" else b - (offset - first)
+    raise ValueError(f"Offset {offset} is outside the transcript")
 
 
 def path_offset(transcript, blocks, *, layout=None):
@@ -207,13 +239,11 @@ class TranscriptORF:
         if model.reference_context is not None and model.reference_context.key != resolved_context.key:
             raise ValueError("ORF transcript reference context mismatch (annotation, strain or assembly)")
         if not any_transcript:
-            if str(transcript.id).split(".")[0] != model.transcript_id.split(".")[0]:
+            match = _transcript_match(model.transcript_id, transcript)
+            if match is None:
                 raise ValueError("ORF transcript identity mismatch")
-            # If the source explicitly pins a transcript version, respect it.
-            if "." in model.transcript_id:
-                resolved = getattr(transcript, "versioned_id", transcript.id)
-                if str(resolved) != model.transcript_id:
-                    raise ValueError("ORF transcript version mismatch")
+            if match == "other_version":  # The source pins another version of this transcript.
+                raise ValueError("ORF transcript version mismatch")
         if _contig(transcript.contig) != _contig(model.contig) or transcript.strand != model.strand:
             raise ValueError("ORF transcript locus mismatch")
         code = genetic_code(model.translation_table)
@@ -234,7 +264,8 @@ class TranscriptORF:
         self._set(record=record, transcript=transcript, start=start, end=start + length,
                   coding_sequence=coding, context=resolved_context, kind="extra_orf",
                   start_complete=True, stop_complete=True, annotation_id=None,
-                  source_transcript_id=model.transcript_id, equivalent_ids=(), _blocks=model.coding_blocks)
+                  source_transcript_id=model.transcript_id, equivalent_ids=(), _blocks=model.coding_blocks,
+                  _layout=layout)
 
     @classmethod
     def from_annotation(cls, transcript, *, on=None, context=None):
@@ -270,15 +301,24 @@ class TranscriptORF:
             raise ValueError(f"Annotated CDS of {transcript.id} is not one contiguous part of {host.id}")
         length = sum(b - a + 1 for a, b in blocks)
         coding = str(host.sequence[start : start + length]).upper()
+        start_complete, stop_complete = transcript.contains_start_codon, transcript.contains_stop_codon
         if on is not None:
             own = path_offset(transcript, blocks)
             if own is None or str(transcript.sequence[own : own + length]).upper() != coding:
                 raise ValueError(f"Annotated CDS of {transcript.id} differs in sequence on {host.id}")
+            # Without a marked start or stop, the CDS is the same ORF on another RNA only if
+            # that RNA continues the same way beyond it; otherwise translation reads on.
+            if _versioned(on) != _versioned(transcript) and (
+                    (not start_complete and str(host.sequence[:start]) != str(transcript.sequence[:own]))
+                    or (not stop_complete and str(host.sequence[start + length :])
+                        != str(transcript.sequence[own + length :]))):
+                raise ValueError(f"Annotated CDS of {transcript.id} lacks a marked start or stop codon "
+                                 f"and {host.id} continues differently beyond it")
         version = transcript.protein.protein_version
         orf = object.__new__(cls)
         orf._set(record=None, transcript=host, start=start, end=start + length, coding_sequence=coding,
-                 context=resolved_context, kind="annotated", start_complete=transcript.contains_start_codon,
-                 stop_complete=transcript.contains_stop_codon,
+                 context=resolved_context, kind="annotated", start_complete=start_complete,
+                 stop_complete=stop_complete, _layout=layout,
                  annotation_id=transcript.protein_id + ("" if version is None else f".{version}"),
                  source_transcript_id=_versioned(transcript), equivalent_ids=(), _blocks=blocks,
                  _source_gene=(transcript.gene_id, transcript.gene_name),
@@ -306,6 +346,32 @@ class TranscriptORF:
             positions = transcript_positions(self.transcript)
             object.__setattr__(self, "_positions", positions)
         return positions
+
+    @property
+    def initiation_context(self):
+        """Up to 9 bases before the start codon and 6 after it, on this transcript.
+
+        An extra ORF on its source's own transcript keeps the source's context.
+        Elsewhere, and for an annotated CDS, the flanks are read from this
+        transcript, whose 5' sequence can differ from the source's. None when
+        the start codon is not complete.
+        """
+        if "_initiation" not in self.__dict__:
+            context = None
+            if self.record is not None and self.record.initiation_context is not None and self.on_source_transcript:
+                context = self.record.initiation_context
+            elif self.start_complete:
+                low = max(0, self.start - 9)
+                window = str(self.transcript.sequence[low : self.start + 9])
+                context = annotate_initiation_context(window, self.start - low)
+                layout = self.__dict__.get("_layout") or _exon_layout(self.transcript)
+                positions = tuple(_layout_position(layout, self.transcript.strand, offset)
+                                  for offset in range(low, low + len(context.upstream + context.start_codon
+                                                                     + context.downstream)))
+                context = replace(context, genomic_positions=positions, start_offset=self.start,
+                                  source_transcript_id=_versioned(self.transcript))
+            object.__setattr__(self, "_initiation", context)
+        return self._initiation
 
     @property
     def model(self):
@@ -353,10 +419,7 @@ class TranscriptORF:
     @property
     def on_source_transcript(self):
         """Whether this is the transcript the ORF's source defines it on."""
-        source = self.source_transcript_id
-        if "." in source and source.split(".")[0] == str(self.transcript.id).split(".")[0]:
-            return source == _versioned(self.transcript)
-        return source.split(".")[0] == str(self.transcript.id).split(".")[0]
+        return _transcript_match(self.source_transcript_id, self.transcript) in ("id", "versioned")
 
     @property
     def transcript_id(self):

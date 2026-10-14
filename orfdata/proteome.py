@@ -21,14 +21,14 @@ from typing import Mapping, Optional
 
 from . import _structure
 from .catalog import EVIDENCE_METHODS, load_catalog
-from .model import TranscriptORF, _contig, _layout_offset, _species, _versioned
+from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _species, _versioned
 from .reference import ReferenceContext
 
 SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
+_ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 # Evidence labels reported for an included ORF; "mhc" includes human HLA.
 _EVIDENCE_LABELS = ("ribosome", "shotgun", "mhc", "ms_unclassified")
 # PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
-_ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 
 
 @dataclass(frozen=True)
@@ -189,7 +189,7 @@ class ExtraORFs:
         spans = {}
         for orf in self.orfs:
             positions = [p for block in orf.coding_blocks for p in block]
-            context = orf.record.initiation_context
+            context = orf.initiation_context
             if context is not None:
                 positions.extend(context.genomic_positions)
             spans.setdefault(_contig(orf.transcript.contig), []).append((min(positions), max(positions), orf))
@@ -245,7 +245,7 @@ class ExtraORFs:
         starts, widest, items = self._index.get(_contig(contig), ((), 0, ()))
         found = []
         for _, _, orf in items[bisect_left(starts, start - widest) : bisect_right(starts, end)]:
-            context = orf.record.initiation_context
+            context = orf.initiation_context if include_initiation_context else None
             if any(a <= end and b >= start for a, b in orf.coding_blocks) or (
                     include_initiation_context and context is not None
                     and any(start <= p <= end for p in context.genomic_positions)):
@@ -624,7 +624,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                 containing[orf_id] = genome.transcript_ids_at_locus(contig, start, end, strand=strand)
             except ValueError:
                 containing[orf_id] = ()
-    candidates = {r.orf_id: sorted(set(containing[r.orf_id]) | {r.transcript_id.split(".")[0]})
+    candidates = {r.orf_id: sorted(set(containing[r.orf_id]) | set(_id_forms(r.transcript_id)))
                   for r in records}
     layouts = _layouts(genome, {i for ids in candidates.values() for i in ids})
     transcripts = {}
@@ -641,7 +641,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     for record in records:
         model = record.model
         placed, reason = [], None
-        source_id = record.transcript_id.split(".")[0]
+        source_id = next((i for i in _id_forms(record.transcript_id) if i in layouts), None)
         source = transcript_by_id(source_id) if source_id in layouts else None
         if source is None:
             reason = "Transcript absent from this annotation"

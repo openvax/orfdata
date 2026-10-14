@@ -11,7 +11,11 @@
   each ORF on every transcript carrying its exact coding path, with
   reference-checked transcript and gene lookups and a genomic `overlapping()`
   query; `annotated_orfs()` finds annotated CDSs carried by a transcript, such as
-  a bicistronic RNA's upstream protein (#61, #62).
+  a bicistronic RNA's upstream protein (#61, #62). A CDS without a marked
+  start or stop is placed on another transcript only where that RNA continues
+  identically beyond it. `orf.initiation_context` reads start flanks from the
+  transcript each placement is on. Transcript IDs that contain dots, such as
+  C. elegans `Y74C9A.3.1`, are compared whole.
 - Bind ORFs under declared NCBI tables 2 and 3 (vertebrate and yeast
   mitochondrial codes), and normalize contig names as PyEnsembl does.
 - Include aggregate evidence in generic TSV exports (#58).

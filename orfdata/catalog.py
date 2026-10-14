@@ -15,7 +15,7 @@ from typing import Optional
 
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
-from .model import ORFModel, TranscriptORF, _contig, _species
+from .model import ORFModel, TranscriptORF, _contig, _id_forms, _species, _transcript_match
 from .reference import ReferenceContext
 from .sequence import genetic_code, reverse_complement_dna
 
@@ -394,7 +394,7 @@ class ORFCatalog:
             if (
                 context is not None
                 and context.source_transcript_id is not None
-                and context.source_transcript_id.split(".")[0] != r.transcript_id
+                and not set(_id_forms(context.source_transcript_id)) & set(_id_forms(r.transcript_id))
             ):
                 raise ValueError("Initiation-context transcript identity disagrees with ORF")
             if context is not None and context.genomic_positions:
@@ -481,7 +481,7 @@ class ORFCatalog:
         return tuple(
             record.bind(transcript, context=resolved)
             for record in self.query(**filters)
-            if record.transcript_id.split(".")[0] == str(transcript.id).split(".")[0]
+            if _transcript_match(record.transcript_id, transcript) is not None
         )
 
     def to_dict(self):

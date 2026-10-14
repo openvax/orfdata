@@ -75,21 +75,23 @@ for orf in orfs.for_transcript(tpst1, include_annotated=True):
 
 ```text
 extra_orf c7riboseqorf56 uORF 149 269 0
-annotated ENSP00000399642.1 None 290 415 0
-annotated ENSP00000391338.1 None 290 712 0
 annotated ENSP00000302413.5 None 290 1403 21
 ```
 
 Results come in RNA order: the uORF ends 21 bases before the annotated CDS
-starts. The two shorter annotated CDSs belong to other TPST1 transcripts whose
-coding paths this RNA also carries, and 21 other proteins share TPST1's main
-placement exactly. `annotated_orfs(transcript)` gives just the annotated ones;
+starts, and 21 other proteins share TPST1's annotated placement exactly.
+Another transcript's CDS is listed only when this RNA encodes the same ORF. A
+CDS without a marked start or stop codon, such as a fragment on a truncated
+transcript, is listed only when this RNA continues identically beyond that end;
+otherwise translation would read on. Two such TPST1 fragments are not listed here. `annotated_orfs(transcript)` gives just the annotated ones;
 `TranscriptORF.from_annotation(transcript)` gives one transcript's own CDS.
 
 `orfs.overlapping(contig, start, end, genome_build=...)` finds ORFs whose coding
 path overlaps a 1-based inclusive genomic interval; introns between coding
 blocks don't count. Add `include_initiation_context=True` to include an ORF's
-spliced start flanks, for example for a Kozak-position variant.
+spliced start flanks, for example for a Kozak-position variant. Flanks come
+from the transcript each placement is on (`orf.initiation_context`), since
+transcripts sharing a coding path can differ upstream of the start codon.
 
 ### Transcripts carrying an ORF
 
@@ -118,7 +120,6 @@ for orf in orfs.for_transcript(mief1, include_annotated=True):
 ```text
 extra_orf c22riboseqorf42 MIEF1 72 132 True
 annotated ENSP00000490747.1 MIURF 176 389 False
-annotated ENSP00000390029.1 MIEF1 487 615 False
 annotated ENSP00000327124.2 MIEF1 487 1879 True
 extra_orf c22norep69 MIEF1 527 677 True
 ```
