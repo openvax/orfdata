@@ -11,7 +11,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 from importlib.resources import files
 from pathlib import Path
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
@@ -683,10 +683,83 @@ def load_uorf_catalog(path=None, *, expected_sha256=None):
     return UORFCatalog(records, catalog.metadata)
 
 
-def load_catalog(path=None, *, expected_sha256=None):
-    """Load all bundled human ncORF classes, or an explicit local catalogue.
+# Catalogues shipped in the package, by species and assembly.
+_BUNDLED = {("homo_sapiens", "GRCh38"): "orf-evidence"}
 
-    Other species use the same schema and API, with an explicit local file;
-    absence from the bundled human reference is never evidence of absence.
+
+def load_catalog(path=None, *, species=None, genome_build=None, registry=None, expected_sha256=None):
+    """Load the ORF catalogue for a species and assembly, or a local catalogue file.
+
+    ``species`` is a name such as ``"mouse"`` or ``"mus_musculus"``; as in
+    PyEnsembl, it defaults to human. ``genome_build`` is needed only when
+    catalogues cover several assemblies of the species. A bundled catalogue
+    is preferred, so the default never changes when another is downloaded.
+    Otherwise the one catalogue in ``registry`` (by default the packaged
+    :class:`CatalogRegistry`) covering the species is opened offline; it must
+    already be downloaded and is never downloaded here. A species without a
+    catalogue raises, naming those that exist. Absence from a catalogue is
+    never evidence of absence.
+
+    With ``path``, that file is loaded, and ``species`` and ``genome_build``,
+    when given, must match it.
     """
-    return _load_catalog(path, expected_sha256=expected_sha256)
+    if path is not None:
+        if registry is not None:
+            raise ValueError("Pass a catalogue path or a registry, not both")
+        catalog = _load_catalog(path, expected_sha256=expected_sha256)
+        if species is not None and _species(species) != _species(catalog.species):
+            raise ValueError(f"{path} is a {_species(catalog.species)} catalogue, not {_species(species)}")
+        if genome_build is not None and genome_build != catalog.genome_build:
+            raise ValueError(f"{path} is a {catalog.genome_build} catalogue, not {genome_build}")
+        return catalog
+    species = _species("human" if species is None else species)
+    choices = _catalog_choices(registry)
+    found = [c for c in choices if c.species == species]
+    builds = sorted({c.genome_build for c in found})
+    if genome_build is None and len(builds) > 1:
+        raise ValueError(f"ORF catalogues cover several {species} assemblies ({', '.join(builds)}); "
+                         "pass genome_build")
+    found = [c for c in found if genome_build in (None, c.genome_build)]
+    if not found:
+        scope = species if genome_build is None else f"{species} {genome_build}"
+        known = "; ".join(f"{c.species} {c.genome_build} ({c.name})" for c in choices) or "none"
+        raise ValueError(f"No ORF catalogue covers {scope}. Catalogues exist for: {known}. "
+                         "Load a local file with load_catalog(path) or add one to a CatalogRegistry.")
+    bundled = [c for c in found if c.registry is None]
+    if bundled:
+        return _load_catalog(expected_sha256=expected_sha256, resource=bundled[0].resource)
+    if len(found) > 1:
+        raise ValueError(f"Several ORF catalogues cover {species} {found[0].genome_build} "
+                         f"({', '.join(c.name for c in found)}); open one with CatalogRegistry().open(name)")
+    return _open_registered(found[0].registry, found[0].name, expected_sha256)
+
+
+class _Choice(NamedTuple):
+    species: str
+    genome_build: str
+    name: str
+    registry: object = None
+    resource: Optional[str] = None
+
+
+def _catalog_choices(registry):
+    """Every catalogue load_catalog can open: bundled ones, then the registry's."""
+    choices = []
+    if registry is None:
+        from .catalogs import CatalogRegistry
+
+        choices = [_Choice(s, b, "bundled", resource=r) for (s, b), r in _BUNDLED.items()]
+        registry = CatalogRegistry()
+    return choices + [_Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry)
+                      for m in registry.list()]
+
+
+def _open_registered(registry, name, expected_sha256):
+    if registry.inspect(name, verify_files=False).status == "missing":
+        raise ValueError(f"The {name} ORF catalogue is not installed; download it first with "
+                         f"CatalogRegistry().download({name!r}) or 'orfdata catalogs download {name}'")
+    if expected_sha256 is not None:
+        pinned = registry.download_metadata(name)["assets"]["catalog.json.gz"]["sha256"]
+        if pinned != expected_sha256:
+            raise ValueError("ORF catalogue checksum mismatch")
+    return registry.open(name)

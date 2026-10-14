@@ -132,8 +132,9 @@ elements.
 ### Catalogue records
 
 `load_catalog()` loads the bundled human records offline using only the Python
-standard library, and `catalog.for_transcript(transcript)` binds the catalogue
-ORFs on one transcript. To inspect source records without a genome:
+standard library; like PyEnsembl, it defaults to `species="human"`.
+`catalog.for_transcript(transcript)` binds the catalogue ORFs on one
+transcript. To inspect source records without a genome:
 
 ```python
 from orfdata import load_catalog
@@ -281,6 +282,11 @@ dataset `2026-10-08.2`. New code should use the broader `load_catalog()` API.
 [ReferenceContext and ScopedTarget](species.md) keep taxa, strains, assemblies
 and annotation versions separate. Custom genomes without species/taxonomy need
 an explicit context when binding; source-pinned contexts require an exact match.
+
+`load_catalog(species="mouse")` returns a species' catalogue: the bundled one,
+or else the one installed through [`CatalogRegistry`](catalogs.md).
+`genome_build=` chooses between assemblies. It never downloads, and for a
+species without a catalogue the error lists the catalogues that exist.
 
 `load_catalog(path)` reads a custom versioned JSON catalogue. Each catalogue is
 scoped to one species and assembly; each model records its NCBI taxon, scientific

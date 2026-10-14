@@ -21,7 +21,7 @@ from typing import Mapping, Optional
 
 from . import _structure
 from .catalog import EVIDENCE_METHODS, load_catalog
-from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _species, _versioned
+from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _versioned
 from .reference import ReferenceContext
 
 SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
@@ -602,13 +602,13 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
 
     A transcript carries an ORF when it contains the ORF's exact spliced coding
     path and its sequence translates to the ORF's protein. Without ``catalog``,
-    the catalogue covering this species and assembly is used; a species
-    without one raises. ``evidence=None`` selects every catalogue ORF.
+    ``load_catalog`` picks the catalogue covering this species and assembly; a
+    species without one raises. ``evidence=None`` selects every catalogue ORF.
     """
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)
     if catalog is None:
-        catalog = _default_catalog(reference)
+        catalog = load_catalog(species=reference.species, genome_build=reference.genome_build)
     if (catalog.taxon_id, catalog.genome_build) != (reference.taxon_id, reference.genome_build):
         raise ValueError(
             f"Catalogue for {catalog.species} {catalog.genome_build} cannot bind to "
@@ -759,15 +759,6 @@ def _require_installed(genome):
         if getattr(genome, "release", None) is not None and getattr(genome, "species", None) is not None:
             install += f" --release {genome.release} --species {genome.species.latin_name}"
         raise ValueError(f"{genome.reference_name} annotation is {status}; install it first with: {install}")
-
-
-def _default_catalog(reference):
-    if reference.taxon_id == 9606 and reference.genome_build == "GRCh38":
-        return load_catalog()
-    raise ValueError(
-        f"No extra-ORF catalogue is available for {_species(reference.species)} "
-        f"{reference.genome_build}; pass catalog= explicitly (see CatalogRegistry)"
-    )
 
 
 def _catalog_source(catalog):

@@ -107,10 +107,12 @@ matches an annotated protein; both entries are kept because they have
 different identities and evidence. `proteome.by_sequence()` groups entries with
 identical sequences, for example before an exact peptide search.
 
-Without `catalog=`, the catalogue covering the genome's species and assembly is
-used. Only human GRCh38 has one; other species raise. Pass a catalogue from
-[`CatalogRegistry`](catalogs.md) or `load_catalog(path)` explicitly. A
-catalogue for a different species or assembly is rejected.
+Without `catalog=`, `load_catalog` picks the catalogue for the genome's species
+and assembly: a bundled one, or else one installed through
+[`CatalogRegistry`](catalogs.md). Only human GRCh38 has one so far; for other
+species the error names the catalogues that exist. Pass `catalog=` to use
+another, such as `load_catalog(path)`. A catalogue for a different species or
+assembly is rejected.
 
 ## Viral proteomes
 

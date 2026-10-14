@@ -36,8 +36,9 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
 def _add_query_arguments(parser, *, catalog_path=True):
     if catalog_path:
         parser.add_argument("--catalog", help="Use a compatible local JSON/JSON.gz catalogue")
+        parser.add_argument("--species", help="Use this species' catalogue, e.g. human or mouse (default human)")
     else:
-        parser.set_defaults(catalog=None)
+        parser.set_defaults(catalog=None, species=None)
     parser.add_argument("--gene", help="Exact source gene symbol or identifier")
     parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
@@ -65,7 +66,7 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--ref", help="Forward-genomic SNV REF; requires --alt and --position")
     parser.add_argument("--alt", help="Forward-genomic SNV ALT; compare initiation contexts")
     parser.add_argument(
-        "--genome-build", help="Required for genomic queries; must match the selected catalogue"
+        "--genome-build", help="Required for genomic queries; selects or must match the catalogue's assembly"
     )
     parser.add_argument("--format", choices=("json", "tsv", "fasta"), default="json")
 
@@ -86,7 +87,8 @@ def _query(args, parser, catalog_loader):
     ):
         parser.error("Provide distinct single-base forward-genomic REF and ALT")
     try:
-        catalog = catalog_loader(args.catalog)
+        catalog = (catalog_loader(args.catalog, species=args.species, genome_build=args.genome_build)
+                   if args.species else catalog_loader(args.catalog))
         options = {
             "gene": args.gene,
             "transcript_id": args.transcript,

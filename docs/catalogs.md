@@ -3,7 +3,11 @@
 The bundled human catalogue is available through `load_catalog()` without
 downloads. `CatalogRegistry` manages additional versioned ORF catalogues, with
 the same explicit discovery, download, build and offline-open workflow as
-`DatasetRegistry`. It returns the existing `ORFCatalog`; query results still
+`DatasetRegistry`. Once a species' catalogue is downloaded,
+`load_catalog(species=...)` opens it, so `extra_orfs(genome)` and
+`Proteome.with_extra_orfs()` use it without `catalog=`. A bundled catalogue
+is preferred, and two registered catalogues for one species and assembly are
+never chosen between; open one by name instead. It returns the existing `ORFCatalog`; query results still
 bind to the original PyEnsembl transcript through `ReferenceORF`.
 
 The default optional registry currently has no released entries. The examples

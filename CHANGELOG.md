@@ -16,6 +16,12 @@
   Rfam 15.1 human cellular seeds (CC0) on transcripts (#63).
 - An examples page covers bicistronic RNAs, ORF categories, non-AUG starts,
   recoding, frameshifts, ERV proteins, circular RNAs, precursors and IRESs.
+- `load_catalog(species=..., genome_build=...)` picks a species' ORF catalogue:
+  the bundled one, or else one downloaded through `CatalogRegistry`. It defaults
+  to human, as PyEnsembl does, and never downloads. `extra_orfs` and
+  `with_extra_orfs` use it, so an installed mouse or dog catalogue needs no
+  `catalog=`. A species without a catalogue gets an error naming those that
+  exist. The ORF query CLI takes `--species`.
 
 # 0.19.0
 

@@ -7,6 +7,7 @@ import gzip
 import io
 import json
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 from pyensembl import Genome
@@ -504,10 +505,28 @@ def test_uninstalled_annotation_is_never_downloaded_or_indexed(tmp_path):
 
 def test_species_without_a_catalogue_or_mismatched_catalogue_fails(genome):
     base = Proteome.from_genome(genome)
-    with pytest.raises(ValueError, match="No extra-ORF catalogue is available for mus_musculus GRCm39"):
+    with pytest.raises(ValueError, match=r"No ORF catalogue covers mus_musculus GRCm39\. "
+                                         r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\)"):
         base.with_extra_orfs()
     with pytest.raises(ValueError, match="cannot bind"):
         base.with_extra_orfs(catalog=load_catalog())
+
+
+def test_a_registered_catalogue_is_the_default_for_its_species(genome, monkeypatch):
+    class OneCatalogue:
+        def list(self):
+            return (SimpleNamespace(catalog_id="mouse-orfs", genome_build="GRCm39",
+                                    references=(SimpleNamespace(species="mus_musculus"),)),)
+
+        def inspect(self, name, verify_files=True):
+            return SimpleNamespace(status="available")
+
+        def open(self, name):
+            return make_catalog()
+
+    monkeypatch.setattr("orfdata.catalogs.CatalogRegistry", OneCatalogue)
+    base = Proteome.from_genome(genome)
+    assert base.with_extra_orfs(None).identity == base.with_extra_orfs(None, catalog=make_catalog()).identity
 
 
 def test_bundled_human_catalogue_is_the_default_for_grch38(tmp_path):
@@ -583,4 +602,4 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"annotated": 3}
     with pytest.raises(SystemExit):
         run(["proteome", "--species", "mouse", "--release", "1"])  # No mouse catalogue yet.
-    assert "No extra-ORF catalogue" in capsys.readouterr().err
+    assert "No ORF catalogue covers mus_musculus GRCm39" in capsys.readouterr().err
