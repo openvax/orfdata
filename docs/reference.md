@@ -225,9 +225,9 @@ aliases must be resolved explicitly by the source adapter. Counts from different
 metrics and sources are not summed, and a later peptide-resolved snapshot is not
 an additional independent experiment merely because it has more detail.
 
-This API includes source-backed OpenProt human, mouse and yeast test slices.
-It does not yet publish those species' OpenProt ORF catalogues; coordinate and
-sequence qualification remains tracked in [#18](https://github.com/openvax/orfdata/issues/18).
+The [OpenProt mouse catalogue](catalogs.md#mouse-orfs-from-openprot) uses
+these summaries. OpenProt's human and yeast files are not imported yet; see
+[#18](https://github.com/openvax/orfdata/issues/18).
 
 The distinction between translation, peptide detection and functional protein
 evidence follows the [TransCODE study](https://www.nature.com/articles/s41586-026-10459-x).

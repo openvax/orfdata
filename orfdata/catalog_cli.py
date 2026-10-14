@@ -2,8 +2,10 @@
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 
+from .catalog import catalog_status
 from .catalogs import CatalogRegistry
 from .cli import _add_query_arguments, _query
 
@@ -16,6 +18,7 @@ def run(argv=None, prog=None):
     listing = commands.add_parser("list", help="Discover release manifests without downloading")
     listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
     listing.add_argument("--taxon-id", type=int)
+    commands.add_parser("status", help="Every species' catalogues, including the bundled one, and what is installed")
     query_parser = None
     for command in ("info", "inspect", "download", "build", "query"):
         subparser = commands.add_parser(command)
@@ -36,6 +39,8 @@ def run(argv=None, prog=None):
         registry = CatalogRegistry(definitions, cache_root=args.cache_root)
         if args.command == "list":
             output = [m.to_dict() for m in registry.list(species=args.species, taxon_id=args.taxon_id)]
+        elif args.command == "status":
+            output = [asdict(row) for row in catalog_status(registry=registry)]
         elif args.command == "info":
             output = registry.info(args.name, args.version).to_dict()
         elif args.command == "inspect":

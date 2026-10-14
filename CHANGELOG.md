@@ -1,3 +1,27 @@
+# 0.26.0
+
+- Mouse noncanonical ORFs from OpenProt 2.2 (#18, #55):
+  `orfdata catalogs build openprot-mouse` builds 2,976 GRCm39 records from
+  OpenProt's pinned TSV, BED and FASTA downloads. That's every protein with at
+  least two unique MS peptides on an Ensembl 106 transcript. orfdata does not
+  redistribute OpenProt's files.
+  - `load_catalog(species="mouse")`, `extra_orfs` and `Proteome.build` then use
+    it. Mouse Ensembl 115 gains 2,854 ORFs; 2,864 bind exactly on Ensembl 106.
+  - RefSeq rows are listed as unresolved.
+  - MS and translation-event scores are aggregate summaries.
+  - Every row is checked against the verified coordinate offset.
+- A registry release with no published artifact is built locally from its
+  pinned sources; `load_catalog` opens such a build, and its error says to
+  build it.
+- `catalog_status()` and `orfdata catalogs status` list every catalogue,
+  bundled included, with species, assembly, record count, installation and
+  which is selected (#70).
+- `extra_orfs` places a record pinned to another release of the assembly by
+  path and protein on its own transcript too, so exclusions give the real
+  reason (for example "sequence unavailable") instead of the release
+  mismatch.
+- Tests run with a private `ORFDATA_CACHE`.
+
 # 0.25.0
 
 - `orfdata lift --to BUILD` lifts the bundled catalogue, a species'

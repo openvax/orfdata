@@ -4,7 +4,7 @@ The bundled human catalogue is available through `load_catalog()` without
 downloads. `CatalogRegistry` manages additional versioned ORF catalogues, with
 the same explicit discovery, download, build and offline-open workflow as
 `DatasetRegistry`. Once a species' catalogue in the packaged registry is
-downloaded, `load_catalog(species=...)` opens it, so `extra_orfs(genome)` and
+downloaded or built, `load_catalog(species=...)` opens it, so `extra_orfs(genome)` and
 `Proteome.with_extra_orfs()` use it without `catalog=`; pass
 `load_catalog(species=..., registry=...)` as `catalog=` for your own registry.
 A bundled catalogue is preferred, a catalogue's default release is opened
@@ -15,9 +15,17 @@ original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
 for one species together, see
 [merging catalogues](proteome.md#merging-catalogues).
 
-The default optional registry currently has no released entries. The examples
-below use a caller-supplied registry; they do not imply a published
-experimental catalogue for another species.
+The packaged registry has one entry, the [OpenProt mouse catalogue](#mouse-orfs-from-openprot),
+which you build from OpenProt's own files. `orfdata catalogs status` (in Python,
+`catalog_status()`) lists every catalogue `load_catalog` can open, the bundled
+one included, with its species, assembly, record count, whether it is
+installed and which one is selected for each assembly:
+
+```sh
+orfdata catalogs status
+```
+
+The examples below use a caller-supplied registry.
 
 ```python
 import json
@@ -52,6 +60,76 @@ Queries share the ordinary ORF CLI's gene, transcript, genomic-position and
 evidence filters, and JSON/TSV/FASTA exports. They cannot override the selected
 release with a local `--catalog` argument. Use `orfdata --catalog FILE` for the
 existing standalone local-file workflow.
+
+## Mouse ORFs from OpenProt
+
+`openprot-mouse` holds the alternative proteins (AltProts) and novel isoforms
+that [OpenProt 2.2](https://openprot.org) reports for mouse with at least two
+unique MS peptides, on Ensembl 106 GRCm39 transcripts. orfdata does not
+redistribute OpenProt's files, and OpenProt states no licence for them. You
+build the catalogue from OpenProt's own downloads (3.4 MB, about 5 seconds);
+each file is checked against its pinned size and SHA-256:
+
+```sh
+pip install "orfdata[data]"
+orfdata catalogs build openprot-mouse
+```
+
+After that, `load_catalog(species="mouse")`, `extra_orfs(genome)` and
+`Proteome.build(genome)` use it for any GRCm39 Ensembl release:
+
+```python
+from pyensembl import EnsemblRelease
+from orfdata import Proteome
+
+proteome = Proteome.build(EnsemblRelease(115, species="mouse"))
+print(proteome.summary()["kinds"], len(proteome.excluded))
+```
+
+```text
+{'annotated': 66668, 'extra_orf': 2854} 122
+```
+
+- **Records.** OpenProt's file has 8,645 rows for 2,913 proteins; each row
+  places one protein on one transcript. The 4,074 rows on Ensembl transcripts
+  become 2,976 records, one per protein and spliced coding path, named by the
+  OpenProt accession (`IP_` for AltProts, `II_` for isoforms). The 32 proteins
+  found at several paths, mostly identical copies at different loci such as
+  on chrY, have one record per path (96 in all), named
+  `accession@transcript`; they share one evidence summary. A path on several
+  transcripts is one record, placed on each of them. `orf_type` is OpenProt's
+  protein type.
+- **Not imported.** The 4,571 rows on RefSeq transcripts are listed in
+  `metadata["unresolved"]`, because no RefSeq annotation is pinned; only one
+  protein, IP_957586, has no Ensembl row.
+- **Coordinates.** Coding blocks come from OpenProt's BED file. Its README
+  calls the TSV's genomic coordinates 1-based, but they are one lower than the
+  BED's and Ensembl's at both ends
+  ([#55](https://github.com/openvax/orfdata/issues/55)). The build checks every
+  row against that offset, its transcript span and its protein length, and
+  fails rather than guessing if any disagrees.
+- **Checked on Ensembl.** On Ensembl 106, OpenProt's own release, 2,864 records
+  bind to their source transcript with their exact coding path and protein.
+  The other 112 lie on transcripts that are in Ensembl's GTF but missing from
+  its cDNA and ncRNA files, so there is no sequence to check. On Ensembl 115,
+  2,854 place; of the rest, 109 lack a sequence, 10 transcripts are gone and
+  3 splice paths changed. Each is listed with its reason.
+- **Evidence.** OpenProt's MS score (a sum of unique peptides per study) and
+  translation-event score (a count of studies) become aggregate summaries for
+  the protein, not peptides or named studies. So `MS()` selects every record
+  and `RiboSeq()` the 137 placed on Ensembl 115 with translation evidence,
+  but `MS(min_peptides=2)` and `RiboSeq(min_studies=2)` select none: a sum
+  over studies is not a count of distinct peptides.
+- **Other assemblies.** For GRCm38, lift the built catalogue with
+  `orfdata lift --species mouse --to GRCm38 --output FILE` after downloading
+  UCSC's chain (non-commercial terms). 2,975 records lift, and 2,856 place on
+  Ensembl 102.
+- **Dog.** OpenProt has no dog data, and orfdata has no dog catalogue. Mouse
+  evidence is never transferred to dog through orthology.
+
+Cite Leblanc S, et al. *OpenProt 2.0 builds a path to the functional
+characterization of alternative proteins.* Nucleic Acids Res. 2024;52(D1):D522–D528,
+[doi:10.1093/nar/gkad1050](https://doi.org/10.1093/nar/gkad1050).
 
 ## Lifting a catalogue to another assembly
 

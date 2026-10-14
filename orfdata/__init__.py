@@ -2,6 +2,7 @@
 
 from .catalog import (
     EVIDENCE_METHODS,
+    CatalogStatus,
     ORFCatalog,
     ORFEvidence,
     ORFRecord,
@@ -9,6 +10,7 @@ from .catalog import (
     UORFCatalog,
     UORFPeptide,
     UORFRecord,
+    catalog_status,
     load_catalog,
     load_uorf_catalog,
     merge_catalogs,
@@ -122,6 +124,8 @@ __all__ = [
     "SearchSequence",
     "SearchMembership",
     "load_catalog",
+    "catalog_status",
+    "CatalogStatus",
     "merge_catalogs",
     "ChainFile",
     "Liftover",

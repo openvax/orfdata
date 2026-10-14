@@ -15,6 +15,12 @@ from orfdata import (
 )
 
 
+@pytest.fixture(autouse=True)
+def private_cache(tmp_path_factory, monkeypatch):
+    """Tests never see, or write to, the user's own downloads and builds."""
+    monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path_factory.mktemp("orfdata-cache")))
+
+
 @pytest.fixture
 def experiment(tmp_path):
     source = tmp_path / "input.tsv"

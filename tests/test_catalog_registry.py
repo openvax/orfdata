@@ -304,9 +304,13 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
     human = load_catalog()
     assert (human.species, human.genome_build) == ("homo_sapiens", "GRCh38")
     assert load_catalog(species="human", genome_build="GRCh38").records == human.records
-    for scope in (dict(species="mouse"), dict(species="human", genome_build="GRCh37")):
-        with pytest.raises(ValueError, match=r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\)\."):
+    for scope in (dict(species="dog"), dict(species="human", genome_build="GRCh37")):
+        with pytest.raises(ValueError, match=r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\); "
+                                             r"mus_musculus GRCm39 \(openprot-mouse 2.2-1\)\."):
             load_catalog(**scope)
+    with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 ORF catalogue is not installed; build it from its "
+                                         r"pinned sources .* 'orfdata catalogs build openprot-mouse --version 2.2-1'"):
+        load_catalog(species="mouse")
 
 
 def test_load_catalog_never_guesses_between_catalogues(tmp_path):
@@ -343,6 +347,8 @@ def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path):
 def test_query_cli_selects_a_species_catalogue(capsys):
     run(["--species", "human", "--orf-id", "c7riboseqorf56"])
     assert [r["orf_id"] for r in json.loads(capsys.readouterr().out)["records"]] == ["c7riboseqorf56"]
-    with pytest.raises(SystemExit):
-        run(["--species", "mouse", "--gene", "Tpst1"])
-    assert "No ORF catalogue covers mus_musculus" in capsys.readouterr().err
+    for species, message in (("dog", "No ORF catalogue covers canis_lupus_familiaris"),
+                             ("mouse", "openprot-mouse 2.2-1 ORF catalogue is not installed")):
+        with pytest.raises(SystemExit):
+            run(["--species", species, "--gene", "Tpst1"])
+        assert message in capsys.readouterr().err

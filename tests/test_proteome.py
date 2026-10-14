@@ -531,8 +531,7 @@ def test_extra_orfs_follow_separate_ribo_seq_and_ms_rules(genome, catalog):
 
 def test_species_without_a_catalogue_or_mismatched_catalogue_fails(genome):
     base = Proteome.from_genome(genome)
-    with pytest.raises(ValueError, match=r"No ORF catalogue covers mus_musculus GRCm39\. "
-                                         r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\)"):
+    with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 ORF catalogue is not installed; build it"):
         base.with_extra_orfs()
     with pytest.raises(ValueError, match="cannot bind"):
         base.with_extra_orfs(catalog=load_catalog())
@@ -546,6 +545,9 @@ def test_a_registered_catalogue_is_the_default_for_its_species(genome, monkeypat
 
         def info(self, name, version=None):
             return self.list()[0]
+
+        def published(self, name, version=None):
+            return True
 
         def inspect(self, name, version=None, verify_files=True):
             return SimpleNamespace(status="available")
@@ -630,8 +632,8 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     captured = capsys.readouterr()
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"annotated": 3}
     with pytest.raises(SystemExit):
-        run(["proteome", "--species", "mouse", "--release", "1"])  # No mouse catalogue yet.
-    assert "No ORF catalogue covers mus_musculus GRCm39" in capsys.readouterr().err
+        run(["proteome", "--species", "mouse", "--release", "1"])  # The mouse catalogue isn't built.
+    assert "openprot-mouse 2.2-1 ORF catalogue is not installed" in capsys.readouterr().err
     rules = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path)]
     for options, kinds in ((["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1", "--either"], 3),
                            (["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1"], 0),

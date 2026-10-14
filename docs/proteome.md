@@ -331,8 +331,10 @@ JSON summary of the layers, identity and excluded ORFs goes to standard error.
 
 ## Not yet included
 
-Mouse and dog noncanonical ORFs, and translated endogenous retrovirus (ERV)
-ORFs without annotated transcripts, need new source data; see the
+Mouse noncanonical ORFs come from OpenProt once you build that catalogue; see
+[Mouse ORFs from OpenProt](catalogs.md#mouse-orfs-from-openprot). Dog
+noncanonical ORFs, and translated endogenous retrovirus (ERV) ORFs without
+annotated transcripts, need new source data; see the
 [data roadmap](https://github.com/openvax/orfdata/issues/3). Products from
 circular RNAs, stop-codon readthrough or non-AUG starts can be described with
 `TranscriptORF.at` and `SourceRNA` (see the [examples](examples.md)), but no
