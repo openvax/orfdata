@@ -793,7 +793,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                 if not placed[-1].on_source_transcript:  # Placed by path on another version of it.
                     reason = "ORF transcript version mismatch"
             except ValueError as error:
-                reason = str(error)
+                reason = _binding_reason(error)
         for transcript_id in candidates[record.orf_id]:
             layout = layouts.get(transcript_id)
             # The source transcript is tried again by path when strict binding failed, e.g. across releases.
@@ -806,7 +806,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                 placed.append(TranscriptORF(record, transcript, context=reference, any_transcript=True,
                                             _layout=layout))
             except ValueError as error:  # Same path, different sequence or protein.
-                carrying = carrying or f"{error} on {_versioned(transcript)}, which has the coding path"
+                carrying = carrying or f"{_binding_reason(error)} on {_versioned(transcript)}, which has the coding path"
         if reason is not None and any(o.on_source_transcript for o in placed):
             reason = None  # Another merged source's own transcript carries it.
         if not placed and carrying and reason == "Transcript absent from this annotation":
@@ -823,6 +823,14 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                      for record, build, reason in unlifted(catalog.metadata)
                      if rule is None or rule.matches(record.evidence))
     return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome, left_out)
+
+
+def _binding_reason(error):
+    """Why an ORF doesn't bind, saying so when its start codon reads differently in this sequence."""
+    found = re.match(r"Unsupported ORF initiation codon (\w+) for NCBI table (\d+)", str(error))
+    if found:  # The catalogue's start is a standard one; this assembly or annotation has another codon there.
+        return f"Start codon reads {found.group(1)} (not a start in NCBI table {found.group(2)})"
+    return str(error)
 
 
 def _coding_structures(genome):
@@ -973,7 +981,9 @@ def _require_installed(genome):
     status = None if inspect is None else inspect()["annotation"]
     if status not in (None, "indexed"):
         install = "pyensembl install"
-        if getattr(genome, "release", None) is not None and getattr(genome, "species", None) is not None:
+        if getattr(genome, "pinned_name", None) is not None:
+            install = f"orfdata genomes install {genome.pinned_name} --force"
+        elif getattr(genome, "release", None) is not None and getattr(genome, "species", None) is not None:
             install += f" --release {genome.release} --species {genome.species.latin_name}"
         raise ValueError(f"{genome.reference_name} annotation is {status}; install it first with: {install}")
 

@@ -7,9 +7,10 @@ These are reference observations, not evidence for a patient's mutant protein.
 import gzip
 import hashlib
 import json
+import os
 import re
 from collections import Counter
-from copy import deepcopy
+from copy import copy, deepcopy
 from dataclasses import asdict, dataclass, replace
 from importlib.resources import files
 from pathlib import Path
@@ -1001,7 +1002,7 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
         x.sha256 for x in route)) for c, route in plan))
     if key in _LOADED:
-        return _LOADED[key]
+        return copy(_LOADED[key])  # A caller that reassigns an attribute never changes what others load.
     catalogs, sources = [], set()
     for choice, route in plan:
         catalog = _open_choice(choice, expected_sha256)
@@ -1015,6 +1016,7 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         if len(_LOADED) >= 4:
             _LOADED.pop(next(iter(_LOADED)))
         _LOADED[key] = loaded
+        return copy(loaded)
     return loaded
 
 
@@ -1022,7 +1024,8 @@ _LOADED = {}
 
 
 def _installed_at(choice):
-    """Where a catalogue's installed bytes are, so a reinstall is never confused with what was loaded."""
+    """Where a catalogue's installed bytes are, and when they were written, so a reinstall is never confused
+    with what was loaded; None when nothing is installed there."""
     if choice.registry is None:
         from .version import __version__
 
@@ -1030,7 +1033,12 @@ def _installed_at(choice):
     registry, name, version = choice.registry, choice.name, choice.version
     inspected = (registry.inspect(name, version, verify_files=False) if registry.published(name, version)
                  else registry.inspect_build(name, version, verify_files=False))
-    return str(getattr(inspected, "path", ""))
+    path = getattr(inspected, "path", None)
+    try:
+        written = os.stat(path) if path else None
+    except OSError:
+        return None
+    return None if written is None else (str(path), written.st_size, written.st_mtime_ns)
 
 
 # Names other tools use for assemblies orfdata knows by Ensembl's name.
