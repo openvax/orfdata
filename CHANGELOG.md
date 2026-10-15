@@ -1,65 +1,91 @@
-# 0.30.0
+# 0.28.0
 
-- Mouse RibORF ORFs of Yang et al. (Nat Commun 2024): `riborf-mouse`, 40,089
-  ORFs of at least 5 residues that RibORF 2.0 found translated in 224 mouse
-  Ribo-seq samples. The source gives mm10 transcript coordinates and no
-  proteins, so each ORF is placed on the same Ensembl 107 GRCm39 transcript and
-  translated there, without a restricted mm10 chain. 12,222 shorter ORFs (a
-  bare start-stop, for one) are left out, and 1,817 rows on transcripts that
-  changed, have no sequence or are gone are listed as unresolved; 39,983 place
-  on Ensembl 115. IDs start `riborf_`, and the source's ouORF, odORF and
-  noncoding types take Chang et al.'s names uoORF, doORF and lncORF.
-- Mouse now merges three catalogues into 48,805 ORFs: `RiboSeq()` adds 46,094
-  to the Ensembl 115 proteome, and `RiboSeq() & MS()` 371.
+Mouse gets two Ribo-seq ORF catalogues, merged with OpenProt's, and human gets
+T2T-CHM13.
 
-# 0.29.0
+**Upgrading:** mouse ORFs now come from three catalogues, merged, and all three
+must be installed. Run `orfdata setup --species mouse --accept-terms` (with
+`orfdata[data,build-data]`; about 130 MB of sources). With only
+`openprot-mouse` installed, as 0.27.1 left it, mouse proteomes raise and name
+what is missing. The default `"ms"` evidence still selects OpenProt's 2,976
+MS-supported ORFs.
 
-- Mouse Ribo-seq ORFs from Chang et al. (eLife 2025): `ncorf-mammals-mouse`.
-  It has 16,484 ncORFs called by at least two of PRICE, RiboCode and
-  Ribo-TISH in at least two libraries, on Ensembl 107 GRCm39, built from the
-  authors' pinned files, Table S3 and Ensembl 107's GTF.
+## Mouse
+
+- Ribo-seq ORFs of Chang et al. (eLife 2025): `ncorf-mammals-mouse`, 16,484
+  ncORFs called by at least two of PRICE, RiboCode and Ribo-TISH in at least
+  two libraries, on Ensembl 107 GRCm39, built from the authors' pinned files,
+  Table S3 and Ensembl 107's GTF.
   - Coding paths come from each ORF's transcript coordinates, because the
     source BED garbles multi-exon blocks.
   - All 16,484 bind exactly on Ensembl 107, and 16,470 place on Ensembl 115.
   - Near-cognate starts read as methionine and are declared on each record.
   - Library and caller counts are aggregate Ribo-seq summaries.
-- `load_catalog` merges every registered catalogue for a species and
-  assembly, rather than refusing to choose between two, in the registry's
-  `priority` order so a new catalogue never renames existing ORFs. Mouse now
-  combines OpenProt's and Chang et al.'s ORFs: 19,406 in all, 54 in both,
-  named by OpenProt where shared. **Upgrading:** mouse needs both installed;
-  run `orfdata setup --species mouse` (with `orfdata[build-data]`).
-- A catalogue from a source already used on the same assembly raises rather
-  than being skipped; one ORF that two merged catalogues failed to lift is
-  reported once. Reference keys are cached, which speeds up opening large
-  catalogues.
-- `orfdata setup --species S` (`install_species`) builds or downloads every
-  registered catalogue for the species and its chain files in one step, and
-  repairs a damaged one. Errors about missing pieces suggest it.
+- RibORF ORFs of Yang et al. (Nat Commun 2024): `riborf-mouse`, 40,089 ORFs of
+  at least 5 residues that RibORF 2.0 found translated in 224 mouse Ribo-seq
+  samples.
+  - The source gives mm10 transcript coordinates and no proteins, so each ORF
+    is placed on the same Ensembl 107 GRCm39 transcript and translated there,
+    without a restricted mm10 chain.
+  - 12,222 shorter ORFs (a bare start-stop, for one) are left out. 1,817 rows
+    on transcripts that changed, have no sequence or are gone are listed as
+    unresolved.
+  - 39,983 place on Ensembl 115.
+  - IDs start `riborf_`. The source's ouORF, odORF and noncoding types take
+    Chang et al.'s names: uoORF, doORF and lncORF.
+- `load_catalog` merges every registered catalogue for a species and assembly,
+  rather than refusing to choose between two.
+  - The merge follows the registry's integer `priority`, so a new catalogue
+    never renames existing ORFs.
+  - Mouse merges into 48,805 ORFs. `RiboSeq()` adds 46,094 to the Ensembl 115
+    proteome, and `RiboSeq() & MS()` adds 371.
+  - A catalogue from a source already used on the same assembly raises, naming
+    both catalogues. An ORF that two merged catalogues failed to lift is
+    reported once.
+- In merged catalogues, a biotype query matches any source's label, as gene
+  and transcript queries do. TSV export has a `start_codon` column.
+- `orfdata setup --species S` (`install_species`) installs everything a
+  species needs in one step: every catalogue release any reachable assembly
+  uses, and the chain files.
+  - It repairs damaged installs.
+  - It downloads a source several catalogues share once.
+  - A download that stalls for `--timeout` seconds is retried, then fails.
+  - It reports each item. If any failed, it exits 1, and `install_species`
+    raises `InstallError`, after installing the rest.
 
-# 0.28.0
+## T2T-CHM13
 
-- T2T-CHM13v2.0 (#72): `orfdata genomes install t2t-chm13` installs Ensembl's
-  rapid-release CHM13 annotation (2022_07). It is pinned by URL, size and
-  SHA-256, and `load_genome("t2t-chm13")` opens it offline as a PyEnsembl
-  genome. The T2T Consortium's public-domain GRCh38↔CHM13 chains are pinned,
-  so the bundled catalogue lifts to it automatically: 7,208 ORFs lift and
-  6,767 place. `Proteome.build(load_genome("t2t-chm13"))` gives 104,957
-  annotated proteins plus 2,039 MS-supported ORFs, and `orfdata proteome
-  --genome t2t-chm13` does the same.
+- `orfdata genomes install t2t-chm13` installs Ensembl's rapid-release CHM13
+  annotation (2022_07), which needs `orfdata[pyensembl]`. It is pinned by URL,
+  size and SHA-256, and `load_genome("t2t-chm13")` opens it offline as a
+  PyEnsembl genome.
+- The T2T Consortium's public-domain GRCh38↔CHM13 chains are pinned, so the
+  bundled catalogue lifts to CHM13 automatically: 7,208 ORFs lift and 6,767
+  place.
+- `Proteome.build(load_genome("t2t-chm13"))` gives 104,957 annotated proteins
+  plus 2,039 MS-supported ORFs, and `orfdata proteome --genome t2t-chm13` does
+  the same.
 - `pinned_genomes`, `install_genome`, `load_genome` and `orfdata genomes
-  list|install` handle annotations that `EnsemblRelease` doesn't cover. The
-  index belongs to the pinned files, `--force` rebuilds a damaged one, and the
-  genome keeps its species and assembly accession when pickled.
-- Varcode no longer fails on extra ORFs for a lifted genome:
+  list|install` handle annotations that `EnsemblRelease` doesn't cover.
+  - The index belongs to the pinned files, and `--force` rebuilds a damaged
+    one.
+  - The genome keeps its species and assembly accession when pickled. Its
+    paths are absolute, so it works from any directory.
+
+## Other changes
+
+- Varcode no longer fails on extra ORFs for a lifted genome.
   `ExtraORFs.excluded` holds only records of its catalogue, and ORFs a lift
-  left out move to `ExtraORFs.unlifted` (proteomes still list them, counted
-  as `unlifted`).
+  left out move to `ExtraORFs.unlifted`. Proteomes still list them, counted as
+  `unlifted`.
 - An ORF whose coding path is on a transcript that encodes another protein is
-  excluded with that reason and transcript, not "Transcript absent".
+  excluded with that reason and transcript, not "Transcript absent". When its
+  start codon reads differently there, the reason says so.
 - `merge_catalogs` reads each catalogue's metadata once rather than per
-  record: merging the two mouse catalogues takes seconds, not minutes.
-  `load_catalog` reuses a lifted or merged result within a process.
+  record, so merging the mouse catalogues takes seconds, not minutes.
+- `load_catalog` reuses a lifted or merged result within a process, handing
+  each caller its own copy.
+- Install hints name the `--cache-root` they were given.
 
 # 0.27.1
 
