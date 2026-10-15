@@ -58,7 +58,8 @@ peptides presented by HLA molecules.
 
 The bundled noncanonical ORF catalogue is human GRCh38. Mouse has 16,484
 Ribo-seq ORFs (Chang et al. 2025) and 2,976 MS-supported ones (OpenProt 2.2):
-`orfdata setup --species mouse` builds both from their sources' own files. After `orfdata chains download` (add
+`pip install "orfdata[data,build-data]"` then `orfdata setup --species mouse`
+builds both from their sources' own files. After `orfdata chains download` (add
 `--accept-terms` for UCSC's non-commercial mouse chains), older assemblies
 (GRCh37, NCBI36, GRCm38, NCBIM37) and T2T-CHM13 use these catalogues lifted
 to them; `orfdata genomes install t2t-chm13` installs a CHM13 annotation. Dog and yeast proteomes contain their

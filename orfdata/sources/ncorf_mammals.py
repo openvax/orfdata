@@ -25,6 +25,7 @@ from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
 from ..model import ORFModel
 from ..reference import ScopedTarget
+from ..sequence import genetic_code
 
 LIBRARIES = ("Ribo-seq libraries in which at least two of PRICE, RiboCode and Ribo-TISH called the ORF "
              "(Table S3 num_libraries); the libraries are listed in Table S1, not per ORF.")
@@ -46,7 +47,10 @@ def _fasta(path):
 
 
 def _table(path, sheet, species):
-    from openpyxl import load_workbook
+    try:
+        from openpyxl import load_workbook
+    except ImportError as error:
+        raise ImportError("Install orfdata[build-data] to build this catalogue from its spreadsheet") from error
 
     with open(path, "rb") as handle:  # Cached files have no extension for openpyxl to go by.
         workbook = load_workbook(handle, read_only=True)
@@ -141,7 +145,8 @@ def import_orfs(inputs, output, manifest):
         model = ORFModel(orf_id, f"{transcript}.{entry['version']}", entry["gene_id"], entry["gene_name"],
                          entry["contig"], strand, blocks, protein, row["orf_type"], reference.genome_build,
                          reference.taxon_id, reference.species, source=processing["source"],
-                         reference_context=reference, start_codon=None if start_codon == "ATG" else start_codon)
+                         reference_context=reference,
+                         start_codon=None if start_codon in genetic_code(1).start_codons else start_codon)
         target = ScopedTarget(reference, "orf", orf_id, processing["source"])
         summaries = tuple(
             EvidenceSummary(processing["source"], processing["release"], target, _sha(protein), "ribosome", metric,

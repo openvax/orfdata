@@ -32,7 +32,8 @@ def definitions():
     manifest = replace(packaged, sources=sources, coverage=COVERAGE)
     release = dict(manifest=manifest.to_dict(), distribution=dict(access_terms="fixture", redistributable=False),
                    assets={})
-    return {manifest.catalog_id: dict(default_version=manifest.version, versions={manifest.version: release})}
+    return {manifest.catalog_id: dict(default_version=manifest.version, versions={manifest.version: release},
+                                      priority=CatalogRegistry().priority(manifest.catalog_id))}
 
 
 PATHS = {asset: str(FIXTURES / name) for asset, name in FILES.items()}
@@ -64,9 +65,10 @@ def ensembl107(tmp_path):
 def test_coding_paths_come_from_the_transcript_and_near_cognate_starts_read_as_methionine(registry):
     catalog = registry.open("ncorf-mammals-mouse")
     starts = {r.orf_id: r.start_codon for r in catalog.records}
+    # GTG is declared; CTG and TTG are already starts of the standard code.
     assert starts == {"10_100323107_100323051_-": None, "10_10111062_10129911_+": None,
-                      "10_100323141_100313880_-": "GTG", "10_128649914_128650436_+": "CTG",
-                      "10_22693539_22693429_-": "TTG"}
+                      "10_100323141_100313880_-": "GTG", "10_128649914_128650436_+": None,
+                      "10_22693539_22693429_-": None}
     gtg = catalog.get("10_100323141_100313880_-")
     assert gtg.protein_sequence.startswith("M") and len(gtg.coding_blocks) > 1  # The source writes V.
     assert catalog.get("10_10111062_10129911_+").gene_name  # From Ensembl, so --gene works by name.
@@ -106,10 +108,22 @@ def test_every_registered_catalogue_for_a_species_is_merged_and_installed_togeth
         return CatalogRegistry.build(both, name, version, force=force, source_paths=paths)
 
     monkeypatch.setattr(both, "build", build)
+    from orfdata import liftover
+
+    monkeypatch.setattr(liftover, "download_chain", lambda *a, **k: "offline")  # No network in tests.
     result = install_species("mouse", registry=both)
     assert result["catalogs"] == {"ncorf-mammals-mouse 1": "built", "openprot-mouse 2.2-1": "built"}
     assert sorted(result["chains"]["skipped"]) == ["GRCm38_to_GRCm39", "GRCm39_to_GRCm38"]  # UCSC terms not accepted.
     assert install_species("mouse", registry=both)["catalogs"]["openprot-mouse 2.2-1"] == "already installed"
     merged = load_catalog(species="mouse", registry=both)
-    assert merged.source == "ncorf-mammals-mouse:1+openprot-mouse:2.2-1" and len(merged.records) == 5 + 8
+    # The registry's priority, not the names, orders the merge: OpenProt's IDs name shared ORFs.
+    assert merged.source == "openprot-mouse:2.2-1+ncorf-mammals-mouse:1" and len(merged.records) == 5 + 8
     assert all(s.selected for s in catalog_status(registry=both) if s.species == "mus_musculus")
+    # A damaged build is repaired, not only reported.
+    built = next(p for p in (tmp_path / "cache").rglob("catalog.json.gz") if "ncorf-mammals-mouse" in str(p))
+    built.chmod(0o644)
+    built.write_bytes(built.read_bytes() + b"x")
+    assert install_species("mouse", registry=both)["catalogs"]["ncorf-mammals-mouse 1"] == "repaired"
+    assert len(load_catalog(species="mouse", registry=both).records) == 13
+    with pytest.raises(ValueError, match="no ORF catalogue or chain file to install for canis_lupus_familiaris"):
+        install_species("dog", registry=both)

@@ -10,11 +10,18 @@
   - Near-cognate starts read as methionine and are declared on each record.
   - Library and caller counts are aggregate Ribo-seq summaries.
 - `load_catalog` merges every registered catalogue for a species and
-  assembly, rather than refusing to choose between two. Mouse now combines
-  Chang et al.'s and OpenProt's ORFs: 19,406 in all, 54 in both.
+  assembly, rather than refusing to choose between two, in the registry's
+  `priority` order so a new catalogue never renames existing ORFs. Mouse now
+  combines OpenProt's and Chang et al.'s ORFs: 19,406 in all, 54 in both,
+  named by OpenProt where shared. **Upgrading:** mouse needs both installed;
+  run `orfdata setup --species mouse` (with `orfdata[build-data]`).
+- A catalogue from a source already used on the same assembly raises rather
+  than being skipped; one ORF that two merged catalogues failed to lift is
+  reported once. Reference keys are cached, which speeds up opening large
+  catalogues.
 - `orfdata setup --species S` (`install_species`) builds or downloads every
-  registered catalogue for the species and its chain files in one step.
-  Errors about missing pieces suggest it.
+  registered catalogue for the species and its chain files in one step, and
+  repairs a damaged one. Errors about missing pieces suggest it.
 
 # 0.28.0
 

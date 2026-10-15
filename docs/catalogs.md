@@ -90,8 +90,9 @@ studies searched only canonical proteins.
 
 ### Mouse Ribo-seq ORFs (Chang et al.)
 
-`ncorf-mammals-mouse` holds the 16,485 mouse ncORFs of Chang et al.
-(eLife 2025, [doi:10.7554/eLife.109128](https://doi.org/10.7554/eLife.109128)),
+`ncorf-mammals-mouse` holds the mouse ncORFs of Chang et al.
+(eLife 2025, [doi:10.7554/eLife.109128](https://doi.org/10.7554/eLife.109128)):
+16,484 of the source's 16,485,
 called with PRICE, RiboCode and Ribo-TISH on Ensembl 107: an ORF is kept when at
 least two callers find it in a library, in at least two libraries, starting at
 ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
@@ -108,7 +109,8 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
   coding path and protein; 16,470 place on Ensembl 115.
 - **Starts.** The source writes GTG-initiated proteins with valine. A
   near-cognate start is read by the initiator methionine, so these proteins
-  begin with M, and records declare their CTG, GTG or TTG start.
+  begin with M, and their records declare the GTG start (CTG and TTG are
+  already starts of the standard code).
 - **Evidence.** Each ORF's library and caller counts become aggregate
   Ribo-seq summaries, so `RiboSeq()` selects every ORF and `MS()` none.
   The libraries aren't named per ORF, so `RiboSeq(min_studies=2)` selects
@@ -120,18 +122,12 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 that [OpenProt 2.2](https://openprot.org) reports for mouse with at least two
 unique MS peptides, on Ensembl 106 GRCm39 transcripts. orfdata does not
 redistribute OpenProt's files, and OpenProt states no licence for them. You
-build the catalogue from OpenProt's own downloads (3.4 MB, about 5 seconds);
-each file is checked against its pinned size and SHA-256:
-
-```sh
-pip install "orfdata[data]"
-orfdata catalogs build openprot-mouse
-```
-
-After that (or `orfdata setup --species mouse`), `load_catalog(species="mouse")`,
-`extra_orfs(genome)` and `Proteome.build(genome)` use it, with the Ribo-seq
-catalogue above, for any GRCm39 Ensembl release. With only MS-supported ORFs
-selected, the default:
+build the catalogue from OpenProt's own downloads (3.4 MB, about 5 seconds),
+each checked against its pinned size and SHA-256, with `orfdata setup --species
+mouse` along with the Ribo-seq catalogue above, or alone with `orfdata catalogs
+build openprot-mouse`. `load_catalog(species="mouse")`, `extra_orfs(genome)`
+and `Proteome.build(genome)` use both, for any GRCm39 Ensembl release, so both
+must be installed. With only MS-supported ORFs selected, the default:
 
 ```python
 from pyensembl import EnsemblRelease
@@ -218,9 +214,9 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
 | Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
 | Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 441 on no transcript, 56 not lifted |
-| Mouse Ensembl 115, GRCm39 | OpenProt | 2,976 | 2,854 | 109 without sequence |
-| Mouse Ensembl 102, GRCm38 | lifted, 1 hop | 2,975 | 2,856 | 112 without sequence |
-| Mouse Ensembl 67, NCBIM37 | lifted, 2 hops | 2,922 | 1,620 | 1,187 transcripts absent |
+| Mouse Ensembl 115, GRCm39 | Chang et al. and OpenProt | 19,406 | 19,270 | 136 not placed |
+| Mouse Ensembl 102, GRCm38 | both lifted, 1 hop | 19,402 | 18,775 | 627 not placed, 4 not lifted |
+| Mouse Ensembl 67, NCBIM37 | both lifted, 2 hops | 19,326 | 15,147 | 4,179 not placed, 80 not lifted |
 
 Older annotations lack many of the transcripts the sources name, so fewer ORFs
 place; the rest, and any that didn't lift, are listed with the reason, never
@@ -230,8 +226,8 @@ silently dropped.
   the requested assembly as is, on the others the pinned chains reach, lifted.
   Each contributes one release: the one on the requested assembly if it has
   one, else its default. The requested assembly's come first, then by fewest
-  hops; bundled first, then by name, which decides whose ID a shared ORF
-  keeps. A source already used from a nearer assembly, such as one catalogue
+  hops; bundled first, then by the registry's priority, which decides whose ID
+  a shared ORF keeps, so a new catalogue never renames existing ORFs. A source already used from a nearer assembly, such as one catalogue
   registered again under another name on another assembly, counts once. This
   depends only on the registry and the pinned chains, never on what happens
   to be installed.

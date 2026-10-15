@@ -118,6 +118,12 @@ class CatalogRegistry:
         release = self._definitions[name]["versions"][self._version(name, version)]
         return json.loads(json.dumps({k: release[k] for k in ("distribution", "assets")}))
 
+    def priority(self, name):
+        """Where the catalogue comes when merged: lower first, so its IDs name shared ORFs (default 100)."""
+        if name not in self._definitions:
+            raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
+        return self._definitions[name].get("priority", 100)
+
     def published(self, name, version=None):
         """Whether the release has a published artifact to download; otherwise it is built locally."""
         version = self._version(name, version)

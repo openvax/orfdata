@@ -84,7 +84,8 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
     parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
     _add_rule_arguments(parser)
-    parser.add_argument("--biotype", help="Source ORF class, e.g. uORF, lncRNA, intORF, dORF")
+    parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
+                                          "(GENCODE, human); uORF, lncORF, iORF (Chang et al., mouse); AltProt (OpenProt)")
     parser.add_argument("--region", help="1-based inclusive interval: chr7:66205483-66205522")
     parser.add_argument(
         "--position", help="Map a 1-based variant position: chr7:66205483 (JSON only)"

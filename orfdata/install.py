@@ -16,21 +16,27 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     from .liftover import download_chains, pinned_chains
 
     species = _species(species)
+    if registry is not None and cache_root is not None:
+        raise ValueError("Pass a registry or a cache_root, not both; the registry has its own cache root")
     registry = CatalogRegistry(cache_root=cache_root) if registry is None else registry
     result = dict(species=species, catalogs={}, chains=None)
     names = dict.fromkeys(m.catalog_id for m in registry.list(species=species))
+    if not names and not any(c.species == species for c in pinned_chains()):
+        raise ValueError(f"orfdata has no ORF catalogue or chain file to install for {species}")
     for name in names:
         manifest = registry.info(name)
         choice = _Choice(species, manifest.genome_build, name, registry, version=manifest.version)
         label = f"{name} {manifest.version}"
-        if _installed(choice) in ("downloaded", "built") and not force:
+        state = _installed(choice)
+        repair = force or state == "damaged"
+        if state in ("downloaded", "built") and not force:
             result["catalogs"][label] = "already installed"
         elif registry.published(name):
-            registry.download(name, force=force)
-            result["catalogs"][label] = "downloaded"
+            registry.download(name, force=repair)
+            result["catalogs"][label] = "repaired" if state == "damaged" else "downloaded"
         else:
-            registry.build(name, force=force)
-            result["catalogs"][label] = "built"
+            registry.build(name, force=repair)
+            result["catalogs"][label] = "repaired" if state == "damaged" else "built"
     if any(c.species == species for c in pinned_chains()):
         result["chains"] = download_chains(species=species, accept_terms=accept_terms, force=force,
                                            cache_root=getattr(registry, "_cache_root", cache_root))

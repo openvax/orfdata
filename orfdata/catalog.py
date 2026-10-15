@@ -919,13 +919,11 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     PyEnsembl, it defaults to human. ``genome_build`` is needed only when
     catalogues cover several assemblies of the species.
 
-    Each assembly of the species contributes one catalogue: a bundled one if
-    there is one, so the default never changes when another is downloaded,
-    otherwise the one catalogue in ``registry`` (by default the packaged
-    :class:`CatalogRegistry`), at its default release unless only another
-    release covers that assembly. One on another assembly is lifted to
-    ``genome_build`` through the pinned chain files, in as many hops as
-    needed, and several are merged. Catalogues and chain files must already
+    Every catalogue for the species is used: the bundled ones and those in
+    ``registry`` (by default the packaged :class:`CatalogRegistry`), each at
+    its release on ``genome_build`` if it has one, else its default. One on
+    another assembly is lifted to ``genome_build`` through the pinned chain
+    files, in as many hops as needed, and all are merged. Catalogues and chain files must already
     be installed (``orfdata catalogs download``/``build``, ``orfdata chains
     download``); nothing is downloaded here, and a missing one raises with
     the command that installs it. Which catalogues and chains are used
@@ -1004,13 +1002,14 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         x.sha256 for x in route)) for c, route in plan))
     if key in _LOADED:
         return _LOADED[key]
-    catalogs, sources = [], set()
+    catalogs, sources = [], {}
     for choice, route in plan:
         catalog = _open_choice(choice, expected_sha256)
         named = {m.source for r in catalog.records for m in (r.members or (r,))}
-        if named & sources:  # The same source, already used from a closer assembly, counts once.
-            continue
-        sources |= named
+        repeated = {sources[n] for n in named if n in sources}
+        if repeated and all(build != choice.genome_build for build in repeated):
+            continue  # The same source, already used from a nearer assembly, counts once.
+        sources.update({n: choice.genome_build for n in named if n not in sources})
         catalogs.append(lift_to(catalog, genome_build, cache_root=root) if route else catalog)
     loaded = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
     if all(part[3] for part in key[3]):  # Only installations with real files are recognized again.
@@ -1062,7 +1061,8 @@ def _plan(found, species, genome_build):
     else its default, so two releases of one source never both count. Every
     catalogue on an assembly the pinned chains reach takes part, to be merged:
     the requested assembly's first, then by fewest hops; bundled first, then by
-    name.
+    the registry's priority and name, so a new catalogue never renames the ORFs
+    an earlier one names.
     """
     from .liftover import chain_routes
 
@@ -1079,7 +1079,7 @@ def _plan(found, species, genome_build):
             routes[build] = route
     plan = [(c, routes[c.genome_build]) for c in chosen if c.genome_build in routes]
     return sorted(plan, key=lambda item: (len(item[1]), item[0].genome_build, item[0].registry is not None,
-                                          item[0].name))
+                                          item[0].priority, item[0].name))
 
 
 def _install_hint(choice):
@@ -1107,6 +1107,7 @@ class _Choice(NamedTuple):
     registry: object = None
     resource: Optional[str] = None
     version: Optional[str] = None
+    priority: int = 0
 
     @property
     def label(self):
@@ -1118,8 +1119,10 @@ def _catalog_choices(registry):
     from .catalogs import CatalogRegistry
 
     registry = CatalogRegistry() if registry is None else registry
+    priority = getattr(registry, "priority", lambda name: 100)
     return [_Choice(s, b, "bundled", resource=r) for (s, b), r in _BUNDLED.items()] + [
-        _Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry, version=m.version)
+        _Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry, version=m.version,
+                priority=priority(m.catalog_id))
         for m in registry.list()]
 
 

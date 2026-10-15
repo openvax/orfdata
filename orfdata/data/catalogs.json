@@ -100,7 +100,8 @@
         },
         "assets": {}
       }
-    }
+    },
+    "priority": 10
   },
   "ncorf-mammals-mouse": {
     "default_version": "1",
@@ -194,6 +195,7 @@
         },
         "assets": {}
       }
-    }
+    },
+    "priority": 20
   }
 }
