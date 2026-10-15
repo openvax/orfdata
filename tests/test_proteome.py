@@ -741,3 +741,11 @@ def test_cache_root_is_where_catalogues_are_found_and_killed_builds_are_swept(ge
 def test_a_species_without_a_catalogue_says_how_to_build_annotated_proteins_only():
     with pytest.raises(ValueError, match=r"pass extra_orfs=False \(orfdata proteome --extra-orf-evidence none\)"):
         load_catalog(species="dog")
+
+
+def test_a_start_codon_that_reads_differently_is_named_as_such():
+    from orfdata.proteome import _binding_reason
+
+    error = ValueError("Unsupported ORF initiation codon ATA for NCBI table 1; an explicit initiation model is required")
+    assert _binding_reason(error) == "Start codon reads ATA (not a start in NCBI table 1)"
+    assert _binding_reason(ValueError("ORF protein mismatch")) == "ORF protein mismatch"

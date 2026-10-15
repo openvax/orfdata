@@ -352,3 +352,10 @@ def test_query_cli_selects_a_species_catalogue(capsys):
         with pytest.raises(SystemExit):
             run(["--species", species, "--gene", "Tpst1"])
         assert message in capsys.readouterr().err
+
+
+def test_a_caller_changing_a_loaded_catalogue_never_changes_the_next_load():
+    first = load_catalog()
+    first.genome_build, first.records = "GRCh37", ()
+    again = load_catalog()
+    assert again.genome_build == "GRCh38" and len(again.records) == 7264
