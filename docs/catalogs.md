@@ -83,8 +83,10 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
   ungapped alignment block and all blocks land on one contig and strand, in
   order. Where a region also aligns to fix patches or alternate haplotypes,
   the same-named chromosome is used. The 17 bundled ORFs above that don't
-  lift are listed with the reason: 15 have no alignment and 2 cross an
-  alignment gap.
+  lift are listed in `metadata["liftover"]["unmapped"]` with the reason (and,
+  when a block aligns to several places, their `contigs`): 15 have no
+  alignment and 2 cross an alignment gap. UCSC's names for unplaced scaffolds,
+  such as `chr1_GL456210v1_random`, are read as Ensembl's (`GL456210.1`).
 - **Real data.** Lifting the 7,247 back to GRCh38 with
   `GRCh37_to_GRCh38.chain.gz` recovers the original coordinates of the 7,246
   that lift back. On Ensembl 75, 6,857 of the lifted ORFs place on a
@@ -98,6 +100,12 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
 - **Placement.** `extra_orfs` on the target genome then checks each ORF's
   exact coding path and protein, so a lift that changes the sequence is
   excluded rather than trusted. A lifted record names no annotation release.
+  ORFs that didn't lift are reported among the exclusions, as "Did not lift
+  to GRCh37: …", when the evidence rule selects them; through every hop of
+  an earlier lift and every merged input. On Ensembl 75, `"ms"` selects all
+  2,186 MS-supported ORFs: 2,097 place, and 3 of the 89 excluded didn't lift.
+- **Size.** Each lifted record carries its original, so a lifted catalogue is
+  about twice the size of its input (33 MB for the bundled one as JSON).
 - **Errors.** When only another assembly has a catalogue,
   `load_catalog(species=..., genome_build=...)` says which one to lift.
 

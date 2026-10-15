@@ -84,8 +84,8 @@ def test_lifted_catalogue_places_like_the_native_one(chain, genome, tmp_path):  
     old = ORFCatalog([shifted(r) for r in (*native.records, beyond)], dict(native.metadata, genome_build="GRCm38"))
     lifted = lift_catalog(old, chain)
     assert lifted.genome_build == "GRCm39" and lifted.source == "orfdata-catalog:fixture-v1@GRCm39"
-    assert lifted.metadata["liftover"]["unmapped"] == [
-        dict(orf_id="beyond", reason="A coding block crosses an alignment gap or edge")]
+    assert [(u["orf_id"], u["reason"]) for u in lifted.metadata["liftover"]["unmapped"]] == [
+        ("beyond", "A coding block crosses an alignment gap or edge")]
     assert lifted.metadata["liftover"]["input"]["metadata"]["genome_build"] == "GRCm38"
     for record in lifted.records:
         original = native.get(record.orf_id)
@@ -164,6 +164,49 @@ def test_flanks_out_of_order_strains_and_unaligned_blocks(tmp_path):
     pin = record.reference_context
     assert (pin.strain, pin.genome_build, pin.annotation_name, pin.source_sha256) == (
         "C3H", "GRCm39", None, chain.liftover.sha256)
-    assert lifted.metadata["liftover"]["unmapped"] == [dict(orf_id="far", reason="A coding block is not aligned")]
+    assert [(u["orf_id"], u["reason"]) for u in lifted.metadata["liftover"]["unmapped"]] == [
+        ("far", "A coding block is not aligned")]
     with pytest.raises(ValueError, match="keeps its original"):
         replace(record, protein_sequence="MKPA")
+
+
+def test_orfs_that_do_not_lift_are_reported_where_they_would_be_placed(chain, genome):  # noqa: F811
+    native = make_catalog()
+    beyond = replace(orf("beyond", blocks=((390, 410),), protein="MKPGKP", ribosome_studies=("s",)), contig="1")
+    old = ORFCatalog([shifted(r) for r in (*native.records, beyond)], dict(native.metadata, genome_build="GRCm38"))
+    found = extra_orfs(genome, None, catalog=lift_catalog(old, chain))
+    assert ("beyond", "Did not lift to GRCm39: A coding block crosses an alignment gap or edge") in [
+        (e.orf_id, e.reason) for e in found.excluded]
+    # Under a rule it doesn't meet, an unlifted ORF isn't reported.
+    assert "beyond" not in [e.orf_id for e in extra_orfs(genome, "ms", catalog=lift_catalog(old, chain)).excluded]
+
+
+def test_a_lifted_record_can_come_first_in_a_merge(chain):
+    from orfdata import merge_catalogs
+
+    native = make_catalog()
+    old = ORFCatalog([shifted(r) for r in native.records], dict(native.metadata, genome_build="GRCm38"))
+    lifted = lift_catalog(old, chain)
+    other = ORFCatalog([replace(r, source="other", ribosome_studies=("extra",)) for r in native.records],
+                       dict(native.metadata, dataset_version="other-v1", sources=[dict(id="other", scope="t")]))
+    for catalogs in ((lifted, other), (other, lifted)):
+        record = merge_catalogs(catalogs).get("ms-orf")
+        assert record.liftover is None and "extra" in record.ribosome_studies
+        assert [m.liftover is not None for m in record.members] == [c is lifted for c in catalogs]
+
+
+def test_ucsc_scaffold_names_and_strands_in_chain_files(tmp_path):
+    path = tmp_path / "scaffold.chain"
+    path.write_text("chain 1 chr1_GL456210v1_random 1000 + 0 100 chrUn_JH584304v1 1000 + 0 100 1\n100\n")
+    chain = ChainFile(path, source_build="GRCm38", target_build="GRCm39")
+    assert chain.map("GL456210.1", 1, 10) == ("JH584304.1", "+", 1, 10)
+    path.write_text("chain 1 chr1 1000 - 0 100 chr1 1000 + 0 100 1\n100\n")
+    with pytest.raises(ValueError, match="source strand is -"):
+        ChainFile(path, source_build="GRCm38", target_build="GRCm39")
+
+
+def test_several_places_are_listed_apart_from_the_reason(chain):
+    record = replace(orf("twice", blocks=((10, 18),), protein="MK"), contig="6", genome_build="GRCm38")
+    lifted = lift_catalog(ORFCatalog([record], dict(make_catalog().metadata, genome_build="GRCm38")), chain)
+    entry, = lifted.metadata["liftover"]["unmapped"]
+    assert (entry["reason"], entry["contigs"]) == ("A coding block aligns to several places", ["7", "8"])

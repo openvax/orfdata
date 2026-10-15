@@ -12,6 +12,7 @@ changes the sequence is excluded rather than trusted.
 import gzip
 import hashlib
 import json
+import re
 from bisect import bisect_left
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
@@ -25,6 +26,23 @@ class Liftover:
     target_build: str
     chain: str
     sha256: str
+
+
+# UCSC names unlocalized and unplaced scaffolds chr1_GL456210v1_random or chrUn_JH584304v1; Ensembl GL456210.1.
+_UCSC_SCAFFOLD = re.compile(r"chr(?:[0-9]+|[XYM]|Un)_([A-Za-z]+[0-9]+)v([0-9]+)(?:_random)?")
+
+
+def _chain_contig(name):
+    found = _UCSC_SCAFFOLD.fullmatch(name)
+    return name if found is None else f"{found.group(1)}.{found.group(2)}"
+
+
+class _NotLifted(ValueError):
+    """Why a record did not lift; ``contigs`` names the places a block aligns to, when several."""
+
+    def __init__(self, reason, contigs=()):
+        super().__init__(reason)
+        self.contigs = tuple(contigs)
 
 
 class ChainFile:
@@ -56,7 +74,11 @@ class ChainFile:
                 continue
             if fields[0] == "chain":
                 # chain score tName tSize tStrand tStart tEnd qName qSize qStrand qStart qEnd id
-                header = (_contig(fields[2]), _contig(renamed.get(fields[7], fields[7])), fields[9], int(fields[8]))
+                if fields[4] != "+":
+                    raise ValueError(f"{self.liftover.chain} has a chain whose source strand is {fields[4]}; "
+                                     "chain files align the source's forward strand")
+                header = (_contig(_chain_contig(fields[2])),
+                          _contig(_chain_contig(renamed.get(fields[7], fields[7]))), fields[9], int(fields[8]))
                 t, q = int(fields[5]), int(fields[10])
                 continue
             size = int(fields[0])
@@ -116,7 +138,11 @@ def lift_catalog(catalog, chain):
         try:
             lifted.append(_lift(record, chain))
         except ValueError as error:
-            unmapped.append(dict(orf_id=record.orf_id, reason=str(error)))
+            # The record itself is kept, so placements can report it under the rule that selects it.
+            entry = dict(orf_id=record.orf_id, reason=str(error), record=record.to_dict())
+            if getattr(error, "contigs", ()):
+                entry["contigs"] = list(error.contigs)
+            unmapped.append(entry)
     original = catalog.metadata
     metadata = dict(species=original["species"], taxon_id=original["taxon_id"],
                     genome_build=chain.liftover.target_build, coordinates=original["coordinates"],
@@ -136,19 +162,20 @@ def _lift(record, chain):
     for a, b in record.coding_blocks:
         hits, partial = chain.locate(record.contig, a, b)
         if len(hits) > 1:
-            raise ValueError(f"A coding block aligns to several places: {', '.join(sorted({h[0] for h in hits}))}")
+            raise _NotLifted("A coding block aligns to several places", sorted({h[0] for h in hits}))
         if not hits:
-            raise ValueError("A coding block crosses an alignment gap or edge" if partial
+            raise _NotLifted("A coding block crosses an alignment gap or edge" if partial
                              else "A coding block is not aligned")
         mapped.append(hits[0])
     if len({(contig, strand) for contig, strand, _, _ in mapped}) != 1:
-        raise ValueError("Coding blocks land on different contigs or strands")
+        raise _NotLifted("Coding blocks land on different contigs or strands",
+                         sorted({contig for contig, _, _, _ in mapped}))
     contig, orientation = mapped[0][:2]
     blocks = tuple((a, b) for _, _, a, b in mapped)
     if orientation == "-":
         blocks = blocks[::-1]
     if any(b >= c for (_, b), (c, _) in zip(blocks, blocks[1:])):
-        raise ValueError("Coding blocks land out of order")
+        raise _NotLifted("Coding blocks land out of order")
     strand = record.strand if orientation == "+" else {"+": "-", "-": "+"}[record.strand]
     members = tuple(_lift(m, chain) for m in record.members)
     pinned = record.reference_context
@@ -172,3 +199,17 @@ def _lift(record, chain):
             context = replace(context, genomic_positions=())
         lifted = replace(lifted, initiation_context=context)
     return lifted
+
+
+def unlifted(metadata):
+    """Every record a catalogue's lifts left out, through each hop and merged input: (record, assembly, reason)."""
+    from .catalog import _record
+
+    lift = metadata.get("liftover")
+    if lift:
+        yield from unlifted(lift["input"]["metadata"])
+        for entry in lift["unmapped"]:
+            if entry.get("record") is not None:  # Written by orfdata 0.23.0 or later.
+                yield _record(entry["record"], False), lift["target_build"], entry["reason"]
+    for merged in metadata.get("merged_from", ()):
+        yield from unlifted(merged["metadata"])

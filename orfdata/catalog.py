@@ -763,7 +763,9 @@ def merge_catalogs(catalogs):
             continue
         pinned = {None if m.reference_context is None else m.reference_context.key for m in members}
         records.append(replace(
-            primary, orf_id=orf_id, members=tuple(members), initiation_context=_shared_context(primary, members),
+            # The merged ORF is no one source's lift; each member keeps its own lift provenance.
+            primary, orf_id=orf_id, members=tuple(members), lifted_from=None, liftover=None,
+            initiation_context=_shared_context(primary, members),
             # Sources pinned to different annotations of one assembly leave the ORF unpinned.
             reference_context=primary.reference_context if len(pinned) == 1 else None, **_union(members, study)))
     paths = {}

@@ -706,6 +706,13 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             if not placed:
                 excluded.append(failures[-1])
         bound.extend(placed)
+    # ORFs a lift left out are reported too, under the same rule, rather than silently missing.
+    from .liftover import unlifted
+
+    for record, build, reason in unlifted(catalog.metadata):
+        if rule is None or rule.matches(record.evidence):
+            failures.append(BindingFailure(record.orf_id, record.transcript_id, f"Did not lift to {build}: {reason}"))
+            excluded.append(failures[-1])
     return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome)
 
 
