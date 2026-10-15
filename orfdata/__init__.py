@@ -23,6 +23,7 @@ from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .genomes import PinnedGenome, install_genome, load_genome, pinned_genomes
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
+from .install import install_species
 from .liftover import (
     ChainFile,
     Liftover,
@@ -131,6 +132,7 @@ __all__ = [
     "catalog_status",
     "CatalogStatus",
     "merge_catalogs",
+    "install_species",
     "PinnedGenome",
     "pinned_genomes",
     "install_genome",

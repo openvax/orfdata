@@ -996,7 +996,9 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
             step = ""
         except ImportError:
             step = "orfdata[data] installed, then "
-        raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs))
+        accept = " --accept-terms" if any(c.restricted for c in missing) else ""
+        raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs)
+                         + f". Or install everything at once with 'orfdata setup --species {species}{accept}'")
     # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
     key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
         x.sha256 for x in route)) for c, route in plan))
@@ -1057,10 +1059,10 @@ def _plan(found, species, genome_build):
     """The catalogues load_catalog uses for one species and assembly, each with the chains that lift it there.
 
     One release per catalogue: its release on ``genome_build`` if it has one,
-    else its default, so two releases of one source never both count. Only
-    assemblies the pinned chains reach take part. Each contributes one
-    catalogue, a bundled one if there is one; two are never chosen between.
-    The requested assembly's comes first, then by fewest hops, bundled first.
+    else its default, so two releases of one source never both count. Every
+    catalogue on an assembly the pinned chains reach takes part, to be merged:
+    the requested assembly's first, then by fewest hops; bundled first, then by
+    name.
     """
     from .liftover import chain_routes
 
@@ -1075,17 +1077,8 @@ def _plan(found, species, genome_build):
         route = chain_routes(species, build).get(genome_build)
         if route is not None:
             routes[build] = route
-    plan = []
-    for build in sorted({c.genome_build for c in chosen} & set(routes)):
-        here = [c for c in chosen if c.genome_build == build]
-        here = [c for c in here if c.registry is None][:1] or here
-        if len(here) > 1:
-            lifted = "" if build == genome_build else f" to lift to {genome_build}"
-            raise ValueError(f"Several ORF catalogues cover {species} {build}{lifted} "
-                             f"({', '.join(c.label for c in here)}), and none is chosen for you; pass one as "
-                             f"catalog=CatalogRegistry().open(name, version)")
-        plan.append((here[0], routes[build]))
-    return sorted(plan, key=lambda item: (len(item[1]), item[0].registry is not None, item[0].genome_build,
+    plan = [(c, routes[c.genome_build]) for c in chosen if c.genome_build in routes]
+    return sorted(plan, key=lambda item: (len(item[1]), item[0].genome_build, item[0].registry is not None,
                                           item[0].name))
 
 
@@ -1195,8 +1188,8 @@ def _open_registered(choice, expected_sha256):
 class CatalogStatus:
     """One ORF catalogue load_catalog can open, and whether it is ready offline.
 
-    ``selected`` marks the one ``load_catalog(species=..., genome_build=...)``
-    uses for its species and assembly. ``installed`` is ``"bundled"``,
+    ``selected`` marks the ones ``load_catalog(species=..., genome_build=...)``
+    uses, merged, for their species and assembly. ``installed`` is ``"bundled"``,
     ``"downloaded"``, ``"built"``, ``"damaged"`` or None; ``acquire`` names the explicit step
     that installs a missing one, ``"download"`` or ``"build"``. ``lifts_to``
     lists the other assemblies the pinned chains reach, each with its chains
@@ -1233,7 +1226,7 @@ def catalog_status(*, registry=None):
         if (species, build) not in plans:
             try:
                 plans[species, build] = _plan([c for c in choices if c.species == species], species, build)
-            except ValueError:  # Two candidates: load_catalog chooses neither.
+            except ValueError:
                 plans[species, build] = []
         return plans[species, build]
 

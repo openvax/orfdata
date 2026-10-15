@@ -15,11 +15,13 @@ original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
 for one species together, see
 [merging catalogues](proteome.md#merging-catalogues).
 
-The packaged registry has one entry, the [OpenProt mouse catalogue](#mouse-orfs-from-openprot),
-which you build from OpenProt's own files. `orfdata catalogs status` (in Python,
-`catalog_status()`) lists every catalogue `load_catalog` can open, the bundled
-one included, with its species, assembly, record count, whether it is
-installed and which one is selected for each assembly:
+The packaged registry has two mouse catalogues, both built from their sources'
+own files: [OpenProt's MS-supported ORFs](#mouse-orfs-from-openprot) and
+[Chang et al.'s Ribo-seq ORFs](#mouse-ribo-seq-orfs-chang-et-al). `orfdata setup
+--species mouse` installs both, with the chain files. `orfdata catalogs status`
+(in Python, `catalog_status()`) lists every catalogue `load_catalog` can open,
+the bundled one included, with its species, assembly, record count, whether it
+is installed and whether it is used:
 
 ```sh
 orfdata catalogs status
@@ -61,6 +63,57 @@ evidence filters, and JSON/TSV/FASTA exports. They cannot override the selected
 release with a local `--catalog` argument. Use `orfdata --catalog FILE` for the
 existing standalone local-file workflow.
 
+## Mouse
+
+```sh
+pip install "orfdata[data,build-data]"
+orfdata setup --species mouse --accept-terms   # Both catalogues and the chains; about 45 MB
+```
+
+`orfdata setup` builds each registered mouse catalogue from its pinned sources
+and downloads the chain files (`--accept-terms` for UCSC's non-commercial
+GRCm38/GRCm39 chains). `load_catalog(species="mouse")` then merges the two:
+16,484 Ribo-seq ORFs and 2,976 MS-supported ones, 19,406 in all, of which 54
+are in both. On Ensembl 115 (GRCm39):
+
+| Evidence | Selected | Added to the proteome |
+| --- | ---: | ---: |
+| `"ms"` (default) | 2,976 | 2,854 |
+| `RiboSeq()` | 16,600 | 16,581 |
+| `RiboSeq() & MS()` | 170 | 165 |
+| `None` | 19,406 | 19,270 |
+
+On GRCm38 (Ensembl 102) both are lifted automatically, and evidence `None`
+adds 18,775 ORFs. Dog has no experimentally supported ORF catalogue from any
+source: OpenProt and the Ribo-seq resources have no dog data, and dog MS
+studies searched only canonical proteins.
+
+### Mouse Ribo-seq ORFs (Chang et al.)
+
+`ncorf-mammals-mouse` holds the 16,485 mouse ncORFs of Chang et al.
+(eLife 2025, [doi:10.7554/eLife.109128](https://doi.org/10.7554/eLife.109128)),
+called with PRICE, RiboCode and Ribo-TISH on Ensembl 107: an ORF is kept when at
+least two callers find it in a library, in at least two libraries, starting at
+ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
+(1,950), iORF (1,749), dORF (741) and doORF (174).
+
+- **Sources.** The authors' BED and protein FASTA (MIT, pinned commit), the
+  paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF; about 40 MB. Building
+  needs `orfdata[build-data]` for the spreadsheet.
+- **Coding paths.** The BED garbles multi-exon block sizes, so each ORF's
+  path comes from its representative transcript and transcript coordinates
+  in Ensembl 107, checked against its genomic start, stop, BED span and
+  protein length. 16,484 resolve; one without a stop codon is listed as
+  unresolved. All 16,484 bind to their Ensembl 107 transcript with their exact
+  coding path and protein; 16,470 place on Ensembl 115.
+- **Starts.** The source writes GTG-initiated proteins with valine. A
+  near-cognate start is read by the initiator methionine, so these proteins
+  begin with M, and records declare their CTG, GTG or TTG start.
+- **Evidence.** Each ORF's library and caller counts become aggregate
+  Ribo-seq summaries, so `RiboSeq()` selects every ORF and `MS()` none.
+  The libraries aren't named per ORF, so `RiboSeq(min_studies=2)` selects
+  none.
+
 ## Mouse ORFs from OpenProt
 
 `openprot-mouse` holds the alternative proteins (AltProts) and novel isoforms
@@ -75,8 +128,10 @@ pip install "orfdata[data]"
 orfdata catalogs build openprot-mouse
 ```
 
-After that, `load_catalog(species="mouse")`, `extra_orfs(genome)` and
-`Proteome.build(genome)` use it for any GRCm39 Ensembl release:
+After that (or `orfdata setup --species mouse`), `load_catalog(species="mouse")`,
+`extra_orfs(genome)` and `Proteome.build(genome)` use it, with the Ribo-seq
+catalogue above, for any GRCm39 Ensembl release. With only MS-supported ORFs
+selected, the default:
 
 ```python
 from pyensembl import EnsemblRelease
@@ -171,15 +226,15 @@ Older annotations lack many of the transcripts the sources name, so fewer ORFs
 place; the rest, and any that didn't lift, are listed with the reason, never
 silently dropped.
 
-- **Which catalogues.** Each catalogue contributes one release: the one on the
-  requested assembly if it has one, else its default, lifted. Each assembly
-  the pinned chains reach contributes one catalogue (a bundled one if any);
-  two candidates on one assembly raise rather than being chosen between.
-  Catalogues from several assemblies are merged, the requested assembly's
-  first, then by fewest hops. A source already used from a nearer assembly,
-  such as one catalogue registered again under another name on another
-  assembly, counts once. This depends only on the registry and the pinned
-  chains, never on what happens to be installed.
+- **Which catalogues.** Every catalogue for the species is used, merged: on
+  the requested assembly as is, on the others the pinned chains reach, lifted.
+  Each contributes one release: the one on the requested assembly if it has
+  one, else its default. The requested assembly's come first, then by fewest
+  hops; bundled first, then by name, which decides whose ID a shared ORF
+  keeps. A source already used from a nearer assembly, such as one catalogue
+  registered again under another name on another assembly, counts once. This
+  depends only on the registry and the pinned chains, never on what happens
+  to be installed.
 - **What's missing.** Missing catalogues and chain files are reported together,
   each with the command that installs it; nothing is downloaded while
   loading. `cache_root` (or `--cache-root`) is where both are looked for.

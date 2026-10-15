@@ -212,7 +212,8 @@ def test_a_damaged_build_says_to_rebuild(catalog, tmp_path):
 
 def test_without_datacache_a_missing_build_says_what_to_install(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "datacache", None)
-    with pytest.raises(ValueError, match="need orfdata.data. installed, then the openprot-mouse 2.2-1 catalogue, which is not installed: build it"):
+    with pytest.raises(ValueError, match="need orfdata.data. installed, then the ncorf-mammals-mouse 1 catalogue, which is not installed: .*the "
+                         "openprot-mouse 2.2-1 catalogue, which is not installed: build it.*orfdata setup --species mus_musculus"):
         load_catalog(species="mouse")
     row = next(s for s in catalog_status() if s.name == "openprot-mouse")
     assert (row.installed, row.acquire) == (None, "build")

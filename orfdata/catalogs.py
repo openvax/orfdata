@@ -49,6 +49,10 @@ def _builder(manifest):
         from .sources.openprot import import_orfs
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
+    if importer == "ncorf-mammals-v1":
+        from .sources.ncorf_mammals import import_orfs
+
+        return lambda inputs, output: import_orfs(inputs, output, manifest)
     raise ValueError("No packaged importer for this catalogue release")
 
 

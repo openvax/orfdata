@@ -101,5 +101,99 @@
         "assets": {}
       }
     }
+  },
+  "ncorf-mammals-mouse": {
+    "default_version": "1",
+    "versions": {
+      "1": {
+        "manifest": {
+          "catalog_id": "ncorf-mammals-mouse",
+          "version": "1",
+          "title": "Mouse Ribo-seq ncORFs of Chang et al. 2025",
+          "references": [
+            {
+              "taxon_id": 10090,
+              "species": "mus_musculus",
+              "genome_build": "GRCm39",
+              "annotation_name": "ensembl",
+              "annotation_version": "107",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "bed",
+              "url": "https://raw.githubusercontent.com/gxelab/ncorf_mammals/9a7baa318fd53f4faf7fa8fe0030e1e2b0d44ee0/ncorfs/mouse.bed",
+              "sha256": "70dbe31547a179775cd7fe0b1331a78d93e16a2c94b1364e4fa21c3d54b19a0b",
+              "size": 1344551,
+              "access_terms": "MIT License, Copyright (c) 2024 RNA GxE lab @ LZU (gxelab/ncorf_mammals).",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "proteins",
+              "url": "https://raw.githubusercontent.com/gxelab/ncorf_mammals/9a7baa318fd53f4faf7fa8fe0030e1e2b0d44ee0/ncorfs/mouse.pep.fa",
+              "sha256": "d129714160d20ee00c11ccc69a311dca3bc88277f664d46dbf8104156e2d570e",
+              "size": 1040679,
+              "access_terms": "MIT License, Copyright (c) 2024 RNA GxE lab @ LZU (gxelab/ncorf_mammals).",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "table",
+              "url": "https://prod--epp.elifesciences.org/api/files/109128/v3/content/supplements/676541_file03.xlsx",
+              "sha256": "eb2b97babc405471c248250a50f9f9ef5fb73aeb9bca2e5d9fc5000cc2070bc6",
+              "size": 5535137,
+              "access_terms": "Supplementary data of Chang et al., eLife 2025 (RP109128), CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-107/gtf/mus_musculus/Mus_musculus.GRCm39.107.gtf.gz",
+              "sha256": "15af16b7bef88c4309a82d49579fdd967f6ac8769b7f0bf657bbf7ee73b779e3",
+              "size": 31861821,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Chang Y, Lei T, Zhou F, Jiang J, Huang Y, Zhu Z, Zhang H. Evolutionary remodeling of non-canonical ORF translation in mammals. eLife 2025;14:RP109128. doi:10.7554/eLife.109128"
+          ],
+          "coverage": {
+            "records": 16484,
+            "distinct_protein_sequences": 16483,
+            "evidence_summaries": 32968,
+            "source_rows": 16485,
+            "resolved_rows": 16484,
+            "unresolved_rows": 1
+          },
+          "processing": {
+            "importer": "ncorf-mammals-v1",
+            "sheet": "S3_ncORF_annotation",
+            "species_label": "Mouse",
+            "source": "ncorf-mammals",
+            "release": "eLife-RP109128.3",
+            "scope": "Mouse ncORFs from Ribo-seq: at least two of PRICE, RiboCode and Ribo-TISH in a library, in at least two libraries; Ensembl 107 GRCm39; aggregate library counts, no named studies"
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from the pinned source files: the authors' ncORF files (MIT), the paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF. Cite Chang et al., eLife 2025 (doi:10.7554/eLife.109128).",
+          "redistributable": true
+        },
+        "assets": {}
+      }
+    }
   }
 }
