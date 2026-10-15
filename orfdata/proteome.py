@@ -177,7 +177,9 @@ class ExtraORFs:
     Each ORF appears once for every transcript carrying its exact spliced
     coding path and protein; ``orf.on_source_transcript`` marks the transcript
     its source names. ``source_failures`` lists ORFs whose source transcript
-    did not carry them, and ``excluded`` those found on no transcript at all.
+    did not carry them, and ``excluded`` those found on no transcript at all;
+    every one is a record of ``catalog``. ``unlifted`` lists ORFs the rule
+    selects that a lift to this assembly left out of ``catalog``.
     ``reference`` is kept even when nothing binds. Lookups never return an ORF
     bound to another reference or version.
     """
@@ -189,6 +191,7 @@ class ExtraORFs:
     evidence: Optional[EvidenceRule] = None
     source_failures: tuple = ()
     genome: object = field(default=None, repr=False, compare=False)
+    unlifted: tuple = ()
 
     def __post_init__(self):
         if not isinstance(self.reference, ReferenceContext):
@@ -570,12 +573,13 @@ class Proteome:
         layer = dict(kind="extra_orf", role="host", source=source, reference=self.reference.key,
                      catalog=_catalog_identity(found.catalog),
                      evidence=None if found.evidence is None else found.evidence.to_dict(),
-                     selected=len(added) + len(found.excluded),
-                     added=len(added), excluded=len(found.excluded),
+                     selected=len(added) + len(found.excluded) + len(found.unlifted),
+                     added=len(added), excluded=len(found.excluded) + len(found.unlifted),
+                     unlifted=len(found.unlifted),
                      not_on_source_transcript=sum(e.source_binding is not None for e in added),
                      identical_to_annotated=sum(e.sequence in annotated for e in added))
         return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
-                        self.excluded + found.excluded, self.genome)
+                        self.excluded + found.excluded + found.unlifted, self.genome)
 
     def with_viral(self, viral):
         """Add a viral proteome whose recorded hosts include this species."""
@@ -774,7 +778,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     bound, failures, excluded = [], [], []
     for record in records:
         model = record.model
-        placed, reason = [], None
+        placed, reason, carrying = [], None, None
         source_id = next((i for i in _id_forms(record.transcript_id) if i in layouts), None)
         source = transcript_by_id(source_id) if source_id in layouts else None
         pinned = record.reference_context
@@ -801,10 +805,12 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             try:
                 placed.append(TranscriptORF(record, transcript, context=reference, any_transcript=True,
                                             _layout=layout))
-            except ValueError:
-                continue  # Same path, different sequence or protein.
+            except ValueError as error:  # Same path, different sequence or protein.
+                carrying = carrying or f"{error} on {_versioned(transcript)}, which has the coding path"
         if reason is not None and any(o.on_source_transcript for o in placed):
             reason = None  # Another merged source's own transcript carries it.
+        if not placed and carrying and reason == "Transcript absent from this annotation":
+            reason = carrying  # Why the transcripts that do carry the path don't encode it.
         if reason is not None:
             failures.append(BindingFailure(record.orf_id, record.transcript_id, reason))
             if not placed:
@@ -813,11 +819,10 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     # ORFs a lift left out are reported too, under the same rule, rather than silently missing.
     from .liftover import unlifted
 
-    for record, build, reason in unlifted(catalog.metadata):
-        if rule is None or rule.matches(record.evidence):
-            failures.append(BindingFailure(record.orf_id, record.transcript_id, f"Did not lift to {build}: {reason}"))
-            excluded.append(failures[-1])
-    return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome)
+    left_out = tuple(BindingFailure(record.orf_id, record.transcript_id, f"Did not lift to {build}: {reason}")
+                     for record, build, reason in unlifted(catalog.metadata)
+                     if rule is None or rule.matches(record.evidence))
+    return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome, left_out)
 
 
 def _coding_structures(genome):

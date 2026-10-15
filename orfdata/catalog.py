@@ -725,14 +725,15 @@ def merge_catalogs(catalogs):
     # A merged input is merged again from its source records, each source its own input.
     sources = [[m for r in c.records for m in (r.members or (r,))] for c in catalogs]
     # Records join across inputs, never within one; a merged input's sources were separate inputs.
-    origin = {id(m): (i, m.source if c.metadata.get("merged_from") else None)
+    metadatas = [c.metadata for c in catalogs]  # Each a copy: read once, not per record.
+    origin = {id(m): (i, m.source if metadatas[i].get("merged_from") else None)
               for i, c in enumerate(catalogs) for r in c.records for m in (r.members or (r,))}
     pmids = {}
-    for c in catalogs:
-        for label, pmid in (c.metadata.get("ribosome_study_pmids") or {}).items():
+    for metadata in metadatas:
+        for label, pmid in (metadata.get("ribosome_study_pmids") or {}).items():
             pmids.setdefault(label, pmid)
-    sources_pmids = {m.source: c.metadata.get("ribosome_study_pmids") or {}
-                     for c in catalogs for r in c.records for m in (r.members or (r,))}
+    sources_pmids = {m.source: metadatas[i].get("ribosome_study_pmids") or {}
+                     for i, c in enumerate(catalogs) for r in c.records for m in (r.members or (r,))}
 
     def study(member, label):
         pmid = sources_pmids.get(member.source, {}).get(label)
@@ -996,6 +997,11 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         except ImportError:
             step = "orfdata[data] installed, then "
         raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs))
+    # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
+    key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
+        x.sha256 for x in route)) for c, route in plan))
+    if key in _LOADED:
+        return _LOADED[key]
     catalogs, sources = [], set()
     for choice, route in plan:
         catalog = _open_choice(choice, expected_sha256)
@@ -1004,7 +1010,27 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
             continue
         sources |= named
         catalogs.append(lift_to(catalog, genome_build, cache_root=root) if route else catalog)
-    return catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
+    loaded = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
+    if all(part[3] for part in key[3]):  # Only installations with real files are recognized again.
+        if len(_LOADED) >= 4:
+            _LOADED.pop(next(iter(_LOADED)))
+        _LOADED[key] = loaded
+    return loaded
+
+
+_LOADED = {}
+
+
+def _installed_at(choice):
+    """Where a catalogue's installed bytes are, so a reinstall is never confused with what was loaded."""
+    if choice.registry is None:
+        from .version import __version__
+
+        return __version__
+    registry, name, version = choice.registry, choice.name, choice.version
+    inspected = (registry.inspect(name, version, verify_files=False) if registry.published(name, version)
+                 else registry.inspect_build(name, version, verify_files=False))
+    return str(getattr(inspected, "path", ""))
 
 
 # Names other tools use for assemblies orfdata knows by Ensembl's name.

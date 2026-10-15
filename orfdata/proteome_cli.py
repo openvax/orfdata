@@ -20,7 +20,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser = argparse.ArgumentParser(
         description=__doc__, prog=prog,
         epilog="The PyEnsembl annotation must already be installed, e.g. "
-               "'pyensembl install --release 115 --species human'.")
+               "'pyensembl install --release 115 --species human', or, for --genome, with "
+               "'orfdata genomes install NAME'.")
     parser.add_argument("--species", help="PyEnsembl species, e.g. human, mouse or dog")
     parser.add_argument("--release", type=int, help="Ensembl release")
     parser.add_argument("--genome", metavar="NAME",
@@ -35,7 +36,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
     parser.add_argument("--cache", action="store_true",
                         help="Reuse an identical earlier build from the OpenVax DataCache, or keep this one there")
-    parser.add_argument("--cache-root", help="Cache directory holding catalogues and cached builds, instead of "
+    parser.add_argument("--cache-root", help="Cache directory holding catalogues, chains, pinned genomes and cached builds, instead of "
                                              "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", help="FASTA path; standard output by default")
     args = parser.parse_args(argv)
@@ -63,7 +64,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
         proteome.write_fasta(args.output or sys.stdout)
         if args.snapshot:
             proteome.save(args.snapshot)
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, ImportError) as error:
         parser.error(str(error))
     summary = proteome.summary()
     summary["excluded_orfs"] = [dict(orf_id=e.orf_id, transcript_id=e.transcript_id, reason=e.reason)

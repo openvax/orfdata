@@ -185,10 +185,17 @@ def test_orfs_that_do_not_lift_are_reported_where_they_would_be_placed(chain, ge
     beyond = replace(orf("beyond", blocks=((390, 410),), protein="MKPGKP", ribosome_studies=("s",)), contig="1")
     old = ORFCatalog([shifted(r) for r in (*native.records, beyond)], dict(native.metadata, genome_build="GRCm38"))
     found = extra_orfs(genome, None, catalog=lift_catalog(old, chain))
-    assert ("beyond", "Did not lift to GRCm39: A coding block crosses an alignment gap or edge") in [
-        (e.orf_id, e.reason) for e in found.excluded]
+    assert [(e.orf_id, e.reason) for e in found.unlifted] == [
+        ("beyond", "Did not lift to GRCm39: A coding block crosses an alignment gap or edge")]
+    # Every exclusion is a record of the lifted catalogue, as Varcode looks them up there.
+    assert all(found.catalog.get(e.orf_id) for e in found.excluded)
     # Under a rule it doesn't meet, an unlifted ORF isn't reported.
-    assert "beyond" not in [e.orf_id for e in extra_orfs(genome, "ms", catalog=lift_catalog(old, chain)).excluded]
+    assert extra_orfs(genome, "ms", catalog=lift_catalog(old, chain)).unlifted == ()
+    # A proteome lists it among its exclusions.
+    from orfdata import Proteome
+
+    proteome = Proteome.from_genome(genome).with_extra_orfs(None, catalog=lift_catalog(old, chain))
+    assert "beyond" in [e.orf_id for e in proteome.excluded] and proteome.layers[-1]["unlifted"] == 1
 
 
 def test_a_lifted_record_can_come_first_in_a_merge(chain):

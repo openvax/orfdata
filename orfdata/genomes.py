@@ -10,7 +10,7 @@ genome offline, with its species set so ``Proteome.build`` and
 import json
 from dataclasses import dataclass
 from importlib.resources import files
-from typing import Mapping
+from typing import Mapping, Optional
 
 _ROLES = ("gtf", "transcripts", "proteins")
 
@@ -29,6 +29,7 @@ class PinnedGenome:
     provider: str
     terms: str
     terms_url: str
+    assembly_accession: Optional[str] = None
 
 
 def _pins():
@@ -79,30 +80,47 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None):
             raise ValueError(f"Unknown genome files {sorted(unknown)}; use {', '.join(_ROLES)}")
         paths = {_files(genome)[role]: str(path) for role, path in source_paths.items()}
     _registry(genome, cache_root).download(genome.name, "1", force=force, source_paths=paths)
-    return _open(genome, cache_root)
+    return _open(genome, cache_root, rebuild=force)
 
 
 def load_genome(name, *, cache_root=None):
     """The installed pinned annotation as a PyEnsembl genome, offline; indexed on first use."""
     genome = _pinned(name)
-    if _registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status == "missing":
+    status = _registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
+    if status == "missing":
         raise ValueError(f"The {name} annotation is not installed; install it once with install_genome({name!r}) "
                          f"or 'orfdata genomes install {name}'")
+    if status != "available":
+        raise ValueError(f"The installed {name} annotation is {status}; install it again with "
+                         f"install_genome({name!r}, force=True) or 'orfdata genomes install {name} --force'")
     return _open(genome, cache_root)
 
 
-def _open(genome, cache_root):
-    from pyensembl import Genome
-    from pyensembl.species import find_species_by_name
+def _open(genome, cache_root, *, rebuild=False):
+    import sqlite3
 
-    from .datasets import get_data_dir
+    from ._pinned_genome import PinnedEnsemblGenome
+    from .datasets import _digest, get_data_dir
 
     registry = _registry(genome, cache_root)
-    paths = {role: str(registry.local_path(genome.name, "1", asset=f)) for role, f in _files(genome).items()}
-    opened = Genome(genome.reference_name, genome.annotation_name, genome.annotation_version,
-                    gtf_path_or_url=paths["gtf"], transcript_fasta_paths_or_urls=[paths["transcripts"]],
-                    protein_fasta_paths_or_urls=[paths["proteins"]],
-                    cache_directory_path=str(get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl"))
-    opened.species = find_species_by_name(genome.species)
-    opened.index()  # Local files only; done once.
+    try:
+        paths = {role: str(registry.local_path(genome.name, "1", asset=f)) for role, f in _files(genome).items()}
+    except ValueError as error:
+        raise ValueError(f"The installed {genome.name} annotation is damaged ({error}); install it again with "
+                         f"'orfdata genomes install {genome.name} --force'") from error
+    # The index belongs to these exact files, so a new pin never reuses an old one.
+    index = get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl" / _digest(dict(genome.assets))
+    opened = PinnedEnsemblGenome(genome.reference_name, genome.annotation_name, genome.annotation_version,
+                                 gtf_path_or_url=paths["gtf"], transcript_fasta_paths_or_urls=[paths["transcripts"]],
+                                 protein_fasta_paths_or_urls=[paths["proteins"]], cache_directory_path=str(index),
+                                 species=genome.species, assembly_accession=genome.assembly_accession)
+    if rebuild:  # A forced install rebuilds the index from scratch, even a damaged one.
+        import shutil
+
+        shutil.rmtree(index, ignore_errors=True)
+    try:
+        opened.index()  # Local files only; done once.
+    except sqlite3.Error as error:
+        raise ValueError(f"The {genome.name} index is damaged ({error}); rebuild it with "
+                         f"'orfdata genomes install {genome.name} --force'") from error
     return opened

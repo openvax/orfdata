@@ -194,7 +194,13 @@ silently dropped.
   through GRCm38. `lift_to(catalog, build)` lifts through it.
   `catalog_status()` lists, for each catalogue, the assemblies it reaches and
   whether their chains are downloaded.
-- **Cost.** Lifting happens on each load: about 1.6 s for the human catalogue.
+- **Cost.** Lifting takes a few seconds (about 2 s for the human catalogue to
+  GRCh37 or CHM13); a process reuses the result for the same installed
+  catalogues and chains.
+- **Unlifted ORFs.** `ExtraORFs.unlifted` lists the ORFs the evidence rule
+  selects that a lift left out; proteomes count them as `unlifted` and list
+  them among their exclusions. `ExtraORFs.excluded` holds only records of its
+  catalogue, which is what Varcode looks up.
 
 ### T2T-CHM13
 
@@ -204,7 +210,7 @@ file's size and SHA-256. The T2T Consortium's GRCh38-to-CHM13 chain is public
 domain (CC0):
 
 ```sh
-orfdata genomes install t2t-chm13          # 143 MB of Ensembl files; indexed once
+orfdata genomes install t2t-chm13          # 143 MB of Ensembl files, plus about 1.1 GB of PyEnsembl index
 orfdata chains download GRCh38 T2T-CHM13v2.0
 orfdata proteome --genome t2t-chm13 --output chm13.fasta
 ```
@@ -217,11 +223,14 @@ proteome = Proteome.build(genome)          # 104,957 annotated proteins + 2,039 
 ```
 
 The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
-6,767 place on CHM13 transcripts with their exact coding path and protein. Ensembl
-gave CHM13 transcripts new IDs, so placement is by path; each ORF's source
-transcript (a GRCh38 ID) is reported as absent. Your own CHM13 genome works too
-if its `reference_name` is `T2T-CHM13v2.0`; `hs1` or `chm13` get an error saying
-so.
+6,767 place on CHM13 transcripts with their exact coding path and protein.
+Ensembl gave CHM13 transcripts new IDs, so placement is by path. Of the 441 that
+don't place, most lie on a CHM13 transcript with their exact coding path whose
+sequence, from CHM13's own alleles, encodes a different protein; the exclusion
+reason names that transcript. The genome keeps its species and assembly
+accession when pickled, for multiprocessing and Varcode. Your own CHM13 genome
+works too if its `reference_name` is `T2T-CHM13v2.0` and it has a `species`
+(or you pass `context=`); `hs1` or `chm13` get an error saying so.
 
 ## Lifting a catalogue by hand
 

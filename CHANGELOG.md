@@ -9,7 +9,18 @@
   annotated proteins plus 2,039 MS-supported ORFs, and `orfdata proteome
   --genome t2t-chm13` does the same.
 - `pinned_genomes`, `install_genome`, `load_genome` and `orfdata genomes
-  list|install` handle annotations that `EnsemblRelease` doesn't cover.
+  list|install` handle annotations that `EnsemblRelease` doesn't cover. The
+  index belongs to the pinned files, `--force` rebuilds a damaged one, and the
+  genome keeps its species and assembly accession when pickled.
+- Varcode no longer fails on extra ORFs for a lifted genome:
+  `ExtraORFs.excluded` holds only records of its catalogue, and ORFs a lift
+  left out move to `ExtraORFs.unlifted` (proteomes still list them, counted
+  as `unlifted`).
+- An ORF whose coding path is on a transcript that encodes another protein is
+  excluded with that reason and transcript, not "Transcript absent".
+- `merge_catalogs` reads each catalogue's metadata once rather than per
+  record: merging the two mouse catalogues takes seconds, not minutes.
+  `load_catalog` reuses a lifted or merged result within a process.
 
 # 0.27.0
 

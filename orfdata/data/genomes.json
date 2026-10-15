@@ -24,6 +24,7 @@
     },
     "provider": "Ensembl",
     "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
-    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html"
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "assembly_accession": "GCA_009914755.4"
   }
 }
