@@ -7,6 +7,7 @@ for the simplest rules. A rule tests what a source reports; passing one is not
 proof that a stable protein exists.
 """
 
+import json
 from dataclasses import dataclass
 from typing import Optional
 
@@ -22,16 +23,30 @@ class EvidenceRule:
         raise TypeError("Combine evidence rules with & (both) or | (either), not 'and' or 'or'")
 
     def __and__(self, other):
-        return AllOf((self, _checked(other)))
+        rules = _canonical(AllOf, (self, _checked(other)))
+        return rules[0] if len(rules) == 1 else AllOf(rules)
 
     def __or__(self, other):
-        return AnyOf((self, _checked(other)))
+        rules = _canonical(AnyOf, (self, _checked(other)))
+        return rules[0] if len(rules) == 1 else AnyOf(rules)
 
     def matches(self, evidence):
         raise NotImplementedError
 
     def to_dict(self):
         raise NotImplementedError
+
+    @staticmethod
+    def from_dict(data):
+        """The rule ``to_dict`` describes, as stored in proteome layers and snapshots."""
+        (kind, value), = data.items()
+        if kind == "ribo_seq":
+            return RiboSeq(**value)
+        if kind == "ms":
+            return MS(**dict(value, methods=None if value["methods"] is None else tuple(value["methods"])))
+        if kind in ("all", "any"):
+            return (AllOf if kind == "all" else AnyOf)(tuple(EvidenceRule.from_dict(r) for r in value))
+        raise ValueError(f"Unknown evidence rule: {kind}")
 
 
 def _checked(rule):
@@ -51,11 +66,28 @@ def _flags(rule, *names):
             raise TypeError(f"{name} must be True or False")
 
 
-def _distinct(sequences):
-    """Peptides counted once: I and L are indistinguishable by mass, and a peptide
-    inside a longer one, such as an HLA length variant, is not separate support."""
-    normalized = {s.replace("I", "L") for s in sequences}
-    return {s for s in normalized if not any(s != t and s in t for t in normalized)}
+def _independent(sequences):
+    """How many peptides support an ORF independently: the most that are pairwise not nested.
+
+    I and L are indistinguishable by mass, and a peptide inside a longer one,
+    such as an HLA length variant, is not separate support. The largest set
+    of mutually non-nested peptides is the peptides less a maximum matching
+    of nested pairs (Dilworth), so adding a peptide never lowers the count.
+    """
+    peptides = sorted({s.replace("I", "L") for s in sequences})
+    inside = [[j for j, t in enumerate(peptides) if s != t and s in t] for s in peptides]
+    longer_of = {}  # Each longer peptide matched to one shorter peptide inside it.
+
+    def augment(i, seen):
+        for j in inside[i]:
+            if j not in seen:
+                seen.add(j)
+                if j not in longer_of or augment(longer_of[j], seen):
+                    longer_of[j] = i
+                    return True
+        return False
+
+    return len(peptides) - sum(augment(i, set()) for i in range(len(peptides)))
 
 
 @dataclass(frozen=True)
@@ -73,6 +105,8 @@ class RiboSeq(EvidenceRule):
     def __post_init__(self):
         _count(self.min_studies, "min_studies")
         _flags(self, "resolved")
+        if self.min_studies > 1:  # Aggregate counts can't meet it either way; one form per rule.
+            object.__setattr__(self, "resolved", False)
 
     def matches(self, evidence):
         if len(set(evidence.ribosome_studies)) >= self.min_studies:
@@ -86,10 +120,11 @@ class RiboSeq(EvidenceRule):
 
 @dataclass(frozen=True)
 class MS(EvidenceRule):
-    """Mass spectrometry: at least ``min_peptides`` distinct supporting peptides.
+    """Mass spectrometry: at least ``min_peptides`` independent supporting peptides.
 
-    Peptides that differ only by I and L, or that lie inside a longer
-    supporting peptide, count once. ``methods`` limits the peptide kinds (``"shotgun"``, ``"mhc"``, ``"hla"``,
+    Peptides that differ only by I and L count once, and nested peptides,
+    such as HLA length variants, count as one: the count is the largest set
+    of supporting peptides none of which lies inside another. ``methods`` limits the peptide kinds (``"shotgun"``, ``"mhc"``, ``"hla"``,
     ``"ms_unclassified"``); ``"mhc"`` includes ``"hla"``. ``unique`` needs one
     protein mapping in the source, not uniqueness in every proteome.
     ``reviewed`` needs convincing reviewed spectra (benchmark scores 4-5).
@@ -114,16 +149,17 @@ class MS(EvidenceRule):
                 methods.discard("hla")
             # One canonical form, so equal rules compare and serialize the same.
             object.__setattr__(self, "methods", tuple(m for m in MS_METHODS if m in methods))
+        if self.min_peptides > 1 or self.unique or self.reviewed:  # Aggregate counts can't meet it anyway.
+            object.__setattr__(self, "resolved", False)
 
     def _kind(self, method):
         return self.methods is None or method in self.methods or (method == "hla" and "mhc" in self.methods)
 
     def matches(self, evidence):
-        peptides = _distinct(p.sequence for p in evidence.peptides
-                             if p.is_supporting and self._kind(p.method)
-                             and (not self.unique or p.unique_in_source)
-                             and (not self.reviewed or p.quality == "reviewed_support"))
-        if len(peptides) >= self.min_peptides:
+        if _independent(p.sequence for p in evidence.peptides
+                        if p.is_supporting and self._kind(p.method)
+                        and (not self.unique or p.unique_in_source)
+                        and (not self.reviewed or p.quality == "reviewed_support")) >= self.min_peptides:
             return True
         return (self.min_peptides == 1 and not (self.unique or self.reviewed or self.resolved) and any(
             s.method != "ribosome" and s.is_supporting and (self.methods is None or self._kind(s.method))
@@ -166,13 +202,20 @@ class AnyOf(EvidenceRule):
         return {"any": [rule.to_dict() for rule in self.rules]}
 
 
-def _flatten(kind, rules):
-    flat = []
+def _canonical(kind, rules):
+    """Nested rules of the same kind flattened, each once, in one order: equal rules, one identity."""
+    flat = {}
     for rule in rules:
-        flat.extend(rule.rules if isinstance(rule, kind) else (_checked(rule),))
+        for part in (rule.rules if isinstance(rule, kind) else (_checked(rule),)):
+            flat.setdefault(json.dumps(part.to_dict(), sort_keys=True), part)
+    return tuple(rule for _, rule in sorted(flat.items()))
+
+
+def _flatten(kind, rules):
+    flat = _canonical(kind, rules)
     if len(flat) < 2:
-        raise ValueError(f"{kind.__name__} combines two or more rules")
-    return tuple(flat)
+        raise ValueError(f"{kind.__name__} combines two or more different rules")
+    return flat
 
 
 def evidence_rule(evidence, *, require_unique=False, require_reviewed=False, require_resolved=False):

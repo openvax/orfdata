@@ -91,24 +91,29 @@ annotated.with_extra_orfs(MS(methods=("shotgun", "ms_unclassified")))     # not 
 | --- | ---: | ---: |
 | `RiboSeq(min_studies=2)` | 3,085 | 3,072 |
 | `RiboSeq(min_studies=3)` | 1,675 | 1,671 |
-| `MS(min_peptides=2)` | 656 | 655 |
+| `MS(min_peptides=2)` | 682 | 681 |
 | `MS(methods=("shotgun", "ms_unclassified"))` | 610 | 607 |
 | `RiboSeq(min_studies=2) & MS()` | 1,296 | 1,293 |
-| `RiboSeq(min_studies=2) & MS(min_peptides=2)` | 439 | 438 |
+| `RiboSeq(min_studies=2) & MS(min_peptides=2)` | 457 | 456 |
 | `RiboSeq(min_studies=2) \| MS()` | 3,975 | 3,960 |
 
 GENCODE's `c…riboseqorf…` IDs are the 3,085 ORFs seen in two or more studies.
 Each method name above is the simplest rule: `"ms"` is `MS()`, `"hla"` is
 `MS(methods=("hla",))` and `"ribosome"` is `RiboSeq()`. A peptide counts once
 however many assay types report it, and so do peptides that differ only by I
-and L (equal in mass) or that lie inside a longer supporting peptide, such as
-HLA length variants: of the 916 ORFs with two or more distinct peptide
-sequences, 260 have only nested ones. Each rule in `&` is checked on its own:
+and L (equal in mass). Nested peptides, such as HLA length variants, count as
+one: the count is the largest set of supporting peptides none of which lies
+inside another, so a long peptide never hides two shorter, separate ones, and
+a stricter rule always selects a subset of a looser one. Of the 916 ORFs with
+two or more distinct peptide sequences, 234 have fewer than two that aren't
+nested. Each rule in `&` is checked on its own:
 `MS(methods="shotgun") & MS(unique=True)` needs a shotgun peptide and a unique
 peptide, not one unique shotgun peptide. A source's aggregate count stands for one observation:
 it satisfies `RiboSeq()` and `MS()` but never `min_studies` or `min_peptides`
 above 1, `unique`, `reviewed` or `resolved=True`. The layer stores the rule,
-so a snapshot records exactly how its ORFs were chosen.
+so a snapshot records exactly how its ORFs were chosen; `EvidenceRule.from_dict`
+reads it back. Equal rules are stored the same way, whatever their order or
+repeats, so they give one proteome identity.
 
 A translated ORF or a detected peptide does not by itself establish a stable,
 functional protein. Missing evidence does not establish that an ORF is never

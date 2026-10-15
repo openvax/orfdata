@@ -26,10 +26,18 @@ from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _versioned
 from .reference import ReferenceContext
 
 SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
+# PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 # Evidence labels reported for an included ORF; "mhc" includes human HLA.
 _EVIDENCE_LABELS = ("ribosome", "shotgun", "mhc", "ms_unclassified")
-# PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
+
+
+def _evidence_labels(evidence):
+    """Evidence kinds for a FASTA header; "ms" for MS support whose assay the source doesn't name."""
+    labels = [m for m in _EVIDENCE_LABELS if evidence.has_evidence(m)]
+    if evidence.has_evidence("ms") and not set(labels) - {"ribosome"}:
+        labels.append("ms")
+    return tuple(labels)
 
 
 @dataclass(frozen=True)
@@ -479,7 +487,7 @@ class Proteome:
             added.append(ProteomeEntry(
                 accession=orf_id, sequence=first.protein_sequence, kind="extra_orf",
                 taxon_id=first.model.taxon_id, source=source, orf_type=first.model.orf_type,
-                evidence=tuple(m for m in _EVIDENCE_LABELS if first.evidence.has_evidence(m)),
+                evidence=_evidence_labels(first.evidence),
                 evidence_detail=_json(first.evidence.to_dict()),
                 occurrences=tuple(Occurrence.from_orf(o) for o in orfs),
                 source_transcript_id=first.model.transcript_id,

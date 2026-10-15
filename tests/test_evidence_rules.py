@@ -5,6 +5,7 @@ from test_evidence_summary import summary
 
 from orfdata import (
     MS,
+    EvidenceRule,
     ORFEvidence,
     PeptideEvidence,
     ReferenceContext,
@@ -67,14 +68,20 @@ def test_separate_and_combined_stringency_on_the_bundled_catalogue(catalog):
 
     assert [count(RiboSeq(min_studies=n)) for n in (1, 2, 3)] == [7264, 3085, 1675]
     # Nested peptides such as HLA length variants, and I/L variants, count once.
-    assert [count(MS(min_peptides=n)) for n in (1, 2, 3)] == [2186, 656, 197]
-    assert (count(MS(unique=True)), count(MS(min_peptides=2, unique=True)), count(MS(reviewed=True))) == (1623, 415, 44)
+    assert [count(MS(min_peptides=n)) for n in (1, 2, 3)] == [2186, 682, 219]
+    assert (count(MS(unique=True)), count(MS(min_peptides=2, unique=True)), count(MS(reviewed=True))) == (1623, 434, 44)
     assert count(MS(methods="hla")) == count(MS(methods=("mhc",))) == 1881
     assert (count(MS(methods="shotgun")), count(MS(methods=("shotgun", "ms_unclassified")))) == (73, 610)
     both, either = count(RiboSeq(min_studies=2) & MS()), count(RiboSeq(min_studies=2) | MS())
     assert (both, either) == (1296, 3975) and both + either == 3085 + 2186
-    assert count(RiboSeq(min_studies=2) & MS(min_peptides=2)) == 439
-    assert count(RiboSeq(min_studies=3) | MS(min_peptides=2, unique=True)) == 1906
+    assert count(RiboSeq(min_studies=2) & MS(min_peptides=2)) == 457
+    assert count(RiboSeq(min_studies=3) | MS(min_peptides=2, unique=True)) == 1916
+    # Stricter rules select subsets: a filter can't uncover peptides a longer one hid.
+    loose = {r.orf_id for r in catalog.query(evidence=MS(min_peptides=2))}
+    for strict in (MS(min_peptides=2, unique=True), MS(min_peptides=2, methods="hla"), MS(min_peptides=3)):
+        assert {r.orf_id for r in catalog.query(evidence=strict)} <= loose
+    # Two disjoint peptides stay two when a third spans both.
+    assert "c17riboseqorf24" in loose
 
 
 def test_nested_and_isobaric_peptides_count_once():
@@ -85,6 +92,8 @@ def test_nested_and_isobaric_peptides_count_once():
     assert count("KPL", "KPI") == [True, False]  # I and L have the same mass.
     assert count("QALSPPLPPK", "ALSPPLPPK") == [True, False]  # An HLA length variant.
     assert count("KPGA", "GAKP") == [True, True]  # Overlapping, neither inside the other.
+    assert count("AAAK", "BBBK", "AAAKBBBK") == [True, True]  # A longer peptide doesn't hide two shorter.
+    assert count("AAAK", "AAAKB", "AAAKBB") == [True, False]  # One nested chain is one peptide.
 
 
 def test_peptides_count_once_and_aggregate_counts_stand_for_one_observation():
@@ -108,8 +117,15 @@ def test_rules_combine_flatten_and_serialize():
     lenient = RiboSeq() | MS() | MS(reviewed=True)
     assert isinstance(lenient, AnyOf) and len(lenient.rules) == 3
     assert (RiboSeq(min_studies=2) | MS(methods="hla")).to_dict() == {"any": [
-        {"ribo_seq": {"min_studies": 2, "resolved": False}},
-        {"ms": {"min_peptides": 1, "unique": False, "reviewed": False, "resolved": False, "methods": ["hla"]}}]}
+        {"ms": {"min_peptides": 1, "unique": False, "reviewed": False, "resolved": False, "methods": ["hla"]}},
+        {"ribo_seq": {"min_studies": 2, "resolved": False}}]}
+    # Equal rules are one rule, whatever their order, repeats or ineffective options.
+    assert RiboSeq() & MS() == MS() & RiboSeq() and RiboSeq() & RiboSeq() == RiboSeq()
+    assert (RiboSeq() | MS()) | RiboSeq() == MS() | RiboSeq()
+    assert RiboSeq(min_studies=2, resolved=True) == RiboSeq(min_studies=2)
+    assert MS(min_peptides=2, resolved=True) == MS(min_peptides=2) and MS(unique=True, resolved=True) == MS(unique=True)
+    for rule in (strict, lenient, RiboSeq(resolved=True), MS(methods="mhc", reviewed=True), RiboSeq() | (MS() & RiboSeq(2))):
+        assert EvidenceRule.from_dict(rule.to_dict()) == rule
     assert MS(methods="hla") == MS(methods=("hla",)) and MS(methods=("mhc", "hla")) == MS(methods="mhc")
     reordered = MS(methods=("ms_unclassified", "shotgun", "shotgun"))
     assert reordered == MS(methods={"shotgun", "ms_unclassified"}) and reordered.methods == ("shotgun", "ms_unclassified")
@@ -118,7 +134,8 @@ def test_rules_combine_flatten_and_serialize():
     with pytest.raises(TypeError, match="not 'and' or 'or'"):
         RiboSeq(min_studies=2) and MS()  # noqa: B018
     for bad in (lambda: RiboSeq(min_studies=0), lambda: MS(min_peptides=True), lambda: MS(methods=("ribosome",)),
-                lambda: MS(methods=()), lambda: RiboSeq() & "ms", lambda: AllOf((RiboSeq(),))):
+                lambda: MS(methods=()), lambda: RiboSeq() & "ms", lambda: AllOf((RiboSeq(),)),
+                lambda: AllOf((RiboSeq(), RiboSeq()))):
         with pytest.raises((ValueError, TypeError)):
             bad()
     with pytest.raises(ValueError, match="on the rule itself"):
@@ -126,3 +143,12 @@ def test_rules_combine_flatten_and_serialize():
     with pytest.raises(ValueError, match="do not apply to ribosome"):
         evidence_rule("ribosome", require_unique=True)
     assert evidence_rule(None) is None and evidence_rule("hla", require_unique=True) == MS(unique=True, methods="hla")
+
+
+def test_aggregate_ms_support_is_labelled_ms():
+    from orfdata.proteome import _evidence_labels
+
+    assert _evidence_labels(ORFEvidence(summaries=(summary(method="ms", value=2),))) == ("ms",)
+    assert _evidence_labels(ORFEvidence(peptides=(peptide("KPG", "hla"),))) == ("mhc",)
+    assert _evidence_labels(ORFEvidence(ribosome_studies=("a",), summaries=(summary(method="ms", value=2),))) == (
+        "ribosome", "ms")

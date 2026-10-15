@@ -5,8 +5,13 @@
   combined with `&` (both) or `|` (either). `with_extra_orfs`, `extra_orfs`,
   `ORFCatalog.query` and `has_evidence` accept them. Method names such as
   `"ms"` and `"hla"` are the simplest rules and select exactly as before.
-  Peptides count once, including I/L variants and peptides nested inside a
-  longer one; a source's aggregate count stands for one observation. Proteome
+  Peptides count once, including I/L variants, and nested peptides count as
+  one: the count is the largest set of supporting peptides none of which lies
+  inside another, so stricter rules always select subsets. A source's
+  aggregate count stands for one observation. Rules have one canonical form
+  (`RiboSeq() & MS() == MS() & RiboSeq()`), and `EvidenceRule.from_dict` reads
+  stored ones back. Aggregate-only MS support is labelled `ms` in proteome
+  entries. Proteome
   layers store the rule as data, replacing the separate `filters` field, so
   snapshot identities change from 0.20.0; `ExtraORFs.evidence` holds the rule.
 - `orfdata proteome` takes `--min-ribo-seq-studies`, `--min-ms-peptides`,

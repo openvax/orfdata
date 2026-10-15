@@ -515,7 +515,7 @@ def test_extra_orfs_follow_separate_ribo_seq_and_ms_rules(genome, catalog):
     assert added(MS(methods="shotgun")) == ["absent-orf", "ms-orf"]
     assert added(RiboSeq() | MS()) == ["absent-orf", "ms-orf", "ribo-orf"] and added(RiboSeq() & MS()) == []
     layer = base.with_extra_orfs(RiboSeq() | MS(), catalog=catalog).layers[-1]
-    assert layer["evidence"] == {"any": [RiboSeq().to_dict(), MS().to_dict()]}
+    assert layer["evidence"] == {"any": [MS().to_dict(), RiboSeq().to_dict()]}
     assert extra_orfs(genome, RiboSeq() | MS(), catalog=catalog).evidence == RiboSeq() | MS()
     with pytest.raises(ValueError, match="on the rule itself"):
         base.with_extra_orfs(MS(), catalog=catalog, require_unique=True)
