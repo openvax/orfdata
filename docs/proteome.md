@@ -247,7 +247,9 @@ same bytes.
 `Proteome.build` makes the usual proteome in one call: `from_genome`, then
 `with_extra_orfs(evidence, catalog=...)` and `with_viral` for each of `viral=`.
 With `cache=True` it keeps the result in the OpenVax DataCache root
-(`ORFDATA_CACHE`, `OPENVAX_DATA_CACHE`, or `cache_root=`):
+(`ORFDATA_CACHE`, `OPENVAX_DATA_CACHE`, or `cache_root=`). `cache_root=` is
+also where the species' registered catalogue is looked for, with or without
+`cache=True`:
 
 ```python
 proteome = Proteome.build(genome, RiboSeq(min_studies=2) & MS(), cache=True)
@@ -323,7 +325,8 @@ Given both a Ribo-seq and an MS requirement, an ORF needs both unless
 `--either` is set. `--require-unique` and `--require-reviewed` refine the MS
 requirement, and `--require-resolved` both. The FASTA goes to `--output` or
 standard output; `--snapshot FILE` also saves a snapshot, and `--cache`
-reuses or keeps the build in the cache (`--cache-root DIR` to choose it). A
+reuses or keeps the build in the cache; `--cache-root DIR` chooses the cache,
+for catalogues as well as builds. A
 JSON summary of the layers, identity and excluded ORFs goes to standard error.
 
 ## Not yet included

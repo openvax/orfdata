@@ -711,5 +711,27 @@ def test_cache_races_and_unreadable_stores(genome, catalog, tmp_path, monkeypatc
     with pytest.raises(PermissionError, match="inaccessible"):
         module._cached_snapshot(dict(test="locked"), make, tmp_path)
     assert len(calls) == 2  # Nothing was built for an unreadable store.
-    with pytest.raises(SystemExit):
-        run(["proteome", "--species", "mouse", "--release", "1", "--cache-root", str(tmp_path)])
+
+
+def test_cache_root_is_where_catalogues_are_found_and_killed_builds_are_swept(genome, tmp_path, monkeypatch):
+    import os
+
+    from orfdata import proteome as module
+
+    seen = []
+    monkeypatch.setattr(module, "load_catalog", lambda **kw: seen.append(kw["registry"]) or make_catalog())
+    Proteome.build(genome, cache_root=tmp_path / "root")  # Without cache=True too: lookups use it.
+    assert seen[0]._cache_root == tmp_path / "root"
+    proteomes = tmp_path / "root" / "orfdata" / "proteomes"
+    proteomes.mkdir(parents=True)
+    stale, fresh = proteomes / ".partial-old", proteomes / ".partial-new"
+    for path in (stale, fresh):
+        path.mkdir()
+    os.utime(stale, (0, 0))
+    Proteome.build(genome, cache=True, cache_root=tmp_path / "root")
+    assert not stale.exists() and fresh.exists()
+
+
+def test_a_species_without_a_catalogue_says_how_to_build_annotated_proteins_only():
+    with pytest.raises(ValueError, match=r"pass extra_orfs=False \(orfdata proteome --extra-orf-evidence none\)"):
+        load_catalog(species="dog")

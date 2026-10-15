@@ -938,7 +938,9 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
                 f"ChainFile(path, source_build={builds[0]!r}, target_build={genome_build!r}))."
                 if builds and genome_build else "")
         raise ValueError(f"No ORF catalogue covers {scope}. Catalogues exist for: {known}. "
-                         f"Load a local file with load_catalog(path) or add one to a CatalogRegistry.{lift}")
+                         f"Load a local file with load_catalog(path) or add one to a CatalogRegistry.{lift} "
+                         "For a proteome of annotated proteins only, pass extra_orfs=False "
+                         "(orfdata proteome --extra-orf-evidence none).")
     bundled = [c for c in found if c.registry is None]
     if bundled:
         return _load_catalog(expected_sha256=expected_sha256, resource=bundled[0].resource)

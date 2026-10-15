@@ -44,12 +44,11 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
     parser.add_argument("--cache", action="store_true",
                         help="Reuse an identical earlier build from the OpenVax DataCache, or keep this one there")
-    parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
+    parser.add_argument("--cache-root", help="Cache directory holding catalogues and cached builds, instead of "
+                                             "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", help="FASTA path; standard output by default")
     args = parser.parse_args(argv)
     try:
-        if args.cache_root and not args.cache:
-            raise ValueError("--cache-root needs --cache")
         evidence, options = _evidence(args)
         extra = args.extra_orf_evidence != "none"
         if not extra and (args.catalog or any(options.values())):

@@ -6,7 +6,10 @@
   and orfdata version; an identical later build loads the verified snapshot
   (#74). The key also covers the pyensembl version and, for a custom genome,
   its local annotation files' sizes and SHA-256. `orfdata proteome --cache
-  [--cache-root DIR]` does the same.
+  [--cache-root DIR]` does the same. `cache_root` is also where registered
+  catalogues are looked for, and builds killed partway leave no files behind
+  for more than a day. A species without a catalogue says to pass
+  `extra_orfs=False` for annotated proteins only.
 - Snapshots save deterministically, with no gzip timestamp, and faster: about
   8 s instead of 15 s for human Ensembl 115 with MS-supported ORFs. A cache
   hit loads in about 7 s; a first cached build takes about 30 s.

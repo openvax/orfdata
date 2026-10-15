@@ -475,7 +475,8 @@ class Proteome:
         ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, the
         evidence rule, the catalogue and viral identities, the snapshot schema
         and the orfdata version. A later identical build loads that verified
-        snapshot instead of rebuilding. Nothing is downloaded.
+        snapshot instead of rebuilding. ``cache_root`` is also where the
+        species' registered catalogue is looked for. Nothing is downloaded.
         """
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
@@ -486,7 +487,10 @@ class Proteome:
         if extra_orfs:
             rule = evidence_rule(evidence)
             if catalog is None:
-                catalog = load_catalog(species=reference.species, genome_build=reference.genome_build)
+                from .catalogs import CatalogRegistry
+
+                catalog = load_catalog(species=reference.species, genome_build=reference.genome_build,
+                                       registry=None if cache_root is None else CatalogRegistry(cache_root=cache_root))
             elif not isinstance(catalog, ORFCatalog):
                 catalog = merge_catalogs(catalog)
         built = []
@@ -817,7 +821,9 @@ def _structure_from_transcript(transcript):
 
 def _cached_snapshot(key, make, cache_root):
     """The snapshot for ``key`` in the DataCache store, built by ``make()`` when absent or invalid."""
+    import shutil
     import tempfile
+    import time
 
     from .datasets import _datacache, _digest, get_data_dir
 
@@ -829,7 +835,13 @@ def _cached_snapshot(key, make, cache_root):
     if inspected.status not in ("missing", "invalid"):
         raise PermissionError(f"The proteome cache at {store} is {inspected.status}")
     store.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=store.parent) as work:
+    for stale in store.parent.glob(".partial-*"):  # Left by a build that was killed a day or more ago.
+        try:
+            if time.time() - stale.stat().st_mtime > 86400:
+                shutil.rmtree(stale, ignore_errors=True)
+        except OSError:
+            pass
+    with tempfile.TemporaryDirectory(dir=store.parent, prefix=".partial-") as work:
         files = {_SNAPSHOT: Path(work) / _SNAPSHOT, "recipe.json": Path(work) / "recipe.json"}
         proteome = make()
         proteome.__dict__["_identity"] = proteome.save(files[_SNAPSHOT])
