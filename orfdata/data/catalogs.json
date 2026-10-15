@@ -1,1 +1,105 @@
-{}
+{
+  "openprot-mouse": {
+    "default_version": "2.2-1",
+    "versions": {
+      "2.2-1": {
+        "manifest": {
+          "catalog_id": "openprot-mouse",
+          "version": "2.2-1",
+          "title": "OpenProt 2.2 mouse alternative ORFs (MS, at least 2 peptides)",
+          "references": [
+            {
+              "taxon_id": 10090,
+              "species": "mus_musculus",
+              "genome_build": "GRCm39",
+              "annotation_name": "ensembl",
+              "annotation_version": "106",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            },
+            {
+              "taxon_id": 10090,
+              "species": "mus_musculus",
+              "genome_build": "GRCm39",
+              "annotation_name": "OpenProt",
+              "annotation_version": "2.2",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4"
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "tsv",
+              "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv.zip",
+              "sha256": "4b4f466084224d4796a68d77913997eace60a31b43e1c9497d85f5af5e62c1b0",
+              "size": 2046162,
+              "access_terms": "OpenProt 2.2 download (openprot.org). OpenProt states no licence for its files and makes no warranties; cite Leblanc et al. 2024 (doi:10.1093/nar/gkad1050). Fetched from OpenProt by each user; orfdata does not redistribute it.",
+              "license_url": null,
+              "redistributable": false,
+              "metadata": {}
+            },
+            {
+              "asset_id": "bed",
+              "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.bed.zip",
+              "sha256": "afc89cc4e0c9ffe823e5f9997257d14c1c5f7c89513f08177f33e54a1a6dbc3b",
+              "size": 662055,
+              "access_terms": "OpenProt 2.2 download (openprot.org). OpenProt states no licence for its files and makes no warranties; cite Leblanc et al. 2024 (doi:10.1093/nar/gkad1050). Fetched from OpenProt by each user; orfdata does not redistribute it.",
+              "license_url": null,
+              "redistributable": false,
+              "metadata": {}
+            },
+            {
+              "asset_id": "fasta",
+              "url": "https://api.openprot.org/api/2.0/MM/downloads/mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.fasta.zip",
+              "sha256": "0aa04ba22fe48fe8d9c2746d09ee63071f4856da811cefc59fb2ceccb5a818c4",
+              "size": 739626,
+              "access_terms": "OpenProt 2.2 download (openprot.org). OpenProt states no licence for its files and makes no warranties; cite Leblanc et al. 2024 (doi:10.1093/nar/gkad1050). Fetched from OpenProt by each user; orfdata does not redistribute it.",
+              "license_url": null,
+              "redistributable": false,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Leblanc S, et al. OpenProt 2.0 builds a path to the functional characterization of alternative proteins. Nucleic Acids Res. 2024;52(D1):D522-D528. doi:10.1093/nar/gkad1050"
+          ],
+          "coverage": {
+            "records": 2976,
+            "distinct_protein_sequences": 2912,
+            "evidence_summaries": 5824,
+            "source_rows": 8645,
+            "resolved_rows": 4074,
+            "unresolved_rows": 4571,
+            "accessions": 2913,
+            "resolved_accessions": 2912
+          },
+          "processing": {
+            "importer": "openprot-v1",
+            "annotation_name": "ensembl",
+            "transcript_prefix": "ENSMUST",
+            "members": {
+              "tsv": "mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.tsv",
+              "bed": "mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.bed",
+              "fasta": "mouse-openprot-2_2-altprots+isoforms-min_2_pep-GRCm39.106.fasta"
+            },
+            "unresolved_reason": "RefSeq transcript assignment; no RefSeq annotation is pinned",
+            "scope": "OpenProt 2.2 AltProts and novel isoforms with at least two unique peptides (min_2_pep), assigned to Ensembl 106 GRCm39 transcripts; MS and translation-event scores are aggregate counts"
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from OpenProt's own downloads; orfdata does not redistribute OpenProt data. OpenProt states no licence for these files; cite Leblanc et al. 2024 (doi:10.1093/nar/gkad1050).",
+          "redistributable": false
+        },
+        "assets": {}
+      }
+    }
+  }
+}

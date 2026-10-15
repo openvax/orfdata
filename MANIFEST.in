@@ -7,3 +7,4 @@ recursive-include tests/data/pfizer_rna *.gz *.xlsx
 recursive-include tests/data/search_reference *.gz
 recursive-include tests/data/wang *.zip *.gz
 recursive-include tests/data/ingolia *.gz *.txt
+recursive-include tests/data/openprot *.zip *.gz

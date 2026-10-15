@@ -22,7 +22,7 @@ from typing import Mapping, Optional
 from . import _structure
 from .catalog import ORFCatalog, load_catalog, merge_catalogs
 from .evidence import EvidenceRule, evidence_rule
-from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _versioned
+from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_assembly, _versioned
 from .reference import ReferenceContext
 
 SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
@@ -746,17 +746,23 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
         placed, reason = [], None
         source_id = next((i for i in _id_forms(record.transcript_id) if i in layouts), None)
         source = transcript_by_id(source_id) if source_id in layouts else None
+        pinned = record.reference_context
+        # A record from another release of this assembly is placed by path and protein, even on its own transcript.
+        elsewhere = pinned is not None and pinned.key != reference.key and _same_assembly(pinned, reference)
         if source is None:
             reason = "Transcript absent from this annotation"
         else:
             try:
-                placed.append(TranscriptORF(record, source, context=reference, _layout=layouts[source_id]))
+                placed.append(TranscriptORF(record, source, context=reference, any_transcript=elsewhere,
+                                            _layout=layouts[source_id]))
+                if not placed[-1].on_source_transcript:  # Placed by path on another version of it.
+                    reason = "ORF transcript version mismatch"
             except ValueError as error:
                 reason = str(error)
         for transcript_id in candidates[record.orf_id]:
             layout = layouts.get(transcript_id)
             # The source transcript is tried again by path when strict binding failed, e.g. across releases.
-            if (transcript_id == source_id and reason is None) or layout is None:
+            if layout is None or any(o.transcript.id == transcript_id for o in placed):
                 continue
             if _layout_offset(layout, model.strand, model.coding_blocks) is None:
                 continue

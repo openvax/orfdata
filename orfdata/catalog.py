@@ -411,6 +411,8 @@ class ORFCatalog:
         self._aliases = {}
         for r in self.records:
             names = {f"{m.source}:{m.orf_id}" for m in r.members or (r,)} | {m.orf_id for m in r.members}
+            # A source accession split by coding path, "IP_1@ENST...", still answers to "IP_1".
+            names |= {m.orf_id.split("@")[0] for m in r.members or (r,) if "@" in m.orf_id}
             for alias in names - {r.orf_id}:
                 self._aliases.setdefault(alias, []).append(r)
         for r in self.records:
@@ -503,9 +505,8 @@ class ORFCatalog:
         In a merged catalogue every source's ID finds its ORF. A bare ID that
         two sources use for different ORFs raises rather than choosing one.
         """
-        if orf_id in self._by_id:
-            return self._by_id[orf_id]
-        found = self._aliases.get(orf_id, ())
+        found = list(dict.fromkeys(
+            ([self._by_id[orf_id]] if orf_id in self._by_id else []) + list(self._aliases.get(orf_id, ()))))
         if len(found) > 1:
             raise ValueError(f"{orf_id} names several ORFs: {', '.join(r.orf_id for r in found)}")
         if not found:
@@ -919,7 +920,7 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     Otherwise the one catalogue in ``registry`` (by default the packaged
     :class:`CatalogRegistry`) covering the species is opened offline, at its
     default release unless only another release covers the assembly; it must
-    already be downloaded and is never downloaded here. A species without a
+    already be downloaded or built and is never fetched here. A species without a
     catalogue raises, naming those that exist. Absence from a catalogue is
     never evidence of absence.
 
@@ -1006,14 +1007,103 @@ def _releases(found):
     return chosen
 
 
-def _open_registered(choice, expected_sha256):
+def _installed(choice):
+    """How a registered release is installed: "downloaded", "built", "damaged" or None. Offline, unhashed."""
     registry, name, version = choice.registry, choice.name, choice.version
-    if registry.inspect(name, version, verify_files=False).status == "missing":
-        raise ValueError(f"The {name} {version} ORF catalogue is not installed; download it first with "
-                         f"CatalogRegistry().download({name!r}, {version!r}) or "
-                         f"'orfdata catalogs download {name} --version {version}'")
+    try:
+        damaged = False
+        if registry.published(name, version):
+            status = registry.inspect(name, version, verify_files=False).status
+            if status == "available":
+                return "downloaded"
+            damaged = status != "missing"
+        status = registry.inspect_build(name, version, verify_files=False).status
+    except ImportError:  # Without DataCache nothing can have been downloaded or built.
+        return None
+    if status == "available":
+        return "built"
+    return "damaged" if damaged or status != "missing" else None
+
+
+def _open_registered(choice, expected_sha256):
+    """A published download if installed, else a local build from the pinned sources."""
+    registry, name, version = choice.registry, choice.name, choice.version
+    installed = _installed(choice)
+    if installed in (None, "damaged"):
+        verb = "download" if registry.published(name, version) else "build"
+        when = " again" if installed else (" first" if verb == "download" else " from its pinned sources")
+        how = (f"{verb} it{when} with CatalogRegistry().{verb}({name!r}, {version!r}"
+               f"{', force=True' if installed else ''}) or 'orfdata catalogs {verb} {name} --version {version}"
+               f"{' --force' if installed else ''}'")
+        try:
+            from .datasets import _datacache
+
+            _datacache()
+        except ImportError:
+            how = "install orfdata[data], then " + how
+        state = "damaged" if installed else "not installed"
+        raise ValueError(f"The {name} {version} ORF catalogue is {state}; {how}")
+    if installed == "built":
+        inspected = registry.inspect_build(name, version)
+        if inspected.status != "available":
+            return registry.open_build(name, version)  # Raises with what is wrong.
+        if expected_sha256 is not None and hashlib.sha256(
+                Path(inspected.files["catalog.json.gz"].path).read_bytes()).hexdigest() != expected_sha256:
+            raise ValueError("ORF catalogue checksum mismatch")
+        return registry.open_build(name, version)
     if expected_sha256 is not None:
         pinned = registry.download_metadata(name, version)["assets"]["catalog.json.gz"]["sha256"]
         if pinned != expected_sha256:
             raise ValueError("ORF catalogue checksum mismatch")
     return registry.open(name, version)
+
+
+@dataclass(frozen=True)
+class CatalogStatus:
+    """One ORF catalogue load_catalog can open, and whether it is ready offline.
+
+    ``selected`` marks the one ``load_catalog(species=..., genome_build=...)``
+    opens for its species and assembly. ``installed`` is ``"bundled"``,
+    ``"downloaded"``, ``"built"``, ``"damaged"`` or None; ``acquire`` names the explicit step
+    that installs a missing one, ``"download"`` or ``"build"``.
+    """
+
+    species: str
+    genome_build: str
+    name: str
+    version: Optional[str]
+    title: str
+    records: int
+    selected: bool
+    installed: Optional[str]
+    acquire: Optional[str]
+
+
+def catalog_status(*, registry=None):
+    """Every ORF catalogue for every species, without loading or downloading any.
+
+    Lists the bundled catalogue and each registry release with its species,
+    assembly, declared record count and installation, so a missing catalogue
+    can be told apart from an empty query.
+    """
+    choices = _catalog_choices(registry)
+    selected = set()
+    for key in dict.fromkeys((c.species, c.genome_build) for c in choices):
+        found = [c for c in choices if (c.species, c.genome_build) == key]
+        bundled = [c for c in found if c.registry is None]
+        chosen = bundled or _releases(found)
+        if len(chosen) == 1:  # Two candidate catalogues are never chosen between.
+            selected.add(chosen[0])
+    rows = []
+    for c in choices:
+        if c.registry is None:
+            manifest = json.loads(files("orfdata").joinpath(f"data/{c.resource}/manifest.json").read_text())
+            rows.append(CatalogStatus(c.species, c.genome_build, c.name, manifest["dataset_version"],
+                                      "Bundled ORF catalogue", manifest["statistics"]["records"], c in selected,
+                                      "bundled", None))
+            continue
+        info = c.registry.info(c.name, c.version)
+        rows.append(CatalogStatus(c.species, c.genome_build, c.name, c.version, info.title, info.coverage["records"],
+                                  c in selected, _installed(c),
+                                  "download" if c.registry.published(c.name, c.version) else "build"))
+    return tuple(rows)

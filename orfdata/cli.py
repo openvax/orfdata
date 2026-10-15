@@ -181,7 +181,7 @@ def _query(args, parser, catalog_loader):
                 raise ValueError(
                     "No mapped initiation context covers the SNV; coding consequences require full transcript reconstruction"
                 )
-    except (ValueError, KeyError, OSError) as exc:
+    except (ValueError, KeyError, OSError, ImportError) as exc:
         parser.error(str(exc))
     if args.format == "json":
         output = {

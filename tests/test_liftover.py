@@ -366,3 +366,41 @@ def test_a_genome_build_alone_picks_the_catalogue(capsys):
     with pytest.raises(SystemExit):
         run(["--genome-build", "GRCh37", "--gene", "TPST1"])
     assert "No ORF catalogue covers homo_sapiens GRCh37" in capsys.readouterr().err
+
+
+def test_placement_on_another_version_of_the_source_transcript_says_so(genome):  # noqa: F811
+    from orfdata import Proteome
+
+    older = ReferenceContext(10090, "mus_musculus", "GRCm39", "synthetic", "0")
+    base = Proteome.from_genome(genome)
+    for transcript_id, binding in (("test_rna.1", None), ("test_rna.2", "ORF transcript version mismatch")):
+        record = replace(make_catalog().get("ms-orf"), transcript_id=transcript_id, reference_context=older)
+        proteome = base.with_extra_orfs(None, catalog=ORFCatalog([record], make_catalog().metadata))
+        entry, = [e for e in proteome if e.kind == "extra_orf"]
+        assert entry.source_binding == binding
+        assert any(o.on_source_transcript for o in entry.occurrences) is (binding is None)
+        assert proteome.layers[-1]["not_on_source_transcript"] == (binding is not None)
+        transcripts = [o.transcript_id for o in entry.occurrences]
+        assert len(transcripts) == len(set(transcripts))  # Each transcript once.
+
+
+def test_a_lifted_orf_is_on_its_source_transcript_under_the_new_assemblys_version(chain, genome):  # noqa: F811
+    native = make_catalog()
+    old = ORFCatalog([replace(shifted(native.get("ms-orf")), transcript_id="test_rna.7")],
+                     dict(native.metadata, genome_build="GRCm38"))
+    found = extra_orfs(genome, None, catalog=lift_catalog(old, chain))
+    assert [o.on_source_transcript for o in found.for_orf("ms-orf") if o.transcript.id == "test_rna"] == [True]
+    assert found.source_failures == ()
+
+
+def test_a_bare_accession_that_names_several_records_is_never_guessed():
+    from orfdata import merge_catalogs
+
+    split = ORFCatalog([replace(orf("IP_9@test_rna"), source="b"),
+                        replace(orf("IP_9@test_rna_long", transcript_id="test_rna_long", blocks=((218, 226),),
+                                    protein="MK"), source="b")],
+                       dict(make_catalog().metadata, dataset_version="b-v1", sources=[dict(id="b", scope="t")]))
+    bare = ORFCatalog([replace(orf("IP_9", blocks=((206, 214),), protein="KP"), source="c")],
+                      dict(make_catalog().metadata, dataset_version="c-v1", sources=[dict(id="c", scope="t")]))
+    with pytest.raises(ValueError, match="IP_9 names several ORFs"):
+        merge_catalogs([split, bare]).get("IP_9")

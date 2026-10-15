@@ -96,12 +96,12 @@ transcript alongside them.
 | Species | Annotated proteins | Noncanonical ORFs |
 | --- | --- | --- |
 | Human | From PyEnsembl | 7,264 GRCh38 ORFs, bundled |
-| Mouse | From PyEnsembl | None released; [OpenProt adapter](https://github.com/openvax/orfdata/issues/18) in progress |
+| Mouse | From PyEnsembl | 2,976 GRCm39 ORFs from OpenProt 2.2, [built locally](catalogs.md#mouse-orfs-from-openprot) |
 | Dog | From PyEnsembl | None released; no qualified source yet |
 | Budding yeast | From PyEnsembl | None released |
 
-`with_extra_orfs()` raises for a species without a catalogue rather than
-returning an annotated-only proteome. Human ORF evidence is never transferred
+`with_extra_orfs()` raises for a species without a catalogue, or whose
+catalogue isn't built yet, rather than returning an annotated-only proteome. Human ORF evidence is never transferred
 to another species. The same API also serves
 [RNA, ribosome and protein measurements](measurements.md) for human, mouse, dog
 and yeast; see [released data and gaps](coverage.md).

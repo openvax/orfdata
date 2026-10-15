@@ -2,8 +2,10 @@
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 
+from .catalog import catalog_status
 from .catalogs import CatalogRegistry
 from .cli import _add_query_arguments, _query
 
@@ -16,6 +18,7 @@ def run(argv=None, prog=None):
     listing = commands.add_parser("list", help="Discover release manifests without downloading")
     listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
     listing.add_argument("--taxon-id", type=int)
+    commands.add_parser("status", help="Every species' catalogues, including the bundled one, and what is installed")
     query_parser = None
     for command in ("info", "inspect", "download", "build", "query"):
         subparser = commands.add_parser(command)
@@ -36,6 +39,8 @@ def run(argv=None, prog=None):
         registry = CatalogRegistry(definitions, cache_root=args.cache_root)
         if args.command == "list":
             output = [m.to_dict() for m in registry.list(species=args.species, taxon_id=args.taxon_id)]
+        elif args.command == "status":
+            output = [asdict(row) for row in catalog_status(registry=registry)]
         elif args.command == "info":
             output = registry.info(args.name, args.version).to_dict()
         elif args.command == "inspect":
@@ -55,10 +60,12 @@ def run(argv=None, prog=None):
             method(args.name, args.version, force=args.force, source_paths=paths or None)
             inspect = registry.inspect_build if args.command == "build" else registry.inspect
             result = inspect(args.name, args.version)
-            output = dict(status=result.status, path=str(result.path), verified=result.verified)
+            output = dict(status=result.status, path=str(result.path))
+            if args.command == "download":  # A local build is checked by its receipt, not a published pin.
+                output["verified"] = result.verified
         else:
             method = registry.open_build if args.built else registry.open
             return _query(args, query_parser, lambda _: method(args.name, args.version))
-    except (ValueError, TypeError, KeyError, OSError) as error:
+    except (ValueError, TypeError, KeyError, OSError, ImportError) as error:
         parser.error(str(error))
     print(json.dumps(output, indent=2, sort_keys=True))

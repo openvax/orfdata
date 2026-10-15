@@ -154,8 +154,9 @@ identical sequences, for example before an exact peptide search.
 
 Without `catalog=`, `load_catalog` picks the catalogue for the genome's species
 and assembly: a bundled one, or else one installed through
-[`CatalogRegistry`](catalogs.md). Only human GRCh38 has one so far; for other
-species the error names the catalogues that exist. Pass `catalog=` to use
+[`CatalogRegistry`](catalogs.md). Human GRCh38 has the bundled one, and mouse
+GRCm39 has OpenProt's once [built](catalogs.md#mouse-orfs-from-openprot); for
+other species the error names the catalogues that exist. Pass `catalog=` to use
 another, such as `load_catalog(path)`. A catalogue for a different species or
 assembly is rejected.
 
@@ -331,8 +332,10 @@ JSON summary of the layers, identity and excluded ORFs goes to standard error.
 
 ## Not yet included
 
-Mouse and dog noncanonical ORFs, and translated endogenous retrovirus (ERV)
-ORFs without annotated transcripts, need new source data; see the
+Mouse noncanonical ORFs come from OpenProt once you build that catalogue; see
+[Mouse ORFs from OpenProt](catalogs.md#mouse-orfs-from-openprot). Dog
+noncanonical ORFs, and translated endogenous retrovirus (ERV) ORFs without
+annotated transcripts, need new source data; see the
 [data roadmap](https://github.com/openvax/orfdata/issues/3). Products from
 circular RNAs, stop-codon readthrough or non-AUG starts can be described with
 `TranscriptORF.at` and `SourceRNA` (see the [examples](examples.md)), but no
