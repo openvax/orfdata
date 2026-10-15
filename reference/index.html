@@ -1580,6 +1580,10 @@ MS assay type is unspecified remain labelled <code>"ms_unclassified"</code>.</p>
 possible protein. Inspect <code>orf.evidence.peptides</code> for peptide sequences, source
 accessions, matching intervals, mapping counts and review quality. Missing counts
 remain unknown; low or mixed spectrum reviews do not count as supporting MS.</p>
+<p><code>has_evidence</code> and <code>catalog.query(evidence=...)</code> also take rules that set
+Ribo-seq and MS stringency separately, such as
+<code>RiboSeq(min_studies=2) &amp; MS(min_peptides=2)</code>; see
+<a href="../proteome/#separate-ribo-seq-and-ms-stringency">Build a reference proteome</a>.</p>
 <p>Some sources provide only aggregate support counts. <code>EvidenceSummary</code> keeps the
 native metric, definition, value, source/release, source checksum and explicitly
 scoped entity. For example, <a href="https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.readme.html">OpenProt's native metrics</a>

@@ -387,6 +387,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choose the evidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#separate-ribo-seq-and-ms-stringency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separate Ribo-seq and MS stringency
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1270,6 +1287,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choose the evidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#separate-ribo-seq-and-ms-stringency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separate Ribo-seq and MS stringency
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1462,6 +1496,82 @@ keeps peptides with convincing community spectrum reviews. Because those two
 properties come from different sources, no bundled peptide has both.
 <code>require_resolved</code> excludes support that consists only of aggregate counts.
 See <a href="../reference/#evidence">ORFs and evidence</a> for the full definitions.</p>
+<h3 id="separate-ribo-seq-and-ms-stringency">Separate Ribo-seq and MS stringency<a class="headerlink" href="#separate-ribo-seq-and-ms-stringency" title="Permanent link">&para;</a></h3>
+<p>For more control, pass a rule. <code>RiboSeq(min_studies=n)</code> needs ribosome
+profiling in at least <code>n</code> independent studies the source names, and
+<code>MS(min_peptides=n, unique=..., reviewed=..., methods=...)</code> needs at least <code>n</code>
+distinct supporting peptide sequences. <code>&amp;</code> requires both rules and <code>|</code> accepts
+either:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">MS</span><span class="p">,</span> <span class="n">RiboSeq</span>
+
+<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>                        <span class="c1"># replicated Ribo-seq</span>
+<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># Ribo-seq and MS</span>
+<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># either</span>
+<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">MS</span><span class="p">(</span><span class="n">methods</span><span class="o">=</span><span class="p">(</span><span class="s2">"shotgun"</span><span class="p">,</span> <span class="s2">"ms_unclassified"</span><span class="p">)))</span>     <span class="c1"># not HLA-only</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th style="text-align: right;">Human ORFs</th>
+<th style="text-align: right;">Encoded in Ensembl 115</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RiboSeq(min_studies=2)</code></td>
+<td style="text-align: right;">3,085</td>
+<td style="text-align: right;">3,072</td>
+</tr>
+<tr>
+<td><code>RiboSeq(min_studies=3)</code></td>
+<td style="text-align: right;">1,675</td>
+<td style="text-align: right;">1,671</td>
+</tr>
+<tr>
+<td><code>MS(min_peptides=2)</code></td>
+<td style="text-align: right;">682</td>
+<td style="text-align: right;">681</td>
+</tr>
+<tr>
+<td><code>MS(methods=("shotgun", "ms_unclassified"))</code></td>
+<td style="text-align: right;">610</td>
+<td style="text-align: right;">607</td>
+</tr>
+<tr>
+<td><code>RiboSeq(min_studies=2) &amp; MS()</code></td>
+<td style="text-align: right;">1,296</td>
+<td style="text-align: right;">1,293</td>
+</tr>
+<tr>
+<td><code>RiboSeq(min_studies=2) &amp; MS(min_peptides=2)</code></td>
+<td style="text-align: right;">457</td>
+<td style="text-align: right;">456</td>
+</tr>
+<tr>
+<td><code>RiboSeq(min_studies=2) \| MS()</code></td>
+<td style="text-align: right;">3,975</td>
+<td style="text-align: right;">3,960</td>
+</tr>
+</tbody>
+</table>
+<p>GENCODE's <code>c…riboseqorf…</code> IDs are the 3,085 ORFs seen in two or more studies.
+Each method name above is the simplest rule: <code>"ms"</code> is <code>MS()</code>, <code>"hla"</code> is
+<code>MS(methods=("hla",))</code> and <code>"ribosome"</code> is <code>RiboSeq()</code>. A peptide counts once
+however many assay types report it, and so do peptides that differ only by I
+and L (equal in mass). Nested peptides, such as HLA length variants, count as
+one: the count is the largest set of supporting peptides none of which lies
+inside another, so a long peptide never hides two shorter, separate ones, and
+a stricter rule always selects a subset of a looser one. Of the 916 ORFs with
+two or more distinct peptide sequences, 234 have fewer than two that aren't
+nested. Each rule in <code>&amp;</code> is checked on its own:
+<code>MS(methods="shotgun") &amp; MS(unique=True)</code> needs a shotgun peptide and a unique
+peptide, not one unique shotgun peptide. A source's aggregate count stands for one observation:
+it satisfies <code>RiboSeq()</code> and <code>MS()</code> but never <code>min_studies</code> or <code>min_peptides</code>
+above 1, <code>unique</code>, <code>reviewed</code> or <code>resolved=True</code>. The layer stores the rule,
+so a snapshot records exactly how its ORFs were chosen; <code>EvidenceRule.from_dict</code>
+reads it back. Equal rules are stored the same way, whatever their order or
+repeats, so they give one proteome identity.</p>
 <p>A translated ORF or a detected peptide does not by itself establish a stable,
 functional protein. Missing evidence does not establish that an ORF is never
 translated.</p>
@@ -1563,7 +1673,14 @@ orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span cl
 <p><code>--extra-orf-evidence</code> accepts the evidence names above, <code>all</code> for every
 catalogue ORF, or <code>none</code> for annotated proteins only. <code>--require-unique</code>,
 <code>--require-reviewed</code>, <code>--require-resolved</code> and <code>--catalog FILE</code> match the Python
-options. The FASTA goes to <code>--output</code> or standard output; <code>--snapshot FILE</code>
+options. Rules have their own options:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">2</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span>
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">3</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">2</span><span class="w"> </span>--either
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span><span class="w"> </span>--ms-methods<span class="w"> </span>shotgun,ms_unclassified
+</code></pre></div>
+<p>Given both a Ribo-seq and an MS requirement, an ORF needs both unless
+<code>--either</code> is set. <code>--require-unique</code> and <code>--require-reviewed</code> refine the MS
+requirement, and <code>--require-resolved</code> both. The FASTA goes to <code>--output</code> or standard output; <code>--snapshot FILE</code>
 also saves a snapshot. A JSON summary of the layers, identity and excluded ORFs
 goes to standard error.</p>
 <h2 id="not-yet-included">Not yet included<a class="headerlink" href="#not-yet-included" title="Permanent link">&para;</a></h2>
