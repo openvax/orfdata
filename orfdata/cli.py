@@ -25,6 +25,10 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         from .proteome_cli import run as proteome_run
 
         return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
+    if argv and argv[0] == "genomes":
+        from .genomes_cli import run as genomes_run
+
+        return genomes_run(argv[1:], prog=(prog or "orfdata") + " genomes")
     if argv and argv[0] in ("lift", "chains"):
         from . import liftover_cli
 
@@ -34,7 +38,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         description=__doc__, prog=prog,
         epilog="Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
                "catalogues with 'orfdata catalogs --help'; lift a catalogue to another assembly with "
-               "'orfdata lift --help' and 'orfdata chains --help'; quantitative data with "
+               "'orfdata lift --help' and 'orfdata chains --help'; annotations PyEnsembl lacks, such as "
+               "T2T-CHM13, with 'orfdata genomes --help'; quantitative data with "
                "'orfdata datasets --help'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)

@@ -1,0 +1,30 @@
+{
+  "t2t-chm13": {
+    "species": "homo_sapiens",
+    "reference_name": "T2T-CHM13v2.0",
+    "annotation_name": "ensembl-rapid",
+    "annotation_version": "2022_07",
+    "title": "Ensembl rapid-release gene annotation (2022_07) of the T2T-CHM13v2.0 assembly",
+    "assets": {
+      "gtf": {
+        "url": "https://ftp.ensembl.org/pub/rapid-release/species/Homo_sapiens/GCA_009914755.4/ensembl/geneset/2022_07/Homo_sapiens-GCA_009914755.4-2022_07-genes.gtf.gz",
+        "sha256": "da588cd0ba45791a2feccdef7e5c0ec960f4bd1f7794f079b02b98360ba2c98a",
+        "size": 45592443
+      },
+      "transcripts": {
+        "url": "https://ftp.ensembl.org/pub/rapid-release/species/Homo_sapiens/GCA_009914755.4/ensembl/geneset/2022_07/Homo_sapiens-GCA_009914755.4-2022_07-cdna.fa.gz",
+        "sha256": "9982835c9144be757e3de6ffe58789e4871e9c4b88f4d741ecbc3db916c78f6d",
+        "size": 84975414
+      },
+      "proteins": {
+        "url": "https://ftp.ensembl.org/pub/rapid-release/species/Homo_sapiens/GCA_009914755.4/ensembl/geneset/2022_07/Homo_sapiens-GCA_009914755.4-2022_07-pep.fa.gz",
+        "sha256": "fb40a733429d433a41a2b6b4eaadad279b0fe9b65c54f3181fc58c4260e2b7a6",
+        "size": 12019190
+      }
+    },
+    "provider": "Ensembl",
+    "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "assembly_accession": "GCA_009914755.4"
+  }
+}

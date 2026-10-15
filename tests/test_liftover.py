@@ -185,10 +185,17 @@ def test_orfs_that_do_not_lift_are_reported_where_they_would_be_placed(chain, ge
     beyond = replace(orf("beyond", blocks=((390, 410),), protein="MKPGKP", ribosome_studies=("s",)), contig="1")
     old = ORFCatalog([shifted(r) for r in (*native.records, beyond)], dict(native.metadata, genome_build="GRCm38"))
     found = extra_orfs(genome, None, catalog=lift_catalog(old, chain))
-    assert ("beyond", "Did not lift to GRCm39: A coding block crosses an alignment gap or edge") in [
-        (e.orf_id, e.reason) for e in found.excluded]
+    assert [(e.orf_id, e.reason) for e in found.unlifted] == [
+        ("beyond", "Did not lift to GRCm39: A coding block crosses an alignment gap or edge")]
+    # Every exclusion is a record of the lifted catalogue, as Varcode looks them up there.
+    assert all(found.catalog.get(e.orf_id) for e in found.excluded)
     # Under a rule it doesn't meet, an unlifted ORF isn't reported.
-    assert "beyond" not in [e.orf_id for e in extra_orfs(genome, "ms", catalog=lift_catalog(old, chain)).excluded]
+    assert extra_orfs(genome, "ms", catalog=lift_catalog(old, chain)).unlifted == ()
+    # A proteome lists it among its exclusions.
+    from orfdata import Proteome
+
+    proteome = Proteome.from_genome(genome).with_extra_orfs(None, catalog=lift_catalog(old, chain))
+    assert "beyond" in [e.orf_id for e in proteome.excluded] and proteome.layers[-1]["unlifted"] == 1
 
 
 def test_a_lifted_record_can_come_first_in_a_merge(chain):
@@ -225,7 +232,9 @@ def test_several_places_are_listed_apart_from_the_reason(chain):
 def test_pinned_chains_name_their_terms():
     pins = {c.name: c for c in pinned_chains()}
     assert set(pins) == {"GRCh37_to_GRCh38", "GRCh38_to_GRCh37", "GRCh38_to_NCBI36", "NCBI36_to_GRCh38",
+                         "GRCh38_to_T2T-CHM13v2.0", "T2T-CHM13v2.0_to_GRCh38",
                          "GRCm38_to_GRCm39", "GRCm39_to_GRCm38", "GRCm38_to_NCBIM37", "NCBIM37_to_GRCm38"}
+    assert pins["GRCh38_to_T2T-CHM13v2.0"].provider == "T2T Consortium" and not pins["GRCh38_to_T2T-CHM13v2.0"].restricted
     assert [c.name for c in pinned_chains(species="mouse")] == [
         "GRCm38_to_GRCm39", "GRCm38_to_NCBIM37", "GRCm39_to_GRCm38", "NCBIM37_to_GRCm38"]
     assert [c.provider for c in pinned_chains() if c.restricted] == ["UCSC", "UCSC"]
@@ -293,7 +302,8 @@ def test_cli_lifts_with_a_chain_file_or_a_downloaded_pin(chain, pinned, tmp_path
 def test_cli_lists_pins_without_downloading(capsys):
     run(["chains", "list", "--species", "human"])
     listed = json.loads(capsys.readouterr().out)
-    assert [c["name"] for c in listed] == ["GRCh37_to_GRCh38", "GRCh38_to_GRCh37", "GRCh38_to_NCBI36", "NCBI36_to_GRCh38"]
+    assert [c["name"] for c in listed] == ["GRCh37_to_GRCh38", "GRCh38_to_GRCh37", "GRCh38_to_NCBI36",
+                                           "GRCh38_to_T2T-CHM13v2.0", "NCBI36_to_GRCh38", "T2T-CHM13v2.0_to_GRCh38"]
     assert listed[0]["provider"] == "Ensembl" and listed[0]["restricted"] is False
 
 
@@ -340,8 +350,11 @@ def test_damaged_and_missing_chains_say_how_to_download_again(chain, pinned, tmp
 
 
 def test_an_assembly_without_a_pinned_chain_suggests_a_chain_file():
-    with pytest.raises(ValueError, match=r"--to T2T-CHM13v2.0 --chain FILE --output FILE', or lift_catalog\(.*"
-                                         r"ChainFile\(path, source_build='GRCh38', target_build='T2T-CHM13v2.0'\)"):
+    with pytest.raises(ValueError, match=r"--to HG002v1.1 --chain FILE --output FILE', or lift_catalog\(.*"
+                                         r"ChainFile\(path, source_build='GRCh38', target_build='HG002v1.1'\)"):
+        load_catalog(species="human", genome_build="HG002v1.1")
+    # T2T-CHM13 is reached through the T2T Consortium's public-domain chain.
+    with pytest.raises(ValueError, match="need the chain files GRCh38_to_T2T-CHM13v2.0 to reach T2T-CHM13v2.0"):
         load_catalog(species="human", genome_build="T2T-CHM13v2.0")
 
 
@@ -526,7 +539,8 @@ def test_status_lists_the_assemblies_each_catalogue_reaches():
     rows = {row.name: row for row in catalog_status()}
     assert rows["bundled"].lifts_to == (
         dict(genome_build="GRCh37", chains=["GRCh38_to_GRCh37"], downloaded=False),
-        dict(genome_build="NCBI36", chains=["GRCh38_to_NCBI36"], downloaded=False))
+        dict(genome_build="NCBI36", chains=["GRCh38_to_NCBI36"], downloaded=False),
+        dict(genome_build="T2T-CHM13v2.0", chains=["GRCh38_to_T2T-CHM13v2.0"], downloaded=False))
     assert rows["openprot-mouse"].lifts_to[1] == dict(
         genome_build="NCBIM37", chains=["GRCm39_to_GRCm38", "GRCm38_to_NCBIM37"], downloaded=False)
 

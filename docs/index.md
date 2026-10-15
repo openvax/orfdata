@@ -95,7 +95,7 @@ transcript alongside them.
 
 | Species | Annotated proteins | Noncanonical ORFs |
 | --- | --- | --- |
-| Human | From PyEnsembl | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37 and NCBI36 |
+| Human | From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and [T2T-CHM13](catalogs.md#t2t-chm13) |
 | Mouse | From PyEnsembl | 2,976 GRCm39 ORFs from OpenProt 2.2, [built locally](catalogs.md#mouse-orfs-from-openprot); lifted to GRCm38 and NCBIM37 |
 | Dog | From PyEnsembl | None released; no qualified source yet |
 | Budding yeast | From PyEnsembl | None released |

@@ -1,3 +1,33 @@
+# 0.28.0
+
+- T2T-CHM13v2.0 (#72): `orfdata genomes install t2t-chm13` installs Ensembl's
+  rapid-release CHM13 annotation (2022_07). It is pinned by URL, size and
+  SHA-256, and `load_genome("t2t-chm13")` opens it offline as a PyEnsembl
+  genome. The T2T Consortium's public-domain GRCh38↔CHM13 chains are pinned,
+  so the bundled catalogue lifts to it automatically: 7,208 ORFs lift and
+  6,767 place. `Proteome.build(load_genome("t2t-chm13"))` gives 104,957
+  annotated proteins plus 2,039 MS-supported ORFs, and `orfdata proteome
+  --genome t2t-chm13` does the same.
+- `pinned_genomes`, `install_genome`, `load_genome` and `orfdata genomes
+  list|install` handle annotations that `EnsemblRelease` doesn't cover. The
+  index belongs to the pinned files, `--force` rebuilds a damaged one, and the
+  genome keeps its species and assembly accession when pickled.
+- Varcode no longer fails on extra ORFs for a lifted genome:
+  `ExtraORFs.excluded` holds only records of its catalogue, and ORFs a lift
+  left out move to `ExtraORFs.unlifted` (proteomes still list them, counted
+  as `unlifted`).
+- An ORF whose coding path is on a transcript that encodes another protein is
+  excluded with that reason and transcript, not "Transcript absent".
+- `merge_catalogs` reads each catalogue's metadata once rather than per
+  record: merging the two mouse catalogues takes seconds, not minutes.
+  `load_catalog` reuses a lifted or merged result within a process.
+
+# 0.27.1
+
+- `orfdata.reference.species_name_for_taxon(taxon_id)` resolves a known NCBI
+  species taxonomy ID to its canonical name offline, without an annotation
+  (#83, #84).
+
 # 0.27.0
 
 - Catalogues on other assemblies are lifted automatically. `load_catalog`,

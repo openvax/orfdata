@@ -162,6 +162,7 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Human Ensembl 115, GRCh38 | bundled | 7,264 | 7,239 | 24 splice paths changed |
 | Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
 | Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
+| Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 383 on a transcript with a different protein, 58 on no transcript, 56 not lifted |
 | Mouse Ensembl 115, GRCm39 | OpenProt | 2,976 | 2,854 | 109 without sequence |
 | Mouse Ensembl 102, GRCm38 | lifted, 1 hop | 2,975 | 2,856 | 112 without sequence |
 | Mouse Ensembl 67, NCBIM37 | lifted, 2 hops | 2,922 | 1,620 | 1,187 transcripts absent |
@@ -193,7 +194,44 @@ silently dropped.
   through GRCm38. `lift_to(catalog, build)` lifts through it.
   `catalog_status()` lists, for each catalogue, the assemblies it reaches and
   whether their chains are downloaded.
-- **Cost.** Lifting happens on each load: about 1.6 s for the human catalogue.
+- **Cost.** Lifting takes a few seconds (about 2 s for the human catalogue to
+  GRCh37 or CHM13); a process reuses the result for the same installed
+  catalogues and chains.
+- **Unlifted ORFs.** `ExtraORFs.unlifted` lists the ORFs the evidence rule
+  selects that a lift left out; proteomes count them as `unlifted` and list
+  them among their exclusions. `ExtraORFs.excluded` holds only records of its
+  catalogue, which is what Varcode looks up.
+
+### T2T-CHM13
+
+PyEnsembl's `EnsemblRelease` has no T2T-CHM13 annotation, so orfdata pins
+Ensembl's rapid-release one (2022_07) and installs it on request, checking each
+file's size and SHA-256. The T2T Consortium's GRCh38-to-CHM13 chain is public
+domain (CC0):
+
+```sh
+orfdata genomes install t2t-chm13          # 143 MB of Ensembl files, plus about 1.1 GB of PyEnsembl index
+orfdata chains download GRCh38 T2T-CHM13v2.0
+orfdata proteome --genome t2t-chm13 --output chm13.fasta
+```
+
+```python
+from orfdata import Proteome, load_genome
+
+genome = load_genome("t2t-chm13")          # A PyEnsembl Genome named T2T-CHM13v2.0, offline
+proteome = Proteome.build(genome)          # 104,957 annotated proteins + 2,039 MS-supported ORFs
+```
+
+The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
+6,767 place on CHM13 transcripts with their exact coding path and protein.
+Ensembl gave CHM13 transcripts new IDs, so placement is by path. Of the 441 that
+don't place, 383 lie on a CHM13 transcript with their exact coding path whose
+sequence, from CHM13's own alleles, encodes a different protein (in 15, the
+start codon itself differs); the exclusion reason names that transcript. The
+other 58 are on no CHM13 transcript. The genome keeps its species and assembly
+accession when pickled, for multiprocessing and Varcode. Your own CHM13 genome
+works too if its `reference_name` is `T2T-CHM13v2.0` and it has a `species`
+(or you pass `context=`); `hs1` or `chm13` get an error saying so.
 
 ## Lifting a catalogue by hand
 
@@ -235,11 +273,12 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
 7247 17 orfdata-catalog:2026-10-11.1@GRCh37
 ```
 
-- **Pinned chain files.** Ensembl's human GRCh38 to and from
+- **Pinned chain files.** The T2T Consortium's GRCh38 to and from
+  [T2T-CHM13v2.0](https://github.com/marbl/CHM13) are public domain. Ensembl's human GRCh38 to and from
   [GRCh37 and NCBI36](https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/),
   and mouse GRCm38 to and from
   [NCBIM37](https://ftp.ensembl.org/pub/assembly_mapping/mus_musculus/),
-  have no usage restrictions. `orfdata chains list` shows all eight. UCSC's mouse
+  have no usage restrictions. `orfdata chains list` shows all ten. UCSC's mouse
   [`mm10ToMm39`](https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/README.txt)
   and [`mm39ToMm10`](https://hgdownload.soe.ucsc.edu/goldenPath/mm39/liftOver/README.txt)
   (GRCm38 and GRCm39) are free only for non-commercial use, so downloading
@@ -285,7 +324,7 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
   2,186 MS-supported ORFs: 2,097 place, and 3 of the 89 excluded didn't lift.
 - **Size.** Each lifted record carries its original, so a lifted catalogue is
   about twice the size of its input (33 MB for the bundled one as JSON).
-- **Errors.** When no pinned chains reach an assembly, such as T2T-CHM13,
+- **Errors.** When no pinned chains reach an assembly, such as HG002,
   `load_catalog(species=..., genome_build=...)` gives the `orfdata lift
   --chain` command and the Python call that lifts with your own chain file.
 

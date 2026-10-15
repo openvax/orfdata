@@ -60,7 +60,8 @@ The bundled noncanonical ORF catalogue is human GRCh38. Mouse ORFs come from
 OpenProt 2.2: `orfdata catalogs build openprot-mouse` builds that catalogue
 from OpenProt's own files. After `orfdata chains download` (add
 `--accept-terms` for UCSC's non-commercial mouse chains), older assemblies
-(GRCh37, NCBI36, GRCm38, NCBIM37) use these catalogues lifted to them. Dog and yeast proteomes contain their
+(GRCh37, NCBI36, GRCm38, NCBIM37) and T2T-CHM13 use these catalogues lifted
+to them; `orfdata genomes install t2t-chm13` installs a CHM13 annotation. Dog and yeast proteomes contain their
 PyEnsembl-annotated proteins. `load_catalog(species=...)` and
 `with_extra_orfs()` pick the catalogue for a species and raise when none is
 available or built.

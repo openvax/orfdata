@@ -20,9 +20,13 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser = argparse.ArgumentParser(
         description=__doc__, prog=prog,
         epilog="The PyEnsembl annotation must already be installed, e.g. "
-               "'pyensembl install --release 115 --species human'.")
-    parser.add_argument("--species", required=True, help="PyEnsembl species, e.g. human, mouse or dog")
-    parser.add_argument("--release", required=True, type=int, help="Ensembl release")
+               "'pyensembl install --release 115 --species human', or, for --genome, with "
+               "'orfdata genomes install NAME'.")
+    parser.add_argument("--species", help="PyEnsembl species, e.g. human, mouse or dog")
+    parser.add_argument("--release", type=int, help="Ensembl release")
+    parser.add_argument("--genome", metavar="NAME",
+                        help="A pinned annotation installed with 'orfdata genomes install', e.g. t2t-chm13, "
+                             "instead of --species and --release")
     parser.add_argument("--extra-orf-evidence", choices=EVIDENCE_METHODS + ("all", "none"),
                         help="Evidence an extra ORF needs: 'ms' (default), 'ribosome', etc.; "
                              "'all' for every catalogue ORF; 'none' for annotated proteins only")
@@ -32,7 +36,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
     parser.add_argument("--cache", action="store_true",
                         help="Reuse an identical earlier build from the OpenVax DataCache, or keep this one there")
-    parser.add_argument("--cache-root", help="Cache directory holding catalogues and cached builds, instead of "
+    parser.add_argument("--cache-root", help="Cache directory holding catalogues, chains, pinned genomes and cached builds, instead of "
                                              "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", help="FASTA path; standard output by default")
     args = parser.parse_args(argv)
@@ -43,7 +47,16 @@ def run(argv=None, prog=None, *, genome_loader=None):
                               args.min_ribo_seq_studies, args.min_ms_peptides, args.ms_methods))):
             raise ValueError("Extra-ORF options require --extra-orf-evidence other than 'none'")
         rule = _rule(args, args.extra_orf_evidence, "--extra-orf-evidence", default="ms") if extra else None
-        genome = (genome_loader or _ensembl_genome)(args.release, args.species)
+        if args.genome is not None:
+            if args.species is not None or args.release is not None:
+                raise ValueError("Pass --genome or --species and --release, not both")
+            from .genomes import load_genome
+
+            genome = load_genome(args.genome, cache_root=args.cache_root)
+        elif args.species is None or args.release is None:
+            raise ValueError("Pass --species and --release, or --genome")
+        else:
+            genome = (genome_loader or _ensembl_genome)(args.release, args.species)
         proteome = Proteome.build(
             genome, rule, extra_orfs=extra,
             catalog=[load_catalog(path) for path in args.catalog] if args.catalog else None,
@@ -51,7 +64,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
         proteome.write_fasta(args.output or sys.stdout)
         if args.snapshot:
             proteome.save(args.snapshot)
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, ImportError) as error:
         parser.error(str(error))
     summary = proteome.summary()
     summary["excluded_orfs"] = [dict(orf_id=e.orf_id, transcript_id=e.transcript_id, reason=e.reason)

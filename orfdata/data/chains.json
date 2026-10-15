@@ -35,6 +35,18 @@
     "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
     "restricted": false
   },
+  "GRCh38_to_T2T-CHM13v2.0": {
+    "species": "homo_sapiens",
+    "source_build": "GRCh38",
+    "target_build": "T2T-CHM13v2.0",
+    "url": "https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/chain/v1_nflo/grch38-chm13v2.chain",
+    "sha256": "2a4086a9fda2cbc035ac354b5034dd5fd89f45c1213e046b55ab1b9aaf7b5d2b",
+    "size": 6288201,
+    "provider": "T2T Consortium",
+    "terms": "Released to the public domain (CC0); please cite the T2T Consortium.",
+    "terms_url": "https://github.com/marbl/CHM13",
+    "restricted": false
+  },
   "GRCm38_to_GRCm39": {
     "species": "mus_musculus",
     "source_build": "GRCm38",
@@ -93,6 +105,18 @@
     "provider": "Ensembl",
     "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
     "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "restricted": false
+  },
+  "T2T-CHM13v2.0_to_GRCh38": {
+    "species": "homo_sapiens",
+    "source_build": "T2T-CHM13v2.0",
+    "target_build": "GRCh38",
+    "url": "https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/chain/v1_nflo/chm13v2-grch38.chain",
+    "sha256": "f5bd06d6d1ab4e44b22ee150bcd75ee8f1d6709ecb111a9029b64647e0cba8bf",
+    "size": 6288151,
+    "provider": "T2T Consortium",
+    "terms": "Released to the public domain (CC0); please cite the T2T Consortium.",
+    "terms_url": "https://github.com/marbl/CHM13",
     "restricted": false
   }
 }
