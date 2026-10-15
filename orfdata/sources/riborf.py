@@ -13,11 +13,17 @@ file with usage restrictions, so each ORF is placed on GRCm39 through the same
 transcript in the pinned Ensembl annotation: its transcript coordinates map
 through that transcript's exons, and its protein is translated from that
 transcript's sequence. A row is left out, with the reason, when the transcript
-is missing or changed length since GENCODE vM25, or when its sequence there
-doesn't start with the stated codon and end at its first stop. Annotated CDSs
-(``canonical``), likely sequencing errors and stop-codon readthrough are not
-imported. Presence in the source's set is aggregate Ribo-seq support: it
-names no study and counts no libraries.
+is missing, has no sequence or changed length since GENCODE vM25, or when its
+sequence there doesn't start with the stated codon and end at its first stop.
+
+Annotated CDSs (``canonical``), likely sequencing errors and stop-codon
+readthrough are not imported, nor are proteins shorter than
+``processing["min_protein_length"]``: Chang et al.'s shortest is 5 residues,
+and the source has thousands of 1-4 residue ones, bare start-stops among them.
+Types Chang et al. name differently (ouORF, odORF, noncoding) take Chang's
+names, so a query by type finds both sources' ORFs. IDs are ``riborf_`` and the
+start and stop, never a name Chang et al. use. Presence in the source's set is
+aggregate Ribo-seq support: it names no study and counts no libraries.
 """
 
 import gzip
@@ -71,14 +77,17 @@ def import_orfs(inputs, output, manifest):
     processing = manifest.processing
     reference = manifest.references[0]
     table = next(s for s in manifest.sources if s.asset_id == "table")
-    skip_types = set(processing["skip_types"])
-    parsed = []
+    skip_types, names = set(processing["skip_types"]), processing["biotypes"]
+    parsed, short = [], 0
     for row in _rows(inputs["table"], processing["sheet"]):
         transcript, _, coordinates, orf_type, start_codon = row[3].split("|")
         if orf_type in skip_types:
             continue
         length, start, end = (int(x) for x in coordinates.split(":"))
-        parsed.append((transcript, length, start, end, orf_type, start_codon))
+        if (end - start) // 3 - 1 < processing["min_protein_length"]:
+            short += 1
+            continue
+        parsed.append((transcript, length, start, end, names.get(orf_type, orf_type), start_codon))
     wanted = {p[0].split(":")[0].split(".")[0] for p in parsed}
     transcripts = _transcripts(inputs["gtf"], wanted)
     sequences = _sequences([inputs["cdna"], inputs["ncrna"]], wanted)
@@ -92,8 +101,11 @@ def import_orfs(inputs, output, manifest):
             unresolved.append(dict(transcript=source_transcript.split(":")[0], start=start, end=end, reason=reason))
 
         entry, sequence = transcripts.get(stable), sequences.get(stable)
-        if entry is None or sequence is None:
-            skip(f"Transcript or its sequence absent from Ensembl {reference.annotation_version}")
+        if entry is None:
+            skip(f"Transcript absent from Ensembl {reference.annotation_version}")
+            continue
+        if sequence is None:  # TEC transcripts, for one, are in the GTF but in neither FASTA.
+            skip(f"Transcript has no sequence in Ensembl {reference.annotation_version}'s cDNA or ncRNA FASTA")
             continue
         if len(sequence) != length or sum(b - a + 1 for a, b in entry["exons"]) != length:
             skip(f"Transcript changed length since GENCODE vM25 ({length} nt, now {len(sequence)})")
@@ -112,9 +124,9 @@ def import_orfs(inputs, output, manifest):
 
     def locus(contig, strand, blocks):
         first, last = (blocks[0][0], blocks[-1][1]) if strand == "+" else (blocks[-1][1], blocks[0][0])
-        return f"{contig}_{first}_{last}_{strand}"
+        return f"riborf_{contig}_{first}_{last}_{strand}"
 
-    # Named by start and stop, as Chang et al. name theirs; paths that share both also name their transcript.
+    # Named by start and stop; paths that share both also name their transcript, and answer to the shared name.
     shared = Counter(locus(*key) for key in paths)
     records = []
     for (contig, strand, blocks), found in sorted(paths.items()):
@@ -133,7 +145,7 @@ def import_orfs(inputs, output, manifest):
                                   "RibORF 2.0 translated ORF", 1, PRESENCE, "orf", table.url, table.sha256)
         records.append(ORFRecord.from_model(model, ORFEvidence(summaries=(summary,))))
 
-    counts = dict(source_rows=len(parsed), resolved_rows=len(parsed) - len(unresolved),
+    counts = dict(source_rows=len(parsed) + short, short_rows=short, resolved_rows=len(parsed) - len(unresolved),
                   unresolved_rows=len(unresolved))
     for key, value in counts.items():
         if manifest.coverage.get(key) != value:

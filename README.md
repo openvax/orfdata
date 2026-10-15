@@ -56,7 +56,7 @@ peptides presented by HLA molecules.
 
 ## Species
 
-The bundled noncanonical ORF catalogue is human GRCh38. Mouse has 60,707:
+The bundled noncanonical ORF catalogue is human GRCh38. Mouse has 48,805:
 Ribo-seq ORFs of Chang et al. 2025 and Yang et al. 2024, and 2,976 MS-supported
 ones from OpenProt 2.2;
 `pip install "orfdata[data,build-data]"` then `orfdata setup --species mouse`

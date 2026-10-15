@@ -74,22 +74,25 @@ orfdata setup --species mouse --accept-terms   # Three catalogues and the chains
 `orfdata setup` builds each registered mouse catalogue from its pinned sources
 and downloads the chain files (`--accept-terms` for UCSC's non-commercial
 GRCm38/GRCm39 chains). `load_catalog(species="mouse")` then merges the three,
-in this order, into 60,707 ORFs: 2,976 MS-supported OpenProt ORFs, 16,484
-Ribo-seq ORFs of Chang et al. and 51,991 of Yang et al. 10,420 of Chang's and
-Yang's ORFs are the same ORF, and 296 OpenProt ORFs also have Ribo-seq support
-from one or both. On Ensembl 115 (GRCm39):
+in this order, into 48,805 ORFs: 2,976 MS-supported OpenProt ORFs, 16,484
+Ribo-seq ORFs of Chang et al. and 40,089 of Yang et al. 10,448 of Chang's and
+Yang's ORFs are the same ORF (28 of them also in OpenProt), and 296 OpenProt
+ORFs have Ribo-seq support from one or both, 242 from Yang et al. alone. On
+Ensembl 115 (GRCm39):
 
 | Evidence | Selected | Added to the proteome |
 | --- | ---: | ---: |
 | `"ms"` (default) | 2,976 | 2,854 |
-| `RiboSeq()` | 58,109 | 57,992 |
+| `RiboSeq()` | 46,207 | 46,094 |
 | `RiboSeq() & MS()` | 378 | 371 |
-| `None` | 60,707 | 60,475 |
+| `None` | 48,805 | 48,577 |
 
-Loading the merged catalogue takes about 10 seconds, once per process. On
-GRCm38 and NCBIM37 all three are lifted automatically. Dog has no experimentally supported ORF catalogue from any
-source: OpenProt and the Ribo-seq resources have no dog data, and dog MS
-studies searched only canonical proteins.
+Loading the merged catalogue takes about 10 seconds and 0.9 GB of memory, once
+per process, whichever evidence is selected. On GRCm38 and NCBIM37 all three
+are [lifted automatically](#every-assembly-of-a-species). Dog has no
+experimentally supported ORF catalogue from any source: OpenProt and the
+Ribo-seq resources have no dog data, and dog MS studies searched only canonical
+proteins.
 
 ### Mouse Ribo-seq ORFs (Chang et al.)
 
@@ -124,25 +127,37 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 `riborf-mouse` holds the mouse ORFs that RibORF 2.0 identified as translated in
 the Ribo-seq data of Yang et al. (Nat Commun 2024,
 [doi:10.1038/s41467-024-46240-9](https://doi.org/10.1038/s41467-024-46240-9);
-224 samples in 26 GEO series): uORF (26,052), noncoding (8,149), iORF (6,155),
-dORF (5,174), ouORF (3,157), N-terminal truncation (2,059) and extension (575),
-and odORF (670). Annotated CDSs, likely sequencing errors and stop-codon
-readthrough are not imported.
+224 samples in 26 GEO series), of at least 5 residues: uORF (20,399), lncORF
+(6,954), dORF (4,075), uoORF (3,037), iORF (2,370), N-terminal truncation
+(2,047) and extension (575), and doORF (632). The source's ouORF, odORF and
+noncoding types take Chang et al.'s names, so `--biotype uoORF` finds both
+sources' overlapping uORFs. Annotated CDSs, likely sequencing errors,
+stop-codon readthrough and 12,222 ORFs shorter than Chang et al.'s shortest (5
+residues; 4,505 are a bare start and stop) are not imported.
 
 - **Placement.** The source gives mm10 / GENCODE vM25 transcript coordinates
   (a 1-based start, an exclusive end) and no proteins. Rather than lift mm10
   through a restricted chain, each ORF is placed on the same transcript in
-  Ensembl 107 GRCm39 and translated from that transcript's sequence. 51,991
-  of 54,128 rows resolve; 1,642 transcripts changed length since GENCODE vM25
-  and 494 are gone, and these are listed as unresolved. 51,881 place on
-  Ensembl 115.
+  Ensembl 107 GRCm39 and translated from that transcript's sequence. Of the
+  41,906 rows long enough, 40,089 resolve. Listed as unresolved, with the
+  reason: 1,393 rows on 633 transcripts that changed length since GENCODE
+  vM25, 338 on 216 TEC transcripts that Ensembl 107 has in its GTF but in
+  neither FASTA, 85 on 51 transcripts that are gone, and one whose
+  transcript's sequence changed at the same length. Placing through the
+  transcript gives the same coding path as lifting the source's mm10 blocks
+  through UCSC's chain for all but 2, in a duplicated region of chr14 where
+  the chain is ambiguous. 39,983 place on Ensembl 115.
 - **Sources.** Supplementary Data 3 (CC BY 4.0) and Ensembl 107's GTF, cDNA
   and ncRNA FASTAs; about 115 MB. Building needs `orfdata[build-data]`.
 - **Evidence.** Presence in the source's set is aggregate Ribo-seq support:
   `RiboSeq()` selects every ORF, `RiboSeq(min_studies=2)` none.
-- **IDs.** ORFs are named by start and stop, as Chang et al.'s are, so one
-  ORF in both sets merges; two different ORFs with the same name become
-  `riborf-mouse:…` and `ncorf-mammals:…`.
+- **IDs.** `riborf_` and the GRCm39 start and stop, such as
+  `riborf_4_120262600_120262620_+`, never a name Chang et al. use. Two paths
+  with the same start and stop add their transcript (`…@ENSMUST00000226495.2`),
+  and a lookup by the shared name lists both, as for OpenProt's split
+  accessions. An ORF in both sets merges by its coding path and protein,
+  whatever its name, and keeps Chang et al.'s ID; its `riborf_` ID still
+  finds it.
 
 ## Mouse ORFs from OpenProt
 
@@ -242,7 +257,9 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
 | Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
 | Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 441 on no transcript, 56 not lifted |
-| Mouse Ensembl 115, GRCm39 | OpenProt, Chang et al. and Yang et al. | 60,707 | 60,475 | 232 not placed |
+| Mouse Ensembl 115, GRCm39 | OpenProt, Chang et al. and Yang et al. | 48,805 | 48,577 | 110 transcripts absent, 109 without sequence |
+| Mouse Ensembl 102, GRCm38 | all three lifted, 1 hop | 48,800 | 48,169 | 434 transcripts absent, 5 not lifted |
+| Mouse Ensembl 67, NCBIM37 | all three lifted, 2 hops | 48,642 | 38,105 | 9,217 transcripts absent, 163 not lifted |
 
 Older annotations lack many of the transcripts the sources name, so fewer ORFs
 place; the rest, and any that didn't lift, are listed with the reason, never

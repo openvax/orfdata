@@ -31,7 +31,7 @@ Calibration and uncertainty remain attached to observations:
 ## ORF evidence and ribosome profiling
 
 The separate existence-evidence catalogue contains 7,264 human noncanonical
-ORFs, including 2,186 with reported MS support. Mouse has 60,707 ORFs: Ribo-seq ORFs
+ORFs, including 2,186 with reported MS support. Mouse has 48,805 ORFs: Ribo-seq ORFs
 from Chang et al. and Yang et al., and 2,976 OpenProt 2.2 ORFs with at least
 two unique MS peptides, built from their sources' files; dog and yeast have no experimental
 ncORF catalogue yet. Its
