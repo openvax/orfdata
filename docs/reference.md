@@ -167,7 +167,7 @@ The host is one of possibly several transcripts that carry the same ORF; see
 
 ## Evidence
 
-Use `orf.evidence.has_evidence("ribosome")`, `"proteomics"` (peptides from
+Use `orf.evidence.has_evidence("ribosome")` (or `"riboseq"`), `"proteomics"` (peptides from
 digested cellular proteins), `"immunopeptidomics"` (peptides eluted from MHC
 molecules; HLA in human), or `"ms"` (any supporting MS observation). Source
 observations whose MS assay type is unspecified remain labelled

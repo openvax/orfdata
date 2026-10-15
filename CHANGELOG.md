@@ -23,6 +23,10 @@ MS-supported ORFs.
     `ribosome,mhc`. Saved proteome snapshots keep the labels they were written
     with.
 - `evidence="all"` selects every catalogue ORF, like `None`.
+- `"riboseq"` is another name for `"ribosome"`.
+- A list, tuple or set of names selects ORFs with any of them:
+  `["proteomics", "immunopeptidomics"]` is
+  `MS(methods="proteomics") | MS(methods="immunopeptidomics")`.
 
 ## Mouse
 

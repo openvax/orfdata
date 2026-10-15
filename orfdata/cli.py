@@ -7,7 +7,7 @@ import re
 import sys
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
-from .evidence import MS, RiboSeq, evidence_rule
+from .evidence import MS, SYNONYMS, RiboSeq, evidence_rule
 
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
@@ -86,7 +86,7 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--gene", help="Exact source gene symbol or identifier")
     parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
-    parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
+    parser.add_argument("--evidence", choices=EVIDENCE_METHODS + tuple(SYNONYMS))
     _add_rule_arguments(parser)
     parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
                                           "(GENCODE, human); uORF, uoORF, iORF, dORF, doORF, lncORF (mouse Ribo-seq; "

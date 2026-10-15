@@ -596,8 +596,8 @@ class ORFCatalog:
         is a discovery aid, not evidence transfer between transcript isoforms.
         Transcript identifiers match exactly as supplied in the source,
         including versions when present. Empty results do not prove no translation.
-        ``evidence`` is a method name or a rule such as
-        ``RiboSeq(min_studies=2) & MS(unique=True)``; see :mod:`orfdata.evidence`.
+        ``evidence`` is a method name, a list of names for any of them, or a
+        rule such as ``RiboSeq() & MS(unique=True)``; see :mod:`orfdata.evidence`.
         ``require_unique`` means unique within the evidence source's mapping
         scope, not unique in every normal human proteome.
         ``require_resolved`` excludes aggregate-only support: MS needs a peptide

@@ -530,12 +530,12 @@ class Proteome:
                         require_unique=False, require_reviewed=False, cache_root=None):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
-        ``evidence`` is a rule, an evidence method name, or ``None`` (or
-        ``"all"``) for every catalogue ORF. Rules set separate Ribo-seq and MS stringency and combine
+        ``evidence`` is a rule, an evidence method name, a list of names
+        (any of them), or ``None`` (or ``"all"``) for every catalogue ORF. Rules set separate Ribo-seq and MS stringency and combine
         with ``&`` (both) or ``|`` (either), for example
         ``RiboSeq(min_studies=2) & MS(unique=True)``. A name is the simplest rule:
         ``"ms"`` (any supporting MS peptide, the default) is ``MS()``,
-        ``"ribosome"`` is ``RiboSeq()``, and ``"proteomics"`` (peptides from
+        ``"ribosome"`` (or ``"riboseq"``) is ``RiboSeq()``, and ``"proteomics"`` (peptides from
         digested cellular proteins), ``"immunopeptidomics"`` (peptides eluted
         from MHC molecules) or ``"ms_unclassified"`` limit the MS peptide kind. The ``require_*``
         options refine a name as in ``ORFCatalog.query``. The layer records the

@@ -6,7 +6,7 @@ import sys
 
 from .catalog import load_catalog
 from .cli import _add_rule_arguments, _rule
-from .evidence import EVIDENCE_METHODS
+from .evidence import EVIDENCE_METHODS, SYNONYMS
 from .proteome import Proteome
 
 
@@ -30,8 +30,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--genome", metavar="NAME",
                         help="A pinned annotation installed with 'orfdata genomes install', e.g. t2t-chm13, "
                              "instead of --species and --release")
-    parser.add_argument("--extra-orf-evidence", choices=EVIDENCE_METHODS + ("all", "none"),
-                        help="Evidence an extra ORF needs: 'ms' (default), 'ribosome', etc.; "
+    parser.add_argument("--extra-orf-evidence", choices=EVIDENCE_METHODS + tuple(SYNONYMS) + ("all", "none"),
+                        help="Evidence an extra ORF needs: 'ms' (default), 'ribosome' (or 'riboseq'), etc.; "
                              "'all' for every catalogue ORF; 'none' for annotated proteins only")
     _add_rule_arguments(parser)
     parser.add_argument("--catalog", action="append",

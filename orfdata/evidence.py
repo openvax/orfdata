@@ -18,6 +18,8 @@ MS_METHODS = ("proteomics", "immunopeptidomics", "ms_unclassified")
 EVIDENCE_METHODS = ("ribosome",) + MS_METHODS + ("ms",)
 # Names before 0.28.0, still read from catalogues, snapshots and saved rules.
 _RENAMED = {"shotgun": "proteomics", "mhc": "immunopeptidomics", "hla": "immunopeptidomics"}
+# Other names a caller may use; data stores "ribosome".
+SYNONYMS = {"riboseq": "ribosome"}
 
 
 def stored_method(method):
@@ -29,7 +31,7 @@ def _method(method):
     """A method name a caller passed, under its current name; an old name warns."""
     if method in _RENAMED:
         warnings.warn(f"Evidence method {method!r} is now {_RENAMED[method]!r}", DeprecationWarning, stacklevel=4)
-    return stored_method(method)
+    return SYNONYMS.get(method, stored_method(method))
 
 
 class EvidenceRule:
@@ -237,17 +239,30 @@ def _flatten(kind, rules):
 
 
 def evidence_rule(evidence, *, require_unique=False, require_reviewed=False, require_resolved=False):
-    """The rule for ``evidence``: a rule, an evidence method name, or None (or ``"all"``) for every ORF.
+    """The rule for ``evidence``: a rule, an evidence method name, None (or ``"all"``) for every ORF,
+    or a list, tuple or set of these for any of them.
 
     A method name with ``require_*`` options becomes the equivalent rule:
     ``"ms"`` is ``MS()``, ``"immunopeptidomics"`` is
-    ``MS(methods=("immunopeptidomics",))`` and ``"ribosome"`` is
-    ``RiboSeq()``. Options that cannot apply raise.
+    ``MS(methods=("immunopeptidomics",))`` and ``"ribosome"`` (or
+    ``"riboseq"``) is ``RiboSeq()``. Options that cannot apply raise.
     """
     if isinstance(evidence, EvidenceRule):
         if require_unique or require_reviewed or require_resolved:
             raise ValueError("Set unique, reviewed or resolved on the rule itself")
         return evidence
+    if isinstance(evidence, (list, tuple, set, frozenset)):
+        # Any of them: ["ribosome", "immunopeptidomics"] is RiboSeq() | MS(methods=("immunopeptidomics",)).
+        if not evidence:
+            raise ValueError("Name at least one kind of evidence, or pass None or 'all' for every ORF")
+        rules = [evidence_rule(e, require_unique=require_unique, require_reviewed=require_reviewed,
+                               require_resolved=require_resolved) for e in evidence]
+        if any(rule is None for rule in rules):
+            return None
+        either = rules[0]
+        for rule in rules[1:]:
+            either = either | rule
+        return either
     if isinstance(evidence, str):
         evidence = _method(evidence)
     if evidence is None or evidence == "all":
@@ -257,7 +272,8 @@ def evidence_rule(evidence, *, require_unique=False, require_reviewed=False, req
             raise ValueError(f"{next(k for k, v in options.items() if v)} requires an evidence method")
         return None
     if evidence not in EVIDENCE_METHODS:
-        raise ValueError(f"Unknown evidence method: {evidence}; use 'all' or one of {', '.join(EVIDENCE_METHODS)}")
+        raise ValueError(f"Unknown evidence method: {evidence}; use 'all' or one of "
+                         f"{', '.join(EVIDENCE_METHODS + tuple(SYNONYMS))}")
     if evidence == "ribosome":
         if require_unique or require_reviewed:
             raise ValueError("MS filters do not apply to ribosome evidence")

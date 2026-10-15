@@ -53,7 +53,7 @@ orfdata proteome --species human --release 115 --output human-e115.fasta
 
 | `evidence=` | Selects ORFs with | Human ORFs | Encoded in Ensembl 115 |
 | --- | --- | ---: | ---: |
-| `"ribosome"` | Ribosome profiling (all bundled ORFs) | 7,264 | 7,239 |
+| `"ribosome"` or `"riboseq"` | Ribosome profiling (all bundled ORFs) | 7,264 | 7,239 |
 | `"ms"` (default) | Any supporting MS peptide | 2,186 | 2,181 |
 | `"immunopeptidomics"` | Peptides eluted from MHC (in human, HLA) molecules | 1,881 | 1,879 |
 | `"proteomics"` | Peptides from digested cellular proteins | 73 | 72 |

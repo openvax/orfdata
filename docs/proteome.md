@@ -53,7 +53,7 @@ the bundled human catalogue (dataset `2026-10-11.1`) and Ensembl 115:
 | Selection | Human ORFs | Encoded in Ensembl 115 |
 | --- | ---: | ---: |
 | `evidence=None` or `"all"`: every catalogue ORF | 7,264 | 7,239 |
-| `evidence="ribosome"`: translated in ribosome profiling | 7,264 | 7,239 |
+| `evidence="ribosome"` or `"riboseq"`: translated in ribosome profiling | 7,264 | 7,239 |
 | `evidence="ms"` (default): any supporting MS peptide | 2,186 | 2,181 |
 | `evidence="immunopeptidomics"`: peptides eluted from MHC (in human, HLA) molecules | 1,881 | 1,879 |
 | `evidence="ms_unclassified"`: MS with an unreported assay type | 537 | 535 |
@@ -71,6 +71,11 @@ properties come from different sources, no bundled peptide has both.
 `require_resolved` excludes support that consists only of aggregate counts.
 See [ORFs and evidence](reference.md#evidence) for the full definitions.
 
+A list (or tuple or set) of names selects ORFs with any of them:
+`evidence=["proteomics", "immunopeptidomics"]` keeps ORFs with either kind of
+MS peptide, unlike `"ms"`, which also counts unclassified MS. For ORFs that
+need two kinds of evidence at once, combine rules with `&`, below.
+
 ### Separate Ribo-seq and MS stringency
 
 For more control, pass a rule. `RiboSeq(min_studies=n)` needs ribosome
@@ -85,6 +90,7 @@ from orfdata import MS, RiboSeq
 annotated.with_extra_orfs(RiboSeq(min_studies=2))                        # replicated Ribo-seq
 annotated.with_extra_orfs(RiboSeq(min_studies=2) & MS())                 # Ribo-seq and MS
 annotated.with_extra_orfs(RiboSeq(min_studies=2) | MS())                 # either
+annotated.with_extra_orfs(RiboSeq() & MS(methods="immunopeptidomics"))   # Ribo-seq and an MHC ligand
 annotated.with_extra_orfs(MS(methods=("proteomics", "ms_unclassified")))  # not immunopeptidomics-only
 ```
 
@@ -101,7 +107,7 @@ annotated.with_extra_orfs(MS(methods=("proteomics", "ms_unclassified")))  # not 
 GENCODE's `c…riboseqorf…` IDs are the 3,085 ORFs seen in two or more studies.
 Each method name above is the simplest rule: `"ms"` is `MS()`,
 `"immunopeptidomics"` is `MS(methods=("immunopeptidomics",))` and `"ribosome"`
-is `RiboSeq()`. The names before 0.28.0 (`"shotgun"`, and `"mhc"` or `"hla"`)
+(or `"riboseq"`) is `RiboSeq()`. The names before 0.28.0 (`"shotgun"`, and `"mhc"` or `"hla"`)
 still work, with a deprecation warning, and catalogues that use them still
 load. A peptide counts once
 however many assay types report it, and so do peptides that differ only by I

@@ -151,8 +151,40 @@ def test_rules_combine_flatten_and_serialize():
     assert evidence_rule("immunopeptidomics", require_unique=True) == MS(unique=True, methods="immunopeptidomics")
     with pytest.raises(ValueError, match="require_unique requires an evidence method"):
         evidence_rule("all", require_unique=True)
-    with pytest.raises(ValueError, match="use 'all' or one of ribosome, proteomics"):
+    with pytest.raises(ValueError, match="use 'all' or one of ribosome, proteomics.*, riboseq"):
         evidence_rule("tandem")
+
+
+def test_a_list_of_names_selects_any_of_them(catalog):
+    def ids(evidence):
+        return {r.orf_id for r in catalog.query(evidence=evidence)}
+
+    either = ["proteomics", "immunopeptidomics"]
+    assert evidence_rule(either) == MS(methods="proteomics") | MS(methods="immunopeptidomics")
+    assert evidence_rule(tuple(either)) == evidence_rule(set(either)) == evidence_rule(either[::-1])
+    assert ids(either) == ids("proteomics") | ids("immunopeptidomics")
+    assert len(ids(either)) < len(ids("ms"))  # ms also counts unclassified MS.
+    assert evidence_rule(["ms"]) == MS() and evidence_rule(["ms", "all"]) is None
+    assert evidence_rule(["riboseq", MS(min_peptides=2)]) == RiboSeq() | MS(min_peptides=2)
+    assert evidence_rule(["proteomics", "ms_unclassified"], require_unique=True) == (
+        MS(methods="proteomics", unique=True) | MS(methods="ms_unclassified", unique=True))
+    with pytest.raises(ValueError, match="at least one"):
+        evidence_rule([])
+    with pytest.raises(ValueError, match="Unknown evidence method"):
+        evidence_rule(["ms", "tandem"])
+
+
+def test_riboseq_is_another_name_for_ribosome(catalog, capsys):
+    from orfdata.cli import run
+
+    assert evidence_rule("riboseq") == evidence_rule("ribosome") == RiboSeq()
+    assert evidence_rule("riboseq", require_resolved=True) == RiboSeq(resolved=True)
+    assert catalog.query(evidence="riboseq") == catalog.query(evidence="ribosome")
+    assert catalog.records[0].has_evidence("riboseq")
+    with pytest.raises(ValueError):
+        MS(methods="riboseq")
+    run(["--evidence", "riboseq", "--format", "tsv"])
+    assert len(capsys.readouterr().out.splitlines()) == len(catalog.records) + 1
 
 
 def test_names_from_before_0_28_still_read():
