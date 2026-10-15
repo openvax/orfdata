@@ -11,6 +11,7 @@ from pyensembl.species import find_species_by_name
 
 from orfdata import ORFModel, ORFRecord, ReferenceContext, ScopedTarget, load_catalog
 from orfdata.model import _species
+from orfdata.reference import canonical_species, species_name_for_taxon, species_taxon
 
 SPECIES = (
     (9606, "homo_sapiens", "GRCh38"),
@@ -18,6 +19,32 @@ SPECIES = (
     (9615, "canis_lupus_familiaris", "ROS_Cfam_1.0"),
     (4932, "saccharomyces_cerevisiae", "R64-1-1"),
 )
+
+
+@pytest.mark.parametrize("taxon,aliases", [
+    (9606, ("human", "Homo sapiens")),
+    (10090, ("mouse", "Mus musculus")),
+    (9615, ("dog", "Canis familiaris", "Canis lupus familiaris")),
+    (4932, ("yeast", "budding_yeast", "Saccharomyces cerevisiae")),
+    (9685, ("cat", "Felis catus")),
+    (9913, ("cattle", "cow", "Bos taurus")),
+    (10116, ("rat", "Rattus norvegicus")),
+])
+def test_taxonomy_names_round_trip_without_annotation(taxon, aliases):
+    for alias in aliases:
+        assert species_taxon(alias) == taxon
+        assert species_name_for_taxon(taxon) == canonical_species(alias)
+
+
+@pytest.mark.parametrize("taxon", [999999999, 559292])
+def test_reverse_taxonomy_does_not_guess_unknown_or_strain_species(taxon):
+    assert species_name_for_taxon(taxon) is None
+
+
+@pytest.mark.parametrize("taxon", [None, True, False, 0, -1, 9913.0, "9913"])
+def test_reverse_taxonomy_requires_a_positive_integer(taxon):
+    with pytest.raises(ValueError, match="taxon_id must be a positive NCBI taxonomy ID"):
+        species_name_for_taxon(taxon)
 
 
 def context(taxon=9615, species="dog", genome_build="ROS_Cfam_1.0", **kwargs):
