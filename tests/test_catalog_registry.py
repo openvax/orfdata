@@ -347,7 +347,7 @@ def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path, mon
     from orfdata import install_species, liftover
 
     downloads = []
-    monkeypatch.setattr(registry, "download", lambda n, v=None, *, force=False: downloads.append((n, v)))
+    monkeypatch.setattr(registry, "download", lambda n, v=None, *, force=False, **options: downloads.append((n, v)))
     monkeypatch.setattr(liftover, "download_chain", lambda *a, **k: "offline")
     result = install_species("mouse", registry=registry, accept_terms=True)
     assert downloads == [(name, "0")] and result["catalogs"][f"{name} 1"] == "already installed"

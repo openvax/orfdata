@@ -11,7 +11,10 @@ from .proteome import Proteome
 
 
 def _ensembl_genome(release, species):
-    from pyensembl import EnsemblRelease
+    try:
+        from pyensembl import EnsemblRelease
+    except ImportError as error:
+        raise ImportError("Proteomes are built from PyEnsembl genomes: pip install 'orfdata[pyensembl]'") from error
 
     return EnsemblRelease(release, species=species)
 

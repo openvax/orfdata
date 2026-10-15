@@ -93,3 +93,15 @@ def test_every_record_binds_to_its_ensembl_107_transcript(catalog, tmp_path):
         assert extra_orfs(genome, None, catalog=catalog).excluded == ()
     finally:
         genome.close()
+
+
+def test_setup_downloads_the_ensembl_gtf_both_mouse_ribo_seq_catalogues_pin_once(monkeypatch, tmp_path):
+    from orfdata import install
+
+    fetched = []
+    monkeypatch.setattr(install, "_fetch", lambda url, sha256, size, staging, options: fetched.append(url) or "local")
+    registry = CatalogRegistry()
+    manifests = [registry.info("ncorf-mammals-mouse"), registry.info("riborf-mouse"), registry.info("openprot-mouse")]
+    shared = install._shared_sources(manifests, tmp_path, {})
+    gtf, = (s for s in manifests[1].sources if s.asset_id == "gtf")
+    assert shared == {gtf.sha256: "local"} and fetched == [gtf.url]

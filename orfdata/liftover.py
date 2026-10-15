@@ -256,7 +256,7 @@ def _chain_registry(chain, cache_root):
 
 
 def download_chain(source_build, target_build, *, species=None, accept_terms=False, force=False,
-                   source_path=None, cache_root=None):
+                   source_path=None, cache_root=None, download_options=None):
     """Download the pinned chain file from ``source_build`` to ``target_build``; return its path.
 
     The file's SHA-256 and size must match the pin. ``source_path`` installs a
@@ -271,7 +271,8 @@ def download_chain(source_build, target_build, *, species=None, accept_terms=Fal
     registry = _chain_registry(chain, cache_root)
     try:
         registry.download(chain.name, "1", force=force,
-                          source_paths=None if source_path is None else {chain.filename: str(source_path)})
+                          source_paths=None if source_path is None else {chain.filename: str(source_path)},
+                          **(download_options or {}))
     except ValueError as error:
         if force or registry.inspect(chain.name, "1", verify_files=False).status == "missing":
             raise

@@ -302,17 +302,18 @@ another annotation release of the same species, strain and assembly is also
 accepted. ORFs on another assembly can be
 [lifted over](catalogs.md#every-assembly-of-a-species).
 
-`load_catalog(species="mouse")` returns a species' catalogue: the bundled one,
-or else the one downloaded or built through [`CatalogRegistry`](catalogs.md),
-such as the [OpenProt mouse catalogue](catalogs.md#mouse-orfs-from-openprot).
-`genome_build=` chooses between assemblies. It never downloads, and for a
+`load_catalog(species="mouse")` returns a species' ORFs: the bundled
+catalogue, or those downloaded or built through
+[`CatalogRegistry`](catalogs.md), merged when there are several, as mouse's
+[three](catalogs.md#mouse) are. `genome_build=` chooses the assembly. It never downloads, and for a
 species without a catalogue the error lists the catalogues that exist.
 
 `load_catalog(path)` reads a custom versioned JSON catalogue. Each catalogue is
 scoped to one species and assembly; each model records its NCBI taxon, scientific
 name, assembly, translation table and source. Human evidence is never transferred
-to a mouse ortholog. Mouse ORFs come from OpenProt, and their bindings are
-tested with real OpenProt rows on real Ensembl 106 transcripts.
+to a mouse ortholog. Mouse ORFs come from OpenProt, Chang et al. and Yang et
+al., and each importer is tested with real source rows on real Ensembl
+transcripts.
 
 To build a catalogue, create `ORFModel` objects from source coordinates and
 sequences, attach source observations with `ORFRecord.from_model(model, evidence)`,
@@ -320,10 +321,9 @@ and construct `ORFCatalog(records, metadata)`. Its `to_dict()` produces the
 `orfdata.catalog.v1` JSON representation. Genomic coding blocks are 1-based,
 inclusive, sorted by genomic position, and include the terminal stop codon.
 
-[OpenProt](https://openprot.org) supplies the mouse catalogue through a pinned
-importer that checks every row's coordinates and protein; see
-[Mouse ORFs from OpenProt](catalogs.md#mouse-orfs-from-openprot). Its human
-and yeast files are not imported yet.
+The mouse catalogues come from pinned importers that check every row's
+coordinates and protein; see [Mouse](catalogs.md#mouse). OpenProt's human and
+yeast files are not imported yet.
 
 ## Rebuild and verify
 

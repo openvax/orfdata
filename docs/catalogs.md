@@ -69,7 +69,7 @@ existing standalone local-file workflow.
 
 ```sh
 pip install "orfdata[data,build-data]"
-orfdata setup --species mouse --accept-terms   # Three catalogues and the chains; about 160 MB of sources
+orfdata setup --species mouse --accept-terms   # Three catalogues and the chains; about 130 MB of sources
 ```
 
 `orfdata setup` builds each registered mouse catalogue from its pinned sources
@@ -153,7 +153,9 @@ residues; 4,505 are a bare start and stop) are not imported.
   through UCSC's chain for all but 2, in a duplicated region of chr14 where
   the chain is ambiguous. 39,983 place on Ensembl 115.
 - **Sources.** Supplementary Data 3 (CC BY 4.0) and Ensembl 107's GTF, cDNA
-  and ncRNA FASTAs; about 115 MB. Building needs `orfdata[build-data]`.
+  and ncRNA FASTAs; about 115 MB, of which the 32 MB GTF is the one Chang et
+  al.'s catalogue uses, so `orfdata setup` downloads it once. Building needs
+  `orfdata[build-data]`.
 - **Evidence.** Presence in the source's set is aggregate Ribo-seq support:
   `RiboSeq()` selects every ORF, `RiboSeq(min_studies=2)` none.
 - **IDs.** `riborf_` and the GRCm39 start and stop, such as
@@ -259,8 +261,8 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Genome | ORF source | Records | Placed | Not placed: main reasons |
 | --- | --- | ---: | ---: | --- |
 | Human Ensembl 115, GRCh38 | bundled | 7,264 | 7,239 | 24 splice paths changed |
-| Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
-| Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
+| Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 270 transcripts absent, 108 paths changed, 1 on a transcript with a different protein |
+| Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,708 transcripts absent, 2 on a transcript with a different protein |
 | Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 383 on a transcript with a different protein, 58 on no transcript, 56 not lifted |
 | Mouse Ensembl 115, GRCm39 | OpenProt, Chang et al. and Yang et al. | 48,805 | 48,577 | 110 transcripts absent, 109 without sequence |
 | Mouse Ensembl 102, GRCm38 | all three lifted, 1 hop | 48,800 | 48,169 | 434 transcripts absent, 5 not lifted |
@@ -305,8 +307,8 @@ silently dropped.
 
 PyEnsembl's `EnsemblRelease` has no T2T-CHM13 annotation, so orfdata pins
 Ensembl's rapid-release one (2022_07) and installs it on request, checking each
-file's size and SHA-256. The T2T Consortium's GRCh38-to-CHM13 chain is public
-domain (CC0):
+file's size and SHA-256 (it needs `orfdata[pyensembl]`). The T2T Consortium's
+GRCh38-to-CHM13 chain is public domain (CC0):
 
 ```sh
 orfdata genomes install t2t-chm13          # 143 MB of Ensembl files, plus about 1.1 GB of PyEnsembl index

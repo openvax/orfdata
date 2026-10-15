@@ -60,10 +60,12 @@ def _setup(argv, prog):
                         help="Accept usage terms of restricted chain files, such as UCSC's non-commercial ones")
     parser.add_argument("--force", action="store_true", help="Install again even what is already installed")
     parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
+    parser.add_argument("--timeout", type=float, default=60,
+                        help="Seconds a download may stall before it is retried, then fails (default 60)")
     args = parser.parse_args(argv)
     try:
         result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
-                                 cache_root=args.cache_root)
+                                 cache_root=args.cache_root, timeout=args.timeout)
     except InstallError as error:  # What did install is still reported.
         json.dump(error.result, sys.stdout, indent=2)
         sys.stdout.write("\n")
