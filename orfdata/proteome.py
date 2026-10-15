@@ -817,11 +817,15 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                 excluded.append(failures[-1])
         bound.extend(placed)
     # ORFs a lift left out are reported too, under the same rule, rather than silently missing.
+    from .catalog import _merge_key
     from .liftover import unlifted
 
-    left_out = tuple(BindingFailure(record.orf_id, record.transcript_id, f"Did not lift to {build}: {reason}")
-                     for record, build, reason in unlifted(catalog.metadata)
-                     if rule is None or rule.matches(record.evidence))
+    left_out, seen = [], set()
+    for record, build, reason in unlifted(catalog.metadata):
+        if (rule is None or rule.matches(record.evidence)) and _merge_key(record) not in seen:
+            seen.add(_merge_key(record))  # One ORF two merged catalogues failed to lift counts once.
+            left_out.append(BindingFailure(record.orf_id, record.transcript_id, f"Did not lift to {build}: {reason}"))
+    left_out = tuple(left_out)
     return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome, left_out)
 
 

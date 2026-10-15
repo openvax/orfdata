@@ -639,7 +639,7 @@ class ORFCatalog:
                     )
                 )
             )
-            and (biotype is None or r.biotype == biotype)
+            and (biotype is None or any(m.biotype == biotype for m in r.members or (r,)))
             and (rule is None or rule.matches(r.evidence))
         )
 
@@ -743,12 +743,14 @@ def merge_catalogs(catalogs):
     if len(strains) > 1:
         raise ValueError("Cannot merge catalogues for different or unknown strains: "
                          + ", ".join(sorted(str(s[0]) for s in strains)))
-    seen = set()
-    for records in sources:
+    seen = {}
+    for catalog, records in zip(catalogs, sources):
         names = {m.source for m in records}
-        if names & seen:
-            raise ValueError(f"Two catalogues contain {min(names & seen)} records; merge one release of each source")
-        seen |= names
+        if names & set(seen):
+            source = min(names & set(seen))
+            raise ValueError(f"Two catalogues contain {source} records, {seen[source].source} and {catalog.source}; "
+                             "merge one release of each source")
+        seen.update({n: catalog for n in names})
     groups, by_key = [], {}
     for records in sources:
         # Records on the transcript of an ORF found so far join it first, then the rest.
@@ -920,13 +922,11 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     PyEnsembl, it defaults to human. ``genome_build`` is needed only when
     catalogues cover several assemblies of the species.
 
-    Each assembly of the species contributes one catalogue: a bundled one if
-    there is one, so the default never changes when another is downloaded,
-    otherwise the one catalogue in ``registry`` (by default the packaged
-    :class:`CatalogRegistry`), at its default release unless only another
-    release covers that assembly. One on another assembly is lifted to
-    ``genome_build`` through the pinned chain files, in as many hops as
-    needed, and several are merged. Catalogues and chain files must already
+    Every catalogue for the species is used: the bundled ones and those in
+    ``registry`` (by default the packaged :class:`CatalogRegistry`), each at
+    its release on ``genome_build`` if it has one, else its default. One on
+    another assembly is lifted to ``genome_build`` through the pinned chain
+    files, in as many hops as needed, and all are merged. Catalogues and chain files must already
     be installed (``orfdata catalogs download``/``build``, ``orfdata chains
     download``); nothing is downloaded here, and a missing one raises with
     the command that installs it. Which catalogues and chains are used
@@ -984,11 +984,13 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         missing = [c for c in chains if not chain_downloaded(c, cache_root=root)]
     except ImportError:  # Without DataCache no chain can have been downloaded.
         missing = chains
+    cli_root = "" if root is None else f" --cache-root {root}"
     if missing:
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
         needs.append(f"the chain files {', '.join(c.name for c in missing)} to reach {genome_build} by liftover: "
-                     f"download them once with 'orfdata chains download --species {species}{accept}' or "
-                     f"download_chains(species={species!r}{', accept_terms=True' if accept else ''})")
+                     f"download them once with 'orfdata chains{cli_root} download --species {species}{accept}' or "
+                     f"download_chains(species={species!r}{', accept_terms=True' if accept else ''}"
+                     f"{'' if root is None else f', cache_root={str(root)!r}'})")
     if needs:
         try:
             from .datasets import _datacache
@@ -997,19 +999,23 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
             step = ""
         except ImportError:
             step = "orfdata[data] installed, then "
-        raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs))
+        accept = " --accept-terms" if any(c.restricted for c in missing) else ""
+        raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs)
+                         + f". Or install everything at once with 'orfdata setup --species {species}{accept}"
+                         f"{cli_root}'")
     # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
     key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
         x.sha256 for x in route)) for c, route in plan))
     if key in _LOADED:
         return copy(_LOADED[key])  # A caller that reassigns an attribute never changes what others load.
-    catalogs, sources = [], set()
+    catalogs, sources = [], {}
     for choice, route in plan:
         catalog = _open_choice(choice, expected_sha256)
         named = {m.source for r in catalog.records for m in (r.members or (r,))}
-        if named & sources:  # The same source, already used from a closer assembly, counts once.
-            continue
-        sources |= named
+        repeated = {sources[n] for n in named if n in sources}
+        if repeated and all(build != choice.genome_build for build in repeated):
+            continue  # The same source, already used from a nearer assembly, counts once.
+        sources.update({n: choice.genome_build for n in named if n not in sources})
         catalogs.append(lift_to(catalog, genome_build, cache_root=root) if route else catalog)
     loaded = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
     if all(part[3] for part in key[3]):  # Only installations with real files are recognized again.
@@ -1065,10 +1071,11 @@ def _plan(found, species, genome_build):
     """The catalogues load_catalog uses for one species and assembly, each with the chains that lift it there.
 
     One release per catalogue: its release on ``genome_build`` if it has one,
-    else its default, so two releases of one source never both count. Only
-    assemblies the pinned chains reach take part. Each contributes one
-    catalogue, a bundled one if there is one; two are never chosen between.
-    The requested assembly's comes first, then by fewest hops, bundled first.
+    else its default, so two releases of one source never both count. Every
+    catalogue on an assembly the pinned chains reach takes part, to be merged:
+    the requested assembly's first, then by fewest hops; bundled first, then by
+    the registry's priority and name, so a new catalogue never renames the ORFs
+    an earlier one names.
     """
     from .liftover import chain_routes
 
@@ -1083,29 +1090,22 @@ def _plan(found, species, genome_build):
         route = chain_routes(species, build).get(genome_build)
         if route is not None:
             routes[build] = route
-    plan = []
-    for build in sorted({c.genome_build for c in chosen} & set(routes)):
-        here = [c for c in chosen if c.genome_build == build]
-        here = [c for c in here if c.registry is None][:1] or here
-        if len(here) > 1:
-            lifted = "" if build == genome_build else f" to lift to {genome_build}"
-            raise ValueError(f"Several ORF catalogues cover {species} {build}{lifted} "
-                             f"({', '.join(c.label for c in here)}), and none is chosen for you; pass one as "
-                             f"catalog=CatalogRegistry().open(name, version)")
-        plan.append((here[0], routes[build]))
-    return sorted(plan, key=lambda item: (len(item[1]), item[0].registry is not None, item[0].genome_build,
-                                          item[0].name))
+    plan = [(c, routes[c.genome_build]) for c in chosen if c.genome_build in routes]
+    return sorted(plan, key=lambda item: (len(item[1]), item[0].genome_build, item[0].registry is not None,
+                                          item[0].priority, item[0].name))
 
 
 def _install_hint(choice):
-    """The command that installs a registered release, or repairs a damaged one."""
+    """The command that installs a registered release, or repairs a damaged one, in the registry's cache."""
     registry, name, version = choice.registry, choice.name, choice.version
+    root = getattr(registry, "_cache_root", None)
     damaged = _installed(choice) == "damaged"
     verb = "download" if registry.published(name, version) else "build"
     how = " again" if damaged else (" from its pinned sources" if verb == "build" else "")
     return (f"the {name} {version} catalogue, which {'is damaged' if damaged else 'is not installed'}: {verb} it"
-            f"{how} with CatalogRegistry().{verb}({name!r}, {version!r}"
-            f"{', force=True' if damaged else ''}) or 'orfdata catalogs {verb} {name} --version {version}"
+            f"{how} with CatalogRegistry({'' if root is None else f'cache_root={str(root)!r}'}).{verb}({name!r}, "
+            f"{version!r}{', force=True' if damaged else ''}) or 'orfdata catalogs"
+            f"{'' if root is None else f' --cache-root {root}'} {verb} {name} --version {version}"
             f"{' --force' if damaged else ''}'")
 
 
@@ -1122,6 +1122,7 @@ class _Choice(NamedTuple):
     registry: object = None
     resource: Optional[str] = None
     version: Optional[str] = None
+    priority: int = 0
 
     @property
     def label(self):
@@ -1133,8 +1134,10 @@ def _catalog_choices(registry):
     from .catalogs import CatalogRegistry
 
     registry = CatalogRegistry() if registry is None else registry
+    priority = getattr(registry, "priority", lambda name: 100)
     return [_Choice(s, b, "bundled", resource=r) for (s, b), r in _BUNDLED.items()] + [
-        _Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry, version=m.version)
+        _Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry, version=m.version,
+                priority=priority(m.catalog_id))
         for m in registry.list()]
 
 
@@ -1203,8 +1206,8 @@ def _open_registered(choice, expected_sha256):
 class CatalogStatus:
     """One ORF catalogue load_catalog can open, and whether it is ready offline.
 
-    ``selected`` marks the one ``load_catalog(species=..., genome_build=...)``
-    uses for its species and assembly. ``installed`` is ``"bundled"``,
+    ``selected`` marks the ones ``load_catalog(species=..., genome_build=...)``
+    uses, merged, for their species and assembly. ``installed`` is ``"bundled"``,
     ``"downloaded"``, ``"built"``, ``"damaged"`` or None; ``acquire`` names the explicit step
     that installs a missing one, ``"download"`` or ``"build"``. ``lifts_to``
     lists the other assemblies the pinned chains reach, each with its chains
@@ -1241,7 +1244,7 @@ def catalog_status(*, registry=None):
         if (species, build) not in plans:
             try:
                 plans[species, build] = _plan([c for c in choices if c.species == species], species, build)
-            except ValueError:  # Two candidates: load_catalog chooses neither.
+            except ValueError:
                 plans[species, build] = []
         return plans[species, build]
 

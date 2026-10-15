@@ -25,6 +25,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         from .proteome_cli import run as proteome_run
 
         return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
+    if argv and argv[0] == "setup":
+        return _setup(argv[1:], prog=(prog or "orfdata") + " setup")
     if argv and argv[0] == "genomes":
         from .genomes_cli import run as genomes_run
 
@@ -36,7 +38,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         return command(argv[1:], prog=f"{prog or 'orfdata'} {argv[0]}")
     parser = argparse.ArgumentParser(
         description=__doc__, prog=prog,
-        epilog="Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
+        epilog="Install a species' catalogues and chains with 'orfdata setup --species S'. "
+               "Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
                "catalogues with 'orfdata catalogs --help'; lift a catalogue to another assembly with "
                "'orfdata lift --help' and 'orfdata chains --help'; annotations PyEnsembl lacks, such as "
                "T2T-CHM13, with 'orfdata genomes --help'; quantitative data with "
@@ -44,6 +47,31 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
+
+
+def _setup(argv, prog):
+    from .install import InstallError, install_species
+
+    parser = argparse.ArgumentParser(
+        prog=prog, description="Install a species' ORF catalogues and chain files, so its proteomes work offline "
+                               "on every assembly the chains reach.")
+    parser.add_argument("--species", required=True, help="e.g. human or mouse")
+    parser.add_argument("--accept-terms", action="store_true",
+                        help="Accept usage terms of restricted chain files, such as UCSC's non-commercial ones")
+    parser.add_argument("--force", action="store_true", help="Install again even what is already installed")
+    parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
+    args = parser.parse_args(argv)
+    try:
+        result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
+                                 cache_root=args.cache_root)
+    except InstallError as error:  # What did install is still reported.
+        json.dump(error.result, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        parser.exit(1, f"{parser.prog}: error: {error}\n")
+    except (ValueError, OSError, ImportError) as error:
+        parser.error(str(error))
+    json.dump(result, sys.stdout, indent=2)
+    sys.stdout.write("\n")
 
 
 def _add_query_arguments(parser, *, catalog_path=True):
@@ -58,7 +86,8 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
     parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
     _add_rule_arguments(parser)
-    parser.add_argument("--biotype", help="Source ORF class, e.g. uORF, lncRNA, intORF, dORF")
+    parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
+                                          "(GENCODE, human); uORF, lncORF, iORF (Chang et al., mouse); AltProt (OpenProt)")
     parser.add_argument("--region", help="1-based inclusive interval: chr7:66205483-66205522")
     parser.add_argument(
         "--position", help="Map a 1-based variant position: chr7:66205483 (JSON only)"
@@ -234,12 +263,15 @@ def _query(args, parser, catalog_loader):
         scoped = not isinstance(catalog, UORFCatalog)
         provenance = ("members", "liftover", "lifted_from")
         if scoped:
-            fields += ("reference_context_json", "summaries_json") + tuple(f + "_json" for f in provenance)
+            fields += ("start_codon", "reference_context_json", "summaries_json") + tuple(
+                f + "_json" for f in provenance)
         elif any(r.summaries for r in records):
             # The released upstream-only columns have no place for aggregate counts.
             parser.error("The legacy upstream-ORF TSV cannot export aggregate evidence; use --format json")
         elif any(r.members or r.liftover for r in records):
             parser.error("The legacy upstream-ORF TSV cannot export merged or lifted records; use --format json")
+        elif any(getattr(r, "start_codon", None) for r in records):
+            parser.error("The legacy upstream-ORF TSV cannot export declared start codons; use --format json")
         writer = csv.DictWriter(sys.stdout, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for r in records:

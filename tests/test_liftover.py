@@ -559,11 +559,11 @@ def test_load_catalog_ignores_what_it_cannot_reach_and_counts_a_source_once(chai
     assert load_catalog(species="mouse", genome_build="GRCm38",
                         registry=Registry(old=old, f1=far[0], f2=far[1])).records == old.records
     # Two catalogues that would be lifted are ambiguous, and the error says so.
+    # Two catalogues on one assembly are merged.
     shifted_records = [shifted(r) for r in native.records]
     twins = Registry(a=mouse(shifted_records, "GRCm38", "a-v1", "a"), b=mouse(shifted_records, "GRCm38", "b-v1", "b"))
-    with pytest.raises(ValueError, match="Several ORF catalogues cover mus_musculus GRCm38 to lift to GRCm39 "
-                                         r"\(a 1, b 1\), and none is chosen for you"):
-        load_catalog(species="mouse", genome_build="GRCm39", registry=twins)
+    assert load_catalog(species="mouse", genome_build="GRCm38", registry=twins).source == (
+        "orfdata-catalog:a-v1+orfdata-catalog:b-v1")
     # One source registered on two assemblies under two names counts once: from the nearer assembly.
     registry = Registry(op39=native, op38=old)
     registry._cache_root = tmp_path / "root"  # Chains are found where the registry's catalogues are.
@@ -592,3 +592,17 @@ def test_an_explicit_catalogue_on_another_assembly_is_lifted(chain, pinned, geno
     other = mouse(native.records, "GRCm39", "other-v1", "other")
     merged = extra_orfs(genome, None, catalog=[old, other])
     assert merged.catalog.source == "orfdata-catalog:fixture-v1@GRCm39+orfdata-catalog:other-v1"
+
+
+def test_one_source_twice_on_one_assembly_raises_and_one_unlifted_orf_counts_once(chain, pinned, genome):  # noqa: F811
+    native = make_catalog()
+    with pytest.raises(ValueError, match="Two catalogues contain synthetic records"):
+        load_catalog(species="mouse", genome_build="GRCm39",
+                     registry=Registry(a=native, b=mouse(native.records, "GRCm39", "b-v1")))
+    beyond = replace(orf("beyond", blocks=((390, 410),), protein="MKPGKP", ribosome_studies=("s",)), contig="1")
+    a = mouse([shifted(r) for r in (*native.records, beyond)], "GRCm38", "a-v1", "a")
+    b = mouse([shifted(r) for r in (*native.records, beyond)], "GRCm38", "b-v1", "b")
+    download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True)
+    found = extra_orfs(genome, None, catalog=load_catalog(species="mouse", genome_build="GRCm39",
+                                                         registry=Registry(a=a, b=b)))
+    assert [e.orf_id for e in found.unlifted] == ["beyond"]

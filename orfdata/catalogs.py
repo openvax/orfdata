@@ -49,6 +49,10 @@ def _builder(manifest):
         from .sources.openprot import import_orfs
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
+    if importer == "ncorf-mammals-v1":
+        from .sources.ncorf_mammals import import_orfs
+
+        return lambda inputs, output: import_orfs(inputs, output, manifest)
     raise ValueError("No packaged importer for this catalogue release")
 
 
@@ -72,6 +76,8 @@ class CatalogRegistry:
         for name, entry in self._definitions.items():
             if entry["default_version"] not in entry["versions"]:
                 raise ValueError("A catalogue default must be a pinned version")
+            if type(entry.get("priority", 0)) is not int:
+                raise ValueError(f"The {name} catalogue's priority must be an integer, lower merging first")
             for version, release in entry["versions"].items():
                 manifest = CatalogManifest.from_dict(release["manifest"])
                 if (manifest.catalog_id, manifest.version) != (name, version):
@@ -113,6 +119,12 @@ class CatalogRegistry:
     def download_metadata(self, name, version=None):
         release = self._definitions[name]["versions"][self._version(name, version)]
         return json.loads(json.dumps({k: release[k] for k in ("distribution", "assets")}))
+
+    def priority(self, name):
+        """Where the catalogue comes when merged: lower first, so its IDs name shared ORFs (default 100)."""
+        if name not in self._definitions:
+            raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
+        return self._definitions[name].get("priority", 100)
 
     def published(self, name, version=None):
         """Whether the release has a published artifact to download; otherwise it is built locally."""

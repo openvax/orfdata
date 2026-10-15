@@ -29,7 +29,8 @@ def fixture_registry(tmp_path, paths=None, **coverage):
     release = dict(manifest=manifest.to_dict(), distribution=dict(access_terms="fixture", redistributable=False),
                    assets={})
     registry = CatalogRegistry({manifest.catalog_id: dict(default_version=manifest.version,
-                                                          versions={manifest.version: release})},
+                                                          versions={manifest.version: release},
+                                                          priority=CatalogRegistry().priority(manifest.catalog_id))},
                                cache_root=tmp_path / "cache")
     return registry, {k: str(v) for k, v in paths.items()}
 
@@ -212,7 +213,8 @@ def test_a_damaged_build_says_to_rebuild(catalog, tmp_path):
 
 def test_without_datacache_a_missing_build_says_what_to_install(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "datacache", None)
-    with pytest.raises(ValueError, match="need orfdata.data. installed, then the openprot-mouse 2.2-1 catalogue, which is not installed: build it"):
+    with pytest.raises(ValueError, match="need orfdata.data. installed, then the openprot-mouse 2.2-1 catalogue, which is not "
+                         "installed: build it.*the ncorf-mammals-mouse 1 catalogue.*orfdata setup --species mus_musculus"):
         load_catalog(species="mouse")
     row = next(s for s in catalog_status() if s.name == "openprot-mouse")
     assert (row.installed, row.acquire) == (None, "build")

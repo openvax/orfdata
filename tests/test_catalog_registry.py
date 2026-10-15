@@ -305,7 +305,7 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
     assert (human.species, human.genome_build) == ("homo_sapiens", "GRCh38")
     assert load_catalog(species="human", genome_build="GRCh38").records == human.records
     with pytest.raises(ValueError, match=r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\); "
-                                         r"mus_musculus GRCm39 \(openprot-mouse 2.2-1\)\."):
+                                         r"mus_musculus GRCm39 \(ncorf-mammals-mouse 1\); mus_musculus GRCm39 \(openprot-mouse 2.2-1\)\."):
         load_catalog(species="dog")
     with pytest.raises(ValueError, match="need the chain files GRCh38_to_GRCh37 to reach GRCh37 by liftover"):
         load_catalog(species="human", genome_build="GRCh37")
@@ -314,7 +314,7 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
         load_catalog(species="mouse")
 
 
-def test_load_catalog_never_guesses_between_catalogues(tmp_path):
+def test_load_catalog_uses_every_registered_catalogue(tmp_path):
     manifest, _, _ = setup_release(tmp_path)
     assert manifest.genome_build != "GRCm38"
     second = replace(manifest, catalog_id="mouse-second")
@@ -324,14 +324,12 @@ def test_load_catalog_never_guesses_between_catalogues(tmp_path):
                                cache_root=tmp_path / "cache")
     with pytest.raises(ValueError, match=rf"several mus_musculus assemblies \(GRCm38, {manifest.genome_build}\)"):
         load_catalog(species="mouse", registry=registry)
-    with pytest.raises(ValueError, match="Several ORF catalogues cover mus_musculus .*mouse-second"):
+    # Both catalogues on the assembly are used, to be merged; neither is installed, and both are named.
+    with pytest.raises(ValueError, match="mouse-second 1 catalogue, which is not installed.*mus_musculus 1 catalogue"):
         load_catalog(species="mouse", genome_build=manifest.genome_build, registry=registry)
-    # GRCm38 would also take a GRCm39 catalogue, lifted; there are two, so neither is guessed.
-    with pytest.raises(ValueError, match="Several ORF catalogues cover mus_musculus GRCm39 .*mouse-second"):
-        load_catalog(species="mouse", genome_build="GRCm38", registry=registry)
 
 
-def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path):
+def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path, monkeypatch):
     registry, manifest, source, artifact, original = installed_release(tmp_path)
     name, build = manifest.catalog_id, manifest.genome_build
     releases = definition(manifest, artifact)
@@ -344,6 +342,17 @@ def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path):
     assert load_catalog(species="mouse", genome_build=build, registry=registry).records == original.records
     with pytest.raises(ValueError, match=rf"{name} 0 catalogue, which is not installed: .*--version 0"):
         load_catalog(species="mouse", genome_build="GRCm38", registry=registry)
+    # Setup installs every release some assembly uses: version 0 for GRCm38, not version 2.
+    from orfdata import install_species, liftover
+
+    downloads = []
+    monkeypatch.setattr(registry, "download", lambda n, v=None, *, force=False: downloads.append((n, v)))
+    monkeypatch.setattr(liftover, "download_chain", lambda *a, **k: "offline")
+    result = install_species("mouse", registry=registry, accept_terms=True)
+    assert downloads == [(name, "0")] and result["catalogs"][f"{name} 1"] == "already installed"
+    releases[name]["priority"] = "first"
+    with pytest.raises(ValueError, match="priority must be an integer"):
+        CatalogRegistry(releases)
 
 
 def test_query_cli_selects_a_species_catalogue(capsys):

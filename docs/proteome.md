@@ -154,8 +154,8 @@ identical sequences, for example before an exact peptide search.
 
 Without `catalog=`, `load_catalog` picks the catalogue for the genome's species
 and assembly: a bundled one, or else one installed through
-[`CatalogRegistry`](catalogs.md). Human GRCh38 has the bundled one, and mouse
-GRCm39 has OpenProt's once [built](catalogs.md#mouse-orfs-from-openprot); for
+[`CatalogRegistry`](catalogs.md), several merged. Human GRCh38 has the bundled
+one, and mouse GRCm39 two once [installed](catalogs.md#mouse); for
 other species the error names the catalogues that exist. Pass `catalog=` to use
 another, such as `load_catalog(path)`. A catalogue for a different species or
 assembly is rejected.
@@ -187,7 +187,7 @@ other.
   differently counts once when their `ribosome_study_pmids` metadata give it
   the same PMID, as the bundled catalogue's does; without PMIDs it counts
   twice toward `RiboSeq(min_studies=...)`.
-- **Lookups.** Queries by transcript or gene, `for_transcript` and
+- **Lookups.** Queries by transcript, gene or biotype, `for_transcript` and
   `ExtraORFs.for_gene(..., source=True)` match every source's labels, and an
   ORF is on its source transcript when it is on any source's.
 - **Annotation pins.** Sources pinned to different annotation releases of the
@@ -332,8 +332,8 @@ JSON summary of the layers, identity and excluded ORFs goes to standard error.
 
 ## Not yet included
 
-Mouse noncanonical ORFs come from OpenProt once you build that catalogue; see
-[Mouse ORFs from OpenProt](catalogs.md#mouse-orfs-from-openprot). Dog
+Mouse noncanonical ORFs come from Chang et al.'s Ribo-seq and OpenProt's MS
+catalogues once you install them; see [Mouse](catalogs.md#mouse). Dog
 noncanonical ORFs, and translated endogenous retrovirus (ERV) ORFs without
 annotated transcripts, need new source data; see the
 [data roadmap](https://github.com/openvax/orfdata/issues/3). Products from

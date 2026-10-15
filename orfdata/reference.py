@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass
+from functools import cached_property
 from typing import Optional
 
 # NCBI Taxonomy IDs; source names are retained on ReferenceContext. This mapping
@@ -128,7 +129,7 @@ class ReferenceContext:
         if self.strain is not None and (not isinstance(self.strain, str) or not self.strain):
             raise ValueError("Strain must be a nonempty source label or None")
 
-    @property
+    @cached_property
     def key(self):
         """Content identity, including strain and reference pins, excluding aliases."""
         values = self.to_dict()

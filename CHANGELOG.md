@@ -1,5 +1,28 @@
 # 0.28.0
 
+- Mouse Ribo-seq ORFs from Chang et al. (eLife 2025): `ncorf-mammals-mouse`.
+  It has 16,484 ncORFs called by at least two of PRICE, RiboCode and
+  Ribo-TISH in at least two libraries, on Ensembl 107 GRCm39, built from the
+  authors' pinned files, Table S3 and Ensembl 107's GTF.
+  - Coding paths come from each ORF's transcript coordinates, because the
+    source BED garbles multi-exon blocks.
+  - All 16,484 bind exactly on Ensembl 107, and 16,470 place on Ensembl 115.
+  - Near-cognate starts read as methionine and are declared on each record.
+  - Library and caller counts are aggregate Ribo-seq summaries.
+- `load_catalog` merges every registered catalogue for a species and
+  assembly, rather than refusing to choose between two, in the registry's
+  `priority` order so a new catalogue never renames existing ORFs. Mouse now
+  combines OpenProt's and Chang et al.'s ORFs: 19,406 in all, 54 in both,
+  named by OpenProt where shared. **Upgrading:** mouse needs both installed;
+  run `orfdata setup --species mouse` (with `orfdata[build-data]`).
+- A catalogue from a source already used on the same assembly raises rather
+  than being skipped; one ORF that two merged catalogues failed to lift is
+  reported once. Reference keys are cached, which speeds up opening large
+  catalogues.
+- `orfdata setup --species S` (`install_species`) builds or downloads every
+  registered catalogue for the species and its chain files in one step, and
+  repairs a damaged one. Errors about missing pieces suggest it.
+
 - T2T-CHM13v2.0 (#72): `orfdata genomes install t2t-chm13` installs Ensembl's
   rapid-release CHM13 annotation (2022_07). It is pinned by URL, size and
   SHA-256, and `load_genome("t2t-chm13")` opens it offline as a PyEnsembl
