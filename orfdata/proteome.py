@@ -26,6 +26,7 @@ from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _versioned
 from .reference import ReferenceContext
 
 SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
+_SNAPSHOT = "proteome.json.gz"
 # PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 # Evidence labels reported for an included ORF; "mhc" includes human HLA.
@@ -162,12 +163,10 @@ class ProteomeEntry:
         record = dict(record)
         record["evidence"] = tuple(record.get("evidence", ()))
         record["equivalent_ids"] = tuple(record.get("equivalent_ids", ()))
-        occurrences = []
-        for values in record.get("occurrences", ()):
-            o = dict(zip(_OCCURRENCE_FIELDS, values))
-            o["coding_blocks"] = tuple(tuple(b) for b in o["coding_blocks"])
-            occurrences.append(Occurrence(**o))
-        record["occurrences"] = tuple(occurrences)
+        blocks = _OCCURRENCE_FIELDS.index("coding_blocks")
+        record["occurrences"] = tuple(
+            Occurrence(*values[:blocks], tuple(map(tuple, values[blocks])), *values[blocks + 1 :])
+            for values in record.get("occurrences", ()))
         return cls(**record)
 
 
@@ -464,6 +463,66 @@ class Proteome:
                      added=len(entries))
         return cls(reference, entries, (layer,), genome=genome)
 
+    @classmethod
+    def build(cls, genome, evidence="ms", *, catalog=None, viral=(), extra_orfs=True, context=None,
+              cache=False, cache_root=None):
+        """The usual reference proteome in one call, optionally kept in a cache.
+
+        That is :meth:`from_genome`, then :meth:`with_extra_orfs` with
+        ``evidence`` and ``catalog`` unless ``extra_orfs=False``, then
+        :meth:`with_viral` for each of ``viral``. With ``cache=True`` the result
+        is saved under the OpenVax DataCache root (``ORFDATA_CACHE``,
+        ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, the
+        evidence rule, the catalogue and viral identities, the snapshot schema
+        and the orfdata version. A later identical build loads that verified
+        snapshot instead of rebuilding. ``cache_root`` is also where the
+        species' registered catalogue is looked for. Nothing is downloaded.
+        """
+        _require_installed(genome)
+        reference = ReferenceContext.from_genome(genome, context=context)
+        viral = tuple(viral)
+        if not extra_orfs and catalog is not None:
+            raise ValueError("A catalogue needs extra_orfs=True")
+        rule = None
+        if extra_orfs:
+            rule = evidence_rule(evidence)
+            if catalog is None:
+                from .catalogs import CatalogRegistry
+
+                catalog = load_catalog(species=reference.species, genome_build=reference.genome_build,
+                                       registry=None if cache_root is None else CatalogRegistry(cache_root=cache_root))
+            elif not isinstance(catalog, ORFCatalog):
+                catalog = merge_catalogs(catalog)
+        built = []
+
+        def make():
+            proteome = cls.from_genome(genome, context=context)
+            if extra_orfs:
+                proteome = proteome.with_extra_orfs(rule, catalog=catalog)
+            for virus in viral:
+                proteome = proteome.with_viral(virus)
+            built.append(proteome)
+            return proteome
+
+        if not cache:
+            return make()
+        from .datasets import _digest
+        from .version import __version__
+
+        key = dict(schema=SNAPSHOT_SCHEMA, orfdata=__version__, pyensembl=_pyensembl_version(),
+                   reference=reference.to_dict(), annotation=_annotation_files(genome),
+                   extra_orfs=dict(evidence=None if rule is None else rule.to_dict(),
+                                   catalog=_catalog_identity(catalog)) if extra_orfs else None,
+                   viral=[_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
+                          for virus in viral])
+        path = _cached_snapshot(key, make, cache_root)
+        if built:
+            return built[0]
+        loaded = cls.load(path, _verified=True)
+        proteome = cls(loaded.reference, loaded.entries, loaded.layers, loaded.excluded, genome)
+        proteome.__dict__["_identity"] = loaded.identity
+        return proteome
+
     def with_extra_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
                         require_unique=False, require_reviewed=False):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
@@ -590,13 +649,18 @@ class Proteome:
         """Write a gzipped JSON snapshot that :meth:`load` reads offline."""
         content = self._content()
         snapshot = dict(schema=SNAPSHOT_SCHEMA, identity=_sha256(content), content=content)
-        with gzip.open(path, "wt", encoding="utf-8", compresslevel=6) as handle:
-            json.dump(snapshot, handle, sort_keys=True, separators=(",", ":"))
+        # No timestamp in the gzip header, so identical proteomes give identical files.
+        with open(path, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0,
+                                                    compresslevel=6) as handle:
+            handle.write(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode())
         return snapshot["identity"]
 
     @classmethod
-    def load(cls, path):
-        """Read a snapshot offline; corrupted or inconsistent content raises."""
+    def load(cls, path, *, _verified=False):
+        """Read a snapshot offline; corrupted or inconsistent content raises.
+
+        Entries do not carry ``orf``; use :func:`extra_orfs` for ORF objects.
+        """
         raw = Path(path).read_bytes()
         snapshot = json.loads(gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw)
         if snapshot.get("schema") != SNAPSHOT_SCHEMA:
@@ -607,8 +671,11 @@ class Proteome:
         proteome = cls(ReferenceContext(**content["reference"]),
                        (ProteomeEntry.from_dict(e) for e in content["entries"]),
                        content["layers"], (BindingFailure(**e) for e in content["excluded"]))
-        if proteome.identity != snapshot["identity"]:
+        # A snapshot from the cache was written by save() and checksummed by DataCache; any other
+        # file must also re-serialize to its identity, so non-canonical content is rejected.
+        if not _verified and _sha256(proteome._content()) != snapshot["identity"]:
             raise ValueError("Proteome snapshot does not round-trip to its identity")
+        proteome.__dict__["_identity"] = snapshot["identity"]
         return proteome
 
     def write_fasta(self, path_or_handle, *, width=60):
@@ -750,6 +817,74 @@ def _structure_from_transcript(transcript):
         _merge(transcript.coding_sequence_position_ranges) if transcript.protein_id else (),
         transcript.protein_id, version, transcript.contains_start_codon if transcript.protein_id else False,
         transcript.contains_stop_codon if transcript.protein_id else False)
+
+
+def _cached_snapshot(key, make, cache_root):
+    """The snapshot for ``key`` in the DataCache store, built by ``make()`` when absent or invalid."""
+    import shutil
+    import tempfile
+    import time
+
+    from .datasets import _datacache, _digest, get_data_dir
+
+    datacache = _datacache()
+    store = get_data_dir(cache_root) / "proteomes" / _digest(key)
+    inspected = datacache.inspect_bundle(store)
+    if inspected.status == "available":
+        return Path(inspected.files[_SNAPSHOT].path)
+    if inspected.status not in ("missing", "invalid"):
+        raise PermissionError(f"The proteome cache at {store} is {inspected.status}")
+    store.parent.mkdir(parents=True, exist_ok=True)
+    for stale in store.parent.glob(".partial-*"):  # Left by a build that was killed a day or more ago.
+        try:
+            if time.time() - stale.stat().st_mtime > 86400:
+                shutil.rmtree(stale, ignore_errors=True)
+        except OSError:
+            pass
+    with tempfile.TemporaryDirectory(dir=store.parent, prefix=".partial-") as work:
+        files = {_SNAPSHOT: Path(work) / _SNAPSHOT, "recipe.json": Path(work) / "recipe.json"}
+        proteome = make()
+        proteome.__dict__["_identity"] = proteome.save(files[_SNAPSHOT])
+        files["recipe.json"].write_text(json.dumps(dict(key, identity=proteome.identity), indent=1, sort_keys=True))
+        assets = {name: dict(path=str(file), size=file.stat().st_size,
+                             sha256=hashlib.sha256(file.read_bytes()).hexdigest()) for name, file in files.items()}
+        try:
+            paths = datacache.install_bundle(store, assets, force=inspected.status == "invalid",
+                                             download_options=dict(show_progress=False))
+        except datacache.FileValidationError:
+            # Another program installed this build meanwhile; snapshots are byte-identical, so use it.
+            again = datacache.inspect_bundle(store)
+            if again.status != "available":
+                raise
+            return Path(again.files[_SNAPSHOT].path)
+    return Path(paths[_SNAPSHOT])
+
+
+def _pyensembl_version():
+    try:
+        from pyensembl import __version__
+    except ImportError:
+        return None
+    return __version__
+
+
+def _annotation_files(genome):
+    """The genome's annotation sources: release URLs as given, local files by size and SHA-256."""
+    sources = [getattr(genome, "_gtf_path_or_url", None),
+               *(getattr(genome, "_transcript_fasta_paths_or_urls", None) or ()),
+               *(getattr(genome, "_protein_fasta_paths_or_urls", None) or ())]
+    found = []
+    for source in (str(s) for s in sources if s is not None):
+        path = Path(source)
+        if "://" in source or not path.is_file():
+            found.append([source])
+            continue
+        digest = hashlib.sha256()
+        with open(path, "rb") as handle:
+            for chunk in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(chunk)
+        found.append([path.name, path.stat().st_size, digest.hexdigest()])
+    return found
 
 
 def _json(value):
