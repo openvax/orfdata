@@ -22,6 +22,12 @@
   record: merging the two mouse catalogues takes seconds, not minutes.
   `load_catalog` reuses a lifted or merged result within a process.
 
+# 0.27.1
+
+- `orfdata.reference.species_name_for_taxon(taxon_id)` resolves a known NCBI
+  species taxonomy ID to its canonical name offline, without an annotation
+  (#83, #84).
+
 # 0.27.0
 
 - Catalogues on other assemblies are lifted automatically. `load_catalog`,
