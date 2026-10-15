@@ -360,3 +360,9 @@ def test_lifted_and_merged_catalogues_export_as_tsv(chain, tmp_path, capsys):
     assert json.loads(merged["liftover_json"])["target_build"] == "GRCm39"
     assert [m["orf_id"] for m in json.loads(merged["members_json"])] == ["ms-orf", "IP_1"]
     assert json.loads(merged["lifted_from_json"])["genome_build"] == "GRCm38"
+
+
+def test_a_genome_build_alone_picks_the_catalogue(capsys):
+    with pytest.raises(SystemExit):
+        run(["--genome-build", "GRCh37", "--gene", "TPST1"])
+    assert "No ORF catalogue covers homo_sapiens GRCh37" in capsys.readouterr().err

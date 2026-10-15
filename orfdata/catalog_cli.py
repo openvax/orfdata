@@ -14,18 +14,19 @@ def run(argv=None, prog=None):
     parser.add_argument("--cache-root", help="Override the OpenVax cache root")
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Discover release manifests without downloading")
-    listing.add_argument("--species")
+    listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
     listing.add_argument("--taxon-id", type=int)
     query_parser = None
     for command in ("info", "inspect", "download", "build", "query"):
         subparser = commands.add_parser(command)
-        subparser.add_argument("name")
-        subparser.add_argument("--version")
+        subparser.add_argument("name", help="Catalogue name, as 'orfdata catalogs list' shows it")
+        subparser.add_argument("--version", help="Release to use instead of the catalogue's default")
         if command in ("inspect", "query"):
             subparser.add_argument("--built", action="store_true", help="Select a local source build explicitly")
         if command in ("download", "build"):
-            subparser.add_argument("--force", action="store_true")
-            subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
+            subparser.add_argument("--force", action="store_true", help="Replace an existing installation")
+            subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
+                                   help="Use this local copy of a pinned source asset instead of downloading it")
         if command == "query":
             query_parser = subparser
             _add_query_arguments(subparser, catalog_path=False)

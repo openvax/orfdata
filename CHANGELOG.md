@@ -17,7 +17,8 @@
   `liftover_json` and `lifted_from_json` instead of failing.
 - The `orfdata` query command takes `--min-ribo-seq-studies`,
   `--min-ms-peptides`, `--ms-methods` and `--either`, like `orfdata proteome`
-  (#73). `orfdata catalogs query` takes them too.
+  (#73). `orfdata catalogs query` takes them too. `--genome-build` alone picks
+  the catalogue for that assembly.
 
 # 0.24.0
 

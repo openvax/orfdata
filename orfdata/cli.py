@@ -135,7 +135,8 @@ def _query(args, parser, catalog_loader):
         parser.error("Provide distinct single-base forward-genomic REF and ALT")
     try:
         paths = args.catalog or [None]
-        if args.species:
+        if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
+            # The assembly picks the catalogue too, not only checks it.
             catalogs = [catalog_loader(p, species=args.species, genome_build=args.genome_build) for p in paths]
         else:
             catalogs = [catalog_loader(p) for p in paths]
