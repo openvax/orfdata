@@ -11,8 +11,16 @@
   - Missing catalogues or chains raise an error with the command that
     installs them. Nothing is downloaded while loading.
 - `orfdata chains download` with no assemblies downloads every pinned chain
-  (`download_chains()`). UCSC's restricted ones are skipped without
-  `--accept-terms`.
+  (`download_chains()` returns what it downloaded and skipped). UCSC's
+  restricted ones are skipped without `--accept-terms`; `chains list` shows
+  what is downloaded.
+- Explicit catalogues on another assembly are lifted too, in `extra_orfs` and
+  `Proteome.build`. Missing catalogues and chains are reported together,
+  under the registry's or `--cache-root`'s root. Catalogues on assemblies no
+  chain reaches are ignored, a source already used from a nearer assembly
+  counts once, and `hg38`/`mm39`/`GRCh38.p14` and other species' assemblies
+  get errors that say what to use. `catalog_status` follows exactly what
+  `load_catalog` uses.
 - Ensembl's GRCh38↔NCBI36 and GRCm38↔NCBIM37 chains are pinned.
 - `chain_routes`, `lift_to` and multi-hop `orfdata lift`.
 - `catalog_status()` reports the assemblies each catalogue reaches, and

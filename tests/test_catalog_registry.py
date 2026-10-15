@@ -283,7 +283,7 @@ def test_load_catalog_selects_the_installed_catalogue_for_a_species(tmp_path):
     with pytest.raises(ValueError, match="checksum mismatch"):
         load_catalog(species="mouse", registry=registry, expected_sha256="0" * 64)
     missing = CatalogRegistry(definition(manifest, artifact), cache_root=tmp_path / "empty")
-    with pytest.raises(ValueError, match="not installed; download it first"):
+    with pytest.raises(ValueError, match="mus_musculus 1 catalogue, which is not installed: download it with"):
         load_catalog(species="mouse", registry=missing)
     with pytest.raises(ValueError, match=rf"No ORF catalogue covers canis_lupus_familiaris\. Catalogues exist "
                                          rf"for: homo_sapiens GRCh38 \(bundled\); mus_musculus {manifest.genome_build} "
@@ -307,10 +307,10 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
     with pytest.raises(ValueError, match=r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\); "
                                          r"mus_musculus GRCm39 \(openprot-mouse 2.2-1\)\."):
         load_catalog(species="dog")
-    with pytest.raises(ValueError, match="reach GRCh37 by liftover, which needs the chain files GRCh38_to_GRCh37"):
+    with pytest.raises(ValueError, match="need the chain files GRCh38_to_GRCh37 to reach GRCh37 by liftover"):
         load_catalog(species="human", genome_build="GRCh37")
-    with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 ORF catalogue is not installed; build it from its "
-                                         r"pinned sources .* 'orfdata catalogs build openprot-mouse --version 2.2-1'"):
+    with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 catalogue, which is not installed: build it from "
+                                         r"its pinned sources .* 'orfdata catalogs build openprot-mouse --version 2.2-1'"):
         load_catalog(species="mouse")
 
 
@@ -342,7 +342,7 @@ def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path):
     registry = CatalogRegistry(releases, cache_root=tmp_path / "download")
     # Version 1, the default, is installed; version 2 of the same assembly is not chosen over it.
     assert load_catalog(species="mouse", genome_build=build, registry=registry).records == original.records
-    with pytest.raises(ValueError, match=rf"{name} 0 ORF catalogue is not installed.*--version 0"):
+    with pytest.raises(ValueError, match=rf"{name} 0 catalogue, which is not installed: .*--version 0"):
         load_catalog(species="mouse", genome_build="GRCm38", registry=registry)
 
 
@@ -350,7 +350,7 @@ def test_query_cli_selects_a_species_catalogue(capsys):
     run(["--species", "human", "--orf-id", "c7riboseqorf56"])
     assert [r["orf_id"] for r in json.loads(capsys.readouterr().out)["records"]] == ["c7riboseqorf56"]
     for species, message in (("dog", "No ORF catalogue covers canis_lupus_familiaris"),
-                             ("mouse", "openprot-mouse 2.2-1 ORF catalogue is not installed")):
+                             ("mouse", "openprot-mouse 2.2-1 catalogue, which is not installed")):
         with pytest.raises(SystemExit):
             run(["--species", species, "--gene", "Tpst1"])
         assert message in capsys.readouterr().err

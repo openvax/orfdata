@@ -531,7 +531,7 @@ def test_extra_orfs_follow_separate_ribo_seq_and_ms_rules(genome, catalog):
 
 def test_species_without_a_catalogue_or_mismatched_catalogue_fails(genome):
     base = Proteome.from_genome(genome)
-    with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 ORF catalogue is not installed; build it"):
+    with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 catalogue, which is not installed: build it"):
         base.with_extra_orfs()
     with pytest.raises(ValueError, match="cannot bind"):
         base.with_extra_orfs(catalog=load_catalog())
@@ -633,7 +633,7 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"annotated": 3}
     with pytest.raises(SystemExit):
         run(["proteome", "--species", "mouse", "--release", "1"])  # The mouse catalogue isn't built.
-    assert "openprot-mouse 2.2-1 ORF catalogue is not installed" in capsys.readouterr().err
+    assert "openprot-mouse 2.2-1 catalogue, which is not installed" in capsys.readouterr().err
     rules = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path)]
     for options, kinds in ((["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1", "--either"], 3),
                            (["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1"], 0),

@@ -210,17 +210,23 @@ def chain_downloaded(chain, *, cache_root=None):
 def download_chains(*, species=None, accept_terms=False, force=False, cache_root=None):
     """Download every pinned chain file, or a species' ones, verifying each checksum.
 
-    Returns each chain's name with its path, or with the reason it was
-    skipped: chains with usage restrictions, such as UCSC's non-commercial
-    terms, need ``accept_terms=True``.
+    Returns ``{"downloaded": {name: path}, "skipped": {name: reason}}``:
+    chains with usage restrictions, such as UCSC's non-commercial terms, are
+    skipped unless ``accept_terms=True``.
     """
-    result = {}
-    for chain in pinned_chains(species=species):
+    pins = pinned_chains(species=species)
+    if not pins:
+        raise ValueError(f"No chain files are pinned for {species}; "
+                         f"pinned species: {', '.join(sorted({c.species for c in pinned_chains()}))}")
+    result = dict(downloaded={}, skipped={})
+    for chain in pins:
         if chain.restricted and accept_terms is not True:
-            result[chain.name] = f"skipped: {chain.provider}'s terms need accept_terms=True (--accept-terms): {chain.terms}"
+            result["skipped"][chain.name] = (f"{chain.provider}'s terms need accept_terms=True (--accept-terms): "
+                                             f"{chain.terms}")
             continue
-        result[chain.name] = download_chain(chain.source_build, chain.target_build, species=chain.species,
-                                            accept_terms=accept_terms, force=force, cache_root=cache_root)
+        result["downloaded"][chain.name] = download_chain(
+            chain.source_build, chain.target_build, species=chain.species, accept_terms=accept_terms, force=force,
+            cache_root=cache_root)
     return result
 
 

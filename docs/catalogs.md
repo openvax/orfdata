@@ -145,7 +145,7 @@ the pinned chain files once, and `load_catalog`, `extra_orfs(genome)` and
 knows:
 
 ```sh
-orfdata chains download                  # Ensembl's chains; add --accept-terms for UCSC's mouse ones
+orfdata chains download --accept-terms   # Every pinned chain; without --accept-terms, UCSC's mouse ones are skipped
 ```
 
 ```python
@@ -167,15 +167,27 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Mouse Ensembl 67, NCBIM37 | lifted, 2 hops | 2,922 | 1,620 | 1,187 transcripts absent |
 
 Older annotations lack many of the transcripts the sources name, so fewer ORFs
-place; the rest are listed with the reason, never silently dropped.
+place; the rest, and any that didn't lift, are listed with the reason, never
+silently dropped.
 
 - **Which catalogues.** Each catalogue contributes one release: the one on the
   requested assembly if it has one, else its default, lifted. Each assembly
-  contributes one catalogue (a bundled one if any), and catalogues from
-  several assemblies are merged. This depends only on the registry and the
-  pinned chains, never on what happens to be installed. A missing catalogue
-  or chain raises an error naming the command that installs it; nothing is
-  downloaded while loading.
+  the pinned chains reach contributes one catalogue (a bundled one if any);
+  two candidates on one assembly raise rather than being chosen between.
+  Catalogues from several assemblies are merged, the requested assembly's
+  first, then by fewest hops. A source already used from a nearer assembly,
+  such as one catalogue registered again under another name on another
+  assembly, counts once. This depends only on the registry and the pinned
+  chains, never on what happens to be installed.
+- **What's missing.** Missing catalogues and chain files are reported together,
+  each with the command that installs it; nothing is downloaded while
+  loading. `cache_root` (or `--cache-root`) is where both are looked for.
+- **Your own catalogues.** `extra_orfs(genome, catalog=...)` and
+  `Proteome.build(genome, catalog=...)` lift a catalogue, or each of a list,
+  that is on another assembly of the species through the same chains.
+- **Other names.** Assemblies go by Ensembl's names. `hg38`, `GRCh38.p14`,
+  `mm39` and the like get an error that names the assembly to use, and a
+  custom genome needs that `reference_name`.
 - **Routes.** `chain_routes(species, build)` gives the fewest-hop route to
   each assembly the pinned chains reach, for example GRCm39 to NCBIM37
   through GRCm38. `lift_to(catalog, build)` lifts through it.

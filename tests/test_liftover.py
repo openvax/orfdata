@@ -150,8 +150,8 @@ def test_merged_catalogues_lift_with_their_members(chain):
 
 
 def test_a_missing_chain_names_the_command_that_downloads_it():
-    with pytest.raises(ValueError, match=r"homo_sapiens ORF catalogues reach GRCh37 by liftover, which needs the chain "
-                                         r"files GRCh38_to_GRCh37; download them once with 'orfdata chains download "
+    with pytest.raises(ValueError, match=r"homo_sapiens GRCh37 ORFs need the chain files GRCh38_to_GRCh37 to reach "
+                                         r"GRCh37 by liftover: download them once with 'orfdata chains download "
                                          r"--species homo_sapiens' or download_chains\(species='homo_sapiens'\)"):
         load_catalog(species="human", genome_build="GRCh37")
 
@@ -283,7 +283,6 @@ def test_cli_lifts_with_a_chain_file_or_a_downloaded_pin(chain, pinned, tmp_path
     run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin)])
     assert by_pin.read_bytes() == by_file.read_bytes()
     for options, message in ((["--species", "mouse"], "not both"),
-                             (["--chain", str(chain.path), "--cache-root", cache], "does not apply with --chain"),
                              (["--to", "GRCm40"], "No pinned chain files lift mus_musculus GRCm38 to GRCm40")):
         argv = ["lift", "--catalog", str(source), "--to", "GRCm39", "--output", str(by_pin)]
         with pytest.raises(SystemExit):
@@ -369,7 +368,7 @@ def test_lifted_and_merged_catalogues_export_as_tsv(chain, tmp_path, capsys):
 def test_a_genome_build_alone_picks_the_catalogue(capsys):
     with pytest.raises(SystemExit):
         run(["--genome-build", "GRCh37", "--gene", "TPST1"])
-    assert "No ORF catalogue covers homo_sapiens GRCh37" in capsys.readouterr().err
+    assert "homo_sapiens GRCh37 ORFs need the chain files GRCh38_to_GRCh37" in capsys.readouterr().err
 
 
 def test_placement_on_another_version_of_the_source_transcript_says_so(genome):  # noqa: F811
@@ -441,7 +440,7 @@ def placements(found):
 def test_load_catalog_lifts_catalogues_from_other_assemblies(chain, pinned, genome):  # noqa: F811
     native = make_catalog()
     old = ORFCatalog([shifted(r) for r in native.records], dict(native.metadata, genome_build="GRCm38"))
-    with pytest.raises(ValueError, match=r"reach GRCm39 by liftover, which needs the chain files GRCm38_to_GRCm39; "
+    with pytest.raises(ValueError, match=r"need the chain files GRCm38_to_GRCm39 to reach GRCm39 by liftover: "
                                          r"download them once with 'orfdata chains download --species mus_musculus "
                                          r"--accept-terms'"):
         load_catalog(species="mouse", genome_build="GRCm39", registry=Registry(old=old))
@@ -493,13 +492,20 @@ def test_routes_take_the_fewest_hops_and_lift_through_each(chain, tmp_path, monk
     summary = json.loads(capsys.readouterr().err)
     assert [c["chain"] for c in summary["chains"]] == [chain.path.name, identity.name]
     assert summary["lifted_records"] == 4 and load_catalog(tmp_path / "far.json").records == far.records
+    # Lifting a lifted file reports only this command's hops.
+    lift_catalog(old, chain).save(tmp_path / "mid.json")
+    run(["lift", "--catalog", str(tmp_path / "mid.json"), "--to", "GRCm40", "--output", str(tmp_path / "far2.json")])
+    assert [c["chain"] for c in json.loads(capsys.readouterr().err)["chains"]] == [identity.name]
 
 
 def test_download_all_skips_restricted_chains_without_consent(pinned, capsys):
     from orfdata import download_chains
 
-    skipped, = download_chains().values()
-    assert skipped.startswith("skipped: UCSC's terms need accept_terms=True")
+    result = download_chains()
+    assert result["downloaded"] == {} and result["skipped"]["GRCm38_to_GRCm39"].startswith(
+        "UCSC's terms need accept_terms=True")
+    with pytest.raises(ValueError, match="No chain files are pinned for dog"):
+        download_chains(species="dog")
     for argv, message in ((["chains", "download", "GRCm38"], "Name both assemblies"),
                           (["chains", "download", "--source-path", "x"], "--source-path installs one chain")):
         with pytest.raises(SystemExit):
@@ -509,7 +515,7 @@ def test_download_all_skips_restricted_chains_without_consent(pinned, capsys):
 
 def test_without_datacache_a_lift_says_what_to_install(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "datacache", None)
-    with pytest.raises(ValueError, match="needs the chain files GRCh38_to_GRCh37; install orfdata.data., then"):
+    with pytest.raises(ValueError, match="need orfdata.data. installed, then the chain files GRCh38_to_GRCh37"):
         load_catalog(species="human", genome_build="GRCh37")
     assert load_catalog(species="human").genome_build == "GRCh38"  # The bundled catalogue needs nothing.
 
@@ -523,3 +529,52 @@ def test_status_lists_the_assemblies_each_catalogue_reaches():
         dict(genome_build="NCBI36", chains=["GRCh38_to_NCBI36"], downloaded=False))
     assert rows["openprot-mouse"].lifts_to[1] == dict(
         genome_build="NCBIM37", chains=["GRCm39_to_GRCm38", "GRCm38_to_NCBIM37"], downloaded=False)
+
+
+def mouse(records, build, version, source="synthetic"):
+    metadata = dict(make_catalog().metadata, genome_build=build, dataset_version=version,
+                    sources=[dict(id=source, scope="t")])
+    return ORFCatalog([replace(r, genome_build=build, source=source) for r in records], metadata)
+
+
+def test_load_catalog_ignores_what_it_cannot_reach_and_counts_a_source_once(chain, pinned, tmp_path):
+    native = make_catalog()
+    old = mouse([shifted(r) for r in native.records], "GRCm38", "old-v1")
+    far = [mouse([orf("F1")], "GRCm40", "f1-v1", "f1"), mouse([orf("F2")], "GRCm40", "f2-v1", "f2")]
+    # Two catalogues on an assembly no chain reaches are never candidates, so not ambiguous.
+    assert load_catalog(species="mouse", genome_build="GRCm38",
+                        registry=Registry(old=old, f1=far[0], f2=far[1])).records == old.records
+    # Two catalogues that would be lifted are ambiguous, and the error says so.
+    shifted_records = [shifted(r) for r in native.records]
+    twins = Registry(a=mouse(shifted_records, "GRCm38", "a-v1", "a"), b=mouse(shifted_records, "GRCm38", "b-v1", "b"))
+    with pytest.raises(ValueError, match="Several ORF catalogues cover mus_musculus GRCm38 to lift to GRCm39 "
+                                         r"\(a 1, b 1\), and none is chosen for you"):
+        load_catalog(species="mouse", genome_build="GRCm39", registry=twins)
+    # One source registered on two assemblies under two names counts once: from the nearer assembly.
+    registry = Registry(op39=native, op38=old)
+    registry._cache_root = tmp_path / "root"  # Chains are found where the registry's catalogues are.
+    download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True, cache_root=tmp_path / "root")
+    assert load_catalog(species="mouse", genome_build="GRCm39", registry=registry).records == native.records
+    assert load_catalog(species="mouse", genome_build="GRCm38", registry=registry).records == old.records
+
+
+def test_other_names_and_other_species_assemblies_are_explained():
+    with pytest.raises(ValueError, match="orfdata names that assembly GRCh38, as Ensembl does; give a custom genome "
+                                         "the reference name 'GRCh38'"):
+        load_catalog(species="human", genome_build="hg38")
+    with pytest.raises(ValueError, match="orfdata names that assembly GRCh38"):
+        load_catalog(species="human", genome_build="GRCh38.p14")
+    with pytest.raises(ValueError, match="GRCm39 is a mus_musculus assembly, not homo_sapiens"):
+        load_catalog(species="human", genome_build="GRCm39")
+
+
+def test_an_explicit_catalogue_on_another_assembly_is_lifted(chain, pinned, genome):  # noqa: F811
+    native = make_catalog()
+    old = mouse([shifted(r) for r in native.records], "GRCm38", "fixture-v1")
+    with pytest.raises(ValueError, match="is on GRCm38; lifting it to GRCm39 needs the chain files GRCm38_to_GRCm39"):
+        extra_orfs(genome, None, catalog=old)
+    download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True)
+    assert placements(extra_orfs(genome, None, catalog=old)) == placements(extra_orfs(genome, None, catalog=native))
+    other = mouse(native.records, "GRCm39", "other-v1", "other")
+    merged = extra_orfs(genome, None, catalog=[old, other])
+    assert merged.catalog.source == "orfdata-catalog:fixture-v1@GRCm39+orfdata-catalog:other-v1"

@@ -101,7 +101,8 @@ transcript alongside them.
 | Budding yeast | From PyEnsembl | None released |
 
 Other assemblies use a catalogue lifted to them once `orfdata chains download`
-has fetched the chain files; see [every assembly of a species](catalogs.md#every-assembly-of-a-species).
+has fetched the chain files (with `--accept-terms` for UCSC's non-commercial
+mouse chains); see [every assembly of a species](catalogs.md#every-assembly-of-a-species).
 `with_extra_orfs()` raises for a species without a catalogue, or whose
 catalogue or chains aren't installed yet, rather than returning an
 annotated-only proteome. Human ORF evidence is never transferred

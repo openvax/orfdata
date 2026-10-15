@@ -204,7 +204,7 @@ def test_a_damaged_build_says_to_rebuild(catalog, tmp_path):
     built.write_bytes(built.read_bytes() + b"x")
     assert next(s for s in catalog_status(registry=registry) if s.name == "openprot-mouse").installed == "damaged"
     for expected in (None, "0" * 64):
-        with pytest.raises(ValueError, match=r"is damaged; build it again .*force=True.* --force'"):
+        with pytest.raises(ValueError, match=r"catalogue, which is damaged: build it again .*force=True.* --force'"):
             load_catalog(species="mouse", registry=registry, expected_sha256=expected)
     registry.build("openprot-mouse", source_paths=paths, force=True)
     assert load_catalog(species="mouse", registry=registry).records == catalog.records
@@ -212,7 +212,7 @@ def test_a_damaged_build_says_to_rebuild(catalog, tmp_path):
 
 def test_without_datacache_a_missing_build_says_what_to_install(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "datacache", None)
-    with pytest.raises(ValueError, match="is not installed; install orfdata.data., then build it"):
+    with pytest.raises(ValueError, match="need orfdata.data. installed, then the openprot-mouse 2.2-1 catalogue, which is not installed: build it"):
         load_catalog(species="mouse")
     row = next(s for s in catalog_status() if s.name == "openprot-mouse")
     assert (row.installed, row.acquire) == (None, "build")

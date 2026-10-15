@@ -7,8 +7,10 @@ from collections import Counter
 from dataclasses import asdict
 
 from .catalog import load_catalog
+from .catalogs import CatalogRegistry
 from .liftover import (
     ChainFile,
+    chain_downloaded,
     download_chain,
     download_chains,
     lift_catalog,
@@ -31,17 +33,16 @@ def lift(argv=None, prog=None):
     parser.add_argument("--chain", metavar="FILE",
                         help="UCSC or Ensembl chain file from the catalogue's assembly to --to, instead of the "
                              "pinned one; its direction is checked only when it is a pinned file")
-    parser.add_argument("--cache-root", help="Cache directory holding downloaded chain files")
+    parser.add_argument("--cache-root", help="Cache directory holding catalogues and downloaded chain files")
     parser.add_argument("--output", required=True, metavar="FILE",
                         help="Write the lifted catalogue here; gzipped when it ends in .gz")
     args = parser.parse_args(argv)
     try:
         if args.catalog and (args.species or args.genome_build):
             raise ValueError("Pass --catalog or --species/--genome-build, not both")
-        if args.chain and args.cache_root:
-            raise ValueError("--cache-root selects a downloaded chain; it does not apply with --chain")
+        registry = CatalogRegistry(cache_root=args.cache_root) if args.cache_root else None
         catalog = (load_catalog(args.catalog) if args.catalog
-                   else load_catalog(species=args.species, genome_build=args.genome_build))
+                   else load_catalog(species=args.species, genome_build=args.genome_build, registry=registry))
         if args.to == catalog.genome_build:
             raise ValueError(f"The catalogue is already on {args.to}")
         lifted = (lift_catalog(catalog, ChainFile(args.chain, source_build=catalog.genome_build, target_build=args.to))
@@ -50,8 +51,10 @@ def lift(argv=None, prog=None):
     except (ValueError, OSError, ImportError) as error:
         parser.error(str(error))
     hops, metadata = [], lifted.metadata
-    while metadata.get("liftover"):  # The last hop first; each records its input's metadata.
+    while metadata.get("liftover") and metadata is not catalog.metadata:  # This command's hops, last first.
         hops.insert(0, metadata["liftover"])
+        if metadata["liftover"]["source"] == catalog.source:
+            break
         metadata = metadata["liftover"]["input"]["metadata"]
     unmapped = [u for hop in hops for u in hop["unmapped"]]
     summary = dict(source=catalog.source, lifted=lifted.source,
@@ -82,13 +85,19 @@ def chains(argv=None, prog=None):
     args = parser.parse_args(argv)
     try:
         if args.command == "list":
-            output = [asdict(c) for c in pinned_chains(species=args.species)]
+            output = []
+            for chain in pinned_chains(species=args.species):
+                try:
+                    downloaded = chain_downloaded(chain, cache_root=args.cache_root)
+                except ImportError:
+                    downloaded = False
+                output.append(dict(asdict(chain), downloaded=downloaded))
         elif args.source_build is None:
             if args.source_path:
                 raise ValueError("--source-path installs one chain; name it with FROM TO")
-            output = {name: str(found) for name, found in download_chains(
-                species=args.species, accept_terms=args.accept_terms, force=args.force,
-                cache_root=args.cache_root).items()}
+            result = download_chains(species=args.species, accept_terms=args.accept_terms, force=args.force,
+                                     cache_root=args.cache_root)
+            output = dict(downloaded={k: str(v) for k, v in result["downloaded"].items()}, skipped=result["skipped"])
         elif args.target_build is None:
             raise ValueError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
         else:
