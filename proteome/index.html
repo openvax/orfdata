@@ -454,6 +454,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Save and reload">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cache-a-built-proteome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache a built proteome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1371,6 +1388,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Save and reload">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cache-a-built-proteome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache a built proteome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1707,7 +1741,29 @@ selection, catalogue or exclusion changes, but not with file compression or
 formatting. Loading rejects a snapshot whose content does not match its
 identity, host proteins from another species, viral proteins without a
 matching host layer and layers declaring another reference. The human Ensembl
-115 proteome with MS-supported ORFs is a 57 MB snapshot.</p>
+115 proteome with MS-supported ORFs is a 57 MB snapshot that saves in about 8 s
+and loads in about 11 s. Saving is deterministic: the same proteome gives the
+same bytes.</p>
+<h3 id="cache-a-built-proteome">Cache a built proteome<a class="headerlink" href="#cache-a-built-proteome" title="Permanent link">&para;</a></h3>
+<p><code>Proteome.build</code> makes the usual proteome in one call: <code>from_genome</code>, then
+<code>with_extra_orfs(evidence, catalog=...)</code> and <code>with_viral</code> for each of <code>viral=</code>.
+With <code>cache=True</code> it keeps the result in the OpenVax DataCache root
+(<code>ORFDATA_CACHE</code>, <code>OPENVAX_DATA_CACHE</code>, or <code>cache_root=</code>). <code>cache_root=</code> is
+also where the species' registered catalogue is looked for, with or without
+<code>cache=True</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">(),</span> <span class="n">cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>The cache key is the reference, evidence rule, catalogue and viral
+identities, snapshot schema and orfdata version. A later identical build,
+from any program, loads that verified snapshot, so tools share one identity.
+For human Ensembl 115 with MS-supported ORFs, the first build takes about
+30 s, including saving, and later ones about 7 s. A cached snapshot is checked
+by its DataCache checksum, so it skips the re-serialization <code>load</code> does. Local
+annotation files of a custom genome are fingerprinted by size and SHA-256, so
+genomes that share names never share an entry. Entries of a cached or loaded
+proteome don't carry <code>orf</code>; use <code>extra_orfs(genome)</code> for ORF objects. Each cached build sits next
+to a <code>recipe.json</code> recording its key and identity. Nothing is downloaded, and
+<code>extra_orfs=False</code> builds the annotated proteome alone.</p>
 <h2 id="lower-level-orf-lookup">Lower-level ORF lookup<a class="headerlink" href="#lower-level-orf-lookup" title="Permanent link">&para;</a></h2>
 <p><code>extra_orfs(genome, evidence=None)</code> returns every catalogue ORF on every
 transcript carrying it, as <a href="../reference/#objects-and-queries"><code>TranscriptORF</code></a>
@@ -1751,9 +1807,11 @@ orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span cl
 </code></pre></div>
 <p>Given both a Ribo-seq and an MS requirement, an ORF needs both unless
 <code>--either</code> is set. <code>--require-unique</code> and <code>--require-reviewed</code> refine the MS
-requirement, and <code>--require-resolved</code> both. The FASTA goes to <code>--output</code> or standard output; <code>--snapshot FILE</code>
-also saves a snapshot. A JSON summary of the layers, identity and excluded ORFs
-goes to standard error.</p>
+requirement, and <code>--require-resolved</code> both. The FASTA goes to <code>--output</code> or
+standard output; <code>--snapshot FILE</code> also saves a snapshot, and <code>--cache</code>
+reuses or keeps the build in the cache; <code>--cache-root DIR</code> chooses the cache,
+for catalogues as well as builds. A
+JSON summary of the layers, identity and excluded ORFs goes to standard error.</p>
 <h2 id="not-yet-included">Not yet included<a class="headerlink" href="#not-yet-included" title="Permanent link">&para;</a></h2>
 <p>Mouse and dog noncanonical ORFs, and translated endogenous retrovirus (ERV)
 ORFs without annotated transcripts, need new source data; see the
