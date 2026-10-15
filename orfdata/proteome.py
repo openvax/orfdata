@@ -20,15 +20,24 @@ from types import MappingProxyType
 from typing import Mapping, Optional
 
 from . import _structure
-from .catalog import EVIDENCE_METHODS, load_catalog
+from .catalog import load_catalog
+from .evidence import EvidenceRule, evidence_rule
 from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _versioned
 from .reference import ReferenceContext
 
 SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
+# PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 # Evidence labels reported for an included ORF; "mhc" includes human HLA.
 _EVIDENCE_LABELS = ("ribosome", "shotgun", "mhc", "ms_unclassified")
-# PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
+
+
+def _evidence_labels(evidence):
+    """Evidence kinds for a FASTA header; "ms" for MS support whose assay the source doesn't name."""
+    labels = [m for m in _EVIDENCE_LABELS if evidence.has_evidence(m)]
+    if evidence.has_evidence("ms") and not set(labels) - {"ribosome"}:
+        labels.append("ms")
+    return tuple(labels)
 
 
 @dataclass(frozen=True)
@@ -173,8 +182,7 @@ class ExtraORFs:
     excluded: tuple
     catalog: object = field(repr=False)
     reference: ReferenceContext
-    evidence: Optional[str] = None
-    filters: Mapping = field(default_factory=dict)
+    evidence: Optional[EvidenceRule] = None
     source_failures: tuple = ()
     genome: object = field(default=None, repr=False, compare=False)
 
@@ -445,11 +453,16 @@ class Proteome:
                         require_unique=False, require_reviewed=False):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
-        ``evidence`` is ``"ms"`` (any supporting MS peptide), ``"ribosome"``,
-        ``"shotgun"``, ``"mhc"``, ``"hla"``, ``"ms_unclassified"``, or ``None``
-        for every catalogue ORF. The ``require_*`` options have the same meaning
-        as in ``ORFCatalog.query``. Without ``catalog``, the catalogue covering
-        this species and assembly is used; a species without one raises.
+        ``evidence`` is a rule, an evidence method name, or ``None`` for every
+        catalogue ORF. Rules set separate Ribo-seq and MS stringency and combine
+        with ``&`` (both) or ``|`` (either), for example
+        ``RiboSeq(min_studies=2) & MS(unique=True)``. A name is the simplest rule:
+        ``"ms"`` (any supporting MS peptide, the default) is ``MS()``,
+        ``"ribosome"`` is ``RiboSeq()``, and ``"shotgun"``, ``"mhc"``, ``"hla"``
+        or ``"ms_unclassified"`` limit the MS peptide kind. The ``require_*``
+        options refine a name as in ``ORFCatalog.query``. The layer records the
+        rule. Without ``catalog``, the catalogue covering this species and
+        assembly is used; a species without one raises.
 
         Each ORF becomes one entry listing every transcript that carries its
         exact spliced coding path. An ORF whose source transcript is gone or
@@ -474,15 +487,16 @@ class Proteome:
             added.append(ProteomeEntry(
                 accession=orf_id, sequence=first.protein_sequence, kind="extra_orf",
                 taxon_id=first.model.taxon_id, source=source, orf_type=first.model.orf_type,
-                evidence=tuple(m for m in _EVIDENCE_LABELS if first.evidence.has_evidence(m)),
+                evidence=_evidence_labels(first.evidence),
                 evidence_detail=_json(first.evidence.to_dict()),
                 occurrences=tuple(Occurrence.from_orf(o) for o in orfs),
                 source_transcript_id=first.model.transcript_id,
                 source_binding=failures.get(orf_id), orf=first,
             ))
         layer = dict(kind="extra_orf", role="host", source=source, reference=self.reference.key,
-                     catalog=_catalog_identity(found.catalog), evidence=evidence,
-                     filters=dict(found.filters), selected=len(added) + len(found.excluded),
+                     catalog=_catalog_identity(found.catalog),
+                     evidence=None if found.evidence is None else found.evidence.to_dict(),
+                     selected=len(added) + len(found.excluded),
                      added=len(added), excluded=len(found.excluded),
                      not_on_source_transcript=sum(e.source_binding is not None for e in added),
                      identical_to_annotated=sum(e.sequence in annotated for e in added))
@@ -603,7 +617,9 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     A transcript carries an ORF when it contains the ORF's exact spliced coding
     path and its sequence translates to the ORF's protein. Without ``catalog``,
     ``load_catalog`` picks the catalogue covering this species and assembly; a
-    species without one raises. ``evidence=None`` selects every catalogue ORF.
+    species without one raises. ``evidence`` is a rule such as
+    ``RiboSeq(min_studies=2) & MS()`` or an evidence method name, as in
+    :meth:`Proteome.with_extra_orfs`; ``None`` selects every catalogue ORF.
     """
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)
@@ -614,11 +630,9 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             f"Catalogue for {catalog.species} {catalog.genome_build} cannot bind to "
             f"{reference.species} {reference.genome_build}"
         )
-    if evidence is not None and evidence not in EVIDENCE_METHODS:
-        raise ValueError(f"Unknown evidence method: {evidence}")
-    filters = {k: v for k, v in dict(require_resolved=require_resolved, require_unique=require_unique,
-                                     require_reviewed=require_reviewed).items() if v}
-    records = catalog.query(evidence=evidence, **filters)
+    rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
+                         require_resolved=require_resolved)
+    records = catalog.query(evidence=rule)
     spans = {r.orf_id: (r.contig, r.strand, r.coding_blocks[0][0], r.coding_blocks[-1][1]) for r in records}
     try:
         containing = _structure.transcripts_containing(genome, spans)
@@ -672,8 +686,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             if not placed:
                 excluded.append(failures[-1])
         bound.extend(placed)
-    return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, evidence,
-                     MappingProxyType(filters), tuple(failures), genome)
+    return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome)
 
 
 def _coding_structures(genome):

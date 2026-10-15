@@ -182,6 +182,11 @@ possible protein. Inspect `orf.evidence.peptides` for peptide sequences, source
 accessions, matching intervals, mapping counts and review quality. Missing counts
 remain unknown; low or mixed spectrum reviews do not count as supporting MS.
 
+`has_evidence` and `catalog.query(evidence=...)` also take rules that set
+Ribo-seq and MS stringency separately, such as
+`RiboSeq(min_studies=2) & MS(min_peptides=2)`; see
+[Build a reference proteome](proteome.md#separate-ribo-seq-and-ms-stringency).
+
 Some sources provide only aggregate support counts. `EvidenceSummary` keeps the
 native metric, definition, value, source/release, source checksum and explicitly
 scoped entity. For example, [OpenProt's native metrics](https://api.openprot.org/api/2.0/SC/downloads/yeast_s288c-openprot-2_2-altprots+isoforms-min_2_pep-R64-1-1.106.tsv.readme.html)

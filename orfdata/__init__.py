@@ -16,6 +16,7 @@ from .catalog_manifest import CatalogManifest
 from .catalogs import CatalogRegistry, build_catalog
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
+from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
 from .measurements import (
@@ -72,6 +73,9 @@ __all__ = [
     "products_from_uniprot",
     "rfam_ires",
     "EVIDENCE_METHODS",
+    "RiboSeq",
+    "MS",
+    "EvidenceRule",
     "ORFCatalog",
     "ORFRecord",
     "ORFEvidence",

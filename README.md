@@ -40,7 +40,9 @@ This takes every protein in the Ensembl 115 annotation and adds the 2,181
 bundled human ORFs that have supporting mass-spectrometry peptides and are
 encoded by an Ensembl 115 transcript. Each entry lists every transcript encoding
 it; the other 5 selected ORFs are listed in `proteome.excluded` with the
-reason. Use `evidence="ribosome"` for all 7,239 encoded ribosome-profiling ORFs.
+reason. Use `evidence="ribosome"` for all 7,239 encoded ribosome-profiling ORFs,
+or a rule such as `RiboSeq(min_studies=2) & MS()` to set Ribo-seq and MS
+stringency separately (1,293 encoded ORFs).
 `proteome.save(path)` writes a checksummed snapshot that `Proteome.load` reads
 offline. From the command line:
 

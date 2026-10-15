@@ -13,13 +13,13 @@ from importlib.resources import files
 from pathlib import Path
 from typing import NamedTuple, Optional
 
+from .evidence import EVIDENCE_METHODS as EVIDENCE_METHODS  # Re-exported for existing imports.
+from .evidence import evidence_rule
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
 from .model import ORFModel, TranscriptORF, _contig, _id_forms, _species, _transcript_match
 from .reference import ReferenceContext
 from .sequence import genetic_code, reverse_complement_dna
-
-EVIDENCE_METHODS = ("ribosome", "shotgun", "mhc", "hla", "ms_unclassified", "ms")
 
 
 def _positive_integer(value, name):
@@ -79,29 +79,17 @@ class ORFEvidence:
         return result
 
     def has_evidence(self, method, *, require_unique=False, require_reviewed=False, require_resolved=False):
-        """Select reported support, or require named studies/resolved peptides.
+        """Whether this evidence satisfies an evidence rule or method name.
 
+        ``method`` is a rule such as ``RiboSeq(min_studies=2) & MS()``, or a
+        method name with ``require_*`` options (see :func:`evidence_rule`).
         Aggregate counts never satisfy uniqueness or spectrum-review filters.
         No selection establishes evidence for a modified protein product.
         """
-        if method not in EVIDENCE_METHODS:
-            raise ValueError(f"Unknown evidence method: {method}")
-        if method == "ribosome":
-            if require_unique or require_reviewed:
-                raise ValueError("MS filters do not apply to ribosome evidence")
-            return bool(self.ribosome_studies) or (not require_resolved and any(
-                s.method == "ribosome" and s.is_supporting for s in self.summaries))
-        resolved = any(
-            (method == "ms" or p.method == method or (method == "mhc" and p.method == "hla"))
-            and p.is_supporting
-            and (not require_unique or p.unique_in_source)
-            and (not require_reviewed or p.quality == "reviewed_support")
-            for p in self.peptides
-        )
-        return resolved or (not (require_resolved or require_unique or require_reviewed) and any(
-            (method == "ms" and s.method != "ribosome"
-             or s.method == method or method == "mhc" and s.method == "hla")
-            and s.is_supporting for s in self.summaries))
+        if method is None:
+            raise ValueError("Unknown evidence method: None")
+        return evidence_rule(method, require_unique=require_unique, require_reviewed=require_reviewed,
+                             require_resolved=require_resolved).matches(self)
 
 
 @dataclass(frozen=True)
@@ -518,6 +506,8 @@ class ORFCatalog:
         is a discovery aid, not evidence transfer between transcript isoforms.
         Transcript identifiers match exactly as supplied in the source,
         including versions when present. Empty results do not prove no translation.
+        ``evidence`` is a method name or a rule such as
+        ``RiboSeq(min_studies=2) & MS(unique=True)``; see :mod:`orfdata.evidence`.
         ``require_unique`` means unique within the evidence source's mapping
         scope, not unique in every normal human proteome.
         ``require_resolved`` excludes aggregate-only support: MS needs a peptide
@@ -537,14 +527,8 @@ class ORFCatalog:
             contig = _contig(contig)
         if genome_build is not None and genome_build != self.genome_build:
             raise ValueError(f"Expected genome build {self.genome_build}, got {genome_build}")
-        if evidence is not None and evidence not in EVIDENCE_METHODS:
-            raise ValueError(f"Unknown evidence method: {evidence}")
-        if require_unique and evidence not in EVIDENCE_METHODS[1:]:
-            raise ValueError("require_unique applies to MS evidence only")
-        if require_reviewed and evidence not in EVIDENCE_METHODS[1:]:
-            raise ValueError("require_reviewed applies to MS evidence only")
-        if require_resolved and evidence is None:
-            raise ValueError("require_resolved requires an evidence method")
+        rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
+                             require_resolved=require_resolved)
 
         return tuple(
             r
@@ -568,13 +552,7 @@ class ORFCatalog:
                 )
             )
             and (biotype is None or r.biotype == biotype)
-            and (
-                evidence is None
-                or r.has_evidence(
-                    evidence, require_unique=require_unique, require_reviewed=require_reviewed,
-                    require_resolved=require_resolved,
-                )
-            )
+            and (rule is None or rule.matches(r.evidence))
         )
 
 
