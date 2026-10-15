@@ -546,6 +546,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#lifting-a-catalogue-to-another-assembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifting a catalogue to another assembly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source-builds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1174,6 +1185,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#lifting-a-catalogue-to-another-assembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifting a catalogue to another assembly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#source-builds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1261,6 +1283,57 @@ orfdata<span class="w"> </span>catalogs<span class="w"> </span>--registry<span c
 evidence filters, and JSON/TSV/FASTA exports. They cannot override the selected
 release with a local <code>--catalog</code> argument. Use <code>orfdata --catalog FILE</code> for the
 existing standalone local-file workflow.</p>
+<h2 id="lifting-a-catalogue-to-another-assembly">Lifting a catalogue to another assembly<a class="headerlink" href="#lifting-a-catalogue-to-another-assembly" title="Permanent link">&para;</a></h2>
+<p>A catalogue built on one assembly can be lifted to another of the same species
+with a chain file, for example GRCh37 to GRCh38 or mm10 to GRCm39:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChainFile</span><span class="p">,</span> <span class="n">extra_orfs</span><span class="p">,</span> <span class="n">lift_catalog</span><span class="p">,</span> <span class="n">load_catalog</span>
+
+<span class="n">chain</span> <span class="o">=</span> <span class="n">ChainFile</span><span class="p">(</span><span class="s2">"GRCh38_to_GRCh37.chain.gz"</span><span class="p">,</span> <span class="n">source_build</span><span class="o">=</span><span class="s2">"GRCh38"</span><span class="p">,</span> <span class="n">target_build</span><span class="o">=</span><span class="s2">"GRCh37"</span><span class="p">)</span>
+<span class="n">grch37</span> <span class="o">=</span> <span class="n">lift_catalog</span><span class="p">(</span><span class="n">load_catalog</span><span class="p">(),</span> <span class="n">chain</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grch37</span><span class="o">.</span><span class="n">records</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">grch37</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">"liftover"</span><span class="p">][</span><span class="s2">"unmapped"</span><span class="p">]),</span> <span class="n">grch37</span><span class="o">.</span><span class="n">source</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>7247 17 orfdata-catalog:2026-10-11.1@GRCh37
+</code></pre></div>
+<ul>
+<li><strong>Chain files.</strong> <code>ChainFile</code> reads UCSC and Ensembl chain files, gzipped or
+  not. Examples are Ensembl's
+  <a href="https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/"><code>GRCh37_to_GRCh38.chain.gz</code></a>
+  and UCSC's <a href="https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/"><code>mm10ToMm39.over.chain.gz</code></a>.
+  UCSC's chains to GCF assemblies, such as
+  <code>canFam3ToGCF_014441545.1.over.chain.gz</code> for dog ROS_Cfam_1.0, name contigs
+  by RefSeq accession, so pass <code>contig_names=</code> built from NCBI's assembly
+  report to match the genome's names. Download chain files yourself and check
+  their terms; orfdata never fetches one.</li>
+<li><strong>What lifts.</strong> A record lifts only when every coding block lies inside one
+  ungapped alignment block and all blocks land on one contig and strand, in
+  order. Where a region also aligns to fix patches or alternate haplotypes,
+  the same-named chromosome is used. The 17 bundled ORFs above that don't
+  lift are listed in <code>metadata["liftover"]["unmapped"]</code> with the reason (and,
+  when a block aligns to several places, their <code>contigs</code>): 15 have no
+  alignment and 2 cross an alignment gap. UCSC's names for unplaced scaffolds,
+  such as <code>chr1_GL456210v1_random</code>, are read as Ensembl's (<code>GL456210.1</code>).</li>
+<li><strong>Real data.</strong> Lifting the 7,247 back to GRCh38 with
+  <code>GRCh37_to_GRCh38.chain.gz</code> recovers the original coordinates of the 7,246
+  that lift back. On Ensembl 75, 6,857 of the lifted ORFs place on a
+  transcript with their exact coding path and protein.</li>
+<li><strong>Provenance.</strong> Each lifted record keeps its original in <code>record.lifted_from</code>
+  and the chain's name and SHA-256 in <code>record.liftover</code>. Its ID, protein and
+  evidence must equal the original's. Its initiation flanks move with it when
+  they map consistently and in order. A strain pin is kept, with the chain's
+  SHA-256 in place of an annotation. <code>metadata["liftover"]["input"]</code> describes
+  the input catalogue, including any earlier lift.</li>
+<li><strong>Placement.</strong> <code>extra_orfs</code> on the target genome then checks each ORF's
+  exact coding path and protein, so a lift that changes the sequence is
+  excluded rather than trusted. A lifted record names no annotation release.
+  ORFs that didn't lift are reported among the exclusions, as "Did not lift
+  to GRCh37: …", when the evidence rule selects them; through every hop of
+  an earlier lift and every merged input. On Ensembl 75, <code>"ms"</code> selects all
+  2,186 MS-supported ORFs: 2,097 place, and 3 of the 89 excluded didn't lift.</li>
+<li><strong>Size.</strong> Each lifted record carries its original, so a lifted catalogue is
+  about twice the size of its input (33 MB for the bundled one as JSON).</li>
+<li><strong>Errors.</strong> When only another assembly has a catalogue,
+  <code>load_catalog(species=..., genome_build=...)</code> says which one to lift.</li>
+</ul>
 <h2 id="source-builds">Source builds<a class="headerlink" href="#source-builds" title="Permanent link">&para;</a></h2>
 <p><code>registry.build(name, source_paths={"source.json": path})</code> explicitly rebuilds
 an allowlisted source adapter. <code>registry.open_build(name)</code> opens that local

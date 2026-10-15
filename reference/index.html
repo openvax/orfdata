@@ -1663,7 +1663,12 @@ dataset <code>2026-10-08.2</code>. New code should use the broader <code>load_ca
 <h2 id="other-species">Other species<a class="headerlink" href="#other-species" title="Permanent link">&para;</a></h2>
 <p><a href="../species/">ReferenceContext and ScopedTarget</a> keep taxa, strains, assemblies
 and annotation versions separate. Custom genomes without species/taxonomy need
-an explicit context when binding; source-pinned contexts require an exact match.</p>
+an explicit context when binding; source-pinned contexts require an exact match
+for <code>record.bind(transcript)</code>. With <code>any_transcript=True</code>, as <code>extra_orfs</code> uses
+to place ORFs by their exact coding path and protein, a record pinned to
+another annotation release of the same species, strain and assembly is also
+accepted. ORFs on another assembly can be
+<a href="../catalogs/#lifting-a-catalogue-to-another-assembly">lifted over</a>.</p>
 <p><code>load_catalog(species="mouse")</code> returns a species' catalogue: the bundled one,
 or else the one installed through <a href="../catalogs/"><code>CatalogRegistry</code></a>.
 <code>genome_build=</code> chooses between assemblies. It never downloads, and for a
