@@ -197,5 +197,104 @@
       }
     },
     "priority": 20
+  },
+  "riborf-mouse": {
+    "default_version": "1",
+    "priority": 30,
+    "versions": {
+      "1": {
+        "manifest": {
+          "catalog_id": "riborf-mouse",
+          "version": "1",
+          "title": "Mouse RibORF 2.0 translated ORFs of Yang et al. 2024",
+          "references": [
+            {
+              "taxon_id": 10090,
+              "species": "mus_musculus",
+              "genome_build": "GRCm39",
+              "annotation_name": "ensembl",
+              "annotation_version": "107",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "table",
+              "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-024-46240-9/MediaObjects/41467_2024_46240_MOESM6_ESM.xlsx",
+              "sha256": "4dc8444c2fd3da25c7066074c71d1ec5427afd5d005862c6c61dc3f27fb9d32c",
+              "size": 24211005,
+              "access_terms": "Supplementary Data 3 of Yang et al., Nat Commun 2024, CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-107/gtf/mus_musculus/Mus_musculus.GRCm39.107.gtf.gz",
+              "sha256": "15af16b7bef88c4309a82d49579fdd967f6ac8769b7f0bf657bbf7ee73b779e3",
+              "size": 31861821,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "cdna",
+              "url": "https://ftp.ensembl.org/pub/release-107/fasta/mus_musculus/cdna/Mus_musculus.GRCm39.cdna.all.fa.gz",
+              "sha256": "34499a727ff72bdddb2f32e5831b14fb5a9d20218cd79b8639dc8736b2c596c0",
+              "size": 51269494,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "ncrna",
+              "url": "https://ftp.ensembl.org/pub/release-107/fasta/mus_musculus/ncrna/Mus_musculus.GRCm39.ncrna.fa.gz",
+              "sha256": "0472b7d912e84d838485ecf236670a68319a32fb4580062cd9768c7bce85d9ab",
+              "size": 7668482,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Yang H, Li Q, Stroup EK, Wang S, Ji Z. Widespread stable noncanonical peptides identified by integrated analyses of ribosome profiling and ORF features. Nat Commun. 2024;15:1932. doi:10.1038/s41467-024-46240-9"
+          ],
+          "coverage": {
+            "records": 51991,
+            "distinct_protein_sequences": 41999,
+            "evidence_summaries": 51991,
+            "source_rows": 54128,
+            "resolved_rows": 51991,
+            "unresolved_rows": 2137
+          },
+          "processing": {
+            "importer": "riborf-v1",
+            "sheet": "mouse",
+            "source": "riborf-mouse",
+            "release": "NatCommun-15-1932",
+            "skip_types": [
+              "canonical",
+              "seqerror",
+              "readthrough"
+            ],
+            "scope": "Mouse translated ORFs identified by RibORF 2.0 (Yang et al. 2024), placed on GRCm39 through the same Ensembl 107 transcripts, proteins translated there; presence only"
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from the pinned source files: Supplementary Data 3 of Yang et al., Nat Commun 2024 (CC BY 4.0), and Ensembl 107's GTF, cDNA and ncRNA FASTAs. Cite Yang et al. 2024 (doi:10.1038/s41467-024-46240-9).",
+          "redistributable": true
+        },
+        "assets": {}
+      }
+    }
   }
 }

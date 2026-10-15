@@ -15,10 +15,11 @@ original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
 for one species together, see
 [merging catalogues](proteome.md#merging-catalogues).
 
-The packaged registry has two mouse catalogues, both built from their sources'
-own files: [OpenProt's MS-supported ORFs](#mouse-orfs-from-openprot) and
-[Chang et al.'s Ribo-seq ORFs](#mouse-ribo-seq-orfs-chang-et-al). `orfdata setup
---species mouse` installs both, with the chain files. `orfdata catalogs status`
+The packaged registry has three mouse catalogues, each built from its sources'
+own files: [OpenProt's MS-supported ORFs](#mouse-orfs-from-openprot),
+[Chang et al.'s Ribo-seq ORFs](#mouse-ribo-seq-orfs-chang-et-al) and
+[Yang et al.'s RibORF ORFs](#mouse-riborf-orfs-yang-et-al). `orfdata setup
+--species mouse` installs all three, with the chain files. `orfdata catalogs status`
 (in Python, `catalog_status()`) lists every catalogue `load_catalog` can open,
 the bundled one included, with its species, assembly, record count, whether it
 is installed and whether it is used:
@@ -67,24 +68,26 @@ existing standalone local-file workflow.
 
 ```sh
 pip install "orfdata[data,build-data]"
-orfdata setup --species mouse --accept-terms   # Both catalogues and the chains; about 45 MB
+orfdata setup --species mouse --accept-terms   # Three catalogues and the chains; about 160 MB of sources
 ```
 
 `orfdata setup` builds each registered mouse catalogue from its pinned sources
 and downloads the chain files (`--accept-terms` for UCSC's non-commercial
-GRCm38/GRCm39 chains). `load_catalog(species="mouse")` then merges the two:
-16,484 Ribo-seq ORFs and 2,976 MS-supported ones, 19,406 in all, of which 54
-are in both. On Ensembl 115 (GRCm39):
+GRCm38/GRCm39 chains). `load_catalog(species="mouse")` then merges the three,
+in this order, into 60,707 ORFs: 2,976 MS-supported OpenProt ORFs, 16,484
+Ribo-seq ORFs of Chang et al. and 51,991 of Yang et al. 10,420 of Chang's and
+Yang's ORFs are the same ORF, and 296 OpenProt ORFs also have Ribo-seq support
+from one or both. On Ensembl 115 (GRCm39):
 
 | Evidence | Selected | Added to the proteome |
 | --- | ---: | ---: |
 | `"ms"` (default) | 2,976 | 2,854 |
-| `RiboSeq()` | 16,600 | 16,581 |
-| `RiboSeq() & MS()` | 170 | 165 |
-| `None` | 19,406 | 19,270 |
+| `RiboSeq()` | 58,109 | 57,992 |
+| `RiboSeq() & MS()` | 378 | 371 |
+| `None` | 60,707 | 60,475 |
 
-On GRCm38 (Ensembl 102) both are lifted automatically, and evidence `None`
-adds 18,775 ORFs. Dog has no experimentally supported ORF catalogue from any
+Loading the merged catalogue takes about 10 seconds, once per process. On
+GRCm38 and NCBIM37 all three are lifted automatically. Dog has no experimentally supported ORF catalogue from any
 source: OpenProt and the Ribo-seq resources have no dog data, and dog MS
 studies searched only canonical proteins.
 
@@ -116,6 +119,31 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
   The libraries aren't named per ORF, so `RiboSeq(min_studies=2)` selects
   none.
 
+### Mouse RibORF ORFs (Yang et al.)
+
+`riborf-mouse` holds the mouse ORFs that RibORF 2.0 identified as translated in
+the Ribo-seq data of Yang et al. (Nat Commun 2024,
+[doi:10.1038/s41467-024-46240-9](https://doi.org/10.1038/s41467-024-46240-9);
+224 samples in 26 GEO series): uORF (26,052), noncoding (8,149), iORF (6,155),
+dORF (5,174), ouORF (3,157), N-terminal truncation (2,059) and extension (575),
+and odORF (670). Annotated CDSs, likely sequencing errors and stop-codon
+readthrough are not imported.
+
+- **Placement.** The source gives mm10 / GENCODE vM25 transcript coordinates
+  (a 1-based start, an exclusive end) and no proteins. Rather than lift mm10
+  through a restricted chain, each ORF is placed on the same transcript in
+  Ensembl 107 GRCm39 and translated from that transcript's sequence. 51,991
+  of 54,128 rows resolve; 1,642 transcripts changed length since GENCODE vM25
+  and 494 are gone, and these are listed as unresolved. 51,881 place on
+  Ensembl 115.
+- **Sources.** Supplementary Data 3 (CC BY 4.0) and Ensembl 107's GTF, cDNA
+  and ncRNA FASTAs; about 115 MB. Building needs `orfdata[build-data]`.
+- **Evidence.** Presence in the source's set is aggregate Ribo-seq support:
+  `RiboSeq()` selects every ORF, `RiboSeq(min_studies=2)` none.
+- **IDs.** ORFs are named by start and stop, as Chang et al.'s are, so one
+  ORF in both sets merges; two different ORFs with the same name become
+  `riborf-mouse:…` and `ncorf-mammals:…`.
+
 ## Mouse ORFs from OpenProt
 
 `openprot-mouse` holds the alternative proteins (AltProts) and novel isoforms
@@ -126,8 +154,8 @@ build the catalogue from OpenProt's own downloads (3.4 MB, about 5 seconds),
 each checked against its pinned size and SHA-256, with `orfdata setup --species
 mouse` along with the Ribo-seq catalogue above, or alone with `orfdata catalogs
 build openprot-mouse`. `load_catalog(species="mouse")`, `extra_orfs(genome)`
-and `Proteome.build(genome)` use both, for any GRCm39 Ensembl release, so both
-must be installed. With only MS-supported ORFs selected, the default:
+and `Proteome.build(genome)` use all three mouse catalogues, for any GRCm39
+Ensembl release, so all must be installed. With only MS-supported ORFs selected, the default:
 
 ```python
 from pyensembl import EnsemblRelease
@@ -214,9 +242,7 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
 | Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
 | Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 441 on no transcript, 56 not lifted |
-| Mouse Ensembl 115, GRCm39 | Chang et al. and OpenProt | 19,406 | 19,270 | 136 not placed |
-| Mouse Ensembl 102, GRCm38 | both lifted, 1 hop | 19,402 | 18,775 | 627 not placed, 4 not lifted |
-| Mouse Ensembl 67, NCBIM37 | both lifted, 2 hops | 19,326 | 15,147 | 4,179 not placed, 80 not lifted |
+| Mouse Ensembl 115, GRCm39 | OpenProt, Chang et al. and Yang et al. | 60,707 | 60,475 | 232 not placed |
 
 Older annotations lack many of the transcripts the sources name, so fewer ORFs
 place; the rest, and any that didn't lift, are listed with the reason, never

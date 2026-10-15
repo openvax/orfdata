@@ -9,3 +9,4 @@ recursive-include tests/data/wang *.zip *.gz
 recursive-include tests/data/ingolia *.gz *.txt
 recursive-include tests/data/openprot *.zip *.gz
 recursive-include tests/data/ncorf_mammals *.bed *.fa *.xlsx *.gz *.md
+recursive-include tests/data/riborf *.xlsx *.gz *.md

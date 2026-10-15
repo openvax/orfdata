@@ -1,3 +1,14 @@
+# 0.30.0
+
+- Mouse RibORF ORFs of Yang et al. (Nat Commun 2024): `riborf-mouse`, 51,991
+  ORFs RibORF 2.0 found translated in 224 mouse Ribo-seq samples. The source
+  gives mm10 transcript coordinates and no proteins, so each ORF is placed on
+  the same Ensembl 107 GRCm39 transcript and translated there, without a
+  restricted mm10 chain. 2,137 rows on transcripts that changed or are gone
+  are listed as unresolved, and 51,881 place on Ensembl 115.
+- Mouse now merges three catalogues into 60,707 ORFs: `RiboSeq()` adds 57,992
+  to the Ensembl 115 proteome, and `RiboSeq() & MS()` 371.
+
 # 0.29.0
 
 - Mouse Ribo-seq ORFs from Chang et al. (eLife 2025): `ncorf-mammals-mouse`.
