@@ -10,7 +10,12 @@
   sources use for different ORFs is qualified, and the bare ID raises. Merges
   require one strain, record ORFs that share a path but differ in protein or
   code as conflicts, and can be repeated. Merged catalogues round-trip through
-  JSON. `orfdata proteome` takes repeated `--catalog` files.
+  JSON. `orfdata proteome` and `orfdata` queries take repeated `--catalog`
+  files, and queries find records by any source's ID. A study two
+  catalogues label differently counts once when their PMIDs agree. Queries
+  and placements match any source's transcript and gene. A redundant
+  declared ATG start doesn't split an ORF, and records join an ORF on their
+  own transcript first.
 - `ORFCatalog.source` gives the release label that proteome layers record.
 
 # 0.21.0

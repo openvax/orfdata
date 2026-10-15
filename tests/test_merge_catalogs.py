@@ -152,3 +152,66 @@ def test_pins_strains_conflicts_and_transcripts():
     # absent-orf shares ms-orf's path on another transcript: a source record on that transcript joins it.
     late = single("late", replace(ms, orf_id="L_1", transcript_id="missing_rna", initiation_context=None))
     assert merge_catalogs([base, late]).get("L_1").orf_id == "absent-orf"
+
+
+def metadata(version, source, **extra):
+    return dict(genome_build="GRCm39", taxon_id=10090, species="mus_musculus", coordinates="1-based-inclusive",
+                dataset_version=version, sources=[dict(id=source, scope="test fixture")], **extra)
+
+
+def test_one_study_named_twice_is_counted_once_by_its_pmid():
+    first = ORFCatalog([replace(orf("A1", ribosome_studies=("Chen_et_al_2020",)), source="a")],
+                       metadata("a-v1", "a", ribosome_study_pmids={"Chen_et_al_2020": "32139545"}))
+    second = ORFCatalog([replace(orf("B1", ribosome_studies=("Chen2020",)), source="b")],
+                        metadata("b-v1", "b", ribosome_study_pmids={"Chen2020": "32139545"}))
+    merged = merge_catalogs([first, second])
+    assert merged.get("A1").ribosome_studies == ("Chen_et_al_2020",)
+    assert not merged.get("A1").has_evidence(RiboSeq(min_studies=2))
+    assert merged.metadata["ribosome_study_pmids"] == {"Chen_et_al_2020": "32139545", "Chen2020": "32139545"}
+    # Without a PMID to tell, two labels stay two studies.
+    unmapped = ORFCatalog([replace(orf("C1", ribosome_studies=("Chen2020",)), source="c")], metadata("c-v1", "c"))
+    assert merge_catalogs([first, unmapped]).get("A1").has_evidence(RiboSeq(min_studies=2))
+    # A merged record may list fewer studies than its members, never others.
+    with pytest.raises(ValueError, match="must be its members' evidence"):
+        replace(merged.get("A1"), ribosome_studies=("Elsewhere",))
+
+
+def test_a_redundant_start_codon_and_a_shared_transcript_join_one_orf(genome):  # noqa: F811
+    first = ORFCatalog([replace(orf("A1"), source="a")], metadata("a-v1", "a"))
+    declared = ORFCatalog([replace(orf("C1"), source="c", start_codon="ATG")], metadata("c-v1", "c"))
+    merged = merge_catalogs([first, declared])
+    assert [r.orf_id for r in merged.records] == ["A1"] and merged.metadata["conflicts"] == []
+    # B's record on A1's transcript joins A1, although B lists another transcript's record first.
+    second = ORFCatalog([replace(orf("B_other", transcript_id="test_rna_long"), source="b"),
+                         replace(orf("B_same"), source="b")], metadata("b-v1", "b"))
+    merged = merge_catalogs([first, second])
+    assert [m.orf_id for m in merged.get("A1").members] == ["A1", "B_same"]
+    assert merged.get("B_other").members == ()
+    # Every source's transcript and gene find the merged ORF.
+    labelled = ORFCatalog([replace(orf("Y", transcript_id="test_rna_long"), source="y", gene_name="Other")],
+                          metadata("y-v1", "y"))
+    merged = merge_catalogs([first, labelled])
+    assert [r.orf_id for r in merged.query(transcript_id="test_rna_long")] == ["A1"]
+    assert [r.orf_id for r in merged.query(gene="Other")] == ["A1"]
+    long = genome.transcript_by_id("test_rna_long")
+    assert [o.orf_id for o in merged.for_transcript(long)] == ["A1"]
+    found = extra_orfs(genome, None, catalog=merged)
+    assert all(o.on_source_transcript for o in found.for_orf("A1")) and found.source_failures == ()
+    assert [o.orf_id for o in found.for_gene("Other", source=True)] == ["A1", "A1"]
+
+
+def test_records_of_one_catalogue_stay_as_given_whatever_else_is_merged():
+    both = ORFCatalog([replace(orf("P"), source="s1"), replace(orf("Q"), source="s2")], metadata("x-v1", "s1"))
+    unrelated = ORFCatalog([replace(orf("Z", blocks=((218, 226),), protein="MK"), source="z")], metadata("z-v1", "z"))
+    assert sorted(r.orf_id for r in merge_catalogs([both, unrelated]).records) == ["P", "Q", "Z"]
+
+
+def test_the_cli_finds_records_by_any_source_id_and_merges_repeated_catalogues(tmp_path, capsys):
+    from orfdata.cli import run
+
+    paths = []
+    for name, catalog in (("a", make_catalog()), ("b", other_catalog())):
+        paths += ["--catalog", str(tmp_path / f"{name}.json")]
+        (tmp_path / f"{name}.json").write_text(json.dumps(catalog.to_dict()))
+    run(paths + ["--orf-id", "other:OP_1", "--format", "json"])
+    assert [r["orf_id"] for r in json.loads(capsys.readouterr().out)["records"]] == ["ms-orf"]

@@ -6,7 +6,7 @@ import json
 import re
 import sys
 
-from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog
+from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
 
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
@@ -35,7 +35,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
 
 def _add_query_arguments(parser, *, catalog_path=True):
     if catalog_path:
-        parser.add_argument("--catalog", help="Use a compatible local JSON/JSON.gz catalogue")
+        parser.add_argument("--catalog", action="append",
+                            help="Use a compatible local JSON/JSON.gz catalogue; repeat to merge several")
         parser.add_argument("--species", help="Use this species' catalogue, e.g. human or mouse (default human)")
     else:
         parser.set_defaults(catalog=None, species=None)
@@ -87,8 +88,12 @@ def _query(args, parser, catalog_loader):
     ):
         parser.error("Provide distinct single-base forward-genomic REF and ALT")
     try:
-        catalog = (catalog_loader(args.catalog, species=args.species, genome_build=args.genome_build)
-                   if args.species else catalog_loader(args.catalog))
+        paths = args.catalog or [None]
+        if args.species:
+            catalogs = [catalog_loader(p, species=args.species, genome_build=args.genome_build) for p in paths]
+        else:
+            catalogs = [catalog_loader(p) for p in paths]
+        catalog = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
         options = {
             "gene": args.gene,
             "transcript_id": args.transcript,
@@ -114,8 +119,8 @@ def _query(args, parser, catalog_loader):
             )
         records = catalog.query(**options)
         if args.orf_id:
-            catalog.get(args.orf_id)  # A misspelled ID is an error, not empty evidence.
-            records = tuple(r for r in records if r.orf_id == args.orf_id)
+            orf_id = catalog.get(args.orf_id).orf_id  # Any source's ID; a misspelled one is an error.
+            records = tuple(r for r in records if r.orf_id == orf_id)
         initiation_annotations = None
         if args.position:
             initiation_annotations = []

@@ -623,8 +623,10 @@ class TranscriptORF:
 
     @property
     def on_source_transcript(self):
-        """Whether this is the transcript the ORF's source defines it on."""
-        return _transcript_match(self.source_transcript_id, self.transcript) in ("id", "versioned")
+        """Whether this is the transcript the ORF's source, or any merged source, defines it on."""
+        members = self.record.members if self.record is not None else ()
+        ids = [m.transcript_id for m in members] or [self.source_transcript_id]
+        return any(_transcript_match(i, self.transcript) in ("id", "versioned") for i in ids)
 
     @property
     def transcript_id(self):

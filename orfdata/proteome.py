@@ -289,7 +289,8 @@ class ExtraORFs:
         if source:
             if not isinstance(gene, str):
                 raise TypeError("Source gene labels are strings; a gene object selects this genome's genes")
-            return tuple(o for o in self.orfs if gene and gene in (o.model.gene_id, o.model.gene_name))
+            return tuple(o for o in self.orfs if gene and any(
+                gene in (m.gene_id, m.gene_name) for m in (o.record.members or (o.record,))))
         if isinstance(gene, str):
             return tuple(o for o in self.orfs if gene and (
                 gene == o.transcript.gene_name
@@ -659,8 +660,8 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                 containing[orf_id] = genome.transcript_ids_at_locus(contig, start, end, strand=strand)
             except ValueError:
                 containing[orf_id] = ()
-    candidates = {r.orf_id: sorted(set(containing[r.orf_id]) | set(_id_forms(r.transcript_id)))
-                  for r in records}
+    candidates = {r.orf_id: sorted(set(containing[r.orf_id]).union(
+        *(_id_forms(m.transcript_id) for m in r.members or (r,)))) for r in records}
     layouts = _layouts(genome, {i for ids in candidates.values() for i in ids})
     transcripts = {}
 
@@ -697,6 +698,8 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
                                             _layout=layout))
             except ValueError:
                 continue  # Same path, different sequence or protein.
+        if reason is not None and any(o.on_source_transcript for o in placed):
+            reason = None  # Another merged source's own transcript carries it.
         if reason is not None:
             failures.append(BindingFailure(record.orf_id, record.transcript_id, reason))
             if not placed:
