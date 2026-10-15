@@ -1,3 +1,16 @@
+# 0.28.0
+
+- T2T-CHM13v2.0 (#72): `orfdata genomes install t2t-chm13` installs Ensembl's
+  rapid-release CHM13 annotation (2022_07). It is pinned by URL, size and
+  SHA-256, and `load_genome("t2t-chm13")` opens it offline as a PyEnsembl
+  genome. The T2T Consortium's public-domain GRCh38↔CHM13 chains are pinned,
+  so the bundled catalogue lifts to it automatically: 7,208 ORFs lift and
+  6,767 place. `Proteome.build(load_genome("t2t-chm13"))` gives 104,957
+  annotated proteins plus 2,039 MS-supported ORFs, and `orfdata proteome
+  --genome t2t-chm13` does the same.
+- `pinned_genomes`, `install_genome`, `load_genome` and `orfdata genomes
+  list|install` handle annotations that `EnsemblRelease` doesn't cover.
+
 # 0.27.0
 
 - Catalogues on other assemblies are lifted automatically. `load_catalog`,

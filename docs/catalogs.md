@@ -162,6 +162,7 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Human Ensembl 115, GRCh38 | bundled | 7,264 | 7,239 | 24 splice paths changed |
 | Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
 | Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
+| Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 441 on no transcript, 56 not lifted |
 | Mouse Ensembl 115, GRCm39 | OpenProt | 2,976 | 2,854 | 109 without sequence |
 | Mouse Ensembl 102, GRCm38 | lifted, 1 hop | 2,975 | 2,856 | 112 without sequence |
 | Mouse Ensembl 67, NCBIM37 | lifted, 2 hops | 2,922 | 1,620 | 1,187 transcripts absent |
@@ -194,6 +195,33 @@ silently dropped.
   `catalog_status()` lists, for each catalogue, the assemblies it reaches and
   whether their chains are downloaded.
 - **Cost.** Lifting happens on each load: about 1.6 s for the human catalogue.
+
+### T2T-CHM13
+
+PyEnsembl's `EnsemblRelease` has no T2T-CHM13 annotation, so orfdata pins
+Ensembl's rapid-release one (2022_07) and installs it on request, checking each
+file's size and SHA-256. The T2T Consortium's GRCh38-to-CHM13 chain is public
+domain (CC0):
+
+```sh
+orfdata genomes install t2t-chm13          # 143 MB of Ensembl files; indexed once
+orfdata chains download GRCh38 T2T-CHM13v2.0
+orfdata proteome --genome t2t-chm13 --output chm13.fasta
+```
+
+```python
+from orfdata import Proteome, load_genome
+
+genome = load_genome("t2t-chm13")          # A PyEnsembl Genome named T2T-CHM13v2.0, offline
+proteome = Proteome.build(genome)          # 104,957 annotated proteins + 2,039 MS-supported ORFs
+```
+
+The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
+6,767 place on CHM13 transcripts with their exact coding path and protein. Ensembl
+gave CHM13 transcripts new IDs, so placement is by path; each ORF's source
+transcript (a GRCh38 ID) is reported as absent. Your own CHM13 genome works too
+if its `reference_name` is `T2T-CHM13v2.0`; `hs1` or `chm13` get an error saying
+so.
 
 ## Lifting a catalogue by hand
 
@@ -235,11 +263,12 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
 7247 17 orfdata-catalog:2026-10-11.1@GRCh37
 ```
 
-- **Pinned chain files.** Ensembl's human GRCh38 to and from
+- **Pinned chain files.** The T2T Consortium's GRCh38 to and from
+  [T2T-CHM13v2.0](https://github.com/marbl/CHM13) are public domain. Ensembl's human GRCh38 to and from
   [GRCh37 and NCBI36](https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/),
   and mouse GRCm38 to and from
   [NCBIM37](https://ftp.ensembl.org/pub/assembly_mapping/mus_musculus/),
-  have no usage restrictions. `orfdata chains list` shows all eight. UCSC's mouse
+  have no usage restrictions. `orfdata chains list` shows all ten. UCSC's mouse
   [`mm10ToMm39`](https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/README.txt)
   and [`mm39ToMm10`](https://hgdownload.soe.ucsc.edu/goldenPath/mm39/liftOver/README.txt)
   (GRCm38 and GRCm39) are free only for non-commercial use, so downloading

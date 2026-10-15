@@ -1,0 +1,39 @@
+"""List and install the pinned annotations PyEnsembl's EnsemblRelease doesn't cover, such as T2T-CHM13."""
+
+import argparse
+import json
+from dataclasses import asdict
+
+from .genomes import install_genome, pinned_genomes
+
+
+def run(argv=None, prog=None):
+    parser = argparse.ArgumentParser(description=__doc__, prog=prog)
+    parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
+    commands = parser.add_subparsers(dest="command", required=True)
+    listing = commands.add_parser("list", help="Show pinned annotations, without downloading")
+    listing.add_argument("--species", help="Only this species' annotations, e.g. human")
+    install = commands.add_parser("install", help="Download, check and index a pinned annotation")
+    install.add_argument("name", help="Annotation name, as 'orfdata genomes list' shows it, e.g. t2t-chm13")
+    install.add_argument("--force", action="store_true", help="Download again even when present")
+    install.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH",
+                         help="Install a local copy of the gtf, transcripts or proteins file instead of downloading")
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "list":
+            output = [asdict(g) for g in pinned_genomes(species=args.species)]
+        else:
+            paths = {}
+            for item in args.source_path:
+                role, separator, path = item.partition("=")
+                if not separator or not role or not path or role in paths:
+                    raise ValueError("Source overrides require unique ROLE=PATH entries")
+                paths[role] = path
+            genome = install_genome(args.name, force=args.force, source_paths=paths or None,
+                                    cache_root=args.cache_root)
+            output = dict(name=args.name, reference_name=genome.reference_name,
+                          annotation=f"{genome.annotation_name} {genome.annotation_version}",
+                          transcripts=len(genome.transcript_ids()))
+    except (ValueError, OSError, ImportError) as error:
+        parser.error(str(error))
+    print(json.dumps(output, indent=2))

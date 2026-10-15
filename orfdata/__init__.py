@@ -21,6 +21,7 @@ from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
 from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
+from .genomes import PinnedGenome, install_genome, load_genome, pinned_genomes
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
 from .liftover import (
     ChainFile,
@@ -130,6 +131,10 @@ __all__ = [
     "catalog_status",
     "CatalogStatus",
     "merge_catalogs",
+    "PinnedGenome",
+    "pinned_genomes",
+    "install_genome",
+    "load_genome",
     "ChainFile",
     "Liftover",
     "lift_catalog",
