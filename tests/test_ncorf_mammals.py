@@ -113,7 +113,11 @@ def test_every_registered_catalogue_for_a_species_is_merged_and_installed_togeth
     monkeypatch.setattr(liftover, "download_chain", lambda *a, **k: "offline")  # No network in tests.
     result = install_species("mouse", registry=both)
     assert result["catalogs"] == {"ncorf-mammals-mouse 1": "built", "openprot-mouse 2.2-1": "built"}
-    assert sorted(result["chains"]["skipped"]) == ["GRCm38_to_GRCm39", "GRCm39_to_GRCm38"]  # UCSC terms not accepted.
+    # UCSC's terms not accepted; the rest downloaded.
+    assert sorted(k for k, v in result["chains"].items() if v.startswith("skipped")) == [
+        "GRCm38_to_GRCm39", "GRCm39_to_GRCm38"]
+    assert set(result["chains"].values()) - {"downloaded"} == {v for v in result["chains"].values()
+                                                               if v.startswith("skipped")}
     assert install_species("mouse", registry=both)["catalogs"]["openprot-mouse 2.2-1"] == "already installed"
     merged = load_catalog(species="mouse", registry=both)
     # The registry's priority, not the names, orders the merge: OpenProt's IDs name shared ORFs.
@@ -127,3 +131,40 @@ def test_every_registered_catalogue_for_a_species_is_merged_and_installed_togeth
     assert len(load_catalog(species="mouse", registry=both).records) == 13
     with pytest.raises(ValueError, match="no ORF catalogue or chain file to install for canis_lupus_familiaris"):
         install_species("dog", registry=both)
+
+
+def test_setup_installs_everything_it_can_and_names_each_failure(tmp_path, monkeypatch):
+    from test_openprot import fixture_registry
+
+    from orfdata import liftover
+    from orfdata.install import InstallError
+
+    openprot, _ = fixture_registry(tmp_path)
+    both = CatalogRegistry({**openprot._definitions, **definitions()}, cache_root=tmp_path / "cache")
+
+    def build(name, version=None, *, force=False, source_paths=None, download_options=None):
+        if name == "openprot-mouse":
+            raise OSError("api.openprot.org unreachable")
+        return CatalogRegistry.build(both, name, version, force=force, source_paths=PATHS)
+
+    monkeypatch.setattr(both, "build", build)
+    monkeypatch.setattr(liftover, "download_chain", lambda *a, **k: "offline")
+    with pytest.raises(InstallError, match="openprot-mouse 2.2-1: api.openprot.org unreachable") as raised:
+        install_species("mouse", registry=both, accept_terms=True)
+    result = raised.value.result
+    assert result["catalogs"] == {"ncorf-mammals-mouse 1": "built",
+                                  "openprot-mouse 2.2-1": "failed: api.openprot.org unreachable"}
+    assert set(result["chains"].values()) == {"downloaded"}  # Still tried after the failure.
+
+
+def test_tsv_export_has_the_declared_start_codon(registry, tmp_path, capsys):
+    import csv
+
+    from orfdata.cli import run
+
+    catalog = registry.open("ncorf-mammals-mouse")
+    path = tmp_path / "chang.json"
+    path.write_text(__import__("json").dumps(catalog.to_dict()))
+    run(["--catalog", str(path), "--format", "tsv"])
+    rows = list(csv.DictReader(capsys.readouterr().out.splitlines(), delimiter="\t"))
+    assert len(rows) == 5 and {r["orf_id"]: r["start_codon"] for r in rows}["10_100323141_100313880_-"] == "GTG"

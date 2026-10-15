@@ -65,10 +65,32 @@ def test_a_damaged_index_or_file_says_how_to_reinstall(tmp_path, monkeypatch):
     install_genome("mouse-slice", source_paths=paths, cache_root=tmp_path / "root")
     index, = (tmp_path / "root").rglob("*.db")
     index.write_bytes(b"not a database")
-    with pytest.raises(ValueError, match="index is damaged .*'orfdata genomes install mouse-slice --force'"):
+    # The command to run names the same cache.
+    with pytest.raises(ValueError, match=r"index is damaged .*'orfdata genomes --cache-root \S+root install "
+                                         r"mouse-slice --force'"):
         load_genome("mouse-slice", cache_root=tmp_path / "root")
     assert install_genome("mouse-slice", force=True, source_paths=paths, cache_root=tmp_path / "root")
     assert load_genome("mouse-slice", cache_root=tmp_path / "root").transcript_by_id("ENSMUST00000109601")
+    # An empty FASTA index, too, says how to repair it rather than raising EOFError.
+    pickled = next(p for p in (tmp_path / "root").rglob("*.pickle") if "cdna" in p.name)
+    pickled.write_bytes(b"")
+    with pytest.raises(ValueError, match="index is damaged"):
+        load_genome("mouse-slice", cache_root=tmp_path / "root").transcript_by_id("ENSMUST00000109601").sequence
+
+
+def test_a_genome_installed_under_a_relative_cache_works_from_anywhere(tmp_path, monkeypatch):
+    import os
+    import pickle
+
+    from orfdata import genomes
+
+    paths, pins = slice_pins(tmp_path)
+    monkeypatch.setattr(genomes, "_pins", lambda: pins)
+    monkeypatch.chdir(tmp_path)
+    blob = pickle.dumps(install_genome("mouse-slice", source_paths=paths, cache_root="relative"))
+    monkeypatch.chdir(os.sep)
+    assert pickle.loads(blob).transcript_by_id("ENSMUST00000109601").sequence
+    assert len({hash(g) for g in pinned_genomes()}) == 1  # Hashable, as a frozen dataclass should be.
 
 
 def test_the_proteome_cli_takes_a_pinned_genome_or_a_release(capsys):

@@ -7,10 +7,11 @@ the same explicit discovery, download, build and offline-open workflow as
 downloaded or built, `load_catalog(species=...)` opens it, so `extra_orfs(genome)` and
 `Proteome.with_extra_orfs()` use it without `catalog=`; pass
 `load_catalog(species=..., registry=...)` as `catalog=` for your own registry.
-A bundled catalogue is preferred, a catalogue's default release is opened
-unless only another release covers the assembly, and two registered catalogues
-for one species and assembly are never chosen between; open one by name
-instead. It returns the existing `ORFCatalog`; query results still bind to the
+Every catalogue for the species is used, merged: those on the requested
+assembly as they are, and those on another assembly the pinned chains reach,
+lifted ([details](#every-assembly-of-a-species)). Each catalogue contributes its
+release on the requested assembly if it has one, else its default release. It
+returns the existing `ORFCatalog`; query results still bind to the
 original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
 for one species together, see
 [merging catalogues](proteome.md#merging-catalogues).
@@ -73,7 +74,11 @@ orfdata setup --species mouse --accept-terms   # Three catalogues and the chains
 
 `orfdata setup` builds each registered mouse catalogue from its pinned sources
 and downloads the chain files (`--accept-terms` for UCSC's non-commercial
-GRCm38/GRCm39 chains). `load_catalog(species="mouse")` then merges the three,
+GRCm38/GRCm39 chains). It prints what it did with each: built, downloaded,
+already installed, repaired or skipped. If one fails, the rest are still
+installed and it exits with status 1, naming each failure; in Python,
+`install_species` raises `InstallError`, whose `result` holds the same
+report. `load_catalog(species="mouse")` then merges the three,
 in this order, into 48,805 ORFs: 2,976 MS-supported OpenProt ORFs, 16,484
 Ribo-seq ORFs of Chang et al. and 40,089 of Yang et al. 10,448 of Chang's and
 Yang's ORFs are the same ORF (28 of them also in OpenProt), and 296 OpenProt
@@ -256,7 +261,7 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Human Ensembl 115, GRCh38 | bundled | 7,264 | 7,239 | 24 splice paths changed |
 | Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
 | Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
-| Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 441 on no transcript, 56 not lifted |
+| Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 383 on a transcript with a different protein, 58 on no transcript, 56 not lifted |
 | Mouse Ensembl 115, GRCm39 | OpenProt, Chang et al. and Yang et al. | 48,805 | 48,577 | 110 transcripts absent, 109 without sequence |
 | Mouse Ensembl 102, GRCm38 | all three lifted, 1 hop | 48,800 | 48,169 | 434 transcripts absent, 5 not lifted |
 | Mouse Ensembl 67, NCBIM37 | all three lifted, 2 hops | 48,642 | 38,105 | 9,217 transcripts absent, 163 not lifted |
@@ -319,9 +324,10 @@ proteome = Proteome.build(genome)          # 104,957 annotated proteins + 2,039 
 The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
 6,767 place on CHM13 transcripts with their exact coding path and protein.
 Ensembl gave CHM13 transcripts new IDs, so placement is by path. Of the 441 that
-don't place, most lie on a CHM13 transcript with their exact coding path whose
-sequence, from CHM13's own alleles, encodes a different protein; the exclusion
-reason names that transcript. The genome keeps its species and assembly
+don't place, 383 lie on a CHM13 transcript with their exact coding path whose
+sequence, from CHM13's own alleles, encodes a different protein (in 15, the
+start codon itself differs); the exclusion reason names that transcript. The
+other 58 are on no CHM13 transcript. The genome keeps its species and assembly
 accession when pickled, for multiprocessing and Varcode. Your own CHM13 genome
 works too if its `reference_name` is `T2T-CHM13v2.0` and it has a `species`
 (or you pass `context=`); `hs1` or `chm13` get an error saying so.
@@ -417,7 +423,7 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
   2,186 MS-supported ORFs: 2,097 place, and 3 of the 89 excluded didn't lift.
 - **Size.** Each lifted record carries its original, so a lifted catalogue is
   about twice the size of its input (33 MB for the bundled one as JSON).
-- **Errors.** When no pinned chains reach an assembly, such as T2T-CHM13,
+- **Errors.** When no pinned chains reach an assembly, such as HG002,
   `load_catalog(species=..., genome_build=...)` gives the `orfdata lift
   --chain` command and the Python call that lifts with your own chain file.
 
@@ -438,7 +444,10 @@ use separate locations.
 
 ## Defining a release
 
-A registry definition maps a name to `default_version` and `versions`. Each
+A registry definition maps a name to `default_version`, `versions` and an
+optional integer `priority` (default 100): when catalogues are merged, lower
+priorities come first, and the first catalogue's ID names an ORF several
+share. Each
 version contains a `CatalogManifest`, `distribution` access terms and an
 `assets` entry for raw `catalog.json.gz` bytes, pinned by URL, SHA-256 and size.
 The manifest declares references, original `SourceAsset` inputs, citations,

@@ -8,7 +8,7 @@ genome offline, with its species set so ``Proteome.build`` and
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.resources import files
 from typing import Mapping, Optional
 
@@ -25,7 +25,7 @@ class PinnedGenome:
     annotation_name: str
     annotation_version: str
     title: str
-    assets: Mapping
+    assets: Mapping = field(hash=False)
     provider: str
     terms: str
     terms_url: str
@@ -83,44 +83,55 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None):
     return _open(genome, cache_root, rebuild=force)
 
 
+def _install_command(name, cache_root, force=False):
+    root = "" if cache_root is None else f" --cache-root {cache_root}"
+    return f"'orfdata genomes{root} install {name}{' --force' if force else ''}'"
+
+
 def load_genome(name, *, cache_root=None):
     """The installed pinned annotation as a PyEnsembl genome, offline; indexed on first use."""
     genome = _pinned(name)
     status = _registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
+    root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
     if status == "missing":
-        raise ValueError(f"The {name} annotation is not installed; install it once with install_genome({name!r}) "
-                         f"or 'orfdata genomes install {name}'")
+        raise ValueError(f"The {name} annotation is not installed; install it once with install_genome({name!r}"
+                         f"{root}) or {_install_command(name, cache_root)}")
     if status != "available":
         raise ValueError(f"The installed {name} annotation is {status}; install it again with "
-                         f"install_genome({name!r}, force=True) or 'orfdata genomes install {name} --force'")
+                         f"install_genome({name!r}, force=True{root}) or {_install_command(name, cache_root, True)}")
     return _open(genome, cache_root)
 
 
 def _open(genome, cache_root, *, rebuild=False):
+    import pickle
     import sqlite3
+    from pathlib import Path
 
     from ._pinned_genome import PinnedEnsemblGenome
     from .datasets import _digest, get_data_dir
 
     registry = _registry(genome, cache_root)
+    # Absolute paths, so the genome works from any directory and when unpickled elsewhere.
     try:
-        paths = {role: str(registry.local_path(genome.name, "1", asset=f)) for role, f in _files(genome).items()}
+        paths = {role: str(Path(registry.local_path(genome.name, "1", asset=f)).absolute())
+                 for role, f in _files(genome).items()}
     except ValueError as error:
         raise ValueError(f"The installed {genome.name} annotation is damaged ({error}); install it again with "
-                         f"'orfdata genomes install {genome.name} --force'") from error
+                         f"{_install_command(genome.name, cache_root, True)}") from error
     # The index belongs to these exact files, so a new pin never reuses an old one.
-    index = get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl" / _digest(dict(genome.assets))
+    index = (get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl" / _digest(dict(genome.assets))).absolute()
     opened = PinnedEnsemblGenome(genome.reference_name, genome.annotation_name, genome.annotation_version,
                                  gtf_path_or_url=paths["gtf"], transcript_fasta_paths_or_urls=[paths["transcripts"]],
                                  protein_fasta_paths_or_urls=[paths["proteins"]], cache_directory_path=str(index),
-                                 species=genome.species, assembly_accession=genome.assembly_accession)
+                                 species=genome.species, assembly_accession=genome.assembly_accession,
+                                 pinned_name=genome.name)
     if rebuild:  # A forced install rebuilds the index from scratch, even a damaged one.
         import shutil
 
         shutil.rmtree(index, ignore_errors=True)
     try:
         opened.index()  # Local files only; done once.
-    except sqlite3.Error as error:
-        raise ValueError(f"The {genome.name} index is damaged ({error}); rebuild it with "
-                         f"'orfdata genomes install {genome.name} --force'") from error
+    except (sqlite3.Error, EOFError, pickle.UnpicklingError) as error:
+        raise ValueError(f"The {genome.name} index is damaged ({error or type(error).__name__}); rebuild it with "
+                         f"{_install_command(genome.name, cache_root, True)}") from error
     return opened

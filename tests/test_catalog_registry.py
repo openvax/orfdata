@@ -330,7 +330,7 @@ def test_load_catalog_uses_every_registered_catalogue(tmp_path):
         load_catalog(species="mouse", genome_build=manifest.genome_build, registry=registry)
 
 
-def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path):
+def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path, monkeypatch):
     registry, manifest, source, artifact, original = installed_release(tmp_path)
     name, build = manifest.catalog_id, manifest.genome_build
     releases = definition(manifest, artifact)
@@ -343,6 +343,17 @@ def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path):
     assert load_catalog(species="mouse", genome_build=build, registry=registry).records == original.records
     with pytest.raises(ValueError, match=rf"{name} 0 catalogue, which is not installed: .*--version 0"):
         load_catalog(species="mouse", genome_build="GRCm38", registry=registry)
+    # Setup installs every release some assembly uses: version 0 for GRCm38, not version 2.
+    from orfdata import install_species, liftover
+
+    downloads = []
+    monkeypatch.setattr(registry, "download", lambda n, v=None, *, force=False: downloads.append((n, v)))
+    monkeypatch.setattr(liftover, "download_chain", lambda *a, **k: "offline")
+    result = install_species("mouse", registry=registry, accept_terms=True)
+    assert downloads == [(name, "0")] and result["catalogs"][f"{name} 1"] == "already installed"
+    releases[name]["priority"] = "first"
+    with pytest.raises(ValueError, match="priority must be an integer"):
+        CatalogRegistry(releases)
 
 
 def test_query_cli_selects_a_species_catalogue(capsys):
@@ -353,3 +364,10 @@ def test_query_cli_selects_a_species_catalogue(capsys):
         with pytest.raises(SystemExit):
             run(["--species", species, "--gene", "Tpst1"])
         assert message in capsys.readouterr().err
+
+
+def test_a_caller_changing_a_loaded_catalogue_never_changes_the_next_load():
+    first = load_catalog()
+    first.genome_build, first.records = "GRCh37", ()
+    again = load_catalog()
+    assert again.genome_build == "GRCh38" and len(again.records) == 7264

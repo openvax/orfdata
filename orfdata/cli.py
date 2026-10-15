@@ -50,7 +50,7 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
 
 
 def _setup(argv, prog):
-    from .install import install_species
+    from .install import InstallError, install_species
 
     parser = argparse.ArgumentParser(
         prog=prog, description="Install a species' ORF catalogues and chain files, so its proteomes work offline "
@@ -64,10 +64,12 @@ def _setup(argv, prog):
     try:
         result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
                                  cache_root=args.cache_root)
+    except InstallError as error:  # What did install is still reported.
+        json.dump(error.result, sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        parser.exit(1, f"{parser.prog}: error: {error}\n")
     except (ValueError, OSError, ImportError) as error:
         parser.error(str(error))
-    if result["chains"] is not None:
-        result["chains"] = dict(downloaded=sorted(result["chains"]["downloaded"]), skipped=result["chains"]["skipped"])
     json.dump(result, sys.stdout, indent=2)
     sys.stdout.write("\n")
 
@@ -262,12 +264,15 @@ def _query(args, parser, catalog_loader):
         scoped = not isinstance(catalog, UORFCatalog)
         provenance = ("members", "liftover", "lifted_from")
         if scoped:
-            fields += ("reference_context_json", "summaries_json") + tuple(f + "_json" for f in provenance)
+            fields += ("start_codon", "reference_context_json", "summaries_json") + tuple(
+                f + "_json" for f in provenance)
         elif any(r.summaries for r in records):
             # The released upstream-only columns have no place for aggregate counts.
             parser.error("The legacy upstream-ORF TSV cannot export aggregate evidence; use --format json")
         elif any(r.members or r.liftover for r in records):
             parser.error("The legacy upstream-ORF TSV cannot export merged or lifted records; use --format json")
+        elif any(getattr(r, "start_codon", None) for r in records):
+            parser.error("The legacy upstream-ORF TSV cannot export declared start codons; use --format json")
         writer = csv.DictWriter(sys.stdout, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for r in records:
