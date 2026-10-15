@@ -43,6 +43,17 @@ def canonical_species(value):
     return _SPECIES[taxon][0] if taxon is not None else name
 
 
+def species_name_for_taxon(taxon_id):
+    """Return the canonical name for a known species ID, or None.
+
+    Uses the versioned taxonomy without annotation or network access. Unknown
+    IDs remain unknown; strain IDs are not converted to their parent species.
+    """
+    _positive(taxon_id, "taxon_id")
+    names = _SPECIES.get(taxon_id)
+    return names[0] if names is not None else None
+
+
 def _positive(value, name):
     if type(value) is not int or value < 1:
         raise ValueError(f"{name} must be a positive NCBI taxonomy ID")
