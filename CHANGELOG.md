@@ -1,4 +1,4 @@
-# 0.29.0
+# 0.28.0
 
 - Mouse Ribo-seq ORFs from Chang et al. (eLife 2025): `ncorf-mammals-mouse`.
   It has 16,484 ncORFs called by at least two of PRICE, RiboCode and
@@ -22,8 +22,6 @@
 - `orfdata setup --species S` (`install_species`) builds or downloads every
   registered catalogue for the species and its chain files in one step, and
   repairs a damaged one. Errors about missing pieces suggest it.
-
-# 0.28.0
 
 - T2T-CHM13v2.0 (#72): `orfdata genomes install t2t-chm13` installs Ensembl's
   rapid-release CHM13 annotation (2022_07). It is pinned by URL, size and
