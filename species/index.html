@@ -1194,6 +1194,9 @@
 
 
 <h1 id="species-and-references">Species and references<a class="headerlink" href="#species-and-references" title="Permanent link">&para;</a></h1>
+<p>Resolve names and IDs offline with <code>orfdata.reference.species_taxon(name)</code> and
+<code>species_name_for_taxon(taxon_id)</code>. The latter returns a canonical species name,
+or <code>None</code> for an unknown positive ID, without requiring an Ensembl annotation.</p>
 <p>ORFdata uses the same objects for human, mouse, dog, yeast and custom species.
 Every ORF states its NCBI species taxon, assembly and genetic code. A
 <code>ReferenceContext</code> also pins the annotation provider/version and can retain a
