@@ -305,7 +305,8 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
     assert (human.species, human.genome_build) == ("homo_sapiens", "GRCh38")
     assert load_catalog(species="human", genome_build="GRCh38").records == human.records
     with pytest.raises(ValueError, match=r"Catalogues exist for: homo_sapiens GRCh38 \(bundled\); "
-                                         r"mus_musculus GRCm39 \(ncorf-mammals-mouse 1\); mus_musculus GRCm39 \(openprot-mouse 2.2-1\)\."):
+                                         r"mus_musculus GRCm39 \(ncorf-mammals-mouse 1\); mus_musculus GRCm39 \(openprot-mouse 2.2-1\); "
+                                         r"mus_musculus GRCm39 \(riborf-mouse 1\)\."):
         load_catalog(species="dog")
     with pytest.raises(ValueError, match="need the chain files GRCh38_to_GRCh37 to reach GRCh37 by liftover"):
         load_catalog(species="human", genome_build="GRCh37")
@@ -346,7 +347,7 @@ def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path, mon
     from orfdata import install_species, liftover
 
     downloads = []
-    monkeypatch.setattr(registry, "download", lambda n, v=None, *, force=False: downloads.append((n, v)))
+    monkeypatch.setattr(registry, "download", lambda n, v=None, *, force=False, **options: downloads.append((n, v)))
     monkeypatch.setattr(liftover, "download_chain", lambda *a, **k: "offline")
     result = install_species("mouse", registry=registry, accept_terms=True)
     assert downloads == [(name, "0")] and result["catalogs"][f"{name} 1"] == "already installed"

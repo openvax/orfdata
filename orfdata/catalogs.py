@@ -53,6 +53,10 @@ def _builder(manifest):
         from .sources.ncorf_mammals import import_orfs
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
+    if importer == "riborf-v1":
+        from .sources.riborf import import_orfs
+
+        return lambda inputs, output: import_orfs(inputs, output, manifest)
     raise ValueError("No packaged importer for this catalogue release")
 
 

@@ -60,10 +60,12 @@ def _setup(argv, prog):
                         help="Accept usage terms of restricted chain files, such as UCSC's non-commercial ones")
     parser.add_argument("--force", action="store_true", help="Install again even what is already installed")
     parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
+    parser.add_argument("--timeout", type=float, default=60,
+                        help="Seconds a download may stall before it is retried, then fails (default 60)")
     args = parser.parse_args(argv)
     try:
         result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
-                                 cache_root=args.cache_root)
+                                 cache_root=args.cache_root, timeout=args.timeout)
     except InstallError as error:  # What did install is still reported.
         json.dump(error.result, sys.stdout, indent=2)
         sys.stdout.write("\n")
@@ -87,7 +89,8 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
     _add_rule_arguments(parser)
     parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
-                                          "(GENCODE, human); uORF, lncORF, iORF (Chang et al., mouse); AltProt (OpenProt)")
+                                          "(GENCODE, human); uORF, uoORF, iORF, dORF, doORF, lncORF (mouse Ribo-seq; "
+                                          "RibORF also truncation, extension); AltProt, Isoform (OpenProt)")
     parser.add_argument("--region", help="1-based inclusive interval: chr7:66205483-66205522")
     parser.add_argument(
         "--position", help="Map a 1-based variant position: chr7:66205483 (JSON only)"

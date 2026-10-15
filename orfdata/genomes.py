@@ -73,6 +73,7 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None):
     Returns the opened genome.
     """
     genome = _pinned(name)
+    _require_pyensembl()  # Before downloading anything it would be needed to open.
     paths = None
     if source_paths:
         unknown = set(source_paths) - set(_ROLES)
@@ -91,6 +92,7 @@ def _install_command(name, cache_root, force=False):
 def load_genome(name, *, cache_root=None):
     """The installed pinned annotation as a PyEnsembl genome, offline; indexed on first use."""
     genome = _pinned(name)
+    _require_pyensembl()
     status = _registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
     root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
     if status == "missing":
@@ -100,6 +102,13 @@ def load_genome(name, *, cache_root=None):
         raise ValueError(f"The installed {name} annotation is {status}; install it again with "
                          f"install_genome({name!r}, force=True{root}) or {_install_command(name, cache_root, True)}")
     return _open(genome, cache_root)
+
+
+def _require_pyensembl():
+    try:
+        import pyensembl  # noqa: F401
+    except ImportError as error:
+        raise ImportError("Pinned genomes are PyEnsembl genomes: pip install 'orfdata[pyensembl]'") from error
 
 
 def _open(genome, cache_root, *, rebuild=False):

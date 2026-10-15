@@ -30,6 +30,8 @@ def run(argv=None, prog=None):
             subparser.add_argument("--force", action="store_true", help="Replace an existing installation")
             subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
                                    help="Use this local copy of a pinned source asset instead of downloading it")
+            subparser.add_argument("--timeout", type=float, default=60,
+                                   help="Seconds a download may stall before it is retried, then fails (default 60)")
         if command == "query":
             query_parser = subparser
             _add_query_arguments(subparser, catalog_path=False)
@@ -56,8 +58,12 @@ def run(argv=None, prog=None):
                 if not separator or not asset or not path or asset in paths:
                     raise ValueError("Source overrides require unique ASSET=PATH entries")
                 paths[asset] = path
-            method = registry.build if args.command == "build" else registry.download
-            method(args.name, args.version, force=args.force, source_paths=paths or None)
+            options = dict(timeout=args.timeout)
+            if args.command == "build":
+                registry.build(args.name, args.version, force=args.force, source_paths=paths or None,
+                               download_options=options)
+            else:
+                registry.download(args.name, args.version, force=args.force, source_paths=paths or None, **options)
             inspect = registry.inspect_build if args.command == "build" else registry.inspect
             result = inspect(args.name, args.version)
             output = dict(status=result.status, path=str(result.path))
