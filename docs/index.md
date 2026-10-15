@@ -55,10 +55,11 @@ orfdata proteome --species human --release 115 --output human-e115.fasta
 | --- | --- | ---: | ---: |
 | `"ribosome"` | Ribosome profiling (all bundled ORFs) | 7,264 | 7,239 |
 | `"ms"` (default) | Any supporting MS peptide | 2,186 | 2,181 |
-| `"hla"` | Peptides presented by HLA molecules | 1,881 | 1,879 |
-| `"shotgun"` | Peptides from protease-digest MS | 73 | 72 |
+| `"immunopeptidomics"` | Peptides eluted from MHC (in human, HLA) molecules | 1,881 | 1,879 |
+| `"proteomics"` | Peptides from digested cellular proteins | 73 | 72 |
+| `"all"` | Every catalogue ORF | 7,264 | 7,239 |
 
-Most MS support in the bundled human catalogue comes from HLA
+Most MS support in the bundled human catalogue comes from
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
 does not establish a stable protein. See
 [building a reference proteome](proteome.md#choose-the-evidence) for

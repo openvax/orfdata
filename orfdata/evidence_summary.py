@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, replace
 from typing import Optional
 from urllib.parse import urlparse
 
+from .evidence import EVIDENCE_METHODS, stored_method
 from .reference import ReferenceContext, ScopedTarget
 
 
@@ -35,10 +36,9 @@ class EvidenceSummary:
     def __post_init__(self):
         if not isinstance(self.target, ScopedTarget):
             raise TypeError("Evidence summaries require a ScopedTarget")
-        if self.method not in ("ribosome", "shotgun", "mhc", "hla", "ms_unclassified", "ms"):
+        object.__setattr__(self, "method", stored_method(self.method))  # Files from before 0.28.0 say "hla".
+        if self.method not in EVIDENCE_METHODS:
             raise ValueError("Unknown summary evidence method")
-        if self.method == "hla" and self.target.reference.taxon_id != 9606:
-            raise ValueError("Use mhc for non-human immunopeptidomics evidence")
         if self.scope not in ("protein_sequence", "orf") or self.target.kind != {
             "protein_sequence": "protein", "orf": "orf"
         }.get(self.scope):

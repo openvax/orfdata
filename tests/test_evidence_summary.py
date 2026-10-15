@@ -50,7 +50,7 @@ def test_native_multispecies_counts_round_trip_without_resolved_observations(exa
         assert EvidenceSummary.from_dict(json.loads(json.dumps(s.to_dict()))) == s
     evidence = ORFEvidence(summaries=summaries)
     assert evidence.peptides == evidence.ribosome_studies == ()
-    assert evidence.has_evidence("ms") and not evidence.has_evidence("shotgun")
+    assert evidence.has_evidence("ms") and not evidence.has_evidence("proteomics")
     assert evidence.has_evidence("ribosome") == (ribo.value > 0)
     for flag in ("require_resolved", "require_unique", "require_reviewed"):
         assert not evidence.has_evidence("ms", **{flag: True})
@@ -143,11 +143,11 @@ def test_bound_reference_and_base_annotation_never_invent_variant_peptides(mouse
 def test_resolved_filters_preserve_old_catalogue_behavior_and_exports():
     data = load_catalog()
     assert data.evidence_summaries == ()
-    for method in ("ms", "ribosome", "shotgun", "hla", "mhc", "ms_unclassified"):
+    for method in ("ms", "ribosome", "proteomics", "immunopeptidomics", "ms_unclassified"):
         assert data.query(evidence=method) == data.query(evidence=method, require_resolved=True)
     record = data.get("c7riboseqorf56")
     assert "summaries" not in record.to_dict() and "summaries" not in record.evidence.to_dict()
-    assert record.has_evidence("hla", require_resolved=True, require_unique=True)
+    assert record.has_evidence("immunopeptidomics", require_resolved=True, require_unique=True)
     with pytest.raises(ValueError, match="requires an evidence method"):
         data.query(require_resolved=True)
 
@@ -193,12 +193,12 @@ def test_legacy_upstream_tsv_keeps_columns_and_rejects_aggregate_evidence(tmp_pa
     assert "use --format json" in capsys.readouterr().err
 
 
-def test_method_scope_source_pins_and_nonhuman_mhc():
-    s = summary(method="mhc")
-    assert ORFEvidence(summaries=(s,)).has_evidence("mhc")
+def test_method_scope_source_pins_and_nonhuman_immunopeptidomics():
+    s = summary(method="immunopeptidomics")
+    assert ORFEvidence(summaries=(s,)).has_evidence("immunopeptidomics")
     assert ORFEvidence(summaries=(s,)).has_evidence("ms")
-    assert not ORFEvidence(summaries=(s,)).has_evidence("hla")
-    for changes in (dict(method="hla"), dict(source=""), dict(release=""), dict(definition=""),
+    assert not ORFEvidence(summaries=(s,)).has_evidence("proteomics")
+    for changes in (dict(source=""), dict(release=""), dict(definition=""),
                     dict(source_sha256="unknown"), dict(protein_sha256="A" * 64),
                     dict(source_url="local.txt"), dict(scope="gene"), dict(method="confidence")):
         with pytest.raises(ValueError):

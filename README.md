@@ -51,8 +51,8 @@ orfdata proteome --species human --release 115 --output human-e115.fasta
 ```
 
 A translated ORF or a detected peptide does not by itself establish a stable,
-functional protein. Most MS support in the bundled catalogue comes from
-peptides presented by HLA molecules.
+functional protein. Most MS support in the bundled human catalogue comes from
+immunopeptidomics: peptides eluted from HLA molecules.
 
 ## Species
 

@@ -10,6 +10,20 @@ must be installed. Run `orfdata setup --species mouse --accept-terms` (with
 what is missing. The default `"ms"` evidence still selects OpenProt's 2,976
 MS-supported ORFs.
 
+## Evidence names
+
+- The MS evidence kinds have species-neutral names: `"proteomics"` (peptides
+  from digested cellular proteins; was `"shotgun"`) and `"immunopeptidomics"`
+  (peptides eluted from MHC molecules; was `"mhc"`, and `"hla"` for human).
+  - The old names still work as evidence names and in `MS(methods=...)`, with
+    a `DeprecationWarning`. Catalogues, evidence summaries and saved rules that
+    use them load with the new names, so the bundled human catalogue is
+    unchanged.
+  - Proteome FASTA headers say `evidence=ribosome,immunopeptidomics`, not
+    `ribosome,mhc`. Saved proteome snapshots keep the labels they were written
+    with.
+- `evidence="all"` selects every catalogue ORF, like `None`.
+
 ## Mouse
 
 - Ribo-seq ORFs of Chang et al. (eLife 2025): `ncorf-mammals-mouse`, 16,484

@@ -115,7 +115,8 @@ def _add_rule_arguments(parser):
     parser.add_argument("--min-ms-peptides", type=int, metavar="N",
                         help="Require at least N distinct supporting MS peptides")
     parser.add_argument("--ms-methods", metavar="KINDS",
-                        help="Count only these MS peptide kinds, comma-separated: shotgun, mhc, hla, ms_unclassified")
+                        help="Count only these MS peptide kinds, comma-separated: proteomics (digested cellular "
+                             "proteins), immunopeptidomics (peptides eluted from MHC molecules), ms_unclassified")
     parser.add_argument("--either", action="store_true",
                         help="Accept ORFs meeting the Ribo-seq or the MS requirement, instead of both")
     parser.add_argument("--require-resolved", action="store_true",

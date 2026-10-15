@@ -52,11 +52,12 @@ the bundled human catalogue (dataset `2026-10-11.1`) and Ensembl 115:
 
 | Selection | Human ORFs | Encoded in Ensembl 115 |
 | --- | ---: | ---: |
-| `evidence=None` or `"ribosome"`: translated in ribosome profiling | 7,264 | 7,239 |
+| `evidence=None` or `"all"`: every catalogue ORF | 7,264 | 7,239 |
+| `evidence="ribosome"`: translated in ribosome profiling | 7,264 | 7,239 |
 | `evidence="ms"` (default): any supporting MS peptide | 2,186 | 2,181 |
-| `evidence="hla"` or `"mhc"`: peptides presented by HLA | 1,881 | 1,879 |
+| `evidence="immunopeptidomics"`: peptides eluted from MHC (in human, HLA) molecules | 1,881 | 1,879 |
 | `evidence="ms_unclassified"`: MS with an unreported assay type | 537 | 535 |
-| `evidence="shotgun"`: protease-digest MS | 73 | 72 |
+| `evidence="proteomics"`: peptides from digested cellular proteins | 73 | 72 |
 | `"ms"` with `require_unique=True` | 1,623 | 1,621 |
 | `"ms"` with `require_reviewed=True` | 44 | 44 |
 
@@ -64,7 +65,7 @@ All bundled ORFs come from ribosome-profiling catalogues, so `"ribosome"`
 selects all of them. An MS-supported ORF can have peptides from several assay
 types. `require_unique` keeps peptides that map to one protein *within the MS
 source's search*, which is not uniqueness across every possible protein; in
-this catalogue only the author HLA mappings report it. `require_reviewed`
+this catalogue only the author HLA ligand mappings report it. `require_reviewed`
 keeps peptides with convincing community spectrum reviews. Because those two
 properties come from different sources, no bundled peptide has both.
 `require_resolved` excludes support that consists only of aggregate counts.
@@ -84,7 +85,7 @@ from orfdata import MS, RiboSeq
 annotated.with_extra_orfs(RiboSeq(min_studies=2))                        # replicated Ribo-seq
 annotated.with_extra_orfs(RiboSeq(min_studies=2) & MS())                 # Ribo-seq and MS
 annotated.with_extra_orfs(RiboSeq(min_studies=2) | MS())                 # either
-annotated.with_extra_orfs(MS(methods=("shotgun", "ms_unclassified")))     # not HLA-only
+annotated.with_extra_orfs(MS(methods=("proteomics", "ms_unclassified")))  # not immunopeptidomics-only
 ```
 
 | Rule | Human ORFs | Encoded in Ensembl 115 |
@@ -92,23 +93,26 @@ annotated.with_extra_orfs(MS(methods=("shotgun", "ms_unclassified")))     # not 
 | `RiboSeq(min_studies=2)` | 3,085 | 3,072 |
 | `RiboSeq(min_studies=3)` | 1,675 | 1,671 |
 | `MS(min_peptides=2)` | 682 | 681 |
-| `MS(methods=("shotgun", "ms_unclassified"))` | 610 | 607 |
+| `MS(methods=("proteomics", "ms_unclassified"))` | 610 | 607 |
 | `RiboSeq(min_studies=2) & MS()` | 1,296 | 1,293 |
 | `RiboSeq(min_studies=2) & MS(min_peptides=2)` | 457 | 456 |
 | `RiboSeq(min_studies=2) \| MS()` | 3,975 | 3,960 |
 
 GENCODE's `c…riboseqorf…` IDs are the 3,085 ORFs seen in two or more studies.
-Each method name above is the simplest rule: `"ms"` is `MS()`, `"hla"` is
-`MS(methods=("hla",))` and `"ribosome"` is `RiboSeq()`. A peptide counts once
+Each method name above is the simplest rule: `"ms"` is `MS()`,
+`"immunopeptidomics"` is `MS(methods=("immunopeptidomics",))` and `"ribosome"`
+is `RiboSeq()`. The names before 0.28.0 (`"shotgun"`, and `"mhc"` or `"hla"`)
+still work, with a deprecation warning, and catalogues that use them still
+load. A peptide counts once
 however many assay types report it, and so do peptides that differ only by I
-and L (equal in mass). Nested peptides, such as HLA length variants, count as
+and L (equal in mass). Nested peptides, such as MHC ligand length variants, count as
 one: the count is the largest set of supporting peptides none of which lies
 inside another, so a long peptide never hides two shorter, separate ones, and
 a stricter rule always selects a subset of a looser one. Of the 916 ORFs with
 two or more distinct peptide sequences, 234 have fewer than two that aren't
 nested. Each rule in `&` is checked on its own:
-`MS(methods="shotgun") & MS(unique=True)` needs a shotgun peptide and a unique
-peptide, not one unique shotgun peptide. A source's aggregate count stands for one observation:
+`MS(methods="proteomics") & MS(unique=True)` needs a proteomics peptide and a
+unique peptide, not one unique proteomics peptide. A source's aggregate count stands for one observation:
 it satisfies `RiboSeq()` and `MS()` but never `min_studies` or `min_peptides`
 above 1, `unique`, `reviewed` or `resolved=True`. The layer stores the rule,
 so a snapshot records exactly how its ORFs were chosen; `EvidenceRule.from_dict`
@@ -288,15 +292,15 @@ protein ID. Fields that apply follow as `key=value`:
 
 ```text
 >ENSP00000269305.4 kind=annotated taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
->c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,mhc transcripts=18
->c10riboseqorf115 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,mhc source_transcript=ENST00000277895 transcripts=10
+>c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,immunopeptidomics transcripts=18
+>c10riboseqorf115 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,immunopeptidomics source_transcript=ENST00000277895 transcripts=10
 ```
 
 For extra ORFs, the accession is the source ORF ID, `transcript` is its host
 transcript in this genome, and `gene`, `gene_name` and `transcript_biotype`
 describe that transcript in this genome. `orf_type` is the source's ORF
 category, kept verbatim; see [ORF categories](reference.md#orf-categories).
-`evidence` lists the supporting evidence types; `mhc` includes HLA.
+`evidence` lists the supporting evidence types.
 `transcripts` counts the encoding transcripts when there are several, and
 `source_transcript` names the source's transcript when the header's transcript
 is a different one, as for ABLIM1 above, whose source transcript is gone. See
@@ -319,7 +323,7 @@ options. Rules have their own options:
 ```sh
 orfdata proteome --species human --release 115 --min-ribo-seq-studies 2 --min-ms-peptides 1
 orfdata proteome --species human --release 115 --min-ribo-seq-studies 3 --min-ms-peptides 2 --either
-orfdata proteome --species human --release 115 --min-ms-peptides 1 --ms-methods shotgun,ms_unclassified
+orfdata proteome --species human --release 115 --min-ms-peptides 1 --ms-methods proteomics,ms_unclassified
 ```
 
 Given both a Ribo-seq and an MS requirement, an ORF needs both unless

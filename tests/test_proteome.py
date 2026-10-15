@@ -113,7 +113,7 @@ def orf(orf_id, transcript_id="test_rna", blocks=((103, 104), (205, 217)), prote
 
 
 def make_catalog(transcript_id="test_rna"):
-    peptide = (PeptideEvidence("shotgun", "KPG", ((2, 4),), "synthetic", "fixture"),)
+    peptide = (PeptideEvidence("proteomics", "KPG", ((2, 4),), "synthetic", "fixture"),)
     # Spliced start flanks: CCC | ATG (across the junction) | AAACCC.
     flanks = InitiationContext("CCC", "ATG", "AAACCC", (100, 101, 102, 103, 104, 205, 206, 207, 208, 209, 210, 211))
     records = [
@@ -121,7 +121,7 @@ def make_catalog(transcript_id="test_rna"):
         orf("ribo-orf", transcript_id, blocks=((218, 226),), protein="MK", ribosome_studies=("synthetic-study",)),
         orf("absent-orf", transcript_id="missing_rna", peptides=peptide),
         orf("changed-orf", transcript_id, protein="MKPA",
-            peptides=(PeptideEvidence("shotgun", "MKP", ((1, 3),), "synthetic", "fixture"),)),
+            peptides=(PeptideEvidence("proteomics", "MKP", ((1, 3),), "synthetic", "fixture"),)),
     ]
     return ORFCatalog(records, dict(genome_build="GRCm39", taxon_id=10090, species="mus_musculus",
                                     coordinates="1-based-inclusive", dataset_version="fixture-v1",
@@ -212,7 +212,7 @@ def test_proteome_entries_keep_every_occurrence_and_source_binding(genome, catal
     ms = extra["ms-orf"]
     # The host transcript's biotype and the source ORF category are separate fields.
     assert (ms.sequence, ms.evidence, ms.transcript_biotype, ms.orf_type, ms.source_binding) == (
-        "MKPG", ("shotgun",), "lncRNA", "lncRNA", None)
+        "MKPG", ("proteomics",), "lncRNA", "lncRNA", None)
     assert [(o.transcript_id, o.on_source_transcript, o.start, o.end) for o in ms.occurrences] == [
         ("test_rna.1", True, 3, 18), ("test_rna_long.1", False, 8, 23)]
     assert ms.evidence_detail["peptides"][0]["sequence"] == "KPG"
@@ -520,7 +520,7 @@ def test_extra_orfs_follow_separate_ribo_seq_and_ms_rules(genome, catalog):
         return sorted(e.accession for e in base.with_extra_orfs(rule, catalog=catalog) if e.kind == "extra_orf")
 
     assert added(RiboSeq()) == ["ribo-orf"] and added(RiboSeq(min_studies=2)) == []
-    assert added(MS(methods="shotgun")) == ["absent-orf", "ms-orf"]
+    assert added(MS(methods="proteomics")) == ["absent-orf", "ms-orf"]
     assert added(RiboSeq() | MS()) == ["absent-orf", "ms-orf", "ribo-orf"] and added(RiboSeq() & MS()) == []
     layer = base.with_extra_orfs(RiboSeq() | MS(), catalog=catalog).layers[-1]
     assert layer["evidence"] == {"any": [MS().to_dict(), RiboSeq().to_dict()]}
@@ -606,7 +606,7 @@ def test_fasta_export_round_trips_sequences_and_provenance(genome, catalog):
             records[header] += line
     assert records == {e.fasta_header(): e.sequence for e in proteome}
     assert (">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE "
-            "transcript=test_rna.1 contig=1 transcript_biotype=lncRNA orf_type=lncRNA evidence=shotgun transcripts=2") in records
+            "transcript=test_rna.1 contig=1 transcript_biotype=lncRNA orf_type=lncRNA evidence=proteomics transcripts=2") in records
     # An ORF whose source transcript is gone names it, beside the transcript that carries it.
     assert any(h.startswith(">absent-orf ") and "transcript=test_rna.1 " in h and "source_transcript=missing_rna" in h
                for h in records)
@@ -637,7 +637,7 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     rules = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path)]
     for options, kinds in ((["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1", "--either"], 3),
                            (["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1"], 0),
-                           (["--min-ms-peptides", "1", "--ms-methods", "shotgun", "--require-resolved"], 2)):
+                           (["--min-ms-peptides", "1", "--ms-methods", "proteomics", "--require-resolved"], 2)):
         run(rules + options)
         summary = json.loads(capsys.readouterr().err)
         assert summary["kinds"].get("extra_orf", 0) == kinds

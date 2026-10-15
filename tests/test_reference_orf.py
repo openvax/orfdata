@@ -131,19 +131,22 @@ def test_all_primary_source_orf_classes_and_legacy_subset():
     assert all_orfs.get("c7riboseqorf56").evidence == upstream.get("c7riboseqorf56").evidence
 
 
-def test_nonhuman_mhc_evidence_is_scoped_and_preserved(tmp_path):
+def test_nonhuman_immunopeptidomics_evidence_is_scoped_and_preserved(tmp_path):
     from orfdata import PeptideEvidence
 
-    observation = PeptideEvidence("mhc", "MKP", ((1, 3),), "synthetic", "fixture")
+    observation = PeptideEvidence("immunopeptidomics", "MKP", ((1, 3),), "synthetic", "fixture")
     record = ORFRecord.from_model(model(), ORFEvidence(peptides=(observation,)))
     data = catalog(record)
-    assert data.query(evidence="mhc") == (record,)
-    assert data.query(evidence="hla") == ()
+    assert data.query(evidence="immunopeptidomics") == (record,)
+    assert data.query(evidence="proteomics") == ()
     path = tmp_path / "mouse-ms.json"
     path.write_text(json.dumps(data.to_dict()))
     assert load_catalog(path).get(record.orf_id).evidence == record.evidence
-    with pytest.raises(ValueError, match="non-human"):
-        catalog(replace(record, peptides=(replace(observation, method="hla"),)))
+    # A file from before 0.28.0 says "mhc".
+    path.write_text(json.dumps(data.to_dict()).replace('"immunopeptidomics"', '"mhc"'))
+    assert load_catalog(path).get(record.orf_id).evidence == record.evidence
+    with pytest.raises(ValueError, match="Invalid peptide evidence"):
+        catalog(replace(record, peptides=(replace(observation, method="tandem"),)))
 
 
 def test_generic_cli_exports_noncoding_models_and_species(capsys):

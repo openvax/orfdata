@@ -167,10 +167,12 @@ The host is one of possibly several transcripts that carry the same ORF; see
 
 ## Evidence
 
-Use `orf.evidence.has_evidence("ribosome")`, `"shotgun"` (protease-digest MS),
-`"mhc"` (including human HLA), or `"ms"` (any supporting MS observation).
-`"hla"` selects human HLA observations specifically. Source observations whose
-MS assay type is unspecified remain labelled `"ms_unclassified"`.
+Use `orf.evidence.has_evidence("ribosome")`, `"proteomics"` (peptides from
+digested cellular proteins), `"immunopeptidomics"` (peptides eluted from MHC
+molecules; HLA in human), or `"ms"` (any supporting MS observation). Source
+observations whose MS assay type is unspecified remain labelled
+`"ms_unclassified"`. Catalogues from before 0.28.0 say `"shotgun"`, `"mhc"`
+and `"hla"`; they load with the current names.
 
 ```python
 orf.evidence.has_evidence("ms", require_unique=True, require_reviewed=True)

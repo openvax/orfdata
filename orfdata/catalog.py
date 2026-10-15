@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import NamedTuple, Optional
 
 from .evidence import EVIDENCE_METHODS as EVIDENCE_METHODS  # Re-exported for existing imports.
-from .evidence import evidence_rule
+from .evidence import MS_METHODS, evidence_rule, stored_method
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
 from .liftover import Liftover
@@ -53,6 +53,9 @@ class PeptideEvidence:
     quality: str = "reported"
     review_ratings: tuple = ()
     spectrum_ids: tuple = ()
+
+    def __post_init__(self):
+        object.__setattr__(self, "method", stored_method(self.method))  # Files from before 0.28.0 say "hla".
 
     @property
     def unique_in_source(self):
@@ -92,8 +95,9 @@ class ORFEvidence:
         """
         if method is None:
             raise ValueError("Unknown evidence method: None")
-        return evidence_rule(method, require_unique=require_unique, require_reviewed=require_reviewed,
-                             require_resolved=require_resolved).matches(self)
+        rule = evidence_rule(method, require_unique=require_unique, require_reviewed=require_reviewed,
+                             require_resolved=require_resolved)
+        return rule is None or rule.matches(self)
 
 
 @dataclass(frozen=True)
@@ -452,10 +456,8 @@ class ORFCatalog:
                     ):
                         raise ValueError("Initiation-context placements disagree with coding path")
             for p in r.peptides:
-                if p.method == "hla" and r.taxon_id != 9606:
-                    raise ValueError("Use mhc for non-human immunopeptidomics evidence")
                 if (
-                    p.method not in ("shotgun", "mhc", "hla", "ms_unclassified")
+                    p.method not in MS_METHODS
                     or not p.protein_intervals
                 ):
                     raise ValueError(f"Invalid peptide evidence for {r.orf_id}")
