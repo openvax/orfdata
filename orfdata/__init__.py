@@ -20,6 +20,7 @@ from .datasets import DatasetRegistry, build_dataset
 from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
+from .liftover import ChainFile, Liftover, lift_catalog
 from .measurements import (
     Assay,
     DatasetManifest,
@@ -114,6 +115,9 @@ __all__ = [
     "SearchMembership",
     "load_catalog",
     "merge_catalogs",
+    "ChainFile",
+    "Liftover",
+    "lift_catalog",
     "UORFCatalog",
     "UORFRecord",
     "UORFPeptide",

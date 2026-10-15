@@ -108,6 +108,14 @@ def _exon_layout(transcript):
     return exons, offsets, total
 
 
+def _same_assembly(a, b):
+    """Whether two reference contexts share species, strain and assembly, whatever their annotation."""
+    fields = ("taxon_id", "genome_build", "strain", "strain_taxon_id")
+    if any(getattr(a, f) != getattr(b, f) for f in fields):
+        return False
+    return None in (a.assembly_accession, b.assembly_accession) or a.assembly_accession == b.assembly_accession
+
+
 def _transcript_match(identifier, transcript):
     """How a source's transcript ID names a transcript.
 
@@ -267,7 +275,10 @@ class TranscriptORF:
         resolved_context = ReferenceContext.from_genome(genome, context=context)
         if resolved_context.taxon_id != model.taxon_id:
             raise ValueError("ORF transcript taxon mismatch")
-        if model.reference_context is not None and model.reference_context.key != resolved_context.key:
+        pinned = model.reference_context
+        if pinned is not None and pinned.key != resolved_context.key and not (
+                any_transcript and _same_assembly(pinned, resolved_context)):
+            # Placement by exact coding path and protein may cross annotation releases; binding may not.
             raise ValueError("ORF transcript reference context mismatch (annotation, strain or assembly)")
         if not any_transcript:
             match = _transcript_match(model.transcript_id, transcript)

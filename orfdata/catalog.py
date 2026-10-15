@@ -18,6 +18,7 @@ from .evidence import EVIDENCE_METHODS as EVIDENCE_METHODS  # Re-exported for ex
 from .evidence import evidence_rule
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
+from .liftover import Liftover
 from .model import ORFModel, TranscriptORF, _contig, _id_forms, _species, _transcript_match
 from .reference import ReferenceContext
 from .sequence import genetic_code, reverse_complement_dna
@@ -118,10 +119,19 @@ class ORFRecord:
     summaries: tuple = ()
     start_codon: Optional[str] = None
     members: tuple = ()
+    lifted_from: Optional["ORFRecord"] = None
+    liftover: Optional[Liftover] = None
 
     def __post_init__(self):
         object.__setattr__(self, "summaries", unique_summaries(self.summaries))
         object.__setattr__(self, "members", tuple(self.members))
+        if (self.lifted_from is None) != (self.liftover is None):
+            raise ValueError("A lifted record names both its original record and the chain")
+        original = self.lifted_from
+        if original is not None and any(getattr(self, name) != getattr(original, name) for name in (
+                "orf_id", "protein_sequence", "translation_table", "start_codon", "source",
+                "ribosome_studies", "peptides", "summaries")):
+            raise ValueError(f"A lifted record keeps its original's ID, protein and evidence: {self.orf_id}")
         if self.members:
             # Each member validated its own summaries against its own identity.
             key = _merge_key(self)
@@ -135,7 +145,7 @@ class ORFRecord:
                     or bool(self.ribosome_studies) != bool(studies)
                     or self.initiation_context not in (None, *(m.initiation_context for m in self.members))):
                 raise ValueError(f"The evidence of {self.orf_id} must be its members' evidence")
-        elif self.summaries:
+        elif self.summaries and self.lifted_from is None:  # A lifted record's original validated them.
             model = self.model
             for summary in self.summaries:
                 summary.validate_orf(model)
@@ -211,6 +221,11 @@ class ORFRecord:
             result["members"] = [m.to_dict() for m in self.members]
         else:
             result.pop("members")
+        if self.lifted_from is not None:
+            result["lifted_from"] = self.lifted_from.to_dict()
+        else:
+            result.pop("lifted_from")
+            result.pop("liftover")
         return result
 
     def map_initiation_position(self, position, *, genome_build):
@@ -349,7 +364,7 @@ class ORFRecord:
         position : int
             A 1-based genomic position on this record's contig.
         genome_build : str
-            Must equal the record's assembly. No implicit liftover is done.
+            Must equal the record's assembly. No implicit liftover is done; see ``lift_catalog``.
 
         Returns
         -------
@@ -501,6 +516,8 @@ class ORFCatalog:
     def source(self):
         """The catalogue's release label, as proteome layers and entries record it."""
         metadata = self._metadata
+        if metadata.get("liftover"):
+            return f"{metadata['liftover']['source']}@{metadata['genome_build']}"
         if metadata.get("merged_from"):
             return "+".join(m["source"] for m in metadata["merged_from"])
         manifest = metadata.get("catalog_manifest")
@@ -746,7 +763,9 @@ def merge_catalogs(catalogs):
             continue
         pinned = {None if m.reference_context is None else m.reference_context.key for m in members}
         records.append(replace(
-            primary, orf_id=orf_id, members=tuple(members), initiation_context=_shared_context(primary, members),
+            # The merged ORF is no one source's lift; each member keeps its own lift provenance.
+            primary, orf_id=orf_id, members=tuple(members), lifted_from=None, liftover=None,
+            initiation_context=_shared_context(primary, members),
             # Sources pinned to different annotations of one assembly leave the ORF unpinned.
             reference_context=primary.reference_context if len(pinned) == 1 else None, **_union(members, study)))
     paths = {}
@@ -835,6 +854,9 @@ def _record(row, legacy=False):
     row["peptides"] = tuple(peptides)
     row["summaries"] = tuple(EvidenceSummary.from_dict(s) for s in row.get("summaries", ()))
     row["members"] = tuple(_record(m) for m in row.get("members", ()))
+    if row.get("lifted_from") is not None:
+        row["lifted_from"] = _record(row["lifted_from"])
+        row["liftover"] = Liftover(**row["liftover"])
     return ORFRecord(**row)
 
 
@@ -911,8 +933,12 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     if not found:
         scope = species if genome_build is None else f"{species} {genome_build}"
         known = "; ".join(f"{c.species} {c.genome_build} ({c.label})" for c in choices) or "none"
+        builds = sorted({c.genome_build for c in choices if c.species == species})
+        lift = (f" Or lift one: lift_catalog(load_catalog(species={species!r}, genome_build={builds[0]!r}), "
+                f"ChainFile(path, source_build={builds[0]!r}, target_build={genome_build!r}))."
+                if builds and genome_build else "")
         raise ValueError(f"No ORF catalogue covers {scope}. Catalogues exist for: {known}. "
-                         "Load a local file with load_catalog(path) or add one to a CatalogRegistry.")
+                         f"Load a local file with load_catalog(path) or add one to a CatalogRegistry.{lift}")
     bundled = [c for c in found if c.registry is None]
     if bundled:
         return _load_catalog(expected_sha256=expected_sha256, resource=bundled[0].resource)

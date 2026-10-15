@@ -1,3 +1,23 @@
+# 0.23.0
+
+- Lift catalogues between assemblies of one species with `ChainFile` and
+  `lift_catalog` (#72). Records lift only when every coding block lies in one
+  ungapped alignment block on one contig and strand, preferring the
+  same-named chromosome over fix patches; the rest are listed with the
+  reason. Lifted records keep their original in `lifted_from`, the chain's
+  identity in `liftover`, and any strain pin. 7,247 of the 7,264 bundled ORFs
+  lift to GRCh37 and 6,857 place on Ensembl 75; all that lift back return to
+  their GRCh38 coordinates. `contig_names=` renames RefSeq-named targets, and
+  UCSC scaffold names read as Ensembl's. ORFs that don't lift are reported
+  among `extra_orfs` and proteome exclusions under the rule that selects them.
+  A lifted record can lead a merge. When only another assembly has a
+  catalogue, `load_catalog`'s error says which to lift.
+- `extra_orfs` places records pinned to another annotation release of the
+  same species, strain and assembly, by their exact coding path and protein.
+  It also tries the transcript the source names when strict binding fails,
+  for example on another version of it; strict `record.bind` still requires
+  the pinned reference.
+
 # 0.22.0
 
 - `merge_catalogs` and `catalog=[...]` combine ORF catalogues for one species

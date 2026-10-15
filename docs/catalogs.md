@@ -53,6 +53,62 @@ evidence filters, and JSON/TSV/FASTA exports. They cannot override the selected
 release with a local `--catalog` argument. Use `orfdata --catalog FILE` for the
 existing standalone local-file workflow.
 
+## Lifting a catalogue to another assembly
+
+A catalogue built on one assembly can be lifted to another of the same species
+with a chain file, for example GRCh37 to GRCh38 or mm10 to GRCm39:
+
+```python
+from orfdata import ChainFile, extra_orfs, lift_catalog, load_catalog
+
+chain = ChainFile("GRCh38_to_GRCh37.chain.gz", source_build="GRCh38", target_build="GRCh37")
+grch37 = lift_catalog(load_catalog(), chain)
+print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.source)
+```
+
+```text
+7247 17 orfdata-catalog:2026-10-11.1@GRCh37
+```
+
+- **Chain files.** `ChainFile` reads UCSC and Ensembl chain files, gzipped or
+  not. Examples are Ensembl's
+  [`GRCh37_to_GRCh38.chain.gz`](https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/)
+  and UCSC's [`mm10ToMm39.over.chain.gz`](https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/).
+  UCSC's chains to GCF assemblies, such as
+  `canFam3ToGCF_014441545.1.over.chain.gz` for dog ROS_Cfam_1.0, name contigs
+  by RefSeq accession, so pass `contig_names=` built from NCBI's assembly
+  report to match the genome's names. Download chain files yourself and check
+  their terms; orfdata never fetches one.
+- **What lifts.** A record lifts only when every coding block lies inside one
+  ungapped alignment block and all blocks land on one contig and strand, in
+  order. Where a region also aligns to fix patches or alternate haplotypes,
+  the same-named chromosome is used. The 17 bundled ORFs above that don't
+  lift are listed in `metadata["liftover"]["unmapped"]` with the reason (and,
+  when a block aligns to several places, their `contigs`): 15 have no
+  alignment and 2 cross an alignment gap. UCSC's names for unplaced scaffolds,
+  such as `chr1_GL456210v1_random`, are read as Ensembl's (`GL456210.1`).
+- **Real data.** Lifting the 7,247 back to GRCh38 with
+  `GRCh37_to_GRCh38.chain.gz` recovers the original coordinates of the 7,246
+  that lift back. On Ensembl 75, 6,857 of the lifted ORFs place on a
+  transcript with their exact coding path and protein.
+- **Provenance.** Each lifted record keeps its original in `record.lifted_from`
+  and the chain's name and SHA-256 in `record.liftover`. Its ID, protein and
+  evidence must equal the original's. Its initiation flanks move with it when
+  they map consistently and in order. A strain pin is kept, with the chain's
+  SHA-256 in place of an annotation. `metadata["liftover"]["input"]` describes
+  the input catalogue, including any earlier lift.
+- **Placement.** `extra_orfs` on the target genome then checks each ORF's
+  exact coding path and protein, so a lift that changes the sequence is
+  excluded rather than trusted. A lifted record names no annotation release.
+  ORFs that didn't lift are reported among the exclusions, as "Did not lift
+  to GRCh37: …", when the evidence rule selects them; through every hop of
+  an earlier lift and every merged input. On Ensembl 75, `"ms"` selects all
+  2,186 MS-supported ORFs: 2,097 place, and 3 of the 89 excluded didn't lift.
+- **Size.** Each lifted record carries its original, so a lifted catalogue is
+  about twice the size of its input (33 MB for the bundled one as JSON).
+- **Errors.** When only another assembly has a catalogue,
+  `load_catalog(species=..., genome_build=...)` says which one to lift.
+
 ## Source builds
 
 `registry.build(name, source_paths={"source.json": path})` explicitly rebuilds
