@@ -1416,7 +1416,7 @@ transcript alongside them.</p>
 <tr>
 <td>Mouse</td>
 <td>From PyEnsembl</td>
-<td>None released; <a href="https://github.com/openvax/orfdata/issues/18">OpenProt adapter</a> in progress</td>
+<td>2,976 GRCm39 ORFs from OpenProt 2.2, <a href="catalogs/#mouse-orfs-from-openprot">built locally</a></td>
 </tr>
 <tr>
 <td>Dog</td>
@@ -1430,8 +1430,8 @@ transcript alongside them.</p>
 </tr>
 </tbody>
 </table>
-<p><code>with_extra_orfs()</code> raises for a species without a catalogue rather than
-returning an annotated-only proteome. Human ORF evidence is never transferred
+<p><code>with_extra_orfs()</code> raises for a species without a catalogue, or whose
+catalogue isn't built yet, rather than returning an annotated-only proteome. Human ORF evidence is never transferred
 to another species. The same API also serves
 <a href="measurements/">RNA, ribosome and protein measurements</a> for human, mouse, dog
 and yeast; see <a href="coverage/">released data and gaps</a>.</p>

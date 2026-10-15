@@ -1613,9 +1613,9 @@ once and rejects conflicting facts for the same identity. Native accession
 aliases must be resolved explicitly by the source adapter. Counts from different
 metrics and sources are not summed, and a later peptide-resolved snapshot is not
 an additional independent experiment merely because it has more detail.</p>
-<p>This API includes source-backed OpenProt human, mouse and yeast test slices.
-It does not yet publish those species' OpenProt ORF catalogues; coordinate and
-sequence qualification remains tracked in <a href="https://github.com/openvax/orfdata/issues/18">#18</a>.</p>
+<p>The <a href="../catalogs/#mouse-orfs-from-openprot">OpenProt mouse catalogue</a> uses
+these summaries. OpenProt's human and yeast files are not imported yet; see
+<a href="https://github.com/openvax/orfdata/issues/18">#18</a>.</p>
 <p>The distinction between translation, peptide detection and functional protein
 evidence follows the <a href="https://www.nature.com/articles/s41586-026-10459-x">TransCODE study</a>.
 Source evidence stays at its declared ORF or protein-sequence scope. It is not
@@ -1676,23 +1676,24 @@ another annotation release of the same species, strain and assembly is also
 accepted. ORFs on another assembly can be
 <a href="../catalogs/#lifting-a-catalogue-to-another-assembly">lifted over</a>.</p>
 <p><code>load_catalog(species="mouse")</code> returns a species' catalogue: the bundled one,
-or else the one installed through <a href="../catalogs/"><code>CatalogRegistry</code></a>.
+or else the one downloaded or built through <a href="../catalogs/"><code>CatalogRegistry</code></a>,
+such as the <a href="../catalogs/#mouse-orfs-from-openprot">OpenProt mouse catalogue</a>.
 <code>genome_build=</code> chooses between assemblies. It never downloads, and for a
 species without a catalogue the error lists the catalogues that exist.</p>
 <p><code>load_catalog(path)</code> reads a custom versioned JSON catalogue. Each catalogue is
 scoped to one species and assembly; each model records its NCBI taxon, scientific
 name, assembly, translation table and source. Human evidence is never transferred
-to a mouse ortholog. Mouse bindings are tested with synthetic ORFs on PyEnsembl
-transcripts; there is no bundled mouse evidence.</p>
+to a mouse ortholog. Mouse ORFs come from OpenProt, and their bindings are
+tested with real OpenProt rows on real Ensembl 106 transcripts.</p>
 <p>To build a catalogue, create <code>ORFModel</code> objects from source coordinates and
 sequences, attach source observations with <code>ORFRecord.from_model(model, evidence)</code>,
 and construct <code>ORFCatalog(records, metadata)</code>. Its <code>to_dict()</code> produces the
 <code>orfdata.catalog.v1</code> JSON representation. Genomic coding blocks are 1-based,
 inclusive, sorted by genomic position, and include the terminal stop codon.</p>
-<p><a href="https://archive.openprot.org/p/help">OpenProt</a> is a possible source for further species,
-with organism/assembly-specific models, transcript mappings and experimental
-evidence. A future importer must pin releases, preserve ambiguity and licensing,
-and validate coordinate conventions. No OpenProt importer is included yet.</p>
+<p><a href="https://openprot.org">OpenProt</a> supplies the mouse catalogue through a pinned
+importer that checks every row's coordinates and protein; see
+<a href="../catalogs/#mouse-orfs-from-openprot">Mouse ORFs from OpenProt</a>. Its human
+and yeast files are not imported yet.</p>
 <h2 id="rebuild-and-verify">Rebuild and verify<a class="headerlink" href="#rebuild-and-verify" title="Permanent link">&para;</a></h2>
 <p>From a development checkout with the PyEnsembl dependency installed:</p>
 <div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s1">'.[dev]'</span>
