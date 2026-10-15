@@ -639,7 +639,7 @@ class ORFCatalog:
                     )
                 )
             )
-            and (biotype is None or r.biotype == biotype)
+            and (biotype is None or any(m.biotype == biotype for m in r.members or (r,)))
             and (rule is None or rule.matches(r.evidence))
         )
 
@@ -743,12 +743,14 @@ def merge_catalogs(catalogs):
     if len(strains) > 1:
         raise ValueError("Cannot merge catalogues for different or unknown strains: "
                          + ", ".join(sorted(str(s[0]) for s in strains)))
-    seen = set()
-    for records in sources:
+    seen = {}
+    for catalog, records in zip(catalogs, sources):
         names = {m.source for m in records}
-        if names & seen:
-            raise ValueError(f"Two catalogues contain {min(names & seen)} records; merge one release of each source")
-        seen |= names
+        if names & set(seen):
+            source = min(names & set(seen))
+            raise ValueError(f"Two catalogues contain {source} records, {seen[source].source} and {catalog.source}; "
+                             "merge one release of each source")
+        seen.update({n: catalog for n in names})
     groups, by_key = [], {}
     for records in sources:
         # Records on the transcript of an ORF found so far join it first, then the rest.
@@ -982,11 +984,13 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         missing = [c for c in chains if not chain_downloaded(c, cache_root=root)]
     except ImportError:  # Without DataCache no chain can have been downloaded.
         missing = chains
+    cli_root = "" if root is None else f" --cache-root {root}"
     if missing:
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
         needs.append(f"the chain files {', '.join(c.name for c in missing)} to reach {genome_build} by liftover: "
-                     f"download them once with 'orfdata chains download --species {species}{accept}' or "
-                     f"download_chains(species={species!r}{', accept_terms=True' if accept else ''})")
+                     f"download them once with 'orfdata chains{cli_root} download --species {species}{accept}' or "
+                     f"download_chains(species={species!r}{', accept_terms=True' if accept else ''}"
+                     f"{'' if root is None else f', cache_root={str(root)!r}'})")
     if needs:
         try:
             from .datasets import _datacache
@@ -997,7 +1001,8 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
             step = "orfdata[data] installed, then "
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
         raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs)
-                         + f". Or install everything at once with 'orfdata setup --species {species}{accept}'")
+                         + f". Or install everything at once with 'orfdata setup --species {species}{accept}"
+                         f"{cli_root}'")
     # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
     key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
         x.sha256 for x in route)) for c, route in plan))
@@ -1091,14 +1096,16 @@ def _plan(found, species, genome_build):
 
 
 def _install_hint(choice):
-    """The command that installs a registered release, or repairs a damaged one."""
+    """The command that installs a registered release, or repairs a damaged one, in the registry's cache."""
     registry, name, version = choice.registry, choice.name, choice.version
+    root = getattr(registry, "_cache_root", None)
     damaged = _installed(choice) == "damaged"
     verb = "download" if registry.published(name, version) else "build"
     how = " again" if damaged else (" from its pinned sources" if verb == "build" else "")
     return (f"the {name} {version} catalogue, which {'is damaged' if damaged else 'is not installed'}: {verb} it"
-            f"{how} with CatalogRegistry().{verb}({name!r}, {version!r}"
-            f"{', force=True' if damaged else ''}) or 'orfdata catalogs {verb} {name} --version {version}"
+            f"{how} with CatalogRegistry({'' if root is None else f'cache_root={str(root)!r}'}).{verb}({name!r}, "
+            f"{version!r}{', force=True' if damaged else ''}) or 'orfdata catalogs"
+            f"{'' if root is None else f' --cache-root {root}'} {verb} {name} --version {version}"
             f"{' --force' if damaged else ''}'")
 
 

@@ -187,7 +187,7 @@ other.
   differently counts once when their `ribosome_study_pmids` metadata give it
   the same PMID, as the bundled catalogue's does; without PMIDs it counts
   twice toward `RiboSeq(min_studies=...)`.
-- **Lookups.** Queries by transcript or gene, `for_transcript` and
+- **Lookups.** Queries by transcript, gene or biotype, `for_transcript` and
   `ExtraORFs.for_gene(..., source=True)` match every source's labels, and an
   ORF is on its source transcript when it is on any source's.
 - **Annotation pins.** Sources pinned to different annotation releases of the

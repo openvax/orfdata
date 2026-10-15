@@ -76,6 +76,8 @@ class CatalogRegistry:
         for name, entry in self._definitions.items():
             if entry["default_version"] not in entry["versions"]:
                 raise ValueError("A catalogue default must be a pinned version")
+            if type(entry.get("priority", 0)) is not int:
+                raise ValueError(f"The {name} catalogue's priority must be an integer, lower merging first")
             for version, release in entry["versions"].items():
                 manifest = CatalogManifest.from_dict(release["manifest"])
                 if (manifest.catalog_id, manifest.version) != (name, version):

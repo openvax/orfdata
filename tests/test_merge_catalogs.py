@@ -215,3 +215,12 @@ def test_the_cli_finds_records_by_any_source_id_and_merges_repeated_catalogues(t
         (tmp_path / f"{name}.json").write_text(json.dumps(catalog.to_dict()))
     run(paths + ["--orf-id", "other:OP_1", "--format", "json"])
     assert [r["orf_id"] for r in json.loads(capsys.readouterr().out)["records"]] == ["ms-orf"]
+
+
+def test_a_biotype_query_finds_a_merged_orf_by_any_source_label():
+    first, second = make_catalog(), other_catalog()
+    second = ORFCatalog([replace(r, biotype="lncORF") if r.orf_id == "OP_1" else r for r in second.records],
+                        second.metadata)
+    merged = merge_catalogs([first, second])
+    assert merged.get("ms-orf") in merged.query(biotype="lncORF")
+    assert merged.get("ms-orf") in merged.query(biotype=merged.get("ms-orf").biotype)

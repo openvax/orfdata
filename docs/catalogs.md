@@ -7,10 +7,11 @@ the same explicit discovery, download, build and offline-open workflow as
 downloaded or built, `load_catalog(species=...)` opens it, so `extra_orfs(genome)` and
 `Proteome.with_extra_orfs()` use it without `catalog=`; pass
 `load_catalog(species=..., registry=...)` as `catalog=` for your own registry.
-A bundled catalogue is preferred, a catalogue's default release is opened
-unless only another release covers the assembly, and two registered catalogues
-for one species and assembly are never chosen between; open one by name
-instead. It returns the existing `ORFCatalog`; query results still bind to the
+Every catalogue for the species is used, merged: those on the requested
+assembly as they are, and those on another assembly the pinned chains reach,
+lifted ([details](#every-assembly-of-a-species)). Each catalogue contributes its
+release on the requested assembly if it has one, else its default release. It
+returns the existing `ORFCatalog`; query results still bind to the
 original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
 for one species together, see
 [merging catalogues](proteome.md#merging-catalogues).
@@ -72,7 +73,11 @@ orfdata setup --species mouse --accept-terms   # Both catalogues and the chains;
 
 `orfdata setup` builds each registered mouse catalogue from its pinned sources
 and downloads the chain files (`--accept-terms` for UCSC's non-commercial
-GRCm38/GRCm39 chains). `load_catalog(species="mouse")` then merges the two:
+GRCm38/GRCm39 chains). It prints what it did with each: built, downloaded,
+already installed, repaired or skipped. If one fails, the rest are still
+installed and it exits with status 1, naming each failure; in Python,
+`install_species` raises `InstallError`, whose `result` holds the same
+report. `load_catalog(species="mouse")` then merges the two:
 16,484 Ribo-seq ORFs and 2,976 MS-supported ones, 19,406 in all, of which 54
 are in both. On Ensembl 115 (GRCm39):
 
@@ -396,7 +401,10 @@ use separate locations.
 
 ## Defining a release
 
-A registry definition maps a name to `default_version` and `versions`. Each
+A registry definition maps a name to `default_version`, `versions` and an
+optional integer `priority` (default 100): when catalogues are merged, lower
+priorities come first, and the first catalogue's ID names an ORF several
+share. Each
 version contains a `CatalogManifest`, `distribution` access terms and an
 `assets` entry for raw `catalog.json.gz` bytes, pinned by URL, SHA-256 and size.
 The manifest declares references, original `SourceAsset` inputs, citations,
