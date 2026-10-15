@@ -1672,7 +1672,7 @@ identical sequences, for example before an exact peptide search.</p>
 <p>Without <code>catalog=</code>, <code>load_catalog</code> picks the catalogue for the genome's species
 and assembly: a bundled one, or else one installed through
 <a href="../catalogs/"><code>CatalogRegistry</code></a>, several merged. Human GRCh38 has the bundled
-one, and mouse GRCm39 two once <a href="../catalogs/#mouse">installed</a>; for
+one, and mouse GRCm39 three once <a href="../catalogs/#mouse">installed</a>; for
 other species the error names the catalogues that exist. Pass <code>catalog=</code> to use
 another, such as <code>load_catalog(path)</code>. A catalogue for a different species or
 assembly is rejected.</p>
@@ -1814,8 +1814,8 @@ reuses or keeps the build in the cache; <code>--cache-root DIR</code> chooses th
 for catalogues as well as builds. A
 JSON summary of the layers, identity and excluded ORFs goes to standard error.</p>
 <h2 id="not-yet-included">Not yet included<a class="headerlink" href="#not-yet-included" title="Permanent link">&para;</a></h2>
-<p>Mouse noncanonical ORFs come from Chang et al.'s Ribo-seq and OpenProt's MS
-catalogues once you install them; see <a href="../catalogs/#mouse">Mouse</a>. Dog
+<p>Mouse noncanonical ORFs come from Chang et al.'s and Yang et al.'s Ribo-seq and
+OpenProt's MS catalogues once you install them; see <a href="../catalogs/#mouse">Mouse</a>. Dog
 noncanonical ORFs, and translated endogenous retrovirus (ERV) ORFs without
 annotated transcripts, need new source data; see the
 <a href="https://github.com/openvax/orfdata/issues/3">data roadmap</a>. Products from
