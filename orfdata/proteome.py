@@ -491,8 +491,8 @@ class Proteome:
 
                 catalog = load_catalog(species=reference.species, genome_build=reference.genome_build,
                                        registry=None if cache_root is None else CatalogRegistry(cache_root=cache_root))
-            elif not isinstance(catalog, ORFCatalog):
-                catalog = merge_catalogs(catalog)
+            else:
+                catalog = _onto(catalog, reference, cache_root)
         built = []
 
         def make():
@@ -524,7 +524,7 @@ class Proteome:
         return proteome
 
     def with_extra_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
-                        require_unique=False, require_reviewed=False):
+                        require_unique=False, require_reviewed=False, cache_root=None):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
         ``evidence`` is a rule, an evidence method name, or ``None`` for every
@@ -547,7 +547,7 @@ class Proteome:
             raise ValueError("Extra ORFs bind to a genome; build this proteome with from_genome")
         found = extra_orfs(self.genome, evidence, catalog=catalog, context=self.reference,
                            require_resolved=require_resolved, require_unique=require_unique,
-                           require_reviewed=require_reviewed)
+                           require_reviewed=require_reviewed, cache_root=cache_root)
         failures = {f.orf_id: f.reason for f in found.source_failures}
         grouped = {}
         for orf in found:
@@ -692,27 +692,58 @@ class Proteome:
                 handle.write(entry.sequence[i : i + width] + "\n")
 
 
+def _onto(catalogs, reference, cache_root=None):
+    """Explicit catalogues for one genome: any on another assembly of its species lifted to it, then merged."""
+    from .liftover import chain_downloaded, chain_routes, lift_to
+    from .model import _species
+
+    placed = []
+    for catalog in (catalogs,) if isinstance(catalogs, ORFCatalog) else tuple(catalogs):
+        if (catalog.genome_build != reference.genome_build and catalog.taxon_id == reference.taxon_id
+                and reference.genome_build in chain_routes(_species(catalog.species), catalog.genome_build)):
+            route = chain_routes(_species(catalog.species), catalog.genome_build)[reference.genome_build]
+            missing = [c.name for c in route if not chain_downloaded(c, cache_root=cache_root)]
+            if missing:
+                accept = " --accept-terms" if any(c.restricted for c in route) else ""
+                raise ValueError(f"The {catalog.source} catalogue is on {catalog.genome_build}; lifting it to "
+                                 f"{reference.genome_build} needs the chain files {', '.join(missing)}: download "
+                                 f"them once with 'orfdata chains download --species "
+                                 f"{_species(catalog.species)}{accept}'")
+            catalog = lift_to(catalog, reference.genome_build, cache_root=cache_root)
+        placed.append(catalog)
+    return placed[0] if len(placed) == 1 else merge_catalogs(placed)
+
+
 def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_resolved=False,
-               require_unique=False, require_reviewed=False):
+               require_unique=False, require_reviewed=False, cache_root=None):
     """Place catalogue ORFs on every transcript of a PyEnsembl genome that carries them.
 
     A transcript carries an ORF when it contains the ORF's exact spliced coding
     path and its sequence translates to the ORF's protein. Without ``catalog``,
     ``load_catalog`` picks the catalogue covering this species and assembly; a
-    species without one raises. ``evidence`` is a rule such as
+    species without one raises. A ``catalog`` (or each of a list) on another
+    assembly of the species is lifted to this one through the pinned chains.
+    ``cache_root`` is where catalogues and chain files are looked for. ``evidence`` is a rule such as
     ``RiboSeq(min_studies=2) & MS()`` or an evidence method name, as in
     :meth:`Proteome.with_extra_orfs`; ``None`` selects every catalogue ORF.
     """
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)
     if catalog is None:
-        catalog = load_catalog(species=reference.species, genome_build=reference.genome_build)
-    elif not isinstance(catalog, ORFCatalog):
-        catalog = merge_catalogs(catalog)
+        from .catalogs import CatalogRegistry
+
+        catalog = load_catalog(species=reference.species, genome_build=reference.genome_build,
+                               registry=None if cache_root is None else CatalogRegistry(cache_root=cache_root))
+    else:
+        catalog = _onto(catalog, reference, cache_root)
     if (catalog.taxon_id, catalog.genome_build) != (reference.taxon_id, reference.genome_build):
+        lift = ("" if catalog.taxon_id != reference.taxon_id else
+                f"; no pinned chain files lift {catalog.genome_build} to {reference.genome_build}, so lift it with "
+                f"your own: lift_catalog(catalog, ChainFile(path, source_build={catalog.genome_build!r}, "
+                f"target_build={reference.genome_build!r}))")
         raise ValueError(
             f"Catalogue for {catalog.species} {catalog.genome_build} cannot bind to "
-            f"{reference.species} {reference.genome_build}"
+            f"{reference.species} {reference.genome_build}{lift}"
         )
     rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
                          require_resolved=require_resolved)

@@ -300,7 +300,7 @@ for `record.bind(transcript)`. With `any_transcript=True`, as `extra_orfs` uses
 to place ORFs by their exact coding path and protein, a record pinned to
 another annotation release of the same species, strain and assembly is also
 accepted. ORFs on another assembly can be
-[lifted over](catalogs.md#lifting-a-catalogue-to-another-assembly).
+[lifted over](catalogs.md#every-assembly-of-a-species).
 
 `load_catalog(species="mouse")` returns a species' catalogue: the bundled one,
 or else the one downloaded or built through [`CatalogRegistry`](catalogs.md),

@@ -1,6 +1,6 @@
 """Lift catalogue ORFs between assemblies of one species with a chain file.
 
-Liftover is an explicit catalogue build, never a side effect of loading. A
+A lift makes a new catalogue; nothing is downloaded to make it. A
 record lifts only when every coding block lies inside one ungapped alignment
 block, and all blocks land on one contig and strand in order; otherwise it is
 left out with the reason. A lifted record keeps the original record in
@@ -8,9 +8,11 @@ left out with the reason. A lifted record keeps the original record in
 target genome then re-checks the exact coding path and protein, so a lift that
 changes the sequence is excluded rather than trusted.
 
-Chain files are never downloaded implicitly. :func:`download_chain` fetches
-one of the pinned files listed by :func:`pinned_chains` and verifies its checksum;
-:func:`load_chain` then opens it offline.
+Chain files are never downloaded implicitly. :func:`download_chains` fetches
+the pinned files listed by :func:`pinned_chains`, or :func:`download_chain`
+one of them, verifying each checksum; :func:`load_chain` then opens it
+offline, and :func:`lift_to` lifts through as many as a route needs.
+``load_catalog`` uses them to lift catalogues from other assemblies.
 """
 
 import gzip
@@ -179,6 +181,69 @@ def _pinned(source_build, target_build, species):
                          "use your own: ChainFile(path, source_build=..., target_build=...), or "
                          "'orfdata lift --chain FILE'")
     return found[0]
+
+
+def chain_routes(species, source_build):
+    """Every assembly the pinned chains reach from ``source_build``, with the chains that get there.
+
+    Each route has the fewest hops, for example GRCm39 to NCBIM37 through
+    GRCm38; among equally short routes the first by chain name is used.
+    """
+    routes, frontier = {source_build: ()}, [source_build]
+    pins = pinned_chains(species=species)
+    while frontier:
+        reached = []
+        for build in frontier:
+            for pin in pins:
+                if pin.source_build == build and pin.target_build not in routes:
+                    routes[pin.target_build] = routes[build] + (pin,)
+                    reached.append(pin.target_build)
+        frontier = reached
+    return {build: route for build, route in routes.items() if build != source_build}
+
+
+def chain_downloaded(chain, *, cache_root=None):
+    """Whether a pinned chain file is installed, without hashing or downloading it."""
+    return _chain_registry(chain, cache_root).inspect(chain.name, "1", verify_files=False).status != "missing"
+
+
+def download_chains(*, species=None, accept_terms=False, force=False, cache_root=None):
+    """Download every pinned chain file, or a species' ones, verifying each checksum.
+
+    Returns ``{"downloaded": {name: path}, "skipped": {name: reason}}``:
+    chains with usage restrictions, such as UCSC's non-commercial terms, are
+    skipped unless ``accept_terms=True``.
+    """
+    pins = pinned_chains(species=species)
+    if not pins:
+        raise ValueError(f"No chain files are pinned for {species}; "
+                         f"pinned species: {', '.join(sorted({c.species for c in pinned_chains()}))}")
+    result = dict(downloaded={}, skipped={})
+    for chain in pins:
+        if chain.restricted and accept_terms is not True:
+            result["skipped"][chain.name] = (f"{chain.provider}'s terms need accept_terms=True (--accept-terms): "
+                                             f"{chain.terms}")
+            continue
+        result["downloaded"][chain.name] = download_chain(
+            chain.source_build, chain.target_build, species=chain.species, accept_terms=accept_terms, force=force,
+            cache_root=cache_root)
+    return result
+
+
+def lift_to(catalog, target_build, *, cache_root=None):
+    """``catalog`` lifted to ``target_build`` through downloaded pinned chains, in as many hops as needed."""
+    from .model import _species
+
+    species = _species(catalog.species)
+    route = chain_routes(species, catalog.genome_build).get(target_build)
+    if route is None:
+        raise ValueError(f"No pinned chain files lift {species} {catalog.genome_build} to {target_build}; "
+                         "use your own: ChainFile(path, source_build=..., target_build=...), or "
+                         "'orfdata lift --chain FILE'")
+    for chain in route:
+        catalog = lift_catalog(catalog, load_chain(chain.source_build, chain.target_build, species=species,
+                                                   cache_root=cache_root))
+    return catalog
 
 
 def _chain_registry(chain, cache_root):

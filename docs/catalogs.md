@@ -127,10 +127,9 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
   per-study peptide counts is not a count of distinct peptides, and a count
   of studies names no studies, so neither can show two independent
   observations.
-- **Other assemblies.** For GRCm38, lift the built catalogue with
-  `orfdata lift --species mouse --to GRCm38 --output FILE` after downloading
-  UCSC's chain (non-commercial terms). 2,975 records lift, and 2,856 place on
-  Ensembl 102.
+- **Other assemblies.** GRCm38 and NCBIM37 genomes use the catalogue lifted
+  automatically once the chains are downloaded (UCSC's GRCm39-to-GRCm38 chain
+  needs `--accept-terms`); see [every assembly of a species](#every-assembly-of-a-species).
 - **Dog.** OpenProt has no dog data, and orfdata has no dog catalogue. Mouse
   evidence is never transferred to dog through orthology.
 
@@ -138,16 +137,70 @@ Cite Leblanc S, et al. *OpenProt 2.0 builds a path to the functional
 characterization of alternative proteins.* Nucleic Acids Res. 2024;52(D1):D522–D528,
 [doi:10.1093/nar/gkad1050](https://doi.org/10.1093/nar/gkad1050).
 
-## Lifting a catalogue to another assembly
+## Every assembly of a species
 
-A catalogue built on one assembly can be lifted to another of the same species
-with a chain file, for example GRCh38 to GRCh37 or GRCm39 to GRCm38. orfdata
-pins four chain files by URL, size and SHA-256 and downloads one only when
-asked:
+Catalogues on another assembly of the species are lifted automatically. Download
+the pinned chain files once, and `load_catalog`, `extra_orfs(genome)` and
+`Proteome.build(genome)` work on every human and mouse assembly PyEnsembl
+knows:
 
 ```sh
-orfdata chains list
-orfdata chains download GRCh38 GRCh37
+orfdata chains download --accept-terms   # Every pinned chain; without --accept-terms, UCSC's mouse ones are skipped
+```
+
+```python
+from pyensembl import EnsemblRelease
+from orfdata import Proteome
+
+Proteome.build(EnsemblRelease(75))       # GRCh37: the GRCh38 catalogue, lifted
+```
+
+With evidence `None` (every catalogue ORF), each assembly gets:
+
+| Genome | ORF source | Records | Placed | Not placed: main reasons |
+| --- | --- | ---: | ---: | --- |
+| Human Ensembl 115, GRCh38 | bundled | 7,264 | 7,239 | 24 splice paths changed |
+| Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 271 transcripts absent, 108 paths changed |
+| Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,710 transcripts absent |
+| Mouse Ensembl 115, GRCm39 | OpenProt | 2,976 | 2,854 | 109 without sequence |
+| Mouse Ensembl 102, GRCm38 | lifted, 1 hop | 2,975 | 2,856 | 112 without sequence |
+| Mouse Ensembl 67, NCBIM37 | lifted, 2 hops | 2,922 | 1,620 | 1,187 transcripts absent |
+
+Older annotations lack many of the transcripts the sources name, so fewer ORFs
+place; the rest, and any that didn't lift, are listed with the reason, never
+silently dropped.
+
+- **Which catalogues.** Each catalogue contributes one release: the one on the
+  requested assembly if it has one, else its default, lifted. Each assembly
+  the pinned chains reach contributes one catalogue (a bundled one if any);
+  two candidates on one assembly raise rather than being chosen between.
+  Catalogues from several assemblies are merged, the requested assembly's
+  first, then by fewest hops. A source already used from a nearer assembly,
+  such as one catalogue registered again under another name on another
+  assembly, counts once. This depends only on the registry and the pinned
+  chains, never on what happens to be installed.
+- **What's missing.** Missing catalogues and chain files are reported together,
+  each with the command that installs it; nothing is downloaded while
+  loading. `cache_root` (or `--cache-root`) is where both are looked for.
+- **Your own catalogues.** `extra_orfs(genome, catalog=...)` and
+  `Proteome.build(genome, catalog=...)` lift a catalogue, or each of a list,
+  that is on another assembly of the species through the same chains.
+- **Other names.** Assemblies go by Ensembl's names. `hg38`, `GRCh38.p14`,
+  `mm39` and the like get an error that names the assembly to use, and a
+  custom genome needs that `reference_name`.
+- **Routes.** `chain_routes(species, build)` gives the fewest-hop route to
+  each assembly the pinned chains reach, for example GRCm39 to NCBIM37
+  through GRCm38. `lift_to(catalog, build)` lifts through it.
+  `catalog_status()` lists, for each catalogue, the assemblies it reaches and
+  whether their chains are downloaded.
+- **Cost.** Lifting happens on each load: about 1.6 s for the human catalogue.
+
+## Lifting a catalogue by hand
+
+`orfdata lift` writes a lifted catalogue to a file, for any route the pinned
+chains cover or with your own chain file:
+
+```sh
 orfdata lift --species human --to GRCh37 --output orfs-grch37.json.gz
 ```
 
@@ -170,9 +223,9 @@ each record's original and the chain. Downloading chains needs the
 `orfdata[data]` extra, which adds DataCache. In Python:
 
 ```python
-from orfdata import download_chain, extra_orfs, lift_catalog, load_catalog, load_chain
+from orfdata import download_chain, lift_catalog, load_catalog, load_chain
 
-download_chain("GRCh38", "GRCh37")  # Once; checksum-verified.
+download_chain("GRCh38", "GRCh37")  # Once; checksum-verified. download_chains() gets them all.
 grch37 = lift_catalog(load_catalog(), load_chain("GRCh38", "GRCh37"))
 grch37.save("orfs-grch37.json.gz")
 print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.source)
@@ -182,9 +235,11 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
 7247 17 orfdata-catalog:2026-10-11.1@GRCh37
 ```
 
-- **Pinned chain files.** Ensembl's
-  [`GRCh37_to_GRCh38` and `GRCh38_to_GRCh37`](https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/)
-  have no usage restrictions. UCSC's mouse
+- **Pinned chain files.** Ensembl's human GRCh38 to and from
+  [GRCh37 and NCBI36](https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/),
+  and mouse GRCm38 to and from
+  [NCBIM37](https://ftp.ensembl.org/pub/assembly_mapping/mus_musculus/),
+  have no usage restrictions. `orfdata chains list` shows all eight. UCSC's mouse
   [`mm10ToMm39`](https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/README.txt)
   and [`mm39ToMm10`](https://hgdownload.soe.ucsc.edu/goldenPath/mm39/liftOver/README.txt)
   (GRCm38 and GRCm39) are free only for non-commercial use, so downloading
@@ -230,9 +285,9 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
   2,186 MS-supported ORFs: 2,097 place, and 3 of the 89 excluded didn't lift.
 - **Size.** Each lifted record carries its original, so a lifted catalogue is
   about twice the size of its input (33 MB for the bundled one as JSON).
-- **Errors.** When only another assembly has a catalogue,
-  `load_catalog(species=..., genome_build=...)` gives the `orfdata lift`
-  command and the Python call that would lift it.
+- **Errors.** When no pinned chains reach an assembly, such as T2T-CHM13,
+  `load_catalog(species=..., genome_build=...)` gives the `orfdata lift
+  --chain` command and the Python call that lifts with your own chain file.
 
 ## Source builds
 
