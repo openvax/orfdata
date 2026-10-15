@@ -60,7 +60,9 @@ def run(argv=None, prog=None):
             method(args.name, args.version, force=args.force, source_paths=paths or None)
             inspect = registry.inspect_build if args.command == "build" else registry.inspect
             result = inspect(args.name, args.version)
-            output = dict(status=result.status, path=str(result.path), verified=result.verified)
+            output = dict(status=result.status, path=str(result.path))
+            if args.command == "download":  # A local build is checked by its receipt, not a published pin.
+                output["verified"] = result.verified
         else:
             method = registry.open_build if args.built else registry.open
             return _query(args, query_parser, lambda _: method(args.name, args.version))

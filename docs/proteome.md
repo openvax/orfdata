@@ -154,8 +154,9 @@ identical sequences, for example before an exact peptide search.
 
 Without `catalog=`, `load_catalog` picks the catalogue for the genome's species
 and assembly: a bundled one, or else one installed through
-[`CatalogRegistry`](catalogs.md). Only human GRCh38 has one so far; for other
-species the error names the catalogues that exist. Pass `catalog=` to use
+[`CatalogRegistry`](catalogs.md). Human GRCh38 has the bundled one, and mouse
+GRCm39 has OpenProt's once [built](catalogs.md#mouse-orfs-from-openprot); for
+other species the error names the catalogues that exist. Pass `catalog=` to use
 another, such as `load_catalog(path)`. A catalogue for a different species or
 assembly is rejected.
 

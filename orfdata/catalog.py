@@ -505,9 +505,8 @@ class ORFCatalog:
         In a merged catalogue every source's ID finds its ORF. A bare ID that
         two sources use for different ORFs raises rather than choosing one.
         """
-        if orf_id in self._by_id:
-            return self._by_id[orf_id]
-        found = self._aliases.get(orf_id, ())
+        found = list(dict.fromkeys(
+            ([self._by_id[orf_id]] if orf_id in self._by_id else []) + list(self._aliases.get(orf_id, ()))))
         if len(found) > 1:
             raise ValueError(f"{orf_id} names several ORFs: {', '.join(r.orf_id for r in found)}")
         if not found:

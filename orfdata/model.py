@@ -634,10 +634,17 @@ class TranscriptORF:
 
     @property
     def on_source_transcript(self):
-        """Whether this is the transcript the ORF's source, or any merged source, defines it on."""
-        members = self.record.members if self.record is not None else ()
-        ids = [m.transcript_id for m in members] or [self.source_transcript_id]
-        return any(_transcript_match(i, self.transcript) in ("id", "versioned") for i in ids)
+        """Whether this is the transcript the ORF's source, or any merged source, defines it on.
+
+        For an ORF lifted from another assembly, the same transcript under the
+        version that assembly's annotation gives it counts.
+        """
+        records = (self.record.members or (self.record,)) if self.record is not None else ()
+        if not records:
+            return _transcript_match(self.source_transcript_id, self.transcript) in ("id", "versioned")
+        return any(_transcript_match(r.transcript_id, self.transcript) in (
+            ("id", "versioned", "other_version") if getattr(r, "liftover", None) is not None else ("id", "versioned"))
+            for r in records)
 
     @property
     def transcript_id(self):

@@ -31,9 +31,11 @@ Calibration and uncertainty remain attached to observations:
 ## ORF evidence and ribosome profiling
 
 The separate existence-evidence catalogue contains 7,264 human noncanonical
-ORFs, including 2,186 with reported MS support. It has no released mouse, dog or
-yeast experimental ncORF catalogue yet. Its ribosome evidence and pooled PSM
-counts are not sample-level ribosome occupancy or protein abundance.
+ORFs, including 2,186 with reported MS support. Mouse has 2,976 OpenProt 2.2
+ORFs, each with at least two unique MS peptides, which you build from
+OpenProt's files; dog and yeast have no experimental ncORF catalogue yet. Its
+ribosome evidence and pooled PSM counts are not sample-level ribosome
+occupancy or protein abundance.
 
 The separate Ingolia yeast release contains four Ribo-seq libraries across
 13,748 source regions, alongside four RNA libraries. Exact region coordinates

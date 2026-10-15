@@ -17,7 +17,10 @@
   Without `orfdata[data]` the error says to install it, instead of raising
   ImportError.
 - A source accession split across several coding paths (`IP_1@ENSMUST…`)
-  answers to its bare ID, which names all of its records.
+  answers to its bare ID, which names all of its records; an ID that names
+  several records always raises rather than picking one.
+- A placement on the source transcript is never repeated, and a lifted ORF is
+  on its source transcript under the version its new assembly gives it.
 - `catalog_status()` and `orfdata catalogs status` list every catalogue,
   bundled included, with species, assembly, record count, installation and
   which is selected (#70).
