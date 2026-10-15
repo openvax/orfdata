@@ -11,6 +11,7 @@ from .catalog import (
     UORFRecord,
     load_catalog,
     load_uorf_catalog,
+    merge_catalogs,
 )
 from .catalog_manifest import CatalogManifest
 from .catalogs import CatalogRegistry, build_catalog
@@ -112,6 +113,7 @@ __all__ = [
     "SearchSequence",
     "SearchMembership",
     "load_catalog",
+    "merge_catalogs",
     "UORFCatalog",
     "UORFRecord",
     "UORFPeptide",

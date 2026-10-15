@@ -159,6 +159,48 @@ species the error names the catalogues that exist. Pass `catalog=` to use
 another, such as `load_catalog(path)`. A catalogue for a different species or
 assembly is rejected.
 
+### Merging catalogues
+
+Pass several catalogues for one species and assembly to use their ORFs together:
+
+```python
+from orfdata import load_catalog, merge_catalogs
+
+catalogs = [load_catalog(), load_catalog("study-orfs.json.gz")]  # The bundled one and a local file.
+proteome = annotated.with_extra_orfs("ms", catalog=catalogs)  # Or merge_catalogs(catalogs).
+```
+
+Records from different catalogues are one ORF when they have the same spliced
+coding path, protein, genetic code and start codon; declaring a start the code
+already uses, such as ATG, changes nothing. Records within one catalogue stay
+as it gave them. A record joins an ORF found on its own transcript before any
+other.
+
+- **IDs.** The merged ORF keeps the first catalogue's ID. Every source's record
+  stays in `record.members`, and the others' IDs are in `equivalent_ids` as
+  `source:id`. `catalog.get` and `ExtraORFs.for_orf` accept any of them.
+- **ID collisions.** When two sources use one ID for different ORFs, both
+  become `source:id`, and the bare ID raises rather than picking one.
+- **Evidence.** Each source's evidence is kept, and evidence rules see the union:
+  a peptide counts once per sequence. A Ribo-seq study two catalogues label
+  differently counts once when their `ribosome_study_pmids` metadata give it
+  the same PMID, as the bundled catalogue's does; without PMIDs it counts
+  twice toward `RiboSeq(min_studies=...)`.
+- **Lookups.** Queries by transcript or gene, `for_transcript` and
+  `ExtraORFs.for_gene(..., source=True)` match every source's labels, and an
+  ORF is on its source transcript when it is on any source's.
+- **Annotation pins.** Sources pinned to different annotation releases of the
+  assembly leave the merged ORF unpinned; each member keeps its own pin.
+- **Rejected merges.** Catalogues must share a strain, where an unknown strain
+  counts as its own value, and must not repeat a source, so two releases of
+  one catalogue can't both be merged. A merged catalogue can be merged again.
+- **Conflicts.** `catalog.metadata["conflicts"]` lists ORFs that share a coding
+  path but differ in protein, genetic code or declared start codon.
+
+The layer's `source` joins the catalogues' releases, such as
+`orfdata-catalog:2026-10-11.1+orfdata-catalog:study-v1`. On the command line, repeat
+`--catalog FILE`.
+
 ## Viral proteomes
 
 A `ViralProteome` holds one virus's proteins, its NCBI taxon, and the NCBI

@@ -233,8 +233,9 @@ class TranscriptORF:
     Another carrying transcript is not evidence that the ORF is translated from
     it. ``gene_id`` and ``gene_name`` describe this transcript's gene in the
     loaded annotation; ``source_gene_id`` and ``source_gene_name`` are the
-    source's. ``equivalent_ids`` lists other annotated proteins with the
-    identical coding placement and sequence. The transcript, including its
+    source's. ``equivalent_ids`` lists other IDs for the identical coding
+    placement and sequence: other annotated proteins, or for a catalogue ORF
+    the other sources' ``source:id`` in a merged catalogue. The transcript, including its
     biotype and annotated protein, is unchanged, and one transcript can carry
     several ORFs. No downloads occur.
     """
@@ -294,8 +295,9 @@ class TranscriptORF:
         self._set(record=record, transcript=transcript, start=start, end=start + length,
                   coding_sequence=coding, context=resolved_context, kind="extra_orf",
                   start_complete=True, stop_complete=True, annotation_id=None,
-                  source_transcript_id=model.transcript_id, equivalent_ids=(), _blocks=model.coding_blocks,
-                  _layout=layout)
+                  source_transcript_id=model.transcript_id,
+                  equivalent_ids=tuple(f"{m.source}:{m.orf_id}" for m in getattr(record, "members", ())[1:]),
+                  _blocks=model.coding_blocks, _layout=layout)
 
     @classmethod
     def from_annotation(cls, transcript, *, on=None, context=None):
@@ -621,8 +623,10 @@ class TranscriptORF:
 
     @property
     def on_source_transcript(self):
-        """Whether this is the transcript the ORF's source defines it on."""
-        return _transcript_match(self.source_transcript_id, self.transcript) in ("id", "versioned")
+        """Whether this is the transcript the ORF's source, or any merged source, defines it on."""
+        members = self.record.members if self.record is not None else ()
+        ids = [m.transcript_id for m in members] or [self.source_transcript_id]
+        return any(_transcript_match(i, self.transcript) in ("id", "versioned") for i in ids)
 
     @property
     def transcript_id(self):
