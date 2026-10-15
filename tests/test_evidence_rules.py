@@ -152,3 +152,30 @@ def test_aggregate_ms_support_is_labelled_ms():
     assert _evidence_labels(ORFEvidence(peptides=(peptide("KPG", "hla"),))) == ("mhc",)
     assert _evidence_labels(ORFEvidence(ribosome_studies=("a",), summaries=(summary(method="ms", value=2),))) == (
         "ribosome", "ms")
+
+
+@pytest.mark.parametrize("options, count", [
+    (["--min-ribo-seq-studies", "2", "--min-ms-peptides", "2"], 457),
+    (["--min-ribo-seq-studies", "2", "--min-ms-peptides", "1", "--either"], 3975),
+    (["--min-ms-peptides", "1", "--ms-methods", "shotgun,ms_unclassified"], 610),
+    (["--min-ribo-seq-studies", "3"], 1675),
+])
+def test_query_cli_selects_by_ribo_seq_and_ms_stringency(options, count, capsys):
+    from orfdata.cli import run
+
+    run(options + ["--format", "tsv"])
+    assert len(capsys.readouterr().out.splitlines()) == count + 1
+
+
+@pytest.mark.parametrize("options, message", [
+    (["--evidence", "ms", "--min-ms-peptides", "2"], "Use --evidence or the Ribo-seq/MS requirements, not both"),
+    (["--min-ms-peptides", "2", "--either"], "--either needs both"),
+    (["--min-ribo-seq-studies", "2", "--require-reviewed"], "need an MS requirement"),
+    (["--require-unique"], "require_unique requires an evidence method"),
+])
+def test_query_cli_rejects_conflicting_rule_options(options, message, capsys):
+    from orfdata.cli import run
+
+    with pytest.raises(SystemExit):
+        run(options)
+    assert message in capsys.readouterr().err

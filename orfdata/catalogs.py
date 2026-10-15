@@ -73,7 +73,7 @@ class CatalogRegistry:
 
     def _version(self, name, version):
         if name not in self._definitions:
-            raise ValueError(f"Unknown catalogue {name!r}; use CatalogRegistry.list()")
+            raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
         version = self._definitions[name]["default_version"] if version is None else version
         if (name, version) not in self._manifests:
             raise ValueError(f"Unknown catalogue version {name!r} {version!r}")

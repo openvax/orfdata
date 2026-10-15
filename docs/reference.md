@@ -203,7 +203,16 @@ orf.evidence.has_evidence("ms", require_resolved=True)
 catalog.query(evidence="ribosome", require_resolved=True)
 ```
 
-The CLI uses `--evidence ms --require-resolved`. Uniqueness and review filters
+The CLI uses `--evidence ms --require-resolved`. The `orfdata` query command
+also takes the Ribo-seq and MS requirements of
+[`orfdata proteome`](proteome.md#command-line):
+
+```sh
+orfdata --min-ribo-seq-studies 2 --min-ms-peptides 2 --format tsv
+orfdata --gene TPST1 --min-ribo-seq-studies 2 --min-ms-peptides 1 --either
+```
+
+Uniqueness and review filters
 always require resolved peptide observations. Summaries never create peptide
 sequences, residue coverage, retained variant peptides or mutant-translation
 evidence. Their protein checksum and species/reference checks prevent attaching

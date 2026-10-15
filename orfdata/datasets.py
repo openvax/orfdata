@@ -15,7 +15,7 @@ def _datacache():
     try:
         import datacache
     except ImportError as exc:
-        raise ImportError("Install orfdata[data] to manage quantitative dataset files") from exc
+        raise ImportError("Install orfdata[data] (OpenVax DataCache) to download, build or cache data files") from exc
     return datacache
 
 

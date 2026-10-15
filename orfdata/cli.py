@@ -7,6 +7,7 @@ import re
 import sys
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
+from .evidence import MS, RiboSeq, evidence_rule
 
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
@@ -24,10 +25,17 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         from .proteome_cli import run as proteome_run
 
         return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
+    if argv and argv[0] in ("lift", "chains"):
+        from . import liftover_cli
+
+        command = liftover_cli.lift if argv[0] == "lift" else liftover_cli.chains
+        return command(argv[1:], prog=f"{prog or 'orfdata'} {argv[0]}")
     parser = argparse.ArgumentParser(
         description=__doc__, prog=prog,
         epilog="Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
-               "catalogues with 'orfdata catalogs --help'; quantitative data with 'orfdata datasets --help'.")
+               "catalogues with 'orfdata catalogs --help'; lift a catalogue to another assembly with "
+               "'orfdata lift --help' and 'orfdata chains --help'; quantitative data with "
+               "'orfdata datasets --help'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
@@ -44,16 +52,7 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
     parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
-    parser.add_argument("--require-resolved", action="store_true",
-                        help="Require resolved peptides or named ribosome studies; exclude aggregate-only support")
-    parser.add_argument(
-        "--require-unique", action="store_true", help="Require one protein mapping in the MS source"
-    )
-    parser.add_argument(
-        "--require-reviewed",
-        action="store_true",
-        help="Require convincing reviewed spectra (benchmark scores 4-5)",
-    )
+    _add_rule_arguments(parser)
     parser.add_argument("--biotype", help="Source ORF class, e.g. uORF, lncRNA, intORF, dORF")
     parser.add_argument("--region", help="1-based inclusive interval: chr7:66205483-66205522")
     parser.add_argument(
@@ -70,6 +69,53 @@ def _add_query_arguments(parser, *, catalog_path=True):
         "--genome-build", help="Required for genomic queries; selects or must match the catalogue's assembly"
     )
     parser.add_argument("--format", choices=("json", "tsv", "fasta"), default="json")
+
+
+def _add_rule_arguments(parser):
+    """Ribo-seq and MS requirements, shared by ORF queries and proteome builds."""
+    parser.add_argument("--min-ribo-seq-studies", type=int, metavar="N",
+                        help="Require Ribo-seq in at least N studies the source names")
+    parser.add_argument("--min-ms-peptides", type=int, metavar="N",
+                        help="Require at least N distinct supporting MS peptides")
+    parser.add_argument("--ms-methods", metavar="KINDS",
+                        help="Count only these MS peptide kinds, comma-separated: shotgun, mhc, hla, ms_unclassified")
+    parser.add_argument("--either", action="store_true",
+                        help="Accept ORFs meeting the Ribo-seq or the MS requirement, instead of both")
+    parser.add_argument("--require-resolved", action="store_true",
+                        help="Require peptide records or named ribosome studies, not aggregate counts")
+    parser.add_argument("--require-unique", action="store_true",
+                        help="Require a peptide with one protein mapping in its MS source")
+    parser.add_argument("--require-reviewed", action="store_true",
+                        help="Require convincing reviewed spectra (benchmark scores 4-5)")
+
+
+def _rule(args, method, flag, *, default=None):
+    """The evidence rule from the Ribo-seq/MS requirements, or from ``method`` (set with ``flag``).
+
+    Without requirements, ``method`` (or ``default``) and the --require-* options
+    give the rule; ``"all"`` selects every ORF.
+    """
+    ribo = args.min_ribo_seq_studies is not None
+    ms = args.min_ms_peptides is not None or args.ms_methods is not None
+    if args.either and not (ribo and ms):
+        raise ValueError("--either needs both --min-ribo-seq-studies and an MS requirement")
+    if not (ribo or ms):
+        method = default if method is None else method
+        return evidence_rule(None if method == "all" else method, require_unique=args.require_unique,
+                             require_reviewed=args.require_reviewed, require_resolved=args.require_resolved)
+    if method is not None:
+        raise ValueError(f"Use {flag} or the Ribo-seq/MS requirements, not both")
+    if not ms and (args.require_unique or args.require_reviewed):
+        raise ValueError("--require-unique and --require-reviewed need an MS requirement")
+    rules = [RiboSeq(args.min_ribo_seq_studies, resolved=args.require_resolved)] if ribo else []
+    if ms:
+        rules.append(MS(1 if args.min_ms_peptides is None else args.min_ms_peptides,
+                        unique=args.require_unique, reviewed=args.require_reviewed,
+                        resolved=args.require_resolved,
+                        methods=args.ms_methods.split(",") if args.ms_methods is not None else None))
+    if len(rules) == 1:
+        return rules[0]
+    return rules[0] | rules[1] if args.either else rules[0] & rules[1]
 
 
 def _query(args, parser, catalog_loader):
@@ -89,7 +135,8 @@ def _query(args, parser, catalog_loader):
         parser.error("Provide distinct single-base forward-genomic REF and ALT")
     try:
         paths = args.catalog or [None]
-        if args.species:
+        if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
+            # The assembly picks the catalogue too, not only checks it.
             catalogs = [catalog_loader(p, species=args.species, genome_build=args.genome_build) for p in paths]
         else:
             catalogs = [catalog_loader(p) for p in paths]
@@ -97,10 +144,7 @@ def _query(args, parser, catalog_loader):
         options = {
             "gene": args.gene,
             "transcript_id": args.transcript,
-            "evidence": args.evidence,
-            "require_resolved": args.require_resolved,
-            "require_unique": args.require_unique,
-            "require_reviewed": args.require_reviewed,
+            "evidence": _rule(args, args.evidence, "--evidence"),
             "biotype": args.biotype,
             "genome_build": args.genome_build,
             "include_initiation_context": args.include_initiation_context or bool(args.ref),
@@ -183,11 +227,14 @@ def _query(args, parser, catalog_loader):
             "initiation_context_json",
         )
         scoped = not isinstance(catalog, UORFCatalog)
+        provenance = ("members", "liftover", "lifted_from")
         if scoped:
-            fields += ("reference_context_json", "summaries_json")
+            fields += ("reference_context_json", "summaries_json") + tuple(f + "_json" for f in provenance)
         elif any(r.summaries for r in records):
             # The released upstream-only columns have no place for aggregate counts.
             parser.error("The legacy upstream-ORF TSV cannot export aggregate evidence; use --format json")
+        elif any(r.members or r.liftover for r in records):
+            parser.error("The legacy upstream-ORF TSV cannot export merged or lifted records; use --format json")
         writer = csv.DictWriter(sys.stdout, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for r in records:
@@ -198,6 +245,8 @@ def _query(args, parser, catalog_loader):
                 row["reference_context_json"] = json.dumps(row.pop("reference_context", None), separators=(",", ":"))
                 # Full native records keep source, metric definition, None/0 and shared keys.
                 row["summaries_json"] = json.dumps(row.pop("summaries", []), separators=(",", ":"))
+                for field in provenance:  # Present only on merged or lifted records.
+                    row[field + "_json"] = json.dumps(row.pop(field, None), separators=(",", ":"))
             writer.writerow(row)
 
 

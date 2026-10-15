@@ -1,0 +1,50 @@
+{
+  "GRCh37_to_GRCh38": {
+    "species": "homo_sapiens",
+    "source_build": "GRCh37",
+    "target_build": "GRCh38",
+    "url": "https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/GRCh37_to_GRCh38.chain.gz",
+    "sha256": "351de3cd4a01d9fcffd38881981767b697090d2eba876740891b96d5c546b100",
+    "size": 285250,
+    "provider": "Ensembl",
+    "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "restricted": false
+  },
+  "GRCh38_to_GRCh37": {
+    "species": "homo_sapiens",
+    "source_build": "GRCh38",
+    "target_build": "GRCh37",
+    "url": "https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/GRCh38_to_GRCh37.chain.gz",
+    "sha256": "6bee5bfdd6defc0fb2bd388ef51819c32bbfae1d3e7a3345aa5ebbdc3dd492b1",
+    "size": 730394,
+    "provider": "Ensembl",
+    "terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+    "terms_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+    "restricted": false
+  },
+  "GRCm38_to_GRCm39": {
+    "species": "mus_musculus",
+    "source_build": "GRCm38",
+    "target_build": "GRCm39",
+    "url": "https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/mm10ToMm39.over.chain.gz",
+    "sha256": "5e7589d8374e299706b5ef0ef06dbbc5818f3bd0aef72003f2d3b767225af9a1",
+    "size": 25048,
+    "provider": "UCSC",
+    "terms": "UCSC Chain Files are free for non-commercial use by independent researchers and nonprofit organizations; any other use requires a commercial license from UCSC. Redistribution must include UCSC's README with these restrictions.",
+    "terms_url": "https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/README.txt",
+    "restricted": true
+  },
+  "GRCm39_to_GRCm38": {
+    "species": "mus_musculus",
+    "source_build": "GRCm39",
+    "target_build": "GRCm38",
+    "url": "https://hgdownload.soe.ucsc.edu/goldenPath/mm39/liftOver/mm39ToMm10.over.chain.gz",
+    "sha256": "da8e150bf79ddaa763f8a0c1784fdb20b50be0aa13207b4c74de6d06d5c7d793",
+    "size": 51272,
+    "provider": "UCSC",
+    "terms": "UCSC Chain Files are free for non-commercial use by independent researchers and nonprofit organizations; any other use requires a commercial license from UCSC. Redistribution must include UCSC's README with these restrictions.",
+    "terms_url": "https://hgdownload.soe.ucsc.edu/goldenPath/mm39/liftOver/README.txt",
+    "restricted": true
+  }
+}

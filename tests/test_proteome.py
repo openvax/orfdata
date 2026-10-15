@@ -648,6 +648,10 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
         with pytest.raises(SystemExit):
             run(rules + options)
         assert message in capsys.readouterr().err
+    for count in (["--min-ms-peptides", "0"], ["--min-ribo-seq-studies", "0"]):  # Zero is still a requirement.
+        with pytest.raises(SystemExit):
+            run(["proteome", "--species", "mouse", "--release", "1", "--extra-orf-evidence", "none"] + count)
+        assert "Extra-ORF options require" in capsys.readouterr().err
 
 
 def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, monkeypatch, capsys):

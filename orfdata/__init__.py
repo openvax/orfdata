@@ -20,7 +20,15 @@ from .datasets import DatasetRegistry, build_dataset
 from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
-from .liftover import ChainFile, Liftover, lift_catalog
+from .liftover import (
+    ChainFile,
+    Liftover,
+    PinnedChain,
+    download_chain,
+    lift_catalog,
+    load_chain,
+    pinned_chains,
+)
 from .measurements import (
     Assay,
     DatasetManifest,
@@ -118,6 +126,10 @@ __all__ = [
     "ChainFile",
     "Liftover",
     "lift_catalog",
+    "PinnedChain",
+    "pinned_chains",
+    "download_chain",
+    "load_chain",
     "UORFCatalog",
     "UORFRecord",
     "UORFPeptide",
