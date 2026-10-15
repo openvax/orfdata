@@ -1596,7 +1596,13 @@ queries. To require actual peptide records or named ribosome studies, use:</p>
 <div class="highlight"><pre><span></span><code><span class="n">orf</span><span class="o">.</span><span class="n">evidence</span><span class="o">.</span><span class="n">has_evidence</span><span class="p">(</span><span class="s2">"ms"</span><span class="p">,</span> <span class="n">require_resolved</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">catalog</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">evidence</span><span class="o">=</span><span class="s2">"ribosome"</span><span class="p">,</span> <span class="n">require_resolved</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
-<p>The CLI uses <code>--evidence ms --require-resolved</code>. Uniqueness and review filters
+<p>The CLI uses <code>--evidence ms --require-resolved</code>. The <code>orfdata</code> query command
+also takes the Ribo-seq and MS requirements of
+<a href="../proteome/#command-line"><code>orfdata proteome</code></a>:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">2</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">2</span><span class="w"> </span>--format<span class="w"> </span>tsv
+orfdata<span class="w"> </span>--gene<span class="w"> </span>TPST1<span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">2</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span><span class="w"> </span>--either
+</code></pre></div>
+<p>Uniqueness and review filters
 always require resolved peptide observations. Summaries never create peptide
 sequences, residue coverage, retained variant peptides or mutant-translation
 evidence. Their protein checksum and species/reference checks prevent attaching

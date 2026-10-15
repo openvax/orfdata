@@ -1285,25 +1285,57 @@ release with a local <code>--catalog</code> argument. Use <code>orfdata --catalo
 existing standalone local-file workflow.</p>
 <h2 id="lifting-a-catalogue-to-another-assembly">Lifting a catalogue to another assembly<a class="headerlink" href="#lifting-a-catalogue-to-another-assembly" title="Permanent link">&para;</a></h2>
 <p>A catalogue built on one assembly can be lifted to another of the same species
-with a chain file, for example GRCh37 to GRCh38 or mm10 to GRCm39:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChainFile</span><span class="p">,</span> <span class="n">extra_orfs</span><span class="p">,</span> <span class="n">lift_catalog</span><span class="p">,</span> <span class="n">load_catalog</span>
+with a chain file, for example GRCh38 to GRCh37 or GRCm39 to GRCm38. orfdata
+pins four chain files by URL, size and SHA-256 and downloads one only when
+asked:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>chains<span class="w"> </span>list
+orfdata<span class="w"> </span>chains<span class="w"> </span>download<span class="w"> </span>GRCh38<span class="w"> </span>GRCh37
+orfdata<span class="w"> </span>lift<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--to<span class="w"> </span>GRCh37<span class="w"> </span>--output<span class="w"> </span>orfs-grch37.json.gz
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>  "lifted": "orfdata-catalog:2026-10-11.1@GRCh37",
+  ...
+  "lifted_records": 7247,
+  "unmapped": 17,
+  "unmapped_reasons": {
+    "A coding block crosses an alignment gap or edge": 2,
+    "A coding block is not aligned": 15
+  },
+</code></pre></div>
+<p><code>orfdata lift</code> writes the lifted catalogue and prints a summary to standard
+error. <code>--catalog FILE</code> lifts a local catalogue instead, and <code>--chain FILE</code> uses
+your own chain file instead of a downloaded pin. Pass the result back with
+<code>--catalog</code>, for example to <code>orfdata proteome</code>; JSON and TSV exports include
+each record's original and the chain. Downloading chains needs the
+<code>orfdata[data]</code> extra, which adds DataCache. In Python:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">download_chain</span><span class="p">,</span> <span class="n">extra_orfs</span><span class="p">,</span> <span class="n">lift_catalog</span><span class="p">,</span> <span class="n">load_catalog</span><span class="p">,</span> <span class="n">load_chain</span>
 
-<span class="n">chain</span> <span class="o">=</span> <span class="n">ChainFile</span><span class="p">(</span><span class="s2">"GRCh38_to_GRCh37.chain.gz"</span><span class="p">,</span> <span class="n">source_build</span><span class="o">=</span><span class="s2">"GRCh38"</span><span class="p">,</span> <span class="n">target_build</span><span class="o">=</span><span class="s2">"GRCh37"</span><span class="p">)</span>
-<span class="n">grch37</span> <span class="o">=</span> <span class="n">lift_catalog</span><span class="p">(</span><span class="n">load_catalog</span><span class="p">(),</span> <span class="n">chain</span><span class="p">)</span>
+<span class="n">download_chain</span><span class="p">(</span><span class="s2">"GRCh38"</span><span class="p">,</span> <span class="s2">"GRCh37"</span><span class="p">)</span>  <span class="c1"># Once; checksum-verified.</span>
+<span class="n">grch37</span> <span class="o">=</span> <span class="n">lift_catalog</span><span class="p">(</span><span class="n">load_catalog</span><span class="p">(),</span> <span class="n">load_chain</span><span class="p">(</span><span class="s2">"GRCh38"</span><span class="p">,</span> <span class="s2">"GRCh37"</span><span class="p">))</span>
+<span class="n">grch37</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"orfs-grch37.json.gz"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grch37</span><span class="o">.</span><span class="n">records</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">grch37</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">"liftover"</span><span class="p">][</span><span class="s2">"unmapped"</span><span class="p">]),</span> <span class="n">grch37</span><span class="o">.</span><span class="n">source</span><span class="p">)</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code>7247 17 orfdata-catalog:2026-10-11.1@GRCh37
 </code></pre></div>
 <ul>
-<li><strong>Chain files.</strong> <code>ChainFile</code> reads UCSC and Ensembl chain files, gzipped or
-  not. Examples are Ensembl's
-  <a href="https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/"><code>GRCh37_to_GRCh38.chain.gz</code></a>
-  and UCSC's <a href="https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/"><code>mm10ToMm39.over.chain.gz</code></a>.
-  UCSC's chains to GCF assemblies, such as
-  <code>canFam3ToGCF_014441545.1.over.chain.gz</code> for dog ROS_Cfam_1.0, name contigs
-  by RefSeq accession, so pass <code>contig_names=</code> built from NCBI's assembly
-  report to match the genome's names. Download chain files yourself and check
-  their terms; orfdata never fetches one.</li>
+<li><strong>Pinned chain files.</strong> Ensembl's
+  <a href="https://ftp.ensembl.org/pub/assembly_mapping/homo_sapiens/"><code>GRCh37_to_GRCh38</code> and <code>GRCh38_to_GRCh37</code></a>
+  have no usage restrictions. UCSC's mouse
+  <a href="https://hgdownload.soe.ucsc.edu/goldenPath/mm10/liftOver/README.txt"><code>mm10ToMm39</code></a>
+  and <a href="https://hgdownload.soe.ucsc.edu/goldenPath/mm39/liftOver/README.txt"><code>mm39ToMm10</code></a>
+  (GRCm38 and GRCm39) are free only for non-commercial use, so downloading
+  them needs <code>--accept-terms</code> (<code>accept_terms=True</code>). <code>--source-path FILE</code>
+  installs a copy you already have after checking it against the pin.
+  Ensembl publishes no GRCm38/GRCm39 chain, and no chain is pinned for dog.</li>
+<li><strong>Other chain files.</strong> <code>ChainFile(path, source_build=..., target_build=...)</code>
+  reads any UCSC or Ensembl chain file, gzipped or not. A chain file doesn't
+  name its assemblies, so you declare them. When the file is one of the
+  pinned ones, its direction and species are checked, so a GRCh37-to-GRCh38
+  file can't lift a GRCh38 catalogue; any other file is taken at your word.
+  UCSC's chains to GCF
+  assemblies, such as <code>canFam3ToGCF_014441545.1.over.chain.gz</code> for dog
+  ROS_Cfam_1.0, name contigs by RefSeq accession, so pass <code>contig_names=</code> built
+  from NCBI's assembly report to match the genome's names. Check each file's
+  terms before using or sharing what it produces.</li>
 <li><strong>What lifts.</strong> A record lifts only when every coding block lies inside one
   ungapped alignment block and all blocks land on one contig and strand, in
   order. Where a region also aligns to fix patches or alternate haplotypes,
@@ -1317,11 +1349,13 @@ with a chain file, for example GRCh37 to GRCh38 or mm10 to GRCm39:</p>
   that lift back. On Ensembl 75, 6,857 of the lifted ORFs place on a
   transcript with their exact coding path and protein.</li>
 <li><strong>Provenance.</strong> Each lifted record keeps its original in <code>record.lifted_from</code>
-  and the chain's name and SHA-256 in <code>record.liftover</code>. Its ID, protein and
+  and the chain's file name and SHA-256 in <code>record.liftover</code>, the same whether
+  the file was downloaded as a pin or passed by hand. Its ID, protein and
   evidence must equal the original's. Its initiation flanks move with it when
   they map consistently and in order. A strain pin is kept, with the chain's
   SHA-256 in place of an annotation. <code>metadata["liftover"]["input"]</code> describes
-  the input catalogue, including any earlier lift.</li>
+  the input catalogue, including any earlier lift. <code>ORFCatalog.save</code> writes
+  the same bytes for the same catalogue.</li>
 <li><strong>Placement.</strong> <code>extra_orfs</code> on the target genome then checks each ORF's
   exact coding path and protein, so a lift that changes the sequence is
   excluded rather than trusted. A lifted record names no annotation release.
@@ -1332,7 +1366,8 @@ with a chain file, for example GRCh37 to GRCh38 or mm10 to GRCm39:</p>
 <li><strong>Size.</strong> Each lifted record carries its original, so a lifted catalogue is
   about twice the size of its input (33 MB for the bundled one as JSON).</li>
 <li><strong>Errors.</strong> When only another assembly has a catalogue,
-  <code>load_catalog(species=..., genome_build=...)</code> says which one to lift.</li>
+  <code>load_catalog(species=..., genome_build=...)</code> gives the <code>orfdata lift</code>
+  command and the Python call that would lift it.</li>
 </ul>
 <h2 id="source-builds">Source builds<a class="headerlink" href="#source-builds" title="Permanent link">&para;</a></h2>
 <p><code>registry.build(name, source_paths={"source.json": path})</code> explicitly rebuilds
