@@ -187,6 +187,19 @@ def test_riboseq_is_another_name_for_ribosome(catalog, capsys):
     assert len(capsys.readouterr().out.splitlines()) == len(catalog.records) + 1
 
 
+def test_mhc_selects_immunopeptidome_or_whole_proteome(catalog):
+    count = lambda rule: len(catalog.query(evidence=rule))  # noqa: E731
+    assert MS(mhc=True) == MS(methods="immunopeptidomics") == evidence_rule("immunopeptidomics")
+    assert MS(mhc=False) == MS(methods="proteomics") == evidence_rule("proteomics")
+    assert (count(MS(mhc=True)), count(MS(mhc=False)), count(MS())) == (1881, 73, 2186)
+    rule = RiboSeq() & MS(mhc=True, min_peptides=2)
+    assert EvidenceRule.from_dict(rule.to_dict()) == rule
+    with pytest.raises(ValueError, match="not both"):
+        MS(mhc=True, methods="proteomics")
+    with pytest.raises(TypeError, match="True, False or None"):
+        MS(mhc="immunopeptidomics")
+
+
 def test_names_from_before_0_28_still_read():
     """Catalogues, saved rules and callers from before 0.28.0 say shotgun, mhc and hla."""
     assert peptide("KPG", "hla").method == peptide("KPG", "mhc").method == "immunopeptidomics"

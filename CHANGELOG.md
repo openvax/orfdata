@@ -15,6 +15,9 @@ MS-supported ORFs.
 - The MS evidence kinds have species-neutral names: `"proteomics"` (peptides
   from digested cellular proteins; was `"shotgun"`) and `"immunopeptidomics"`
   (peptides eluted from MHC molecules; was `"mhc"`, and `"hla"` for human).
+  - `MS(mhc=True)` counts only immunopeptidomics peptides and `MS(mhc=False)`
+    only proteomics peptides; `MS()` counts every MS peptide, including those
+    whose source doesn't say which. `methods=` still names kinds directly.
   - The old names still work as evidence names and in `MS(methods=...)`, with
     a `DeprecationWarning`. Catalogues, evidence summaries and saved rules that
     use them load with the new names, so the bundled human catalogue is
@@ -26,7 +29,7 @@ MS-supported ORFs.
 - `"riboseq"` is another name for `"ribosome"`.
 - A list, tuple or set of names selects ORFs with any of them:
   `["proteomics", "immunopeptidomics"]` is
-  `MS(methods="proteomics") | MS(methods="immunopeptidomics")`.
+  `MS(mhc=False) | MS(mhc=True)`.
 
 ## Mouse
 

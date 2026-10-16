@@ -80,9 +80,13 @@ need two kinds of evidence at once, combine rules with `&`, below.
 
 For more control, pass a rule. `RiboSeq(min_studies=n)` needs ribosome
 profiling in at least `n` independent studies the source names, and
-`MS(min_peptides=n, unique=..., reviewed=..., methods=...)` needs at least `n`
-distinct supporting peptide sequences. `&` requires both rules and `|` accepts
-either:
+`MS(min_peptides=n, unique=..., reviewed=..., mhc=...)` needs at least `n`
+distinct supporting peptide sequences. `MS(mhc=True)` counts only peptides
+eluted from MHC molecules (the immunopeptidome) and `MS(mhc=False)` only
+peptides from digested cellular proteins (the whole proteome). `MS()` counts
+both, and the MS peptides whose source doesn't say which. `methods=` names the
+kinds directly, for combinations such as `("proteomics", "ms_unclassified")`.
+`&` requires both rules and `|` accepts either:
 
 ```python
 from orfdata import MS, RiboSeq
@@ -90,7 +94,7 @@ from orfdata import MS, RiboSeq
 annotated.with_extra_orfs(RiboSeq(min_studies=2))                        # replicated Ribo-seq
 annotated.with_extra_orfs(RiboSeq(min_studies=2) & MS())                 # Ribo-seq and MS
 annotated.with_extra_orfs(RiboSeq(min_studies=2) | MS())                 # either
-annotated.with_extra_orfs(RiboSeq() & MS(methods="immunopeptidomics"))   # Ribo-seq and an MHC ligand
+annotated.with_extra_orfs(RiboSeq() & MS(mhc=True))                     # Ribo-seq and an MHC ligand
 annotated.with_extra_orfs(MS(methods=("proteomics", "ms_unclassified")))  # not immunopeptidomics-only
 ```
 
@@ -106,8 +110,8 @@ annotated.with_extra_orfs(MS(methods=("proteomics", "ms_unclassified")))  # not 
 
 GENCODE's `c…riboseqorf…` IDs are the 3,085 ORFs seen in two or more studies.
 Each method name above is the simplest rule: `"ms"` is `MS()`,
-`"immunopeptidomics"` is `MS(methods=("immunopeptidomics",))` and `"ribosome"`
-(or `"riboseq"`) is `RiboSeq()`. The names before 0.28.0 (`"shotgun"`, and `"mhc"` or `"hla"`)
+`"immunopeptidomics"` is `MS(mhc=True)`, `"proteomics"` is `MS(mhc=False)` and
+`"ribosome"` (or `"riboseq"`) is `RiboSeq()`. The names before 0.28.0 (`"shotgun"`, and `"mhc"` or `"hla"`)
 still work, with a deprecation warning, and catalogues that use them still
 load. A peptide counts once
 however many assay types report it, and so do peptides that differ only by I
@@ -117,7 +121,7 @@ inside another, so a long peptide never hides two shorter, separate ones, and
 a stricter rule always selects a subset of a looser one. Of the 916 ORFs with
 two or more distinct peptide sequences, 234 have fewer than two that aren't
 nested. Each rule in `&` is checked on its own:
-`MS(methods="proteomics") & MS(unique=True)` needs a proteomics peptide and a
+`MS(mhc=False) & MS(unique=True)` needs a proteomics peptide and a
 unique peptide, not one unique proteomics peptide. A source's aggregate count stands for one observation:
 it satisfies `RiboSeq()` and `MS()` but never `min_studies` or `min_peptides`
 above 1, `unique`, `reviewed` or `resolved=True`. The layer stores the rule,

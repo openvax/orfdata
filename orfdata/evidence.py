@@ -9,7 +9,7 @@ proof that a stable protein exists.
 
 import json
 import warnings
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from typing import Optional
 
 # Peptides from digested cellular proteins; peptides eluted from MHC molecules
@@ -144,9 +144,13 @@ class MS(EvidenceRule):
 
     Peptides that differ only by I and L count once, and nested peptides,
     such as MHC ligand length variants, count as one: the count is the largest
-    set of supporting peptides none of which lies inside another. ``methods``
-    limits the peptide kinds (``"proteomics"``, ``"immunopeptidomics"``,
-    ``"ms_unclassified"``). ``unique`` needs one
+    set of supporting peptides none of which lies inside another.
+    ``mhc=True`` counts only peptides eluted from MHC molecules
+    (immunopeptidomics) and ``mhc=False`` only peptides from digested cellular
+    proteins (proteomics); by default every MS peptide counts, including those
+    whose source doesn't say which. ``methods`` names the kinds directly, any
+    of ``"proteomics"``, ``"immunopeptidomics"`` and ``"ms_unclassified"``;
+    ``mhc`` is stored as the same ``methods``. ``unique`` needs one
     protein mapping in the source, not uniqueness in every proteome.
     ``reviewed`` needs convincing reviewed spectra (benchmark scores 4-5).
     A source's aggregate count satisfies only ``min_peptides=1`` without
@@ -158,10 +162,17 @@ class MS(EvidenceRule):
     reviewed: bool = False
     resolved: bool = False
     methods: Optional[tuple] = None
+    mhc: InitVar[Optional[bool]] = None
 
-    def __post_init__(self):
+    def __post_init__(self, mhc):
         _count(self.min_peptides, "min_peptides")
         _flags(self, "unique", "reviewed", "resolved")
+        if mhc is not None:
+            if type(mhc) is not bool:
+                raise TypeError("mhc must be True, False or None")
+            if self.methods is not None:
+                raise ValueError("Pass mhc or methods, not both")
+            object.__setattr__(self, "methods", ("immunopeptidomics",) if mhc else ("proteomics",))
         if self.methods is not None:
             methods = {self.methods} if isinstance(self.methods, str) else set(self.methods)
             methods = {_method(m) for m in methods}
@@ -243,8 +254,8 @@ def evidence_rule(evidence, *, require_unique=False, require_reviewed=False, req
     or a list, tuple or set of these for any of them.
 
     A method name with ``require_*`` options becomes the equivalent rule:
-    ``"ms"`` is ``MS()``, ``"immunopeptidomics"`` is
-    ``MS(methods=("immunopeptidomics",))`` and ``"ribosome"`` (or
+    ``"ms"`` is ``MS()``, ``"immunopeptidomics"`` is ``MS(mhc=True)``,
+    ``"proteomics"`` is ``MS(mhc=False)`` and ``"ribosome"`` (or
     ``"riboseq"``) is ``RiboSeq()``. Options that cannot apply raise.
     """
     if isinstance(evidence, EvidenceRule):
@@ -252,7 +263,7 @@ def evidence_rule(evidence, *, require_unique=False, require_reviewed=False, req
             raise ValueError("Set unique, reviewed or resolved on the rule itself")
         return evidence
     if isinstance(evidence, (list, tuple, set, frozenset)):
-        # Any of them: ["ribosome", "immunopeptidomics"] is RiboSeq() | MS(methods=("immunopeptidomics",)).
+        # Any of them: ["ribosome", "immunopeptidomics"] is RiboSeq() | MS(mhc=True).
         if not evidence:
             raise ValueError("Name at least one kind of evidence, or pass None or 'all' for every ORF")
         rules = [evidence_rule(e, require_unique=require_unique, require_reviewed=require_reviewed,
