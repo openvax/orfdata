@@ -8,10 +8,10 @@ from functools import lru_cache
 from importlib.resources import files
 
 from .model import TranscriptORF
-from .reference import ReferenceContext
+from .reference import ReferenceContext, species_taxon
 from .rna import SourceRNA
 
-_CATALOG_SHA256 = "52ab8181b9d3f199dde3afabc8440ee9a8c912291c6425c99fb4225e29ad1a70"
+_CATALOG_SHA256 = "aca0c72948d4cda896d14b32203981bce4759e0c70212c05dca6f3d0e16ed4b4"
 _COMPLEMENT = str.maketrans("ACGT", "TGCA")
 
 
@@ -21,39 +21,84 @@ def _catalog():
     if hashlib.sha256(raw).hexdigest() != _CATALOG_SHA256:
         raise ValueError("Bundled viral CDS catalogue checksum mismatch")
     data = json.loads(gzip.decompress(raw))
-    if data["schema"] != "orfdata.viral_cds.v1":
+    if data["schema"] != "orfdata.viral_cds.v2":
         raise ValueError("Unsupported viral CDS catalogue schema")
     return data
 
 
-def viral_references():
-    """List released viral coding-reference identities, without network access.
+def viral_references(*, host=None, group=None, virus_type=None):
+    """Find released viral references by documented host, group and type.
+
+    Parameters
+    ----------
+    host : str or int, optional
+        Known host name such as ``"human"``, or an NCBI host taxon ID. A host
+        association is source-attributed and is not a complete host range.
+    group : str, optional
+        Convenience group label, such as ``"HPV"``; not a taxonomy rank.
+    virus_type : str, optional
+        Named virus type, such as ``"HPV16"``; distinct from ICTV species.
 
     Returns
     -------
     tuple of dict
-        Exact sequence hashes, accession/source pins, coding-model counts and
-        coverage scope. A listed reference is not a complete transcript or
-        exhaustive ORF catalogue. Returned dictionaries are independent copies.
+        Exact sequence hashes, source/host pins, virus identity and coverage.
+        A listed reference is not a complete transcript or exhaustive ORF
+        catalogue. Returned dictionaries are independent copies.
     """
+    if host is None:
+        host_taxon_id = None
+    elif type(host) is int and host > 0:
+        host_taxon_id = host
+    elif isinstance(host, str) and species_taxon(host) is not None:
+        host_taxon_id = species_taxon(host)
+    else:
+        raise ValueError("host must be a known species name or positive NCBI taxon ID")
+    if any(value is not None and (not isinstance(value, str) or not value)
+           for value in (group, virus_type)):
+        raise ValueError("group and virus_type must be nonempty names")
     data = _catalog()
     return tuple(dict(**{key: copy.deepcopy(value) for key, value in row.items()
-                         if key != "coding_blocks"},
+                         if key not in ("coding_blocks", "reference_sequence")},
                       coding_models=len(row["coding_blocks"]), scope=data["scope"],
                       catalogue_sha256=_CATALOG_SHA256,
                       products=[dict(protein_id=cds["protein_id"], gene=cds["gene"],
                                      product=cds["product"]) for cds in data["cds"]])
-                 for row in data["references"])
+                 for row in data["references"]
+                 if (host_taxon_id is None or host_taxon_id in row["host_taxon_ids"])
+                 and (group is None or row["virus"]["group"].casefold() == group.casefold())
+                 and (virus_type is None or row["virus"]["type"].casefold() == virus_type.casefold()))
 
 
-def viral_orfs(reference_sequence, *, contig=None):
+def viral_reference_sequence(reference_id):
+    """Return bundled, checksum-verified reference bases for one exact ID.
+
+    The sequence uses the forward FASTA alphabet (T rather than U) and may
+    represent a virus whose biological genome is RNA. No network is accessed.
+    """
+    matches = [row for row in _catalog()["references"] if row["id"] == reference_id]
+    if len(matches) != 1:
+        raise ValueError("No unique released viral reference ID matches this name")
+    row = matches[0]
+    sequence = row["reference_sequence"]
+    if (len(sequence) != row["length"] or
+            hashlib.sha256(sequence.encode("ascii")).hexdigest() != row["sequence_sha256"]):
+        raise ValueError("Bundled viral reference sequence checksum mismatch")
+    return sequence
+
+
+def viral_orfs(reference_sequence=None, *, reference_id=None, contig=None):
     """Load source-defined CDSs for one exactly matching viral DNA reference.
 
     Parameters
     ----------
-    reference_sequence : str
-        Complete forward reference DNA, not sample RNA. No annotation is
-        transferred to mismatching strains or by contig name alone.
+    reference_sequence : str, optional
+        Complete forward reference DNA from an alignment. This checks actual
+        sequence identity rather than transferring annotation by contig name.
+    reference_id : str, optional
+        Bundled reference ID from ``viral_references()``. Use this to load the
+        reference ORFs without obtaining DNA separately. Supply exactly one
+        of ``reference_sequence`` or ``reference_id``.
     contig : str, optional
         The caller's name for this exact DNA in an alignment reference. The
         original versioned source identity remains on every ORF's context.
@@ -72,7 +117,10 @@ def viral_orfs(reference_sequence, *, contig=None):
         No released coding reference matches, or a source model fails to bind
         and translate exactly. Discovery is available through viral_references.
     """
-    sequence = str(reference_sequence).upper()
+    if (reference_sequence is None) == (reference_id is None):
+        raise ValueError("Provide exactly one of reference_sequence or reference_id")
+    sequence = (viral_reference_sequence(reference_id) if reference_id is not None
+                else str(reference_sequence).upper())
     fingerprint = hashlib.sha256(sequence.encode("ascii")).hexdigest()
     data = _catalog()
     matches = [row for row in data["references"] if row["sequence_sha256"] == fingerprint

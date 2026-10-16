@@ -1,3 +1,15 @@
+# 0.33.0
+
+- Discover the bundled viral coding references by documented host, convenience
+  group and virus type, while keeping viral taxonomy and host taxa separate.
+  HPV16's human association comes from PaVE; the type's ICTV species and
+  source URLs remain in each reference record. An unlisted host is not an
+  exhaustive host-range conclusion.
+- Include both checksum-verified HPV16 reference sequences offline. Call
+  `viral_reference_sequence(id)` or `viral_orfs(reference_id=id)` without
+  obtaining genome DNA first. The existing `viral_orfs(reference_dna, ...)`
+  continues to verify actual alignment-reference sequence identity.
+
 # 0.32.0
 
 Dog peptide data: MHC class I ligands and the Canine PeptideAtlas.
