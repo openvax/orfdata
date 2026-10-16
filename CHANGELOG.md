@@ -1,3 +1,26 @@
+# 0.35.0
+
+DLA ligand release 2026-10-16.2 marks iRT spike-in spectra that the first
+release missed.
+
+- **iRT reads.** `kaabinejadian-dog-dla-ligands` now defaults to release
+  2026-10-16.2 (importer `kaabinejadian-dla-v2`), which marks 10,629 rows as
+  `irt_standard`, up from 2,242, and names the rule in `irt_rule`:
+  - `irt_sequence`: a kit peptide or fragment, with I and L equal;
+  - `kit_only`: PEAKS attributes the row only to the kit;
+  - `irt_precursor`: a de novo, homology or kit-less database-search read at
+    an iRT precursor;
+  - `de_novo_irt`: a de novo sequence matched to the kit, or sharing 6
+    residues with a kit peptide.
+- **Who's affected.** Half of all de novo rows were iRT reads. The
+  database-search ligand lists barely change: 12,948 dog ligands across all
+  databases (was 12,949); the UniProt and cell-line counts are unchanged.
+  Marked rows' mappings are `unmapped`.
+- **First release.** Release 2026-10-16.1 stays available and rebuilds
+  byte-identically.
+- **Missing runs.** The dataset docs now explain which runs behind 1,695
+  rows' best spectra are missing from the PRIDE deposit, and why.
+
 # 0.34.1
 
 - Require Python 3.11 or later and test through Python 3.14.

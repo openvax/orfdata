@@ -14,7 +14,7 @@ import pytest
 
 from orfdata import DatasetManifest, DatasetRegistry, ReferenceContext, ScopedTarget, build_dataset
 from orfdata.cli import run
-from orfdata.sources.kaabinejadian import import_ligands, irt_standard, peptide_sequence
+from orfdata.sources.kaabinejadian import import_ligands, irt_rules, irt_standard, peptide_sequence
 from orfdata.sources.peptideatlas import import_build
 
 DLA = Path(__file__).parent / "data/kaabinejadian"
@@ -77,11 +77,12 @@ def test_peaks_rows_keep_values_identification_type_and_modified_form(tmp_path):
             assert (area.unit, intensity.unit, spectra.unit) == ("PEAKS area", "PEAKS intensity", "PSM")
             assert spectra.quantity == "spectrum_count" and spectra.value == int(row[17])
             assert spectra.provenance["peptide"] == row[0] and spectra.provenance["found_by"] == row[25]
-            accessions = [value for value in row[24].split(":") if value]
-            assert spectra.provenance["irt_standard"] == irt_standard(area.target.identifier, accessions)
+            rule = spectra.provenance["irt_rule"]
+            assert rule in (None, "irt_sequence", "kit_only", "irt_precursor", "de_novo_irt")
+            assert spectra.provenance["irt_standard"] is (rule is not None)
             assert spectra.provenance["raw_file_deposited"] is True
             assert spectra.provenance["column"] == header[17]
-    assert len(values) == rows * 3 == 66
+    assert len(values) == rows * 3 == 99
     dog, human = manifest.references
     assert (dog.taxon_id, human.taxon_id) == (9615, 9606) and not dog.is_genomic
     # The same peptide in two searches of Lola's spectra is one target, measured in two assays.
@@ -104,7 +105,8 @@ def test_samples_and_assays_keep_dla_typing_antibody_and_search(tmp_path):
     assert cells.attributes["mhc_typing_source"] == "deposit SDRF; the article's transduced allele"
     assays = {a.assay_id: a for a in dataset.assays()}
     assert set(assays) == {"Lola-BB76:UniProt9615", "Lola-BB76:MergedCanFams", "Lola-H58A:UniProt9615",
-                           "HCT116-DLA8850101-BB76:SwissProt9606"}
+                           "HCT116-DLA8850101-BB76:SwissProt9606", "Tumor163828A-BB76:UniProt9615",
+                           "Tumor163828A-BB76:MergedCanFams"}
     assert all(a.kind == "mhc_ms" for a in assays.values())
     # One tumour, two immunoprecipitations: one sample, with an assay per antibody and search.
     assert {a.sample_id for a in assays.values() if a.sample_id == "Lola"} == {"Lola"}
@@ -136,9 +138,20 @@ def test_accessions_are_kept_per_search_with_standards_and_failures_explicit(tmp
     fragment = mappings["MergedCanFams:DeepNovo:AASYYAPVR"]
     assert fragment.reason == "Biognosys iRT retention-time standard" and fragment.targets == ()
     assert fragment.evidence["reported_proteins"]
+    # A de novo read that PEAKS matches to the kit among dog proteins.
     novo = mappings["UniProt9615:DeepNovo:AAFSKDPAAVLR"]
-    assert novo.status == "unmapped" and novo.reason.startswith("De novo sequence")
+    assert novo.status == "unmapped" and novo.reason == "De novo read of a Biognosys iRT standard"
     assert "J9P3Z7" in novo.evidence["reported_proteins"] and novo.evidence["irt_standards"]
+    assert novo.evidence["irt_rule"] == "de_novo_irt"
+    assert mappings["UniProt9615:DeepNovo:ADVTMEAPDAVESK"].reason.startswith("De novo sequence")
+    # Homology and kit-less database-search reads of iRT spectra lose their dog proteins.
+    for key in ("UniProt9615:Homolog:TGFLLDPVLNR", "MergedCanFams:DB Search:IFLAFQQKAYVAP"):
+        misread = mappings[key]
+        assert misread.status == "unmapped" and misread.evidence["irt_rule"] == "irt_precursor"
+        assert misread.reason.startswith("Observed at a Biognosys iRT standard's precursor")
+        assert misread.evidence["reported_proteins"]
+    assert mappings["MergedCanFams:DB Search:TNAENEFVTIK"].status == "ambiguous"
+    assert "irt_rule" not in mappings["UniProt9615:DB Search:TNAENEFVTIK"].evidence
     assert mappings["UniProt9615:DeepNovo:AAARLTH"].reason == "PEAKS reported no protein"
     human = mappings["SwissProt9606:DB Search:AAALGIAFVEV"]
     assert human.reference.taxon_id == 9606 and [t.identifier for t in human.targets] == ["P08962"]
@@ -146,14 +159,72 @@ def test_accessions_are_kept_per_search_with_standards_and_failures_explicit(tmp
     assert all(m.status == "unmapped" for m in mappings.values() if m.evidence["found_by"] == "DeepNovo")
 
 
-def test_irt_standards_are_flagged_by_sequence_in_every_search(tmp_path):
+def test_irt_standards_and_misread_irt_spectra_are_flagged(tmp_path):
     dataset = _build(DLA, import_ligands, tmp_path)
     dog = dataset.manifest.references[0]
-    for sequence, flagged in (("AASYYAPVR", True), ("ADVTPADFSEWSK", True), ("AAFSKDPAAVLR", False)):
-        values = list(dataset.measurements(target=ScopedTarget(dog, "peptide", sequence, "amino-acid-sequence")))
-        assert values and {m.provenance["irt_standard"] for m in values} == {flagged}
+
+    def rules(sequence):
+        target = ScopedTarget(dog, "peptide", sequence, "amino-acid-sequence")
+        return {m.assay_id: m.provenance["irt_rule"] for m in dataset.measurements(target=target, quantity="spectrum_count")}
+
+    assert rules("ADVTPADFSEWSK") == {"Lola-BB76:UniProt9615": "irt_sequence"}
+    assert rules("AASYYAPVR") == {"Lola-BB76:MergedCanFams": "irt_sequence"}  # A kit fragment, read de novo.
+    assert rules("ADTTPADFSEWSK") == {"Lola-BB76:UniProt9615": "kit_only"}
+    # De novo reads: matched to the kit, or sharing seven residues (DPAAVLR) with a kit peptide.
+    assert rules("AAFSKDPAAVLR") == {"Lola-BB76:UniProt9615": "de_novo_irt", "Lola-BB76:MergedCanFams": "de_novo_irt"}
+    # Reads at the precursor of a kit peptide that a search of the same immunoprecipitation found.
+    assert rules("EGVTPANFSQ") == {"Lola-BB76:MergedCanFams": "irt_precursor"}  # ADVTPADFSE, de novo
+    assert rules("TGFLLDPVLNR") == {"Tumor163828A-BB76:UniProt9615": "irt_precursor"}  # GTFIIDPGGVIR's mass
+    assert rules("IFLAFQQKAYVAP") == {"Tumor163828A-BB76:MergedCanFams": "irt_precursor"}  # No kit to choose.
+    # Database search that could choose the kit peptide keeps its match, and so does the kit-less
+    # search's match when a search with the kit found the same peptide.
+    assert rules("AAAGQAKDEL") == {"Tumor163828A-BB76:UniProt9615": None}
+    assert rules("TNAENEFVTIK") == {"Tumor163828A-BB76:UniProt9615": None, "Tumor163828A-BB76:MergedCanFams": None}
+    assert rules("AIKKGLEEL") == {"Lola-BB76:UniProt9615": None}
     assert irt_standard("GTFIIDPAAVIR") and irt_standard("IIDPAAVIR") and not irt_standard("SIINFEKL")
     assert irt_standard("ADTTPADFSEWSK", ["Biognosys|iRT-Kit_peptide_10"])
+
+
+def test_irt_rules_hold_their_tolerances_and_scope():
+    kit = ["UniProt9615"]
+    anchor = ("A", "UniProt9615", "DB Search", "GTFIIDPGGVIR", ["Biognosys|iRT-Kit_peptide_3"], 2, 622.8533, 54.0)
+
+    def rule(row, *rows):
+        return irt_rules([anchor, *rows, row], kit, 20, 1.0, 6)[-1]
+
+    novo = ("A", "MergedCanFams", "DeepNovo", "SIINFEKL", [], 2, 622.8533, 54.0)
+    assert rule(novo) == "irt_precursor"
+    assert rule(novo[:6] + (622.8533 * (1 + 21e-6), 54.0)) is None  # Outside 20 ppm.
+    assert rule(novo[:7] + (55.1,)) is None  # More than a minute apart.
+    assert rule(novo[:5] + (3,) + novo[6:]) is None  # Another charge.
+    assert rule(("B",) + novo[1:]) is None  # Another immunoprecipitation.
+    assert rule(("A", "UniProt9615", "DB Search", "SIINFEKL", ["P1"], 2, 622.8533, 54.0)) is None  # Kit search.
+    merged = ("A", "MergedCanFams", "DB Search", "SIINFEKL", ["P1"], 2, 622.8533, 54.0)
+    assert rule(merged) == "irt_precursor"
+    assert rule(merged, ("A", "UniProt9615", "DB Search", "SIINFEKL", ["P1"], 2, 500.0, 30.0)) is None
+    assert rule(("A", "MergedCanFams", "DeepNovo", "GTFLLDPGG", [], 2, 400.0, 20.0)) == "irt_sequence"  # I = L.
+    assert rule(("A", "MergedCanFams", "DeepNovo", "KATLFLQFGA", [], 2, 400.0, 20.0)) == "de_novo_irt"
+    assert rule(("A", "MergedCanFams", "DeepNovo", "KATLFLQFG", [], 2, 400.0, 20.0)) == "de_novo_irt"
+    assert rule(("A", "MergedCanFams", "DeepNovo", "KATLFLQF", [], 2, 400.0, 20.0)) is None  # Five shared.
+    assert rule(("A", "MergedCanFams", "DeepNovo", "KATSIINFEKL", ["Biognosys|x", "P1"], 2, 400.0, 20.0)) == "de_novo_irt"
+    assert rule(("A", "MergedCanFams", "Homolog", "KATLFLQFGAQ", ["P1"], 2, 400.0, 20.0)) is None
+
+
+def test_the_first_release_rebuilds_with_its_own_flags(tmp_path):
+    manifest = DatasetManifest.from_dict(json.loads((DLA / "manifest-v1.json").read_text()))
+    assert manifest.processing["importer"] == "kaabinejadian-dla-v1"
+    dataset = _build(DLA, import_ligands, tmp_path, manifest)
+    flags = {m.measurement_id: m.provenance for m in dataset.measurements(quantity="spectrum_count")}
+    for member, _, lines in _tables():
+        for line, row in lines:
+            provenance = flags[f"{member}:{line}:#Spec"]
+            listed = [value for value in row[24].split(":") if value]
+            assert provenance["irt_standard"] is irt_standard(peptide_sequence(row[0]), listed)
+            assert "irt_rule" not in provenance
+    mappings = {m.mapping_id: m for m in dataset.mappings()}
+    assert mappings["UniProt9615:Homolog:TGFLLDPVLNR"].status == "ambiguous"
+    assert mappings["UniProt9615:DeepNovo:AAFSKDPAAVLR"].reason.startswith("De novo sequence")
+    assert "irt_rule" not in mappings["MergedCanFams:DeepNovo:AASYYAPVR"].evidence
 
 
 def _copy_with_sdrf(tmp_path, change):
@@ -201,6 +272,11 @@ def test_ligand_import_reconciles_against_the_deposit(tmp_path):
     changed = replace(manifest, coverage=dict(manifest.coverage, source_counts=counts))
     with pytest.raises(ValueError, match="reconciliation failed"):
         _build(DLA, import_ligands, tmp_path / "counts", changed)
+    counts = manifest.to_dict()["coverage"]["source_counts"]
+    counts["Lola-BB76-UniProt9615"]["irt_rules"] = {"irt_sequence": 4, "kit_only": 1}
+    changed = replace(manifest, coverage=dict(manifest.coverage, source_counts=counts))
+    with pytest.raises(ValueError, match="reconciliation failed"):
+        _build(DLA, import_ligands, tmp_path / "rules", changed)
     tables = manifest.to_dict()["processing"]["tables"]
     tables["Lola-BB76"]["antibody"] = "H58A (anti-MHC class I)"
     changed = replace(manifest, processing=dict(manifest.processing, tables=tables))

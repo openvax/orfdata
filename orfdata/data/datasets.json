@@ -1981,7 +1981,7 @@
     }
   },
   "kaabinejadian-dog-dla-ligands": {
-    "default_version": "2026-10-16.1",
+    "default_version": "2026-10-16.2",
     "versions": {
       "2026-10-16.1": {
         "manifest": {
@@ -2434,6 +2434,606 @@
             "url": "https://github.com/openvax/orfdata/releases/download/data-kaabinejadian-dla-2026-10-16.1/kaabinejadian-dog-dla-ligands-2026-10-16.1.sqlite.gz",
             "sha256": "32cdd3e1f2edcc2766f0ef67557713aa51e97f15c34cca214c8dddcd8aff6667",
             "size": 255389696,
+            "decompress": true
+          }
+        }
+      },
+      "2026-10-16.2": {
+        "manifest": {
+          "dataset_id": "kaabinejadian-dog-dla-ligands",
+          "version": "2026-10-16.2",
+          "title": "DLA class I ligands from dog tumours and DLA-88 monoallelic cells (Kaabinejadian et al.)",
+          "references": [
+            {
+              "taxon_id": 9615,
+              "species": "dog",
+              "genome_build": null,
+              "annotation_name": null,
+              "annotation_version": null,
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "ab4682221b23f3f006892507d82db3622f26f04eacd5e3a97975ed57c03884e4"
+            },
+            {
+              "taxon_id": 9606,
+              "species": "human",
+              "genome_build": null,
+              "annotation_name": null,
+              "annotation_version": null,
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "ab4682221b23f3f006892507d82db3622f26f04eacd5e3a97975ed57c03884e4"
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "Results.zip",
+              "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2026/04/PXD074485/Results.zip",
+              "sha256": "ab4682221b23f3f006892507d82db3622f26f04eacd5e3a97975ed57c03884e4",
+              "size": 10825310,
+              "access_terms": "PRIDE PXD074485: Creative Commons Public Domain (CC0); attribute Kaabinejadian et al. (2026)",
+              "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Kaabinejadian S, Yari H, et al., Hildebrand WH; University of Oklahoma Health Sciences Center",
+                "deposit": "https://www.ebi.ac.uk/pride/archive/projects/PXD074485",
+                "role": "PEAKS Studio 11.5 peptide tables, one per immunoprecipitation and search database",
+                "source_update": "2026-04-22",
+                "terms_verified": "2026-10-16"
+              }
+            },
+            {
+              "asset_id": "sdrf.tsv",
+              "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2026/04/PXD074485/PXD074485_community_annotated.sdrf.tsv",
+              "sha256": "b59816bb157e8ac67dea263803a30dd9bd755fdac097a6a0edc148dc94452803",
+              "size": 11637,
+              "access_terms": "PRIDE PXD074485: Creative Commons Public Domain (CC0); attribute Kaabinejadian et al. (2026)",
+              "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "PRIDE community annotation of PXD074485",
+                "deposit": "https://www.ebi.ac.uk/pride/archive/projects/PXD074485",
+                "role": "Sample, antibody and DLA typing metadata",
+                "source_update": "2026-10-06; community-annotated, so PRIDE may revise it, and a rebuild needs this exact file",
+                "terms_verified": "2026-10-16"
+              }
+            }
+          ],
+          "citations": [
+            "https://doi.org/10.1016/j.isci.2026.115975",
+            "https://www.ebi.ac.uk/pride/archive/projects/PXD074485",
+            "https://creativecommons.org/publicdomain/zero/1.0/"
+          ],
+          "assay_kinds": [
+            "mhc_ms"
+          ],
+          "coverage": {
+            "accession": "PXD074485",
+            "target_resolution": "peptide: the unmodified amino-acid sequence; each modified form is a separate source row",
+            "identification": "PEAKS Studio 11.5 at 1% peptide FDR (decoy-fusion), per the article. The tables also export DeepNovo (de novo) and Homolog (SPIDER) identifications, kept with their type.",
+            "search_databases": {
+              "UniProt9615": "UniProt Canis lupus familiaris proteome (taxon 9615) with Biognosys iRT peptides; release not stated",
+              "MergedCanFams": "Merged CanFam3.1 (Ensembl 104), CanFam4 (UCSC), Basenji (Ensembl 104) and Great Dane (Ensembl 104) proteins",
+              "Basenji": "Basenji proteins (Ensembl 104), with Biognosys iRT peptides, per the table name and the article",
+              "Zoey": "Great Dane (Zoey) proteins (Ensembl 104), with Biognosys iRT peptides, per the table name and the article",
+              "SwissProt9606": "SwissProt Homo sapiens (taxon 9606) with Biognosys iRT peptides"
+            },
+            "search_fastas": "not deposited; protein containment of reported accessions is not verified",
+            "repeated_searches": "Each dog tumour's spectra were searched against four databases; one peptide in two of its tables is one observation, not two",
+            "nc_orf_search": "not performed: canonical protein databases only",
+            "raw_files_not_deposited": {
+              "note": "Rows whose best spectrum comes from a run missing from the deposited raw archives (row counts per table set). PEAKS reports, for each peptide, the raw file and scan of its best spectrum; the authors' PEAKS projects for these two immunoprecipitations included runs that the deposit lacks: Lily's 22-1107 re-injection of the remaining 1 uL (fractions 12-30), and DLA-88*012:01's 20240929 acquisition (fractions 14-25), whose archive holds only the 20241013 runs of fractions 26-28 and blanks. The SDRF names the 20240929 run as that assay.",
+              "runs": {
+                "HCT116-DLA8801201-BB76": {
+                  "20240929-HCT116-DLA8801201-BB76-092624": 1396
+                },
+                "Lily-H58A": {
+                  "22-1107-Lily Canine Tumor-H58A-10-12-22-HY-1uL Residue": 299
+                }
+              }
+            },
+            "assays_without_results": [
+              "21-1129-DogECSTumor163828A-H58A-11-24-21-HY (raw files only)"
+            ],
+            "measurement_limits": "PEAKS label-free area and intensity; no copies per cell; no normalization across runs",
+            "missingness": "An empty Area/Intensity is missing; peptides absent from a table have no observation",
+            "mhc_typing": "Deposit SDRF, which the article's Table 1 matches; HCT 116 lines are monoallelic DLA-88 transductants",
+            "source_counts": {
+              "Bogey-BB76-Basenji": {
+                "rows": 13864,
+                "found_by": {
+                  "DB Search": 11483,
+                  "DeepNovo": 2169,
+                  "Homolog": 212
+                },
+                "irt_standard_rows": 837,
+                "irt_rules": {
+                  "de_novo_irt": 576,
+                  "irt_precursor": 77,
+                  "irt_sequence": 88,
+                  "kit_only": 96
+                }
+              },
+              "Bogey-BB76-MergedCanFams": {
+                "rows": 12868,
+                "found_by": {
+                  "DB Search": 10365,
+                  "DeepNovo": 2411,
+                  "Homolog": 92
+                },
+                "irt_standard_rows": 714,
+                "irt_rules": {
+                  "de_novo_irt": 406,
+                  "irt_precursor": 260,
+                  "irt_sequence": 48
+                }
+              },
+              "Bogey-BB76-UniProt9615": {
+                "rows": 13687,
+                "found_by": {
+                  "DB Search": 11229,
+                  "DeepNovo": 2229,
+                  "Homolog": 229
+                },
+                "irt_standard_rows": 876,
+                "irt_rules": {
+                  "de_novo_irt": 605,
+                  "irt_precursor": 79,
+                  "irt_sequence": 89,
+                  "kit_only": 103
+                }
+              },
+              "Bogey-BB76-Zoey": {
+                "rows": 13685,
+                "found_by": {
+                  "DB Search": 11312,
+                  "DeepNovo": 2147,
+                  "Homolog": 226
+                },
+                "irt_standard_rows": 833,
+                "irt_rules": {
+                  "de_novo_irt": 572,
+                  "irt_precursor": 74,
+                  "irt_sequence": 89,
+                  "kit_only": 98
+                }
+              },
+              "HCT116-DLA8800302-BB76-SwissProt9606": {
+                "rows": 1605,
+                "found_by": {
+                  "DB Search": 1087,
+                  "DeepNovo": 465,
+                  "Homolog": 53
+                },
+                "irt_standard_rows": 435,
+                "irt_rules": {
+                  "de_novo_irt": 289,
+                  "irt_precursor": 38,
+                  "irt_sequence": 62,
+                  "kit_only": 46
+                }
+              },
+              "HCT116-DLA8801201-BB76-SwissProt9606": {
+                "rows": 1635,
+                "found_by": {
+                  "DB Search": 1051,
+                  "Homolog": 100,
+                  "DeepNovo": 484
+                },
+                "irt_standard_rows": 531,
+                "irt_rules": {
+                  "de_novo_irt": 344,
+                  "irt_precursor": 43,
+                  "irt_sequence": 63,
+                  "kit_only": 81
+                }
+              },
+              "HCT116-DLA8850101-BB76-SwissProt9606": {
+                "rows": 2935,
+                "found_by": {
+                  "DB Search": 2267,
+                  "DeepNovo": 582,
+                  "Homolog": 86
+                },
+                "irt_standard_rows": 498,
+                "irt_rules": {
+                  "de_novo_irt": 349,
+                  "irt_precursor": 28,
+                  "irt_sequence": 63,
+                  "kit_only": 58
+                }
+              },
+              "Lily-H58A-Basenji": {
+                "rows": 176,
+                "found_by": {
+                  "DB Search": 90,
+                  "DeepNovo": 60,
+                  "Homolog": 26
+                },
+                "irt_standard_rows": 102,
+                "irt_rules": {
+                  "de_novo_irt": 31,
+                  "irt_precursor": 10,
+                  "irt_sequence": 35,
+                  "kit_only": 26
+                }
+              },
+              "Lily-H58A-MergedCanFams": {
+                "rows": 131,
+                "found_by": {
+                  "DeepNovo": 119,
+                  "DB Search": 12
+                },
+                "irt_standard_rows": 93,
+                "irt_rules": {
+                  "de_novo_irt": 43,
+                  "irt_precursor": 46,
+                  "irt_sequence": 4
+                }
+              },
+              "Lily-H58A-UniProt9615": {
+                "rows": 177,
+                "found_by": {
+                  "DB Search": 90,
+                  "DeepNovo": 61,
+                  "Homolog": 26
+                },
+                "irt_standard_rows": 100,
+                "irt_rules": {
+                  "de_novo_irt": 33,
+                  "irt_precursor": 8,
+                  "irt_sequence": 33,
+                  "kit_only": 26
+                }
+              },
+              "Lily-H58A-Zoey": {
+                "rows": 174,
+                "found_by": {
+                  "DB Search": 89,
+                  "DeepNovo": 61,
+                  "Homolog": 24
+                },
+                "irt_standard_rows": 96,
+                "irt_rules": {
+                  "de_novo_irt": 32,
+                  "irt_precursor": 7,
+                  "irt_sequence": 33,
+                  "kit_only": 24
+                }
+              },
+              "Lola-BB76-Basenji": {
+                "rows": 705,
+                "found_by": {
+                  "DeepNovo": 247,
+                  "DB Search": 440,
+                  "Homolog": 18
+                },
+                "irt_standard_rows": 265,
+                "irt_rules": {
+                  "de_novo_irt": 175,
+                  "irt_precursor": 16,
+                  "irt_sequence": 57,
+                  "kit_only": 17
+                }
+              },
+              "Lola-BB76-MergedCanFams": {
+                "rows": 519,
+                "found_by": {
+                  "DeepNovo": 308,
+                  "DB Search": 210,
+                  "Homolog": 1
+                },
+                "irt_standard_rows": 239,
+                "irt_rules": {
+                  "de_novo_irt": 176,
+                  "irt_precursor": 46,
+                  "irt_sequence": 17
+                }
+              },
+              "Lola-BB76-UniProt9615": {
+                "rows": 721,
+                "found_by": {
+                  "DeepNovo": 242,
+                  "DB Search": 448,
+                  "Homolog": 31
+                },
+                "irt_standard_rows": 273,
+                "irt_rules": {
+                  "de_novo_irt": 177,
+                  "irt_precursor": 10,
+                  "irt_sequence": 57,
+                  "kit_only": 29
+                }
+              },
+              "Lola-BB76-Zoey": {
+                "rows": 718,
+                "found_by": {
+                  "DeepNovo": 247,
+                  "DB Search": 442,
+                  "Homolog": 29
+                },
+                "irt_standard_rows": 275,
+                "irt_rules": {
+                  "de_novo_irt": 177,
+                  "irt_precursor": 15,
+                  "irt_sequence": 57,
+                  "kit_only": 26
+                }
+              },
+              "Lola-H58A-Basenji": {
+                "rows": 535,
+                "found_by": {
+                  "DeepNovo": 188,
+                  "DB Search": 286,
+                  "Homolog": 61
+                },
+                "irt_standard_rows": 238,
+                "irt_rules": {
+                  "de_novo_irt": 120,
+                  "irt_precursor": 20,
+                  "irt_sequence": 41,
+                  "kit_only": 57
+                }
+              },
+              "Lola-H58A-MergedCanFams": {
+                "rows": 395,
+                "found_by": {
+                  "DeepNovo": 244,
+                  "DB Search": 148,
+                  "Homolog": 3
+                },
+                "irt_standard_rows": 173,
+                "irt_rules": {
+                  "de_novo_irt": 107,
+                  "irt_precursor": 62,
+                  "irt_sequence": 4
+                }
+              },
+              "Lola-H58A-UniProt9615": {
+                "rows": 505,
+                "found_by": {
+                  "DeepNovo": 187,
+                  "DB Search": 271,
+                  "Homolog": 47
+                },
+                "irt_standard_rows": 223,
+                "irt_rules": {
+                  "de_novo_irt": 117,
+                  "irt_precursor": 21,
+                  "irt_sequence": 40,
+                  "kit_only": 45
+                }
+              },
+              "Lola-H58A-Zoey": {
+                "rows": 502,
+                "found_by": {
+                  "DeepNovo": 180,
+                  "DB Search": 282,
+                  "Homolog": 40
+                },
+                "irt_standard_rows": 214,
+                "irt_rules": {
+                  "de_novo_irt": 117,
+                  "irt_precursor": 18,
+                  "irt_sequence": 40,
+                  "kit_only": 39
+                }
+              },
+              "Tumor163828A-BB76-Basenji": {
+                "rows": 2868,
+                "found_by": {
+                  "DB Search": 1753,
+                  "DeepNovo": 988,
+                  "Homolog": 127
+                },
+                "irt_standard_rows": 905,
+                "irt_rules": {
+                  "de_novo_irt": 653,
+                  "irt_precursor": 67,
+                  "irt_sequence": 76,
+                  "kit_only": 109
+                }
+              },
+              "Tumor163828A-BB76-MergedCanFams": {
+                "rows": 2341,
+                "found_by": {
+                  "DB Search": 1222,
+                  "DeepNovo": 1102,
+                  "Homolog": 17
+                },
+                "irt_standard_rows": 798,
+                "irt_rules": {
+                  "de_novo_irt": 568,
+                  "irt_precursor": 199,
+                  "irt_sequence": 31
+                }
+              },
+              "Tumor163828A-BB76-UniProt9615": {
+                "rows": 2631,
+                "found_by": {
+                  "DB Search": 1581,
+                  "DeepNovo": 898,
+                  "Homolog": 152
+                },
+                "irt_standard_rows": 817,
+                "irt_rules": {
+                  "de_novo_irt": 580,
+                  "irt_precursor": 51,
+                  "irt_sequence": 75,
+                  "kit_only": 111
+                }
+              },
+              "Tumor163828A-BB76-Zoey": {
+                "rows": 3173,
+                "found_by": {
+                  "DB Search": 1830,
+                  "DeepNovo": 1211,
+                  "Homolog": 132
+                },
+                "irt_standard_rows": 1094,
+                "irt_rules": {
+                  "de_novo_irt": 830,
+                  "irt_precursor": 81,
+                  "irt_sequence": 77,
+                  "kit_only": 106
+                }
+              }
+            },
+            "irt_standards": "Every run was spiked with Biognosys iRT peptides. A row is flagged irt_standard by the first rule that holds: irt_sequence (with I and L equal, a kit peptide or a fragment of one); kit_only (PEAKS attributes it only to the kit); irt_precursor (de novo and homology rows, and database-search rows of the merged search, which lacks the kit, whose sequence no search with the kit identified, at the precursor of an irt_sequence or kit_only row of the same immunoprecipitation: same charge, m/z within 20 ppm, retention time within 1 min); de_novo_irt (a de novo sequence that PEAKS matches to the kit among other proteins, or that shares 6 or more consecutive residues, I and L equal, with a kit peptide). A mapping is unmapped when any of its rows is flagged."
+          },
+          "processing": {
+            "importer": "kaabinejadian-dla-v2",
+            "software": "orfdata",
+            "version": "0.35.0",
+            "operations": [
+              "keep every reported peptide row, its identification type, score and modifications",
+              "store native PEAKS area, intensity and spectrum count without normalization",
+              "map each peptide to its PEAKS-reported accessions per search database",
+              "flag Biognosys iRT standards and identifications derived from iRT spectra (irt_rule)"
+            ],
+            "parameters": {
+              "aggregate_searches": false,
+              "filter_identification_types": false,
+              "irt": {
+                "kit_databases": [
+                  "Basenji",
+                  "SwissProt9606",
+                  "UniProt9615",
+                  "Zoey"
+                ],
+                "precursor_ppm": 20,
+                "precursor_rt_minutes": 1.0,
+                "de_novo_min_shared_residues": 6
+              }
+            },
+            "tables": {
+              "Bogey-BB76": {
+                "sample": "Bogey",
+                "antibody": "BB7.6 (anti-MHC class I)",
+                "data_file": "20250123-BogeyTumor-BB76-010825.zip",
+                "databases": [
+                  "Basenji",
+                  "MergedCanFams",
+                  "UniProt9615",
+                  "Zoey"
+                ],
+                "runs": {
+                  "20250123-BogeyTumor-BB76-018825": true
+                }
+              },
+              "Lily-H58A": {
+                "sample": "Lily",
+                "antibody": "H58A (anti-MHC class I)",
+                "data_file": "22-1104-LilyCanineTumor-H58A-10-12-22-HY.zip",
+                "databases": [
+                  "Basenji",
+                  "MergedCanFams",
+                  "UniProt9615",
+                  "Zoey"
+                ],
+                "runs": {
+                  "22-1104-Lily Canine Tumor-H58A-10-12-22-HY": true,
+                  "22-1107-Lily Canine Tumor-H58A-10-12-22-HY-1uL Residue": false
+                }
+              },
+              "Lola-BB76": {
+                "sample": "Lola",
+                "antibody": "BB7.6 (anti-MHC class I)",
+                "data_file": "20250310-LolaTumor-BB76-022725.zip",
+                "databases": [
+                  "Basenji",
+                  "MergedCanFams",
+                  "UniProt9615",
+                  "Zoey"
+                ],
+                "runs": {
+                  "20250310-LolaTumor-BB76-022725": true
+                }
+              },
+              "Lola-H58A": {
+                "sample": "Lola",
+                "antibody": "H58A (anti-MHC class I)",
+                "data_file": "23-0425-LolaCanineTumor-H58A-040423.zip",
+                "databases": [
+                  "Basenji",
+                  "MergedCanFams",
+                  "UniProt9615",
+                  "Zoey"
+                ],
+                "runs": {
+                  "23-0425-Lola Canine Tumor-H58A-040423": true
+                }
+              },
+              "Tumor163828A-BB76": {
+                "sample": "163828A",
+                "antibody": "BB7.6 (anti-MHC class I)",
+                "data_file": "20250313-Tumor163828A-BB76-030425.zip",
+                "databases": [
+                  "Basenji",
+                  "MergedCanFams",
+                  "UniProt9615",
+                  "Zoey"
+                ],
+                "runs": {
+                  "20250313-Tumor163828A-BB76-030425": true
+                }
+              },
+              "HCT116-DLA8800302-BB76": {
+                "sample": "HCT116-DLA8800302",
+                "antibody": "BB7.6 (anti-MHC class I)",
+                "data_file": "20240913-HCT116-DLA8800302-091124.zip",
+                "databases": [
+                  "SwissProt9606"
+                ],
+                "runs": {
+                  "20240913-HCT116-DLA8800302-B761-091124": true
+                }
+              },
+              "HCT116-DLA8801201-BB76": {
+                "sample": "HCT116-DLA8801201",
+                "antibody": "BB7.6 (anti-MHC class I)",
+                "data_file": "20241013-HCT116-DLA8801201-BB76.zip",
+                "databases": [
+                  "SwissProt9606"
+                ],
+                "runs": {
+                  "20240929-HCT116-DLA8801201-BB76-092624": false,
+                  "20241013-HCT116-DLA8801201-BB76": true
+                }
+              },
+              "HCT116-DLA8850101-BB76": {
+                "sample": "HCT116-DLA8850101",
+                "antibody": "BB7.6 (anti-MHC class I)",
+                "data_file": "20241015-HCT116-DLA8850101-BB76.zip",
+                "databases": [
+                  "SwissProt9606"
+                ],
+                "runs": {
+                  "20241015-HCT116-DLA8850101-BB76": true
+                }
+              }
+            }
+          }
+        },
+        "distribution": {
+          "access_terms": "PRIDE PXD074485 peptide tables and SDRF: CC0, attribution to Kaabinejadian et al. (2026). ORFdata transformation code: Apache-2.0.",
+          "redistributable": true,
+          "download_size": 24700217,
+          "download_sha256": "1bde2e2e726b19b7a1d3498e0d4e66ea2ada79100dd7acf31ffb30aa0fea601c",
+          "installed_size": 257216512,
+          "data_release": "data-kaabinejadian-dla-2026-10-16.2"
+        },
+        "assets": {
+          "dataset.sqlite": {
+            "url": "https://github.com/openvax/orfdata/releases/download/data-kaabinejadian-dla-2026-10-16.2/kaabinejadian-dog-dla-ligands-2026-10-16.2.sqlite.gz",
+            "sha256": "595372b9cc9d129f16bdf3e6e69a3bcddb1472e14c569bf49578deebb340da34",
+            "size": 257216512,
             "decompress": true
           }
         }

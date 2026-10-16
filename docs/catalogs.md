@@ -342,7 +342,7 @@ No public resource gives dog ORF-level translation evidence, as of October
 - **Mass spectrometry.** Every dog dataset searched canonical proteins only,
   so none reports a noncanonical peptide as deposited: the Canine
   PeptideAtlas (PXD052932, 149,546 peptides from 13 tissues, plasma and
-  urine), the dog tumour DLA immunopeptidome (PXD074485, 12,949 distinct
+  urine), the dog tumour DLA immunopeptidome (PXD074485, 12,948 distinct
   database-search ligands), the Pfizer TMT atlas (PXD070290) and the dog brain
   proteome (PXD033420, PXD034449). The first two are available as
   [dog peptide datasets](dog-peptides.md), as evidence for known proteins.
