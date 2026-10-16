@@ -70,8 +70,11 @@ from .rna import IRES, ProteinProduct, RNAFeature, SourceRNA, products_from_unip
 from .search_reference import SearchMembership, SearchReference, SearchReferenceSpec, SearchSequence
 from .sequence import GeneticCode, genetic_code
 from .version import __version__
+from .viral import viral_orfs, viral_references
 
 __all__ = [
+    "viral_orfs",
+    "viral_references",
     "__version__",
     "Proteome",
     "ProteomeEntry",

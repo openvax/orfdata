@@ -14,10 +14,10 @@ dependencies = []
 
 [project.optional-dependencies]
 pyensembl = ["pyensembl>=2.27.2"]
-build-data = ["openpyxl>=3.1"]
+build-data = ["openpyxl>=3.1", "biopython>=1.80,<2"]
 data = ["datacache>=1.25.1,<2"]
 columnar = ["pyarrow>=14"]
-dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "pyensembl>=2.27.2", "datacache>=1.25.1,<2"]
+dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "biopython>=1.80,<2", "pyensembl>=2.27.2", "datacache>=1.25.1,<2"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10"]
 
 [project.scripts]
@@ -30,7 +30,7 @@ version = {attr = "orfdata.version.__version__"}
 include = ["orfdata*"]
 
 [tool.setuptools.package-data]
-orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/ires/*", "data/datasets.json", "data/catalogs.json", "data/chains.json", "data/genomes.json"]
+orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/ires/*", "data/viral/*", "data/datasets.json", "data/catalogs.json", "data/chains.json", "data/genomes.json"]
 
 [tool.ruff]
 target-version = "py39"

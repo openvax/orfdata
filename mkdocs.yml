@@ -21,6 +21,7 @@ nav:
   - Home: index.md
   - Proteomes:
       - Build a reference proteome: proteome.md
+      - Viral coding references: viral.md
   - Noncanonical ORFs:
       - ORFs and evidence: reference.md
       - Examples: examples.md
