@@ -23,7 +23,7 @@ def importer(name):
         from .ingolia import import_ribo
 
         return import_ribo
-    if name == "kaabinejadian-dla-v1":
+    if name in ("kaabinejadian-dla-v1", "kaabinejadian-dla-v2"):
         from .kaabinejadian import import_ligands
 
         return import_ligands

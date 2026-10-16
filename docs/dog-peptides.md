@@ -35,18 +35,49 @@ searched against human SwissProt, and their peptides are human proteins, so
 they sit in the dataset's separate human reference context.
 
 Database search finds 11,363 distinct dog peptides in the UniProt searches and
-12,949 across all four databases. For the cell lines, the counts of unique
-8–14-mers from database search (591 for DLA-88\*003:02, 1,465 for \*501:01) match
-the article's. The article's tumour counts come from its curated supplementary
+12,948 across all four databases, leaving out iRT standards (below). For the
+cell lines, the counts of unique 8–14-mers from database search (591 for
+DLA-88\*003:02, 1,465 for \*501:01) match the article's. The article's tumour counts come from its curated supplementary
 lists, which aren't imported (they are CC BY-NC-ND), and match no single table.
 
 Every row keeps its PEAKS identification type in provenance as `found_by`:
 `DB Search`, `DeepNovo` (de novo sequencing) or `Homolog` (SPIDER homology
 search). Only database-search peptides are guaranteed to occur in a listed
-protein, so filter on it for a conservative ligand list. Rows of the Biognosys
-iRT retention-time standards and their fragments (2,242) are marked
-`irt_standard` in every search. That includes the merged database, which lacks
-the kit, so PEAKS named dog proteins for them there.
+protein, so filter on it for a conservative ligand list.
+
+### iRT standards
+
+Every run was spiked with Biognosys iRT retention-time peptides, and their
+spectra appear in every search, often in disguise. 10,629 rows are marked
+`irt_standard`, and `irt_rule` names the first rule that marked them:
+
+| `irt_rule` | Rows | Marks a row that |
+|---|---|---|
+| `irt_sequence` | 1,179 | is a kit peptide or a fragment of one, with I and L equal |
+| `kit_only` | 1,097 | PEAKS attributes only to the kit (homology reads of kit peptides) |
+| `irt_precursor` | 1,276 | sits at the precursor of a row marked by the first two rules in the same immunoprecipitation: same charge, m/z within 20 ppm, retention time within a minute |
+| `de_novo_irt` | 7,077 | is a de novo sequence that PEAKS matches to the kit, or that shares 6 or more consecutive residues with a kit peptide |
+
+The precursor rule applies to de novo and homology rows. It applies to
+database-search rows only in the merged database, which lacks the kit, and only
+when no search with the kit found the same peptide. Elsewhere PEAKS could
+choose the kit peptide and didn't.
+
+- **De novo rows:** half of them (8,448 of 16,830) are iRT reads, often a
+  kit peptide with residues added or changed (`KATLFLQFGAQGSPFLK`). Don't take
+  an unmarked de novo sequence for a new ligand without checking its spectrum.
+- **Homology rows:** 8 are marked by precursor, such as `TGFLLDPVLNR`, which
+  has exactly the mass of `GTFIIDPGGVIR` and co-elutes with it.
+- **Database-search rows:** apart from 1,075 kit peptides, only one is marked:
+  `IFLAFQQKAYVAP`, matched to dog proteins in the merged database at the
+  precursor of `LFLQFGAAGSPFLK`.
+- **Chance matches:** few. Shuffled kit sequences share 6 residues with about
+  3 de novo rows, and shifting the kit's retention times by 10–20 minutes puts
+  about 14 de novo rows at a kit precursor.
+
+A mapping is `unmapped` when any of its rows is marked. Release 2026-10-16.1
+(importer `kaabinejadian-dla-v1`) marked only exact kit sequences and kit-only
+attributions (2,242 rows), so it missed the disguised reads.
 
 ```python
 from orfdata import DatasetRegistry, ScopedTarget
@@ -64,6 +95,10 @@ for m in ligands.measurements(target=peptide, quantity="spectrum_count"):
 lola = {m.target.identifier for m in ligands.measurements(
             reference=dog, assay_id="Lola-BB76:UniProt9615", quantity="spectrum_count")
         if m.provenance["found_by"] == "DB Search" and not m.provenance["irt_standard"]}
+
+# Why a row is marked as an iRT standard.
+for m in ligands.measurements(target=peptide, quantity="spectrum_count"):
+    print(m.assay_id, m.provenance["irt_standard"], m.provenance["irt_rule"])
 ```
 
 Targets are unmodified sequences; each row's modified form (for example
@@ -74,10 +109,25 @@ search and identification type, the proteins PEAKS reported for a peptide:
 proteins stay in the mapping's evidence. The search FASTAs weren't deposited,
 so no accession can be checked against a sequence.
 
-Each row also records `raw_file_deposited`. For 1,695 rows the best spectrum
-comes from a run missing from the deposit: Lily's second injection (22-1107,
-299 rows) and the first DLA-88\*012:01 runs (20240929, 1,396 rows). The raw
-files of 163828A's H58A run have no deposited results and aren't included.
+### Runs missing from the deposit
+
+PEAKS reports, for each peptide, the raw file and scan of its best spectrum,
+and sums its spectra and area over all of the sample's runs. The authors' PEAKS
+projects for two immunoprecipitations included runs that the deposit lacks, so
+each row records `raw_file_deposited`. For 1,695 rows the best spectrum comes
+from a missing run:
+
+- **Lily (H58A):** a second injection of the remaining eluate, 22-1107 "1uL
+  Residue" (fractions 12–30), 299 rows. The first injection, 22-1104, is
+  deposited.
+- **DLA-88\*012:01:** the 20240929 acquisition (fractions 14–25), 1,396 of its
+  1,635 rows. The line's archive holds only its 20241013 runs (fractions 26–28
+  in triplicate, and blanks), though the SDRF names the 20240929 run as the
+  assay.
+
+Those identifications come from the authors' tables, but their spectra can't
+be checked against the deposit. The raw files of 163828A's H58A run have no
+deposited results and aren't included.
 
 ## Canine PeptideAtlas
 
