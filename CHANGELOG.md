@@ -1,4 +1,4 @@
-# 0.31.0
+# 0.32.0
 
 Dog peptide data: MHC class I ligands and the Canine PeptideAtlas.
 
@@ -29,6 +29,10 @@ Dog peptide data: MHC class I ligands and the Canine PeptideAtlas.
   readable.
 - Neither dataset searched for noncanonical ORFs, so dog still has no ncORF
   catalogue; the catalogue guide lists what was checked.
+
+# 0.31.0
+
+- Experimental pinned RefSeq proteome inputs (#102).
 
 # 0.30.0
 

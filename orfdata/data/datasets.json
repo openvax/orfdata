@@ -1936,7 +1936,7 @@
           "processing": {
             "importer": "peptideatlas-build-v1",
             "software": "orfdata",
-            "version": "0.31.0",
+            "version": "0.32.0",
             "atlas_build_id": "573",
             "search_batches": [
               "16760",
@@ -2301,7 +2301,7 @@
           "processing": {
             "importer": "kaabinejadian-dla-v1",
             "software": "orfdata",
-            "version": "0.31.0",
+            "version": "0.32.0",
             "operations": [
               "keep every reported peptide row, its identification type, score and modifications",
               "store native PEAKS area, intensity and spectrum count without normalization",
@@ -2424,15 +2424,15 @@
         "distribution": {
           "access_terms": "PRIDE PXD074485 peptide tables and SDRF: CC0, attribution to Kaabinejadian et al. (2026). ORFdata transformation code: Apache-2.0.",
           "redistributable": true,
-          "download_size": 24610975,
-          "download_sha256": "47c23a2405d1759d050a3fea41c4bb95d0788fa7a769b99e8ca00a092546f7f4",
+          "download_size": 24610979,
+          "download_sha256": "d976d078abe3adf258161c32265cb6285fe7ec9b3997a3986fff89cce1432477",
           "installed_size": 255389696,
           "data_release": "data-kaabinejadian-dla-2026-10-16.1"
         },
         "assets": {
           "dataset.sqlite": {
             "url": "https://github.com/openvax/orfdata/releases/download/data-kaabinejadian-dla-2026-10-16.1/kaabinejadian-dog-dla-ligands-2026-10-16.1.sqlite.gz",
-            "sha256": "27171f8e5e4517924847b5061cbde7737c3923345f76bb6e0d9a4c95640cd8d5",
+            "sha256": "32cdd3e1f2edcc2766f0ef67557713aa51e97f15c34cca214c8dddcd8aff6667",
             "size": 255389696,
             "decompress": true
           }

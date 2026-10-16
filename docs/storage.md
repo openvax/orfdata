@@ -13,7 +13,7 @@ Zeros, nulls, censoring, uncertainty, nested provenance and derived inputs retai
 their meaning. Foreign keys prevent cross-reference target/assay assignments.
 Internal integer keys never appear as public biological identifiers.
 
-ORFdata 0.31 writes storage version 5, which also stores each target mapping's
+ORFdata 0.32 writes storage version 5, which also stores each target mapping's
 candidates as kind, identifier and namespace: they always share the mapping's
 reference, which its row already names. The dog DLA ligand dataset, with 62,492
 mappings, is 255 MB, against 389 MB in the version 4 layout. Version 4 files remain readable, and a
