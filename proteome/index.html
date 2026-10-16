@@ -381,6 +381,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#refseq-proteins-experimental" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RefSeq proteins (experimental)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choose-the-evidence" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1343,6 +1354,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#refseq-proteins-experimental" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RefSeq proteins (experimental)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choose-the-evidence" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1534,6 +1556,27 @@ Mouse, dog, yeast and other PyEnsembl species work the same way; mouse Ensembl
 115 has 66,668 annotated proteins. orfdata does not download or index
 annotation data. An uninstalled genome raises an error naming the
 <code>pyensembl install</code> command.</p>
+<h2 id="refseq-proteins-experimental">RefSeq proteins (experimental)<a class="headerlink" href="#refseq-proteins-experimental" title="Permanent link">&para;</a></h2>
+<p>Build from NCBI's protein FASTA and genome-download feature table, with pinned
+byte checksums and an explicit <code>ReferenceContext</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceContext</span>
+
+<span class="n">context</span> <span class="o">=</span> <span class="n">ReferenceContext</span><span class="p">(</span><span class="mi">9615</span><span class="p">,</span> <span class="s2">"dog"</span><span class="p">,</span> <span class="s2">"UU_Cfam_GSD_1.0"</span><span class="p">,</span> <span class="s2">"NCBI RefSeq"</span><span class="p">,</span> <span class="s2">"106"</span><span class="p">,</span>
+                           <span class="n">assembly_accession</span><span class="o">=</span><span class="s2">"GCF_011100685.1"</span><span class="p">)</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">from_refseq</span><span class="p">(</span>
+    <span class="s2">"protein.faa.gz"</span><span class="p">,</span> <span class="s2">"feature_table.txt.gz"</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">expected_sha256</span><span class="o">=</span><span class="p">{</span><span class="s2">"protein"</span><span class="p">:</span> <span class="n">protein_sha256</span><span class="p">,</span> <span class="s2">"feature_table"</span><span class="p">:</span> <span class="n">feature_table_sha256</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">reference</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"dog.proteome.json.gz"</span><span class="p">)</span>
+</code></pre></div>
+<p>This preserves NCBI Gene IDs, versioned RNA/protein accessions, every mapped
+occurrence and all FASTA proteins. Wrong checksums, assemblies, missing proteins
+and conflicting assignments fail. CDS rows without protein products are counted
+in <code>layers[0]["cds_without_protein"]</code>.</p>
+<p>The annotated layer retains both asset hashes and identifier namespaces. Its
+<code>genomic_spans</code> maps each protein accession to spans in occurrence order. These
+are genomic envelopes, so occurrence CDS offsets/blocks and transcript biotypes
+remain unknown. No annotation indexing or downloads occur.</p>
 <h2 id="choose-the-evidence">Choose the evidence<a class="headerlink" href="#choose-the-evidence" title="Permanent link">&para;</a></h2>
 <p><code>with_extra_orfs(evidence=...)</code> selects catalogue ORFs by evidence and adds each
 one that a transcript of this genome encodes: the transcript contains the ORF's
