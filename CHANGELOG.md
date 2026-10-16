@@ -1,3 +1,16 @@
+# 0.29.0
+
+`viral_references()` lists the bundled, sequence-qualified viral coding
+references. `viral_orfs(reference_dna, contig=...)` returns existing
+`SourceRNA`/`TranscriptORF` models offline for the nine RefSeq NC_001526.4
+HPV16 CDSs, including the two joined coding paths. Native and exact GDC
+circular-rotation placements retain separate sequence identities and source
+pins. These are CDS fragments, not complete transcript models or direct
+translation evidence. Other viruses and strains remain explicit coverage gaps.
+
+Biopython is needed only in the build-data/dev extras to rebuild and verify
+the pinned source annotation, not to load the released catalogue.
+
 # 0.28.0
 
 Mouse gets two Ribo-seq ORF catalogues, merged with OpenProt's, and human gets
