@@ -43,6 +43,33 @@ Mouse, dog, yeast and other PyEnsembl species work the same way; mouse Ensembl
 annotation data. An uninstalled genome raises an error naming the
 `pyensembl install` command.
 
+## RefSeq proteins (experimental)
+
+Build from NCBI's protein FASTA and genome-download feature table, with pinned
+byte checksums and an explicit `ReferenceContext`:
+
+```python
+from orfdata import ReferenceContext
+
+context = ReferenceContext(9615, "dog", "UU_Cfam_GSD_1.0", "NCBI RefSeq", "106",
+                           assembly_accession="GCF_011100685.1")
+reference = Proteome.from_refseq(
+    "protein.faa.gz", "feature_table.txt.gz", reference=context,
+    expected_sha256={"protein": protein_sha256, "feature_table": feature_table_sha256},
+)
+reference.save("dog.proteome.json.gz")
+```
+
+This preserves NCBI Gene IDs, versioned RNA/protein accessions, every mapped
+occurrence and all FASTA proteins. Wrong checksums, assemblies, missing proteins
+and conflicting assignments fail. CDS rows without protein products are counted
+in `layers[0]["cds_without_protein"]`.
+
+The annotated layer retains both asset hashes and identifier namespaces. Its
+`genomic_spans` maps each protein accession to spans in occurrence order. These
+are genomic envelopes, so occurrence CDS offsets/blocks and transcript biotypes
+remain unknown. No annotation indexing or downloads occur.
+
 ## Choose the evidence
 
 `with_extra_orfs(evidence=...)` selects catalogue ORFs by evidence and adds each

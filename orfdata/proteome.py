@@ -467,6 +467,19 @@ class Proteome:
         return cls(reference, entries, (layer,), genome=genome)
 
     @classmethod
+    def from_refseq(cls, protein_fasta, feature_table, *, reference, expected_sha256):
+        """Read pinned RefSeq proteins and NCBI Gene/transcript occurrences offline.
+
+        ``expected_sha256`` requires ``protein`` and ``feature_table`` byte hashes.
+        The NCBI genome-download feature table supplies accession joins, not
+        spliced CDS coordinates. All FASTA proteins must have source mappings.
+        """
+        from .refseq import refseq_proteome
+
+        return refseq_proteome(cls, protein_fasta, feature_table,
+                              reference=reference, expected_sha256=expected_sha256)
+
+    @classmethod
     def build(cls, genome, evidence="ms", *, catalog=None, viral=(), extra_orfs=True, context=None,
               cache=False, cache_root=None, catalogs=None):
         """The usual reference proteome in one call, optionally kept in a cache.
