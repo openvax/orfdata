@@ -1,26 +1,53 @@
 # Viral coding references
 
-`viral_orfs()` returns existing `TranscriptORF` objects for source-annotated
-viral CDSs. Supply the complete reference DNA that the RNA was aligned to:
+Browse the packaged viral references by host, convenience group and virus type,
+then load their source-annotated coding paths without fetching the genome:
 
 ```python
-from orfdata import viral_orfs, viral_references
+from orfdata import viral_orfs, viral_reference_sequence, viral_references
 
-print([(r["id"], r["coding_models"]) for r in viral_references()])
+references = viral_references(host="human", group="HPV", virus_type="HPV16")
+print([(r["id"], r["coding_models"]) for r in references])
 # [('NC_001526.4', 9), ('GRCh38.d1.vd1:HPV16', 9)]
 
-orfs = viral_orfs(reference_dna, contig="HPV16")
+reference_dna = viral_reference_sequence("NC_001526.4")
+orfs = viral_orfs(reference_id="NC_001526.4")
 for orf in orfs:
     print(orf.orf_id, orf.gene_name, orf.coding_blocks, orf.protein_sequence)
 ```
 
 The small bundled catalogue loads offline without PyEnsembl, Biopython or a
-human genome. Its nine HPV16 CDSs come from RefSeq NC_001526.4. The loader
-requires an exact full-DNA hash and separately qualifies native and GDC
-circular rotations. A contig name or related strain is insufficient.
-An unavailable reference raises `ValueError`, distinct from a valid empty query.
-`viral_references()` exposes exact identities, coding coverage, source pins
-and product names without loading other data.
+human genome. It supplies the complete DNA for the native RefSeq NC_001526.4
+and GDC HPV16 placements; both map to the same nine source CDSs. The two DNA
+strings differ by a verified circular rotation. `viral_reference_sequence(id)`
+returns the exact forward FASTA bases, with T rather than U. A missing ID raises
+`ValueError`. The metadata query does not copy genome bases into each result.
+
+`host` accepts a known species name such as `"human"` or an NCBI taxon ID such
+as `9606`. The released HPV16 reference records have viral `taxon_id=333760`
+and `host_taxon_ids=[9606]`; these are different identities. Their documented
+human host association is sourced to PaVE. `row["virus"]["group"] == "HPV"`
+is a convenient selection label, not a formal taxonomic rank. The
+`row["virus"]["type"] == "HPV16"` label is the virus
+type; ICTV places it in the species *Alphapapillomavirus 9*. Each row also
+retains the association and taxonomy source URLs. Host associations can cover
+several host taxa as new references are curated; an unlisted host is unknown,
+not proof that infection is impossible. NCBI Virus's isolation-host metadata is
+not an exhaustive host-range list. `host_taxon_ids` and `host_source` have the
+same meaning as in [ViralProteome](proteome.md#viral-proteomes).
+
+When annotating an existing BAM, continue to bind against its **actual** full
+alignment-reference DNA:
+
+```python
+orfs = viral_orfs(alignment_reference_dna, contig="HPV16")
+```
+
+This checks the sequence hash and its qualified coordinates. A contig name or
+related strain cannot transfer CDS annotations to mismatching DNA. It raises
+`ValueError` for an unavailable reference rather than returning an empty ORF
+set. `viral_references()` reports coverage and source checksums, and
+`viral_orfs()` returns the existing `SourceRNA`/`TranscriptORF` models.
 
 Each model uses a `SourceRNA` containing only the available CDS, including
 ordered splice blocks. Full transcript ends are not asserted. The existing

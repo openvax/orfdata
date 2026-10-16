@@ -13,6 +13,17 @@ The catalogue contains nine source-annotated CDSs, including two joined paths.
 It does not claim all reported HPV16 ORFs or complete transcript models.
 RNA support does not establish translation or protein expression.
 
+The released catalogue also contains the full forward reference bases for both
+qualified placements. HPV16's documented human host is sourced from PaVE's
+HPV16REF record (`/host="Human (Homo sapiens)"`):
+https://pave.niaid.nih.gov/locus_viewer?feature_id=HPV16_E7&seq_id=HPV16REF .
+This host association applies to HPV16 as a type, not to all papillomaviruses,
+and does not claim an exhaustive host range. ICTV lists HPV16 in the species
+*Alphapapillomavirus 9*:
+https://ictv.global/report/chapter/papillomaviridae/taxonomy/papillomaviridae .
+These are distinct from the RefSeq DNA/CDS source and the GDC coordinate
+placement. Consulted 2026-10-16.
+
 Native DNA MD5: `08d2b3849496d12cc45fd4df713d5c2f`.
 GDC GRCh38.d1.vd1 HPV16 DNA MD5: `f2463721818c29998ef5ab917e6df74a`.
 GDC DNA is the source circle rotated by 864 bases. Both placements retain

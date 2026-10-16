@@ -4,13 +4,15 @@ import gzip
 import hashlib
 import io
 import json
+from copy import deepcopy
 from importlib.resources import files
 from pathlib import Path
 
 import pytest
 from Bio import SeqIO
 
-from orfdata import SourceRNA, viral_orfs, viral_references
+import orfdata.viral as viral_module
+from orfdata import SourceRNA, viral_orfs, viral_reference_sequence, viral_references
 from tools.build_hpv16_cds import build
 
 FIXTURE = Path(__file__).parent / "data/viral/NC_001526.4.gb.gz"
@@ -86,9 +88,64 @@ def test_discovery_is_offline_and_returned_metadata_cannot_change_loading(source
     assert {row["id"] for row in references} == {"NC_001526.4", "GRCh38.d1.vd1:HPV16"}
     assert all(row["coding_models"] == 9 for row in references)
     assert all(row["catalogue_sha256"] and row["source"]["sha256"] for row in references)
+    assert all("reference_sequence" not in row for row in references)
     references[0]["source"]["accession"] = "changed"
+    references[0]["host_taxon_ids"].clear()
     assert viral_references()[0]["source"]["accession"] == "NC_001526.4"
+    assert viral_references()[0]["host_taxon_ids"] == [9606]
     assert viral_orfs(str(record.seq))[0].context.annotation_version == "NC_001526.4"
+
+
+def test_host_group_and_type_select_exact_references_with_distinct_taxa():
+    references = viral_references(host="human", group="HPV", virus_type="HPV16")
+    assert {row["id"] for row in references} == {"NC_001526.4", "GRCh38.d1.vd1:HPV16"}
+    assert viral_references(host=9606, group="hpv", virus_type="hpv16") == references
+    assert viral_references(host="mouse") == viral_references(host=10090) == ()
+    assert viral_references(host="human", virus_type="HPV18") == ()
+    for row in references:
+        assert row["taxon_id"] == 333760 and row["host_taxon_ids"] == [9606]
+        assert "PaVE HPV16REF" in row["host_source"]
+        assert row["virus"]["ictv_species"] == "Alphapapillomavirus 9"
+        assert row["virus"]["group"] == "HPV" and row["virus"]["type"] == "HPV16"
+        assert row["virus"]["taxonomy_source"].startswith("https://ictv.global/")
+    for invalid in ("not_a_host", 0, True):
+        with pytest.raises(ValueError, match="host"):
+            viral_references(host=invalid)
+
+
+def test_explicit_multiple_host_associations_can_select_one_reference_from_each_host(monkeypatch):
+    # Synthetic metadata checks selection only; it makes no HPV16 mouse-host claim.
+    catalog = deepcopy(viral_module._catalog())
+    catalog["references"][0]["host_taxon_ids"].append(10090)
+    catalog["references"][0]["host_source"] = "synthetic multiple-host fixture"
+    monkeypatch.setattr(viral_module, "_catalog", lambda: catalog)
+    assert {row["id"] for row in viral_references(host="human")} == {
+        "NC_001526.4", "GRCh38.d1.vd1:HPV16"}
+    mouse, = viral_references(host="mouse", virus_type="HPV16")
+    assert mouse["id"] == "NC_001526.4" and mouse["taxon_id"] == 333760
+
+
+def test_bundled_reference_sequences_and_named_orfs_match_both_source_placements(source):
+    _, record = source
+    native = str(record.seq)
+    gdc = native[-864:] + native[:-864]
+    for reference_id, expected in (("NC_001526.4", native),
+                                   ("GRCh38.d1.vd1:HPV16", gdc)):
+        sequence = viral_reference_sequence(reference_id)
+        assert sequence == expected
+        row, = (r for r in viral_references() if r["id"] == reference_id)
+        assert hashlib.sha256(sequence.encode()).hexdigest() == row["sequence_sha256"]
+        by_name = viral_orfs(reference_id=reference_id, contig="selected")
+        by_dna = viral_orfs(sequence, contig="selected")
+        assert [(o.orf_id, o.coding_blocks, o.protein_sequence) for o in by_name] == [
+            (o.orf_id, o.coding_blocks, o.protein_sequence) for o in by_dna]
+        assert {o.transcript.contig for o in by_name} == {"selected"}
+    with pytest.raises(ValueError, match="reference ID"):
+        viral_reference_sequence("unknown")
+    with pytest.raises(ValueError, match="exactly one"):
+        viral_orfs()
+    with pytest.raises(ValueError, match="exactly one"):
+        viral_orfs(native, reference_id="NC_001526.4")
 
 
 def test_corrupt_packaged_catalogue_fails_before_returning_models(monkeypatch):

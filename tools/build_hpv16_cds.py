@@ -20,6 +20,9 @@ GDC_MD5 = "f2463721818c29998ef5ab917e6df74a"
 ROTATION = 864
 SOURCE = ("https://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?"
           "id=NC_001526.4&db=nuccore&report=genbank&retmode=text")
+HOST_SOURCE = ("PaVE HPV16REF /host=Human (Homo sapiens), checked 2026-10-16: "
+               "https://pave.niaid.nih.gov/locus_viewer?feature_id=HPV16_E7&seq_id=HPV16REF")
+TAXONOMY_SOURCE = "https://ictv.global/report/chapter/papillomaviridae/taxonomy/papillomaviridae"
 
 
 def build(genbank):
@@ -65,8 +68,11 @@ def build(genbank):
         references.append(dict(id=name, taxon_id=333760, species="human_papillomavirus_16",
             length=len(sequence), sequence_md5=hashlib.md5(sequence.encode()).hexdigest(),
             sequence_sha256=hashlib.sha256(sequence.encode()).hexdigest(),
-            source=source, native_to_reference_rotation=offset, coding_blocks=blocks))
-    return dict(schema="orfdata.viral_cds.v1", source=source,
+            source=source, native_to_reference_rotation=offset, coding_blocks=blocks,
+            reference_sequence=sequence, host_taxon_ids=[9606], host_source=HOST_SOURCE,
+            virus=dict(group="HPV", type="HPV16", ictv_species="Alphapapillomavirus 9",
+                       taxonomy_source=TAXONOMY_SOURCE)))
+    return dict(schema="orfdata.viral_cds.v2", source=source,
                 scope="Nine source-annotated HPV16 CDSs; not all HPV ORFs or complete transcript models",
                 references=references, cds=definitions)
 
