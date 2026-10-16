@@ -1,3 +1,38 @@
+# 0.30.0
+
+Ribo-seq ORF catalogues for zebrafish, C. elegans and yeast, and two optional
+human ones.
+
+- **Zebrafish, C. elegans and yeast.** Yang et al.'s RibORF 2.0 ORFs
+  (Nat Commun 2024) for each species: `riborf-zebrafish` (9,759 ORFs on
+  GRCz11, Ensembl 115), `riborf-worm` (2,849 on WBcel235, Ensembl 105) and
+  `riborf-yeast` (1,128 on R64-1-1). `orfdata setup --species zebrafish` (or
+  `worm`, `yeast`) builds them from their sources' files. `zebrafish`, `worm`
+  and `c_elegans` are known species names.
+  - Yeast ORFs are placed from their genomic spans, because the source's yeast
+    transcripts carry UTRs that Ensembl's lack. A record names an Ensembl
+    transcript only when it carries the ORF; only those 171 place on a
+    PyEnsembl genome, and the rest stay queryable in the catalogue.
+- **Human, optional.** `ncorf-mammals-human` (Chang et al., 11,621 ORFs) and
+  `riborf-human` (Yang et al., 51,174) are used only when asked for:
+  `load_catalog(species="human", catalogs="all")`, `extra_orfs(genome, evidence,
+  catalogs="all")`, `Proteome.build(..., catalogs="all")` or `--catalogs all`.
+  Human's default stays the bundled GENCODE catalogue, so loading it stays
+  offline and fast, and its selections are unchanged. Install them with
+  `orfdata setup --species human --catalogs all`.
+- **Choosing catalogues.** `catalogs=` takes `None` (the species' default set),
+  `"all"` or catalogue names (`"bundled"` for the bundled one), in
+  `load_catalog`, `extra_orfs`, `Proteome.build`, `Proteome.with_extra_orfs`
+  and `install_species`. A registry entry marked `"optional": true` is used
+  only when named or with `"all"`; `catalog_status()` reports `optional`.
+- **Dog.** No dog catalogue: no public dog Ribo-seq exists, and every dog MS
+  dataset searched canonical proteins only. The catalogue guide lists what
+  was checked.
+- The RibORF importer keeps C. elegans transcript names with dots whole, and
+  lists ORFs over ambiguous bases as unresolved. The mouse catalogue it builds
+  is byte-identical to 0.28.0's.
+- "No ORF catalogue covers" errors list the catalogues by species.
+
 # 0.29.0
 
 `viral_references()` lists the bundled, sequence-qualified viral coding

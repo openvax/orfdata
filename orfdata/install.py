@@ -9,7 +9,8 @@ class InstallError(ValueError):
         self.result = result
 
 
-def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=60):
+def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=60,
+                    catalogs=None):
     """Download or build each registered catalogue for ``species`` and download its pinned chain files.
 
     Afterwards ``load_catalog``, ``extra_orfs`` and ``Proteome.build`` work
@@ -20,7 +21,8 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     ``accept_terms=True``. A download that stalls for ``timeout`` seconds is
     retried, then fails, rather than waiting forever (``None`` waits). A
     source file several catalogues pin, such as an Ensembl GTF, is downloaded
-    once.
+    once. ``catalogs`` chooses which of the species' catalogues, as in
+    ``load_catalog``: its default set unless ``"all"`` or names are given.
 
     Returns ``{"species", "catalogs", "chains"}``, each item mapped to what
     happened to it. Every item is tried; if any fails, :class:`InstallError`
@@ -29,7 +31,7 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     """
     import tempfile
 
-    from .catalog import _catalog_choices, _installed, _plan, _species
+    from .catalog import _catalog_choices, _installed, _plan, _selected, _species
     from .catalogs import CatalogRegistry
     from .liftover import _chain_registry, download_chain, pinned_chains
 
@@ -38,7 +40,7 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
         raise ValueError("Pass a registry or a cache_root, not both; the registry has its own cache root")
     registry = CatalogRegistry(cache_root=cache_root) if registry is None else registry
     root = getattr(registry, "_cache_root", cache_root)
-    found = [c for c in _catalog_choices(registry) if c.species == species]
+    found = _selected([c for c in _catalog_choices(registry) if c.species == species], catalogs, species)
     chains = pinned_chains(species=species)
     if not any(c.registry is not None for c in found) and not chains:
         ready = sorted({c.species for c in _catalog_choices(registry) if c.registry is not None}

@@ -56,14 +56,23 @@ immunopeptidomics: peptides eluted from HLA molecules.
 
 ## Species
 
-The bundled noncanonical ORF catalogue is human GRCh38. Mouse has 48,805:
-Ribo-seq ORFs of Chang et al. 2025 and Yang et al. 2024, and 2,976 MS-supported
-ones from OpenProt 2.2;
-`pip install "orfdata[data,build-data]"` then `orfdata setup --species mouse`
-builds all three from their sources' own files. After `orfdata chains download` (add
+| Species | Noncanonical ORFs | Sources |
+| --- | ---: | --- |
+| Human | 7,264 bundled; 57,607 with `catalogs="all"` | GENCODE; optionally Chang et al. 2025 and Yang et al. 2024 Ribo-seq |
+| Mouse | 48,805 | Chang et al. and Yang et al. Ribo-seq, OpenProt 2.2 MS |
+| Zebrafish | 9,759 | Yang et al. Ribo-seq |
+| C. elegans | 2,849 | Yang et al. Ribo-seq |
+| Yeast | 1,128 | Yang et al. Ribo-seq |
+| Dog | none: no public dog Ribo-seq or ncORF MS exists | |
+
+Human's bundled catalogue needs no setup. For the others, `pip install
+"orfdata[data,build-data]"`, then `orfdata setup --species mouse` (or
+`zebrafish`, `worm`, `yeast`, or `human --catalogs all`) builds the catalogues
+from their sources' own files ([details](https://openvax.github.io/orfdata/catalogs/)).
+After `orfdata chains download` (add
 `--accept-terms` for UCSC's non-commercial mouse chains), older assemblies
 (GRCh37, NCBI36, GRCm38, NCBIM37) and T2T-CHM13 use these catalogues lifted
-to them; `orfdata genomes install t2t-chm13` installs a CHM13 annotation. Dog and yeast proteomes contain their
+to them; `orfdata genomes install t2t-chm13` installs a CHM13 annotation. Dog proteomes contain their
 PyEnsembl-annotated proteins. `load_catalog(species=...)` and
 `with_extra_orfs()` pick the catalogue for a species and raise when none is
 available or built.

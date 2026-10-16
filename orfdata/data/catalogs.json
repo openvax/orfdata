@@ -303,5 +303,527 @@
         "assets": {}
       }
     }
+  },
+  "riborf-human": {
+    "default_version": "1",
+    "priority": 30,
+    "optional": true,
+    "versions": {
+      "1": {
+        "manifest": {
+          "catalog_id": "riborf-human",
+          "version": "1",
+          "title": "Human RibORF 2.0 translated ORFs of Yang et al. 2024",
+          "references": [
+            {
+              "taxon_id": 9606,
+              "species": "homo_sapiens",
+              "genome_build": "GRCh38",
+              "annotation_name": "ensembl",
+              "annotation_version": "105",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "table",
+              "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-024-46240-9/MediaObjects/41467_2024_46240_MOESM6_ESM.xlsx",
+              "sha256": "4dc8444c2fd3da25c7066074c71d1ec5427afd5d005862c6c61dc3f27fb9d32c",
+              "size": 24211005,
+              "access_terms": "Supplementary Data 3 of Yang et al., Nat Commun 2024, CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-105/gtf/homo_sapiens/Homo_sapiens.GRCh38.105.gtf.gz",
+              "sha256": "a216357b01a2fe31e78c26b1c10e68a8bed84fb5dd1a7f7daa800e1aca5a701e",
+              "size": 50829040,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "cdna",
+              "url": "https://ftp.ensembl.org/pub/release-105/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz",
+              "sha256": "4e2cb890a743a2d22b8621e489407a9967f000caea5ae0e1386214608f53d470",
+              "size": 76085001,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "ncrna",
+              "url": "https://ftp.ensembl.org/pub/release-105/fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz",
+              "sha256": "c9e01e107cc7d15dad2433cecd609790c512bd9dce08c3519e4885f597a8cc1d",
+              "size": 17396732,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Yang H, Li Q, Stroup EK, Wang S, Ji Z. Widespread stable noncanonical peptides identified by integrated analyses of ribosome profiling and ORF features. Nat Commun. 2024;15:1932. doi:10.1038/s41467-024-46240-9"
+          ],
+          "coverage": {
+            "records": 51174,
+            "distinct_protein_sequences": 51056,
+            "evidence_summaries": 51174,
+            "source_rows": 62962,
+            "short_rows": 11687,
+            "resolved_rows": 51174,
+            "unresolved_rows": 101
+          },
+          "processing": {
+            "importer": "riborf-v1",
+            "sheet": "human",
+            "source": "riborf-human",
+            "release": "NatCommun-15-1932",
+            "skip_types": [
+              "canonical",
+              "seqerror",
+              "readthrough"
+            ],
+            "min_protein_length": 5,
+            "biotypes": {
+              "ouORF": "uoORF",
+              "odORF": "doORF",
+              "noncoding": "lncORF"
+            },
+            "scope": "Human translated ORFs of at least 5 residues identified by RibORF 2.0 (Yang et al. 2024) on GENCODE V39 transcripts, placed on GRCh38 through the same Ensembl 105 transcripts, proteins translated there; presence only",
+            "source_annotation": "GENCODE V39",
+            "presence": "In the source's genome-wide set of RibORF 2.0-identified translated ORFs (Supplementary Data 3), from the human Ribo-seq data of Supplementary Data 1 (136 samples, 30 GEO series). Presence, not a count; no study is named per ORF."
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from the pinned source files: Supplementary Data 3 of Yang et al., Nat Commun 2024 (CC BY 4.0), and Ensembl 105's GTF, cDNA and ncRNA FASTAs. Cite Yang et al. 2024 (doi:10.1038/s41467-024-46240-9).",
+          "redistributable": true
+        },
+        "assets": {}
+      }
+    }
+  },
+  "riborf-zebrafish": {
+    "default_version": "1",
+    "priority": 30,
+    "versions": {
+      "1": {
+        "manifest": {
+          "catalog_id": "riborf-zebrafish",
+          "version": "1",
+          "title": "Zebrafish RibORF 2.0 translated ORFs of Yang et al. 2024",
+          "references": [
+            {
+              "taxon_id": 7955,
+              "species": "danio_rerio",
+              "genome_build": "GRCz11",
+              "annotation_name": "ensembl",
+              "annotation_version": "115",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "table",
+              "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-024-46240-9/MediaObjects/41467_2024_46240_MOESM6_ESM.xlsx",
+              "sha256": "4dc8444c2fd3da25c7066074c71d1ec5427afd5d005862c6c61dc3f27fb9d32c",
+              "size": 24211005,
+              "access_terms": "Supplementary Data 3 of Yang et al., Nat Commun 2024, CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-115/gtf/danio_rerio/Danio_rerio.GRCz11.115.gtf.gz",
+              "sha256": "cc61bbfb088f52e444ec6ceb8a075cd0eeda8784b163da0d6c589294cc5b4612",
+              "size": 18263057,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "cdna",
+              "url": "https://ftp.ensembl.org/pub/release-115/fasta/danio_rerio/cdna/Danio_rerio.GRCz11.cdna.all.fa.gz",
+              "sha256": "9f3724065755b2135b552d8afa3a29727a3bd9216bbbbe35c2a4f9d6b94ea372",
+              "size": 32697864,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "ncrna",
+              "url": "https://ftp.ensembl.org/pub/release-115/fasta/danio_rerio/ncrna/Danio_rerio.GRCz11.ncrna.fa.gz",
+              "sha256": "66596759fd30ce7901872a5579de59ebbf904080f307e985234e876c75e66189",
+              "size": 1593090,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Yang H, Li Q, Stroup EK, Wang S, Ji Z. Widespread stable noncanonical peptides identified by integrated analyses of ribosome profiling and ORF features. Nat Commun. 2024;15:1932. doi:10.1038/s41467-024-46240-9"
+          ],
+          "coverage": {
+            "records": 9759,
+            "distinct_protein_sequences": 9746,
+            "evidence_summaries": 9759,
+            "source_rows": 15509,
+            "short_rows": 5732,
+            "resolved_rows": 9759,
+            "unresolved_rows": 18
+          },
+          "processing": {
+            "importer": "riborf-v1",
+            "sheet": "zebrafish",
+            "source": "riborf-zebrafish",
+            "release": "NatCommun-15-1932",
+            "skip_types": [
+              "canonical",
+              "seqerror",
+              "readthrough"
+            ],
+            "min_protein_length": 5,
+            "biotypes": {
+              "ouORF": "uoORF",
+              "odORF": "doORF",
+              "noncoding": "lncORF"
+            },
+            "scope": "Zebrafish translated ORFs of at least 5 residues identified by RibORF 2.0 (Yang et al. 2024) on the source's Ensembl GRCz11 annotation transcripts, placed on GRCz11 through the same Ensembl 115 transcripts, proteins translated there; presence only",
+            "source_annotation": "the source's Ensembl GRCz11 annotation",
+            "presence": "In the source's genome-wide set of RibORF 2.0-identified translated ORFs (Supplementary Data 3), from the zebrafish Ribo-seq data of Supplementary Data 1 (20 samples, 2 GEO series). Presence, not a count; no study is named per ORF.",
+            "versioned_ids": false
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from the pinned source files: Supplementary Data 3 of Yang et al., Nat Commun 2024 (CC BY 4.0), and Ensembl 115's GTF, cDNA and ncRNA FASTAs. Cite Yang et al. 2024 (doi:10.1038/s41467-024-46240-9).",
+          "redistributable": true
+        },
+        "assets": {}
+      }
+    }
+  },
+  "riborf-worm": {
+    "default_version": "1",
+    "priority": 30,
+    "versions": {
+      "1": {
+        "manifest": {
+          "catalog_id": "riborf-worm",
+          "version": "1",
+          "title": "C. elegans RibORF 2.0 translated ORFs of Yang et al. 2024",
+          "references": [
+            {
+              "taxon_id": 6239,
+              "species": "caenorhabditis_elegans",
+              "genome_build": "WBcel235",
+              "annotation_name": "ensembl",
+              "annotation_version": "105",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "table",
+              "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-024-46240-9/MediaObjects/41467_2024_46240_MOESM6_ESM.xlsx",
+              "sha256": "4dc8444c2fd3da25c7066074c71d1ec5427afd5d005862c6c61dc3f27fb9d32c",
+              "size": 24211005,
+              "access_terms": "Supplementary Data 3 of Yang et al., Nat Commun 2024, CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-105/gtf/caenorhabditis_elegans/Caenorhabditis_elegans.WBcel235.105.gtf.gz",
+              "sha256": "b2e3783462226d52d8f8e866e9f09ed43f73d6a6143f76d9cbfe85733e17bc74",
+              "size": 8899482,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "cdna",
+              "url": "https://ftp.ensembl.org/pub/release-105/fasta/caenorhabditis_elegans/cdna/Caenorhabditis_elegans.WBcel235.cdna.all.fa.gz",
+              "sha256": "ff0e2313cb284cf6e521ad0bb8a48e802b730e38baf97ca8fed790342678c202",
+              "size": 13402505,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "ncrna",
+              "url": "https://ftp.ensembl.org/pub/release-105/fasta/caenorhabditis_elegans/ncrna/Caenorhabditis_elegans.WBcel235.ncrna.fa.gz",
+              "sha256": "15e731c155729e1fd641c9b3e2c422861e8aba45f5d219bc7b5b518ff5e63f56",
+              "size": 1186918,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Yang H, Li Q, Stroup EK, Wang S, Ji Z. Widespread stable noncanonical peptides identified by integrated analyses of ribosome profiling and ORF features. Nat Commun. 2024;15:1932. doi:10.1038/s41467-024-46240-9"
+          ],
+          "coverage": {
+            "records": 2849,
+            "distinct_protein_sequences": 2844,
+            "evidence_summaries": 2849,
+            "source_rows": 4035,
+            "short_rows": 1186,
+            "resolved_rows": 2849,
+            "unresolved_rows": 0
+          },
+          "processing": {
+            "importer": "riborf-v1",
+            "sheet": "worm",
+            "source": "riborf-worm",
+            "release": "NatCommun-15-1932",
+            "skip_types": [
+              "canonical",
+              "seqerror",
+              "readthrough"
+            ],
+            "min_protein_length": 5,
+            "biotypes": {
+              "ouORF": "uoORF",
+              "odORF": "doORF",
+              "noncoding": "lncORF"
+            },
+            "scope": "C. elegans translated ORFs of at least 5 residues identified by RibORF 2.0 (Yang et al. 2024) on the source's Ensembl WBcel235 annotation transcripts, placed on WBcel235 through the same Ensembl 105 transcripts, proteins translated there; presence only",
+            "source_annotation": "the source's Ensembl WBcel235 annotation",
+            "presence": "In the source's genome-wide set of RibORF 2.0-identified translated ORFs (Supplementary Data 3), from the worm Ribo-seq data of Supplementary Data 1 (39 samples, 1 GEO series). Presence, not a count; no study is named per ORF.",
+            "versioned_ids": false
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from the pinned source files: Supplementary Data 3 of Yang et al., Nat Commun 2024 (CC BY 4.0), and Ensembl 105's GTF, cDNA and ncRNA FASTAs. Cite Yang et al. 2024 (doi:10.1038/s41467-024-46240-9).",
+          "redistributable": true
+        },
+        "assets": {}
+      }
+    }
+  },
+  "riborf-yeast": {
+    "default_version": "1",
+    "priority": 30,
+    "versions": {
+      "1": {
+        "manifest": {
+          "catalog_id": "riborf-yeast",
+          "version": "1",
+          "title": "Yeast RibORF 2.0 translated ORFs of Yang et al. 2024",
+          "references": [
+            {
+              "taxon_id": 4932,
+              "species": "saccharomyces_cerevisiae",
+              "genome_build": "R64-1-1",
+              "annotation_name": "ensembl",
+              "annotation_version": "115",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "table",
+              "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-024-46240-9/MediaObjects/41467_2024_46240_MOESM6_ESM.xlsx",
+              "sha256": "4dc8444c2fd3da25c7066074c71d1ec5427afd5d005862c6c61dc3f27fb9d32c",
+              "size": 24211005,
+              "access_terms": "Supplementary Data 3 of Yang et al., Nat Commun 2024, CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-115/gtf/saccharomyces_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.115.gtf.gz",
+              "sha256": "5b20bb9a1ab7068fee9148f646ca1c12e68d656faddd5fde4ec8537dd26b9e89",
+              "size": 595453,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "genome",
+              "url": "https://ftp.ensembl.org/pub/release-115/fasta/saccharomyces_cerevisiae/dna/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa.gz",
+              "sha256": "a9953096d6a041a01a4cb5352b0232ee9373bf4c050fb23cb7ae673b2e1bb528",
+              "size": 3784201,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Yang H, Li Q, Stroup EK, Wang S, Ji Z. Widespread stable noncanonical peptides identified by integrated analyses of ribosome profiling and ORF features. Nat Commun. 2024;15:1932. doi:10.1038/s41467-024-46240-9"
+          ],
+          "coverage": {
+            "records": 1128,
+            "distinct_protein_sequences": 1126,
+            "evidence_summaries": 1128,
+            "source_rows": 1370,
+            "short_rows": 241,
+            "resolved_rows": 1128,
+            "unresolved_rows": 1
+          },
+          "processing": {
+            "importer": "riborf-genome-v1",
+            "sheet": "yeast",
+            "source": "riborf-yeast",
+            "release": "NatCommun-15-1932",
+            "skip_types": [
+              "canonical",
+              "seqerror",
+              "readthrough"
+            ],
+            "min_protein_length": 5,
+            "biotypes": {
+              "ouORF": "uoORF",
+              "odORF": "doORF",
+              "noncoding": "lncORF"
+            },
+            "scope": "Yeast translated ORFs of at least 5 residues identified by RibORF 2.0 (Yang et al. 2024), placed from their genomic spans on R64-1-1 (the source's sacCer3), proteins translated from Ensembl 115's genome; ORFs on one exon; presence only",
+            "source_annotation": "the source's sacCer3 annotation",
+            "presence": "In the source's genome-wide set of RibORF 2.0-identified translated ORFs (Supplementary Data 3), from the yeast Ribo-seq data of Supplementary Data 1 (5 samples, 1 GEO series). Presence, not a count; no study is named per ORF.",
+            "transcript_suffix": "_mRNA"
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from the pinned source files: Supplementary Data 3 of Yang et al., Nat Commun 2024 (CC BY 4.0), and Ensembl 115's GTF and genome FASTA. Cite Yang et al. 2024 (doi:10.1038/s41467-024-46240-9).",
+          "redistributable": true
+        },
+        "assets": {}
+      }
+    }
+  },
+  "ncorf-mammals-human": {
+    "default_version": "1",
+    "priority": 20,
+    "optional": true,
+    "versions": {
+      "1": {
+        "manifest": {
+          "catalog_id": "ncorf-mammals-human",
+          "version": "1",
+          "title": "Human Ribo-seq ncORFs of Chang et al. 2025",
+          "references": [
+            {
+              "taxon_id": 9606,
+              "species": "homo_sapiens",
+              "genome_build": "GRCh38",
+              "annotation_name": "ensembl",
+              "annotation_version": "107",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "bed",
+              "url": "https://raw.githubusercontent.com/gxelab/ncorf_mammals/9a7baa318fd53f4faf7fa8fe0030e1e2b0d44ee0/ncorfs/human.bed",
+              "sha256": "2f0d43ec6449718e937db843c5a7194e3816fab0256721bbb90112dda227b961",
+              "size": 931466,
+              "access_terms": "MIT License, Copyright (c) 2024 RNA GxE lab @ LZU (gxelab/ncorf_mammals).",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "proteins",
+              "url": "https://raw.githubusercontent.com/gxelab/ncorf_mammals/9a7baa318fd53f4faf7fa8fe0030e1e2b0d44ee0/ncorfs/human.pep.fa",
+              "sha256": "a5ef3cfe3fb853b30028744a41b4508acbf45fc7d51d44ddecfd855b645fdadf",
+              "size": 783742,
+              "access_terms": "MIT License, Copyright (c) 2024 RNA GxE lab @ LZU (gxelab/ncorf_mammals).",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "table",
+              "url": "https://prod--epp.elifesciences.org/api/files/109128/v3/content/supplements/676541_file03.xlsx",
+              "sha256": "eb2b97babc405471c248250a50f9f9ef5fb73aeb9bca2e5d9fc5000cc2070bc6",
+              "size": 5535137,
+              "access_terms": "Supplementary data of Chang et al., eLife 2025 (RP109128), CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-107/gtf/homo_sapiens/Homo_sapiens.GRCh38.107.gtf.gz",
+              "sha256": "9994f3bc8792c63803e3d91a1a8d2e613503fc59e278bcb156e55d0a7c3fb7b1",
+              "size": 52555212,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Chang Y, Lei T, Zhou F, Jiang J, Huang Y, Zhu Z, Zhang H. Evolutionary remodeling of non-canonical ORF translation in mammals. eLife 2025;14:RP109128. doi:10.7554/eLife.109128"
+          ],
+          "coverage": {
+            "records": 11621,
+            "distinct_protein_sequences": 11620,
+            "evidence_summaries": 23242,
+            "source_rows": 11623,
+            "resolved_rows": 11621,
+            "unresolved_rows": 2
+          },
+          "processing": {
+            "importer": "ncorf-mammals-v1",
+            "sheet": "S3_ncORF_annotation",
+            "species_label": "Human",
+            "source": "ncorf-mammals",
+            "release": "eLife-RP109128.3",
+            "scope": "Human ncORFs from Ribo-seq: at least two of PRICE, RiboCode and Ribo-TISH in a library, in at least two libraries; Ensembl 107 GRCh38; aggregate library counts, no named studies"
+          },
+          "schema": "orfdata.catalog-manifest.v1"
+        },
+        "distribution": {
+          "access_terms": "Built locally from the pinned source files: the authors' ncORF files (MIT), the paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF. Cite Chang et al., eLife 2025 (doi:10.7554/eLife.109128).",
+          "redistributable": true
+        },
+        "assets": {}
+      }
+    }
   }
 }

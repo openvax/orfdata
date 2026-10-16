@@ -57,6 +57,10 @@ def _builder(manifest):
         from .sources.riborf import import_orfs
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
+    if importer == "riborf-genome-v1":
+        from .sources.riborf import import_genome_orfs
+
+        return lambda inputs, output: import_genome_orfs(inputs, output, manifest)
     raise ValueError("No packaged importer for this catalogue release")
 
 
@@ -82,6 +86,8 @@ class CatalogRegistry:
                 raise ValueError("A catalogue default must be a pinned version")
             if type(entry.get("priority", 0)) is not int:
                 raise ValueError(f"The {name} catalogue's priority must be an integer, lower merging first")
+            if type(entry.get("optional", False)) is not bool:
+                raise ValueError(f"The {name} catalogue's optional flag must be true or false")
             for version, release in entry["versions"].items():
                 manifest = CatalogManifest.from_dict(release["manifest"])
                 if (manifest.catalog_id, manifest.version) != (name, version):
@@ -129,6 +135,12 @@ class CatalogRegistry:
         if name not in self._definitions:
             raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
         return self._definitions[name].get("priority", 100)
+
+    def optional(self, name):
+        """Whether the catalogue is used only when asked for (``catalogs="all"`` or its name), not by default."""
+        if name not in self._definitions:
+            raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
+        return self._definitions[name].get("optional", False)
 
     def published(self, name, version=None):
         """Whether the release has a published artifact to download; otherwise it is built locally."""

@@ -15,6 +15,8 @@ _SPECIES = {
     10090: ("mus_musculus", "mouse"),
     9615: ("canis_lupus_familiaris", "canis_familiaris", "dog"),
     4932: ("saccharomyces_cerevisiae", "budding_yeast", "yeast"),
+    7955: ("danio_rerio", "zebrafish"),
+    6239: ("caenorhabditis_elegans", "c_elegans", "worm"),
     9685: ("felis_catus", "cat"),
     9913: ("bos_taurus", "cattle", "cow"),
     10116: ("rattus_norvegicus", "rat"),
