@@ -4,15 +4,15 @@ Browse the packaged viral references by host, convenience group and virus type,
 then load their source-annotated coding paths without fetching the genome:
 
 ```python
-from orfdata import viral_orfs, viral_reference_sequence, viral_references
+from orfdata import viral_orfs, viral_reference, viral_references
 
 references = viral_references(host="human", group="HPV", virus_type="HPV16")
-print([(r["id"], r["coding_models"]) for r in references])
+print([(r.id, r.coding_models) for r in references])
 # [('NC_001526.4', 9), ('GRCh38.d1.vd1:HPV16', 9)]
 
-reference_dna = viral_reference_sequence("NC_001526.4")
-orfs = viral_orfs(reference_id="NC_001526.4")
-for orf in orfs:
+ref = viral_reference("NC_001526.4")  # choose the native RefSeq placement
+reference_dna = ref.dna
+for orf in ref.orfs:
     print(orf.orf_id, orf.gene_name, orf.coding_blocks, orf.protein_sequence)
 ```
 
@@ -21,19 +21,24 @@ human genome. It supplies the complete DNA for the native RefSeq NC_001526.4
 and GDC HPV16 placements; both map to the same nine source CDSs. The two DNA
 strings differ by a verified circular rotation. `viral_reference_sequence(id)`
 returns the exact forward FASTA bases, with T rather than U. A missing ID raises
-`ValueError`. The metadata query does not copy genome bases into each result.
+`ValueError`. `viral_references()` returns immutable `ViralReference` data
+classes; `.dna` and `.orfs` load only on access, so browsing does not copy
+genome bases or construct ORF models for every result. Choose by reference ID,
+not by result position: the native and GDC sequences have different coordinates.
+Use `ref.to_dict()` when serializing reference metadata to JSON; it does not
+load DNA or ORF models.
 
 `host` accepts a known species name such as `"human"` or an NCBI taxon ID such
-as `9606`. The released HPV16 reference records have viral `taxon_id=333760`
-and `host_taxon_ids=[9606]`; these are different identities. Their documented
-human host association is sourced to PaVE. `row["virus"]["group"] == "HPV"`
+as `9606`. The released HPV16 reference objects have viral `taxon_id=333760`
+and `host_taxon_ids=(9606,)`; these are different identities. Their documented
+human host association is sourced to PaVE. `ref.group == "HPV"`
 is a convenient selection label, not a formal taxonomic rank. The
-`row["virus"]["type"] == "HPV16"` label is the virus
-type; ICTV places it in the species *Alphapapillomavirus 9*. Each row also
+`ref.virus_type == "HPV16"` label is the virus
+type; ICTV places it in the species *Alphapapillomavirus 9*. Each reference also
 retains the association and taxonomy source URLs. Host associations can cover
 several host taxa as new references are curated; an unlisted host is unknown,
 not proof that infection is impossible. NCBI Virus's isolation-host metadata is
-not an exhaustive host-range list. `host_taxon_ids` and `host_source` have the
+not an exhaustive host-range list. `ref.host_taxon_ids` and `ref.host_source` have the
 same meaning as in [ViralProteome](proteome.md#viral-proteomes).
 
 When annotating an existing BAM, continue to bind against its **actual** full

@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 from copy import deepcopy
+from dataclasses import FrozenInstanceError
 from importlib.resources import files
 from pathlib import Path
 
@@ -12,7 +13,14 @@ import pytest
 from Bio import SeqIO
 
 import orfdata.viral as viral_module
-from orfdata import SourceRNA, viral_orfs, viral_reference_sequence, viral_references
+from orfdata import (
+    SourceRNA,
+    ViralReference,
+    viral_orfs,
+    viral_reference,
+    viral_reference_sequence,
+    viral_references,
+)
 from tools.build_hpv16_cds import build
 
 FIXTURE = Path(__file__).parent / "data/viral/NC_001526.4.gb.gz"
@@ -82,32 +90,49 @@ def test_mutated_same_name_reference_and_partial_dna_are_not_qualified(source):
             viral_orfs(sequence, contig="HPV16")
 
 
-def test_discovery_is_offline_and_returned_metadata_cannot_change_loading(source):
+def test_discovery_is_offline_and_reference_objects_are_immutable(source, monkeypatch):
     _, record = source
     references = viral_references()
-    assert {row["id"] for row in references} == {"NC_001526.4", "GRCh38.d1.vd1:HPV16"}
-    assert all(row["coding_models"] == 9 for row in references)
-    assert all(row["catalogue_sha256"] and row["source"]["sha256"] for row in references)
-    assert all("reference_sequence" not in row for row in references)
-    references[0]["source"]["accession"] = "changed"
-    references[0]["host_taxon_ids"].clear()
-    assert viral_references()[0]["source"]["accession"] == "NC_001526.4"
-    assert viral_references()[0]["host_taxon_ids"] == [9606]
+    assert all(isinstance(ref, ViralReference) for ref in references)
+    assert {ref.id for ref in references} == {"NC_001526.4", "GRCh38.d1.vd1:HPV16"}
+    assert all(ref.coding_models == 9 for ref in references)
+    assert all(ref.catalogue_sha256 and ref.source_sha256 for ref in references)
+    native = viral_reference("NC_001526.4")
+    assert native == next(ref for ref in references if ref.id == native.id)
+    with pytest.raises(FrozenInstanceError):
+        native.source_accession = "changed"
+    with pytest.raises(AttributeError):
+        native.host_taxon_ids.clear()
+    assert viral_reference("NC_001526.4").source_accession == "NC_001526.4"
+    assert native.host_taxon_ids == (9606,)
+    payload = native.to_dict()
+    assert payload["virus"]["type"] == "HPV16"
+    assert payload["source"]["accession"] == "NC_001526.4"
+    assert payload["host_taxon_ids"] == [9606]
+    assert len(payload["products"]) == 9
+    assert "dna" not in payload and "orfs" not in payload
+    json.dumps(payload)
+    payload["host_taxon_ids"].clear()
+    assert native.host_taxon_ids == (9606,)
+    with monkeypatch.context() as patch:
+        patch.setattr(viral_module, "viral_orfs", lambda **kwargs: 1 / 0)
+        patch.setattr(viral_module, "viral_reference_sequence", lambda reference_id: 1 / 0)
+        assert viral_references(host="human") == references
     assert viral_orfs(str(record.seq))[0].context.annotation_version == "NC_001526.4"
 
 
 def test_host_group_and_type_select_exact_references_with_distinct_taxa():
     references = viral_references(host="human", group="HPV", virus_type="HPV16")
-    assert {row["id"] for row in references} == {"NC_001526.4", "GRCh38.d1.vd1:HPV16"}
+    assert {ref.id for ref in references} == {"NC_001526.4", "GRCh38.d1.vd1:HPV16"}
     assert viral_references(host=9606, group="hpv", virus_type="hpv16") == references
     assert viral_references(host="mouse") == viral_references(host=10090) == ()
     assert viral_references(host="human", virus_type="HPV18") == ()
-    for row in references:
-        assert row["taxon_id"] == 333760 and row["host_taxon_ids"] == [9606]
-        assert "PaVE HPV16REF" in row["host_source"]
-        assert row["virus"]["ictv_species"] == "Alphapapillomavirus 9"
-        assert row["virus"]["group"] == "HPV" and row["virus"]["type"] == "HPV16"
-        assert row["virus"]["taxonomy_source"].startswith("https://ictv.global/")
+    for ref in references:
+        assert ref.taxon_id == 333760 and ref.host_taxon_ids == (9606,)
+        assert "PaVE HPV16REF" in ref.host_source
+        assert ref.ictv_species == "Alphapapillomavirus 9"
+        assert ref.group == "HPV" and ref.virus_type == "HPV16"
+        assert ref.taxonomy_source.startswith("https://ictv.global/")
     for invalid in ("not_a_host", 0, True):
         with pytest.raises(ValueError, match="host"):
             viral_references(host=invalid)
@@ -119,10 +144,10 @@ def test_explicit_multiple_host_associations_can_select_one_reference_from_each_
     catalog["references"][0]["host_taxon_ids"].append(10090)
     catalog["references"][0]["host_source"] = "synthetic multiple-host fixture"
     monkeypatch.setattr(viral_module, "_catalog", lambda: catalog)
-    assert {row["id"] for row in viral_references(host="human")} == {
+    assert {ref.id for ref in viral_references(host="human")} == {
         "NC_001526.4", "GRCh38.d1.vd1:HPV16"}
     mouse, = viral_references(host="mouse", virus_type="HPV16")
-    assert mouse["id"] == "NC_001526.4" and mouse["taxon_id"] == 333760
+    assert mouse.id == "NC_001526.4" and mouse.taxon_id == 333760
 
 
 def test_bundled_reference_sequences_and_named_orfs_match_both_source_placements(source):
@@ -131,10 +156,15 @@ def test_bundled_reference_sequences_and_named_orfs_match_both_source_placements
     gdc = native[-864:] + native[:-864]
     for reference_id, expected in (("NC_001526.4", native),
                                    ("GRCh38.d1.vd1:HPV16", gdc)):
-        sequence = viral_reference_sequence(reference_id)
+        ref = viral_reference(reference_id)
+        sequence = ref.dna
         assert sequence == expected
-        row, = (r for r in viral_references() if r["id"] == reference_id)
-        assert hashlib.sha256(sequence.encode()).hexdigest() == row["sequence_sha256"]
+        assert ref.dna is sequence
+        assert sequence == viral_reference_sequence(reference_id)
+        assert hashlib.sha256(sequence.encode()).hexdigest() == ref.sequence_sha256
+        assert {orf.orf_id for orf in ref.orfs} == {product.protein_id for product in ref.products}
+        assert ref.orfs is ref.orfs
+        assert {orf.transcript.contig for orf in ref.orfs} == {reference_id}
         by_name = viral_orfs(reference_id=reference_id, contig="selected")
         by_dna = viral_orfs(sequence, contig="selected")
         assert [(o.orf_id, o.coding_blocks, o.protein_sequence) for o in by_name] == [
@@ -142,6 +172,8 @@ def test_bundled_reference_sequences_and_named_orfs_match_both_source_placements
         assert {o.transcript.contig for o in by_name} == {"selected"}
     with pytest.raises(ValueError, match="reference ID"):
         viral_reference_sequence("unknown")
+    with pytest.raises(ValueError, match="reference ID"):
+        viral_reference("unknown")
     with pytest.raises(ValueError, match="exactly one"):
         viral_orfs()
     with pytest.raises(ValueError, match="exactly one"):

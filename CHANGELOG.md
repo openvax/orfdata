@@ -1,3 +1,16 @@
+# 0.34.0
+
+- Viral reference queries now return immutable `ViralReference` objects with
+  `.dna` and `.orfs` properties. Use `viral_reference(id)` to select an exact
+  sequence by stable ID; browsing by host, group and type still returns every
+  matching reference. The properties load on access, so discovery does not
+  construct ORFs or copy DNA into every result.
+- This replaces the dictionary rows returned by `viral_references()` in
+  0.33.0. The existing `viral_reference_sequence(id)` and
+  `viral_orfs(reference_dna, ...)` functions remain available; alignment
+  annotation still checks actual reference DNA. `ref.to_dict()` preserves
+  the old JSON metadata shape for persisted coverage reports.
+
 # 0.33.0
 
 - Discover the bundled viral coding references by documented host, convenience

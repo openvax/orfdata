@@ -81,9 +81,10 @@ Human evidence is never transferred to another species. Viral proteomes can be a
 orfdata also provides [RNA, ribosome and protein measurements](https://openvax.github.io/orfdata/measurements/)
 for human, mouse, dog and yeast.
 
-`viral_references(host="human", group="HPV", virus_type="HPV16")` finds the
-source-qualified viral references. `viral_reference_sequence(id)` supplies the
-packaged bases, and `viral_orfs(reference_id=id)` loads their coding paths.
+`viral_references(host="human", group="HPV", virus_type="HPV16")` finds
+source-qualified `ViralReference` objects. Choose a stable ID with
+`viral_reference("NC_001526.4")`, then use `.dna` and `.orfs` to load its
+packaged bases and coding paths. The functional loaders remain available.
 When annotating an existing alignment, `viral_orfs(reference_dna,
 contig="HPV16")` checks its actual reference sequence before applying the same
 models.
