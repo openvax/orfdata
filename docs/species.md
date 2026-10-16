@@ -4,7 +4,7 @@ Resolve names and IDs offline with `orfdata.reference.species_taxon(name)` and
 `species_name_for_taxon(taxon_id)`. The latter returns a canonical species name,
 or `None` for an unknown positive ID, without requiring an Ensembl annotation.
 
-ORFdata uses the same objects for human, mouse, dog, yeast and custom species.
+ORFdata uses the same objects for human, mouse, dog, zebrafish, C. elegans, yeast and custom species.
 Every ORF states its NCBI species taxon, assembly and genetic code. A
 `ReferenceContext` also pins the annotation provider/version and can retain a
 versioned assembly accession, strain taxon/label and sequence-set SHA-256.

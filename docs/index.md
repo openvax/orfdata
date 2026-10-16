@@ -96,10 +96,12 @@ transcript alongside them.
 
 | Species | Annotated proteins | Noncanonical ORFs |
 | --- | --- | --- |
-| Human | From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and [T2T-CHM13](catalogs.md#t2t-chm13) |
+| Human | From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and [T2T-CHM13](catalogs.md#t2t-chm13). 57,607 with the [optional Ribo-seq catalogues](catalogs.md#human-ribo-seq-orfs-optional) of Chang et al. and Yang et al. (`catalogs="all"`) |
 | Mouse | From PyEnsembl | 48,805 ORFs on GRCm39: Ribo-seq ORFs of Chang et al. and Yang et al., and 2,976 MS-supported ones (OpenProt 2.2), [built locally](catalogs.md#mouse) with `orfdata setup --species mouse`; lifted to GRCm38 and NCBIM37 |
-| Dog | From PyEnsembl | None: no experimentally supported dog ORF set exists |
-| Budding yeast | From PyEnsembl | None released |
+| Zebrafish | From PyEnsembl | 9,759 GRCz11 Ribo-seq ORFs of Yang et al., [built locally](catalogs.md#zebrafish-c-elegans-and-yeast) |
+| C. elegans | From PyEnsembl | 2,849 WBcel235 Ribo-seq ORFs of Yang et al., built locally |
+| Budding yeast | From PyEnsembl | 1,124 R64-1-1 Ribo-seq ORFs of Yang et al., built locally; 170 lie inside Ensembl's transcripts |
+| Dog | From PyEnsembl | None: [no public dog Ribo-seq or ncORF MS exists](catalogs.md#dog) |
 
 Other assemblies use a catalogue lifted to them once `orfdata chains download`
 has fetched the chain files (with `--accept-terms` for UCSC's non-commercial

@@ -59,13 +59,16 @@ def _setup(argv, prog):
     parser.add_argument("--accept-terms", action="store_true",
                         help="Accept usage terms of restricted chain files, such as UCSC's non-commercial ones")
     parser.add_argument("--force", action="store_true", help="Install again even what is already installed")
+    parser.add_argument("--catalogs", metavar="NAMES", type=_catalog_names,
+                        help="'all' to add the species' optional catalogues, such as human's Ribo-seq ones, or "
+                             "comma-separated catalogue names; the species' default set by default")
     parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--timeout", type=float, default=60,
                         help="Seconds a download may stall before it is retried, then fails (default 60)")
     args = parser.parse_args(argv)
     try:
         result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
-                                 cache_root=args.cache_root, timeout=args.timeout)
+                                 cache_root=args.cache_root, timeout=args.timeout, catalogs=args.catalogs)
     except InstallError as error:  # What did install is still reported.
         json.dump(error.result, sys.stdout, indent=2)
         sys.stdout.write("\n")
@@ -74,6 +77,11 @@ def _setup(argv, prog):
         parser.error(str(error))
     json.dump(result, sys.stdout, indent=2)
     sys.stdout.write("\n")
+
+
+def _catalog_names(value):
+    """``--catalogs``: "all", or comma-separated catalogue names."""
+    return value if value == "all" else [name for name in value.split(",") if name]
 
 
 def _add_query_arguments(parser, *, catalog_path=True):

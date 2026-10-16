@@ -5,7 +5,7 @@ import json
 import sys
 
 from .catalog import load_catalog
-from .cli import _add_rule_arguments, _evidence_name, _rule
+from .cli import _add_rule_arguments, _catalog_names, _evidence_name, _rule
 from .proteome import Proteome
 
 
@@ -35,6 +35,9 @@ def run(argv=None, prog=None, *, genome_loader=None):
     _add_rule_arguments(parser)
     parser.add_argument("--catalog", action="append",
                         help="Use a local JSON/JSON.gz ORF catalogue for this genome; repeat to merge several")
+    parser.add_argument("--catalogs", metavar="NAMES", type=_catalog_names,
+                        help="Which of the species' installed catalogues: 'all' to add its optional ones, such as "
+                             "human's Ribo-seq catalogues, or comma-separated names; its default set by default")
     parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
     parser.add_argument("--cache", action="store_true",
                         help="Reuse an identical earlier build from the OpenVax DataCache, or keep this one there")
@@ -44,7 +47,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
     args = parser.parse_args(argv)
     try:
         extra = args.extra_orf_evidence != "none"
-        if not extra and (args.catalog or args.either or args.require_resolved or args.require_unique
+        if not extra and (args.catalog or args.catalogs or args.either or args.require_resolved or args.require_unique
                           or args.require_reviewed or any(value is not None for value in (
                               args.min_ribo_seq_studies, args.min_ms_peptides, args.ms_methods))):
             raise ValueError("Extra-ORF options require --extra-orf-evidence other than 'none'")
@@ -62,7 +65,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
         proteome = Proteome.build(
             genome, rule, extra_orfs=extra,
             catalog=[load_catalog(path) for path in args.catalog] if args.catalog else None,
-            cache=args.cache, cache_root=args.cache_root)
+            catalogs=args.catalogs, cache=args.cache, cache_root=args.cache_root)
         proteome.write_fasta(args.output or sys.stdout)
         if args.snapshot:
             proteome.save(args.snapshot)

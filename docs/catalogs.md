@@ -16,11 +16,19 @@ original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
 for one species together, see
 [merging catalogues](proteome.md#merging-catalogues).
 
-The packaged registry has three mouse catalogues, each built from its sources'
-own files: [OpenProt's MS-supported ORFs](#mouse-orfs-from-openprot),
-[Chang et al.'s Ribo-seq ORFs](#mouse-ribo-seq-orfs-chang-et-al) and
-[Yang et al.'s RibORF ORFs](#mouse-riborf-orfs-yang-et-al). `orfdata setup
---species mouse` installs all three, with the chain files. `orfdata catalogs status`
+The packaged registry builds each catalogue from its sources' own files:
+
+| Species | Catalogues | ORFs |
+| --- | --- | ---: |
+| Mouse | [OpenProt's MS-supported ORFs](#mouse-orfs-from-openprot), [Chang et al.'s](#mouse-ribo-seq-orfs-chang-et-al) and [Yang et al.'s](#mouse-riborf-orfs-yang-et-al) Ribo-seq ORFs | 48,805 merged |
+| Human | the bundled GENCODE set; optionally [Chang et al.'s and Yang et al.'s Ribo-seq ORFs](#human-ribo-seq-orfs-optional) | 7,264; 57,607 with both |
+| Zebrafish | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 9,759 |
+| C. elegans | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 2,849 |
+| Yeast | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 1,124 |
+| Dog | [none exists](#dog) | 0 |
+
+`orfdata setup --species mouse` (or zebrafish, worm, yeast) installs a
+species' catalogues, with the chain files. `orfdata catalogs status`
 (in Python, `catalog_status()`) lists every catalogue `load_catalog` can open,
 the bundled one included, with its species, assembly, record count, whether it
 is installed and whether it is used:
@@ -94,10 +102,7 @@ Ensembl 115 (GRCm39):
 
 Loading the merged catalogue takes about 10 seconds and 0.9 GB of memory, once
 per process, whichever evidence is selected. On GRCm38 and NCBIM37 all three
-are [lifted automatically](#every-assembly-of-a-species). Dog has no
-experimentally supported ORF catalogue from any source: OpenProt and the
-Ribo-seq resources have no dog data, and dog MS studies searched only canonical
-proteins.
+are [lifted automatically](#every-assembly-of-a-species).
 
 ### Mouse Ribo-seq ORFs (Chang et al.)
 
@@ -237,6 +242,110 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
 Cite Leblanc S, et al. *OpenProt 2.0 builds a path to the functional
 characterization of alternative proteins.* Nucleic Acids Res. 2024;52(D1):D522–D528,
 [doi:10.1093/nar/gkad1050](https://doi.org/10.1093/nar/gkad1050).
+
+## Human Ribo-seq ORFs (optional)
+
+Human's default is the bundled GENCODE catalogue: 7,264 ORFs, offline, with
+no setup. Two larger Ribo-seq catalogues are optional, used only when asked
+for, because they would change every human selection and make loading human
+ORFs about 60 times slower:
+
+```sh
+orfdata setup --species human --catalogs all   # Builds both; about 225 MB of sources
+```
+
+```python
+from orfdata import Proteome, extra_orfs, load_catalog
+
+catalog = load_catalog(species="human", catalogs="all")   # Bundled, Chang et al. and Yang et al., merged
+orfs = extra_orfs(genome, "ribosome", catalogs="all")
+proteome = Proteome.build(genome, "all", catalogs="all")
+load_catalog(species="human", catalogs=["ncorf-mammals-human"])   # Just one
+```
+
+`orfdata proteome --catalogs all` does the same. Merged with the bundled
+catalogue, they give 57,607 ORFs, of which 57,485 place on Ensembl 115; that
+takes about a minute and 3.2 GB of memory, against about a second for the
+bundled catalogue alone. Neither adds MS evidence, so `"ms"` selects the same
+ORFs either way.
+
+- **`ncorf-mammals-human`:** the human ncORFs of [Chang et
+  al.](#mouse-ribo-seq-orfs-chang-et-al), from 174 Ribo-seq libraries
+  (Table S1), built as for mouse on Ensembl 107 GRCh38: 11,621 of the
+  source's 11,623, two having a coding length that isn't their protein plus
+  a stop. Types: uORF (6,178), lncORF (2,231), uoORF (1,633), iORF (773),
+  dORF (694) and doORF (112); 997 start at GTG.
+- **`riborf-human`:** the human ORFs of [Yang et
+  al.](#mouse-riborf-orfs-yang-et-al), from 136 samples in 30 GEO series, on
+  GENCODE V39, placed through the same Ensembl 105 transcripts (GENCODE V39
+  is Ensembl 105): 51,174 of the 51,275 rows long enough; 101 are on
+  transcripts with no sequence in Ensembl 105's FASTAs. Types: uORF (23,664),
+  lncORF (11,379), uoORF (4,548), dORF (3,747), N-terminal truncation (3,561),
+  iORF (2,547), extension (1,046) and doORF (682).
+
+`catalogs` takes `None` (the species' default set), `"all"`, or catalogue
+names, `"bundled"` among them. `orfdata catalogs status` marks optional
+catalogues. Everywhere but human, every catalogue is in the default set.
+
+## Zebrafish, C. elegans and yeast
+
+```sh
+orfdata setup --species zebrafish   # or worm, or yeast
+```
+
+Yang et al.'s RibORF 2.0 ORFs of [the mouse catalogue's
+kind](#mouse-riborf-orfs-yang-et-al), at least 5 residues long, from each
+species' sheet of Supplementary Data 3, imported the same way:
+
+| Catalogue | Samples (GEO series) | Placed through | ORFs | On Ensembl 115 |
+| --- | --- | --- | ---: | ---: |
+| `riborf-zebrafish` | 20 (2) | Ensembl 115 GRCz11 transcripts | 9,759 | 9,759 |
+| `riborf-worm` | 39 (1) | Ensembl 105 WBcel235 transcripts | 2,849 | 2,433 |
+| `riborf-yeast` | 5 (1) | the R64-1-1 genome (sacCer3) | 1,124 | 170 |
+
+- **Zebrafish:** every source transcript has the same length in Ensembl 100
+  to 115, so the catalogue uses 115. 18 rows have ambiguous bases in the ORF
+  and are left out. Types: N-terminal truncation (3,805), uORF (3,543), dORF
+  (771), iORF (605), lncORF (411), uoORF (304), extension (224) and doORF (96).
+- **C. elegans:** the source's transcripts match Ensembl 100 and 105, and
+  WormBase changed many models after, so the catalogue uses 105; all 2,849
+  place there, 2,433 on 115. Transcript names with dots of their own
+  (`F45H11.11.1`) are kept whole. Types: truncation (614), iORF (596),
+  extension (556), uORF (521), uoORF (217), lncORF (151), doORF (117) and dORF
+  (77).
+- **Yeast:** the source's yeast transcripts carry UTRs, and some are unstable
+  transcripts (CUTs, SUTs), none of which Ensembl's yeast annotation has; its
+  transcripts span only the CDS. So each ORF is placed from its genomic span
+  and translated from the pinned genome. Records name the Ensembl transcript
+  of the source's (`YNL046W_mRNA`) where there is one, else the source's own
+  (`CUT808`). The 5 ORFs on two exons are left out, since the source gives no
+  block starts. Only the 170 ORFs inside an Ensembl transcript, such as
+  truncations and iORFs, place on a PyEnsembl genome; the rest (uORFs in
+  5′ UTRs, ORFs on CUTs) stay in the catalogue, queryable by region and gene,
+  until ORFs on source-defined RNAs are supported (#66). Types: uORF (321),
+  lncORF (249), dORF (224), truncation (136), extension (65), uoORF (54),
+  doORF (40) and iORF (35).
+
+## Dog
+
+No public resource gives dog ORF-level translation evidence, as of October
+2026:
+
+- **Ribo-seq.** No dog ribosome profiling is in GEO, SRA or ENA, and none of
+  OpenProt, RiboSeq.org (147 organisms), RPFdb, SmProt or GWIPS-viz has dog.
+  The one dog experiment published, Pfeffer et al. 2015 (canine pancreas
+  rough-ER microsomes), deposited no reads.
+- **Mass spectrometry.** Every dog dataset searched canonical proteins only,
+  so none reports a noncanonical peptide as deposited: the Canine
+  PeptideAtlas (PXD052932, 245,884 peptides from 13 tissues, plasma and
+  urine), the dog tumour DLA immunopeptidome (PXD074485, about 12,700
+  ligands), the Pfizer TMT atlas (PXD070290) and the dog brain proteome
+  (PXD033420, PXD034449).
+
+Dog ncORF evidence therefore needs those spectra searched again against dog
+ORF sequences. Human and mouse ORFs are never transferred to dog by orthology.
+Dog proteomes contain their PyEnsembl-annotated proteins, and dog RNA and
+protein abundance are available as [measurements](measurements.md).
 
 ## Every assembly of a species
 

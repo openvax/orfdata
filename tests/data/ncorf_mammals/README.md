@@ -18,3 +18,11 @@ The six cover ATG, CTG, GTG and TTG starts, single- and multi-exon coding paths
 (the source BED garbles multi-exon block sizes), and the one ORF in the source
 without a stop codon (`13_74704301_74702220_-`), which the importer lists as
 unresolved. The full sources' SHA-256 are pinned in `orfdata/data/catalogs.json`.
+
+## Human
+
+`S3.xlsx` also has four human rows of Table S3, and `human.bed` and
+`human.pep.fa` their ORFs from the same commit: uORFs with ATG, CTG and GTG
+starts, and `6_134530858_134525331_-`, whose coding length isn't its protein
+plus a stop, so it is unresolved. `human-ensembl107.gtf.gz` holds
+their four transcripts' Ensembl 107 GRCh38 GTF lines, with their genes'.

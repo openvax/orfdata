@@ -468,12 +468,13 @@ class Proteome:
 
     @classmethod
     def build(cls, genome, evidence="ms", *, catalog=None, viral=(), extra_orfs=True, context=None,
-              cache=False, cache_root=None):
+              cache=False, cache_root=None, catalogs=None):
         """The usual reference proteome in one call, optionally kept in a cache.
 
         That is :meth:`from_genome`, then :meth:`with_extra_orfs` with
         ``evidence`` and ``catalog`` unless ``extra_orfs=False``, then
-        :meth:`with_viral` for each of ``viral``. With ``cache=True`` the result
+        :meth:`with_viral` for each of ``viral``; ``catalogs`` chooses among the
+        species' catalogues as in :func:`load_catalog`. With ``cache=True`` the result
         is saved under the OpenVax DataCache root (``ORFDATA_CACHE``,
         ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, the
         evidence rule, the catalogue and viral identities, the snapshot schema
@@ -484,18 +485,12 @@ class Proteome:
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
         viral = tuple(viral)
-        if not extra_orfs and catalog is not None:
+        if not extra_orfs and (catalog is not None or catalogs is not None):
             raise ValueError("A catalogue needs extra_orfs=True")
         rule = None
         if extra_orfs:
             rule = evidence_rule(evidence)
-            if catalog is None:
-                from .catalogs import CatalogRegistry
-
-                catalog = load_catalog(species=reference.species, genome_build=reference.genome_build,
-                                       registry=None if cache_root is None else CatalogRegistry(cache_root=cache_root))
-            else:
-                catalog = _onto(catalog, reference, cache_root)
+            catalog = _species_catalog(reference, catalog, catalogs, cache_root)
         built = []
 
         def make():
@@ -527,7 +522,7 @@ class Proteome:
         return proteome
 
     def with_extra_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
-                        require_unique=False, require_reviewed=False, cache_root=None):
+                        require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
         ``evidence`` is a rule, an evidence method name, a list of names
@@ -539,8 +534,9 @@ class Proteome:
         digested cellular proteins), ``"immunopeptidomics"`` (peptides eluted
         from MHC molecules) or ``"ms_unclassified"`` limit the MS peptide kind. The ``require_*``
         options refine a name as in ``ORFCatalog.query``. The layer records the
-        rule. Without ``catalog``, the catalogue covering this species and
-        assembly is used; a species without one raises.
+        rule. Without ``catalog``, the catalogues covering this species and
+        assembly are used, ``catalogs`` choosing among them as in
+        :func:`load_catalog`; a species without one raises.
 
         Each ORF becomes one entry listing every transcript that carries its
         exact spliced coding path. An ORF whose source transcript is gone or
@@ -551,7 +547,7 @@ class Proteome:
             raise ValueError("Extra ORFs bind to a genome; build this proteome with from_genome")
         found = extra_orfs(self.genome, evidence, catalog=catalog, context=self.reference,
                            require_resolved=require_resolved, require_unique=require_unique,
-                           require_reviewed=require_reviewed, cache_root=cache_root)
+                           require_reviewed=require_reviewed, cache_root=cache_root, catalogs=catalogs)
         failures = {f.orf_id: f.reason for f in found.source_failures}
         grouped = {}
         for orf in found:
@@ -697,6 +693,18 @@ class Proteome:
                 handle.write(entry.sequence[i : i + width] + "\n")
 
 
+def _species_catalog(reference, catalog, catalogs, cache_root):
+    """An explicit catalogue placed onto the reference's assembly, or the species' catalogues ``catalogs`` names."""
+    if catalog is not None:
+        if catalogs is not None:
+            raise ValueError("Pass a catalogue or catalogs, not both")
+        return _onto(catalog, reference, cache_root)
+    from .catalogs import CatalogRegistry
+
+    return load_catalog(species=reference.species, genome_build=reference.genome_build, catalogs=catalogs,
+                        registry=None if cache_root is None else CatalogRegistry(cache_root=cache_root))
+
+
 def _onto(catalogs, reference, cache_root=None):
     """Explicit catalogues for one genome: any on another assembly of its species lifted to it, then merged."""
     from .liftover import chain_downloaded, chain_routes, lift_to
@@ -720,13 +728,14 @@ def _onto(catalogs, reference, cache_root=None):
 
 
 def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_resolved=False,
-               require_unique=False, require_reviewed=False, cache_root=None):
+               require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
     """Place catalogue ORFs on every transcript of a PyEnsembl genome that carries them.
 
     A transcript carries an ORF when it contains the ORF's exact spliced coding
     path and its sequence translates to the ORF's protein. Without ``catalog``,
-    ``load_catalog`` picks the catalogue covering this species and assembly; a
-    species without one raises. A ``catalog`` (or each of a list) on another
+    ``load_catalog`` picks the catalogues covering this species and assembly,
+    ``catalogs`` choosing among them as there (``"all"`` adds the optional
+    ones); a species without one raises. A ``catalog`` (or each of a list) on another
     assembly of the species is lifted to this one through the pinned chains.
     ``cache_root`` is where catalogues and chain files are looked for. ``evidence`` is a rule such as
     ``RiboSeq(min_studies=2) & MS()`` or an evidence method name, as in
@@ -734,13 +743,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     """
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)
-    if catalog is None:
-        from .catalogs import CatalogRegistry
-
-        catalog = load_catalog(species=reference.species, genome_build=reference.genome_build,
-                               registry=None if cache_root is None else CatalogRegistry(cache_root=cache_root))
-    else:
-        catalog = _onto(catalog, reference, cache_root)
+    catalog = _species_catalog(reference, catalog, catalogs, cache_root)
     if (catalog.taxon_id, catalog.genome_build) != (reference.taxon_id, reference.genome_build):
         lift = ("" if catalog.taxon_id != reference.taxon_id else
                 f"; no pinned chain files lift {catalog.genome_build} to {reference.genome_build}, so lift it with "
