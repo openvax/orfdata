@@ -185,9 +185,8 @@ A work directory holds one search. On its first start the driver writes
 `search_config.json` (the resolved Sage parameters and the database's SHA-256) and
 `sage_params.resolved.json`. Once any run has finished, it refuses to restart with different
 parameters or a different database (compared by checksum, so moving the file is fine); use a
-new work directory instead. Only one driver can use
-a work directory at a time (`.driver.lock`; remove it by hand if a driver was killed with
-`kill -9`).
+new work directory instead. Only one driver can use a work directory at a time
+(`.driver.lock`; remove it by hand if a driver was killed with `kill -9`).
 
 #### Sage parameters (`sage_params.json`)
 
@@ -401,8 +400,9 @@ match their intense spectra to the nearest sequence it has, including an ncORF. 
 `build_db.py` adds the 11 Biognosys iRT peptides (the same list as
 `orfdata.sources.kaabinejadian.IRT_PEPTIDES`) and the 15 Pierce PRTC peptides
 (`standards.py`) to the canonical class, and drops ncORF candidates that contain a standard
-no canonical protein contains (none in the pilot database did). `aggregate.py` also puts them in the filtering reference and counts their
-PSMs per run (`run_qc.tsv`); `post_run.py` counts iRT PSMs per run.
+no canonical protein contains (none in the pilot database did). `aggregate.py` also puts
+them in the filtering reference and counts their PSMs per run (`run_qc.tsv`);
+`post_run.py` counts iRT PSMs per run.
 
 PXD052932 most likely wasn't spiked: the Canine PeptideAtlas build has no iRT peptides and
 only two PRTC peptides (GILFVGSGVSGGEEGAR, NGFILDGFPR), both ordinary dog sequences. The
