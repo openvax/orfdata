@@ -1187,24 +1187,46 @@
 
 
 <h1 id="viral-coding-references">Viral coding references<a class="headerlink" href="#viral-coding-references" title="Permanent link">&para;</a></h1>
-<p><code>viral_orfs()</code> returns existing <code>TranscriptORF</code> objects for source-annotated
-viral CDSs. Supply the complete reference DNA that the RNA was aligned to:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">viral_orfs</span><span class="p">,</span> <span class="n">viral_references</span>
+<p>Browse the packaged viral references by host, convenience group and virus type,
+then load their source-annotated coding paths without fetching the genome:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">viral_orfs</span><span class="p">,</span> <span class="n">viral_reference_sequence</span><span class="p">,</span> <span class="n">viral_references</span>
 
-<span class="nb">print</span><span class="p">([(</span><span class="n">r</span><span class="p">[</span><span class="s2">"id"</span><span class="p">],</span> <span class="n">r</span><span class="p">[</span><span class="s2">"coding_models"</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">viral_references</span><span class="p">()])</span>
+<span class="n">references</span> <span class="o">=</span> <span class="n">viral_references</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">"human"</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="s2">"HPV"</span><span class="p">,</span> <span class="n">virus_type</span><span class="o">=</span><span class="s2">"HPV16"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">([(</span><span class="n">r</span><span class="p">[</span><span class="s2">"id"</span><span class="p">],</span> <span class="n">r</span><span class="p">[</span><span class="s2">"coding_models"</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">references</span><span class="p">])</span>
 <span class="c1"># [('NC_001526.4', 9), ('GRCh38.d1.vd1:HPV16', 9)]</span>
 
-<span class="n">orfs</span> <span class="o">=</span> <span class="n">viral_orfs</span><span class="p">(</span><span class="n">reference_dna</span><span class="p">,</span> <span class="n">contig</span><span class="o">=</span><span class="s2">"HPV16"</span><span class="p">)</span>
+<span class="n">reference_dna</span> <span class="o">=</span> <span class="n">viral_reference_sequence</span><span class="p">(</span><span class="s2">"NC_001526.4"</span><span class="p">)</span>
+<span class="n">orfs</span> <span class="o">=</span> <span class="n">viral_orfs</span><span class="p">(</span><span class="n">reference_id</span><span class="o">=</span><span class="s2">"NC_001526.4"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">orf</span> <span class="ow">in</span> <span class="n">orfs</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">orf</span><span class="o">.</span><span class="n">orf_id</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">gene_name</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">coding_blocks</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">protein_sequence</span><span class="p">)</span>
 </code></pre></div>
 <p>The small bundled catalogue loads offline without PyEnsembl, Biopython or a
-human genome. Its nine HPV16 CDSs come from RefSeq NC_001526.4. The loader
-requires an exact full-DNA hash and separately qualifies native and GDC
-circular rotations. A contig name or related strain is insufficient.
-An unavailable reference raises <code>ValueError</code>, distinct from a valid empty query.
-<code>viral_references()</code> exposes exact identities, coding coverage, source pins
-and product names without loading other data.</p>
+human genome. It supplies the complete DNA for the native RefSeq NC_001526.4
+and GDC HPV16 placements; both map to the same nine source CDSs. The two DNA
+strings differ by a verified circular rotation. <code>viral_reference_sequence(id)</code>
+returns the exact forward FASTA bases, with T rather than U. A missing ID raises
+<code>ValueError</code>. The metadata query does not copy genome bases into each result.</p>
+<p><code>host</code> accepts a known species name such as <code>"human"</code> or an NCBI taxon ID such
+as <code>9606</code>. The released HPV16 reference records have viral <code>taxon_id=333760</code>
+and <code>host_taxon_ids=[9606]</code>; these are different identities. Their documented
+human host association is sourced to PaVE. <code>row["virus"]["group"] == "HPV"</code>
+is a convenient selection label, not a formal taxonomic rank. The
+<code>row["virus"]["type"] == "HPV16"</code> label is the virus
+type; ICTV places it in the species <em>Alphapapillomavirus 9</em>. Each row also
+retains the association and taxonomy source URLs. Host associations can cover
+several host taxa as new references are curated; an unlisted host is unknown,
+not proof that infection is impossible. NCBI Virus's isolation-host metadata is
+not an exhaustive host-range list. <code>host_taxon_ids</code> and <code>host_source</code> have the
+same meaning as in <a href="../proteome/#viral-proteomes">ViralProteome</a>.</p>
+<p>When annotating an existing BAM, continue to bind against its <strong>actual</strong> full
+alignment-reference DNA:</p>
+<div class="highlight"><pre><span></span><code><span class="n">orfs</span> <span class="o">=</span> <span class="n">viral_orfs</span><span class="p">(</span><span class="n">alignment_reference_dna</span><span class="p">,</span> <span class="n">contig</span><span class="o">=</span><span class="s2">"HPV16"</span><span class="p">)</span>
+</code></pre></div>
+<p>This checks the sequence hash and its qualified coordinates. A contig name or
+related strain cannot transfer CDS annotations to mismatching DNA. It raises
+<code>ValueError</code> for an unavailable reference rather than returning an empty ORF
+set. <code>viral_references()</code> reports coverage and source checksums, and
+<code>viral_orfs()</code> returns the existing <code>SourceRNA</code>/<code>TranscriptORF</code> models.</p>
 <p>Each model uses a <code>SourceRNA</code> containing only the available CDS, including
 ordered splice blocks. Full transcript ends are not asserted. The existing
 <code>TranscriptORF.at()</code> validates its source protein and coding boundaries.
