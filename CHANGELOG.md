@@ -21,7 +21,8 @@ MS-supported ORFs.
   - The old names still work as evidence names and in `MS(methods=...)`, with
     a `DeprecationWarning`. Catalogues, evidence summaries and saved rules that
     use them load with the new names, so the bundled human catalogue is
-    unchanged.
+    unchanged. Catalogues saved by 0.28.0 use the new names, which 0.27.1
+    can't read.
   - Proteome FASTA headers say `evidence=ribosome,immunopeptidomics`, not
     `ribosome,mhc`. Saved proteome snapshots keep the labels they were written
     with.

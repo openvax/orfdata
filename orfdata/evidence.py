@@ -8,6 +8,7 @@ proof that a stable protein exists.
 """
 
 import json
+import sys
 import warnings
 from dataclasses import InitVar, dataclass
 from typing import Optional
@@ -30,8 +31,21 @@ def stored_method(method):
 def _method(method):
     """A method name a caller passed, under its current name; an old name warns."""
     if method in _RENAMED:
-        warnings.warn(f"Evidence method {method!r} is now {_RENAMED[method]!r}", DeprecationWarning, stacklevel=4)
+        warnings.warn(f"Evidence method {method!r} is now {_RENAMED[method]!r}", DeprecationWarning,
+                      stacklevel=_caller_level())
     return SYNONYMS.get(method, stored_method(method))
+
+
+def _caller_level():
+    """The warning stacklevel of the caller's first frame outside orfdata, so the warning names its line.
+
+    Frames of orfdata's own code, including the ``__init__`` dataclasses
+    generate for its rules, are skipped.
+    """
+    frame, level = sys._getframe(1), 1
+    while frame is not None and frame.f_globals.get("__name__", "").partition(".")[0] == "orfdata":
+        frame, level = frame.f_back, level + 1
+    return level
 
 
 class EvidenceRule:
@@ -65,7 +79,12 @@ class EvidenceRule:
             methods = value["methods"]
             return MS(**dict(value, methods=None if methods is None else tuple(stored_method(m) for m in methods)))
         if kind in ("all", "any"):
-            return (AllOf if kind == "all" else AnyOf)(tuple(EvidenceRule.from_dict(r) for r in value))
+            # Combined with & or |, so parts that 0.28.0's names make equal, such as hla and mhc, are one.
+            rules = [EvidenceRule.from_dict(r) for r in value]
+            combined = rules[0]
+            for rule in rules[1:]:
+                combined = combined & rule if kind == "all" else combined | rule
+            return combined
         raise ValueError(f"Unknown evidence rule: {kind}")
 
 
@@ -184,7 +203,7 @@ class MS(EvidenceRule):
             object.__setattr__(self, "resolved", False)
 
     def _kind(self, method):
-        return self.methods is None or method in self.methods
+        return self.methods is None or stored_method(method) in self.methods
 
     def matches(self, evidence):
         if _independent(p.sequence for p in evidence.peptides

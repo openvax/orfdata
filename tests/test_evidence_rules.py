@@ -248,3 +248,45 @@ def test_query_cli_rejects_conflicting_rule_options(options, message, capsys):
     with pytest.raises(SystemExit):
         run(options)
     assert message in capsys.readouterr().err
+
+
+def test_old_names_still_work_on_the_command_line(catalog, capsys):
+    from orfdata.cli import run
+
+    with pytest.warns(DeprecationWarning, match="'hla' is now 'immunopeptidomics'"):
+        run(["--evidence", "hla", "--format", "tsv"])
+    assert len(capsys.readouterr().out.splitlines()) == 1881 + 1
+    run(["--evidence", "all", "--format", "tsv"])
+    assert len(capsys.readouterr().out.splitlines()) == len(catalog.records) + 1
+    with pytest.raises(SystemExit):
+        run(["--evidence", "MS"])
+    assert "choose from ribosome, proteomics" in capsys.readouterr().err
+
+
+def test_saved_rules_whose_old_names_now_coincide_still_load():
+    """0.27.1 kept hla and mhc apart, so it could save a rule naming both; both are immunopeptidomics now."""
+    old = lambda name: {"ms": dict(min_peptides=1, unique=False, reviewed=False, resolved=False,  # noqa: E731
+                                   methods=[name])}
+    assert EvidenceRule.from_dict({"any": [old("hla"), old("mhc")]}) == MS(mhc=True)
+    nested = {"all": [{"ribo_seq": dict(min_studies=1, resolved=False)}, {"any": [old("mhc"), old("hla")]}]}
+    assert EvidenceRule.from_dict(nested) == RiboSeq() & MS(mhc=True)
+
+
+def test_deprecation_warnings_name_the_callers_line(catalog):
+    import warnings
+
+    record = next(r for r in catalog.records if r.has_evidence("immunopeptidomics"))
+    for call in (lambda: evidence_rule("hla"), lambda: MS(methods="mhc"), lambda: catalog.query(evidence="hla"),
+                 lambda: catalog.query(evidence=["shotgun"]), lambda: record.has_evidence("hla")):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            call()
+        assert [w.filename for w in caught if w.category is DeprecationWarning] == [__file__]
+
+
+def test_evidence_stored_under_old_names_still_matches():
+    """Objects that skip __init__, such as catalogues pickled by 0.27.1, keep the old names."""
+    old = peptide("SIINFEKL", "immunopeptidomics")
+    object.__setattr__(old, "method", "hla")
+    evidence = ORFEvidence(peptides=(old,))
+    assert MS(mhc=True).matches(evidence) and not MS(mhc=False).matches(evidence)
