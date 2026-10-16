@@ -1189,15 +1189,15 @@
 <h1 id="viral-coding-references">Viral coding references<a class="headerlink" href="#viral-coding-references" title="Permanent link">&para;</a></h1>
 <p>Browse the packaged viral references by host, convenience group and virus type,
 then load their source-annotated coding paths without fetching the genome:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">viral_orfs</span><span class="p">,</span> <span class="n">viral_reference_sequence</span><span class="p">,</span> <span class="n">viral_references</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">viral_orfs</span><span class="p">,</span> <span class="n">viral_reference</span><span class="p">,</span> <span class="n">viral_references</span>
 
 <span class="n">references</span> <span class="o">=</span> <span class="n">viral_references</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">"human"</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="s2">"HPV"</span><span class="p">,</span> <span class="n">virus_type</span><span class="o">=</span><span class="s2">"HPV16"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">([(</span><span class="n">r</span><span class="p">[</span><span class="s2">"id"</span><span class="p">],</span> <span class="n">r</span><span class="p">[</span><span class="s2">"coding_models"</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">references</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">([(</span><span class="n">r</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">coding_models</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">references</span><span class="p">])</span>
 <span class="c1"># [('NC_001526.4', 9), ('GRCh38.d1.vd1:HPV16', 9)]</span>
 
-<span class="n">reference_dna</span> <span class="o">=</span> <span class="n">viral_reference_sequence</span><span class="p">(</span><span class="s2">"NC_001526.4"</span><span class="p">)</span>
-<span class="n">orfs</span> <span class="o">=</span> <span class="n">viral_orfs</span><span class="p">(</span><span class="n">reference_id</span><span class="o">=</span><span class="s2">"NC_001526.4"</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">orf</span> <span class="ow">in</span> <span class="n">orfs</span><span class="p">:</span>
+<span class="n">ref</span> <span class="o">=</span> <span class="n">viral_reference</span><span class="p">(</span><span class="s2">"NC_001526.4"</span><span class="p">)</span>  <span class="c1"># choose the native RefSeq placement</span>
+<span class="n">reference_dna</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">dna</span>
+<span class="k">for</span> <span class="n">orf</span> <span class="ow">in</span> <span class="n">ref</span><span class="o">.</span><span class="n">orfs</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="n">orf</span><span class="o">.</span><span class="n">orf_id</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">gene_name</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">coding_blocks</span><span class="p">,</span> <span class="n">orf</span><span class="o">.</span><span class="n">protein_sequence</span><span class="p">)</span>
 </code></pre></div>
 <p>The small bundled catalogue loads offline without PyEnsembl, Biopython or a
@@ -1205,18 +1205,23 @@ human genome. It supplies the complete DNA for the native RefSeq NC_001526.4
 and GDC HPV16 placements; both map to the same nine source CDSs. The two DNA
 strings differ by a verified circular rotation. <code>viral_reference_sequence(id)</code>
 returns the exact forward FASTA bases, with T rather than U. A missing ID raises
-<code>ValueError</code>. The metadata query does not copy genome bases into each result.</p>
+<code>ValueError</code>. <code>viral_references()</code> returns immutable <code>ViralReference</code> data
+classes; <code>.dna</code> and <code>.orfs</code> load only on access, so browsing does not copy
+genome bases or construct ORF models for every result. Choose by reference ID,
+not by result position: the native and GDC sequences have different coordinates.
+Use <code>ref.to_dict()</code> when serializing reference metadata to JSON; it does not
+load DNA or ORF models.</p>
 <p><code>host</code> accepts a known species name such as <code>"human"</code> or an NCBI taxon ID such
-as <code>9606</code>. The released HPV16 reference records have viral <code>taxon_id=333760</code>
-and <code>host_taxon_ids=[9606]</code>; these are different identities. Their documented
-human host association is sourced to PaVE. <code>row["virus"]["group"] == "HPV"</code>
+as <code>9606</code>. The released HPV16 reference objects have viral <code>taxon_id=333760</code>
+and <code>host_taxon_ids=(9606,)</code>; these are different identities. Their documented
+human host association is sourced to PaVE. <code>ref.group == "HPV"</code>
 is a convenient selection label, not a formal taxonomic rank. The
-<code>row["virus"]["type"] == "HPV16"</code> label is the virus
-type; ICTV places it in the species <em>Alphapapillomavirus 9</em>. Each row also
+<code>ref.virus_type == "HPV16"</code> label is the virus
+type; ICTV places it in the species <em>Alphapapillomavirus 9</em>. Each reference also
 retains the association and taxonomy source URLs. Host associations can cover
 several host taxa as new references are curated; an unlisted host is unknown,
 not proof that infection is impossible. NCBI Virus's isolation-host metadata is
-not an exhaustive host-range list. <code>host_taxon_ids</code> and <code>host_source</code> have the
+not an exhaustive host-range list. <code>ref.host_taxon_ids</code> and <code>ref.host_source</code> have the
 same meaning as in <a href="../proteome/#viral-proteomes">ViralProteome</a>.</p>
 <p>When annotating an existing BAM, continue to bind against its <strong>actual</strong> full
 alignment-reference DNA:</p>
