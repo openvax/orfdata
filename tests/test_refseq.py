@@ -110,3 +110,13 @@ def test_refseq_rejects_one_transcript_assigned_to_different_gene(tmp_path):
     rows[1]['related_accession'] = rows[0]['related_accession']
     with pytest.raises(ValueError, match='Conflicting RefSeq transcript'):
         build(source(tmp_path, rows=rows))
+
+
+def test_refseq_rejects_short_or_extra_cells_at_ingest(tmp_path):
+    for row in ('CDS\twith_protein\n', '\t'.join(['CDS'] * 13) + '\n'):
+        args = source(tmp_path)
+        header = args[1].read_text().splitlines()[0]
+        args[1].write_text(header + '\n' + row)
+        args[3]['feature_table'] = hashlib.sha256(args[1].read_bytes()).hexdigest()
+        with pytest.raises(ValueError, match='Malformed RefSeq feature-table row'):
+            build(args)

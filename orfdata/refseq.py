@@ -66,6 +66,8 @@ def refseq_proteome(cls, protein_fasta, feature_table, *, reference, expected_sh
     occurrences, transcripts = defaultdict(dict), {}
     untranslated = 0
     for row in reader:
+        if None in row or any(row.get(name) is None for name in required):
+            raise ValueError("Malformed RefSeq feature-table row")
         if row["assembly"] != reference.assembly_accession:
             raise ValueError("RefSeq feature-table assembly disagrees with reference")
         if row["# feature"] != "CDS":
