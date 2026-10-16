@@ -1,3 +1,39 @@
+# 0.32.0
+
+Dog peptide data: MHC class I ligands and the Canine PeptideAtlas.
+
+- **`kaabinejadian-dog-dla-ligands`.** Every peptide row of PRIDE PXD074485's
+  PEAKS tables (Kaabinejadian et al., iScience 2026; CC0): DLA class I ligands
+  from four dog tumours (osteosarcoma, two anal sac adenocarcinomas, oral
+  melanoma), each searched against four dog protein databases, and from three
+  human HCT 116 lines expressing one DLA-88 allele each. Samples keep breed and
+  DLA typing; rows keep PEAKS area, intensity, spectrum count, modified form and
+  identification type (database search, de novo or homology). iRT standards
+  are flagged in every search, and de novo sequences aren't mapped to the
+  proteins PEAKS lists. Published as a data release;
+  `orfdata datasets download kaabinejadian-dog-dla-ligands`.
+- **`peptideatlas-dog-peptides`.** The Canine PeptideAtlas 2024-01 build
+  (Kusebauch et al., Sci Data 2026): PSM counts for 149,546 peptides in 18
+  samples, each peptide's protein locations with ROS_Cfam_1.0 coordinates, and
+  17,795 protein calls, 17,110 of them mapped to Ensembl 110 proteins by
+  identical sequence.
+  PeptideAtlas states no licence, so this release is built locally from the
+  original download (`orfdata datasets build peptideatlas-dog-peptides`) and
+  never redistributed.
+- **Build-only datasets.** A dataset release with no published artifact
+  (`"assets": {}`) is built from its pinned sources. `DatasetRegistry.download`
+  explains how to build it, `open` and `inspect` use the local build, and
+  `DatasetRegistry.published(name)` tells the two apart.
+- **Storage version 5.** Target mappings no longer repeat their reference for
+  every candidate; the DLA dataset is a third smaller. Older files remain
+  readable.
+- Neither dataset searched for noncanonical ORFs, so dog still has no ncORF
+  catalogue; the catalogue guide lists what was checked.
+
+# 0.31.0
+
+- Experimental pinned RefSeq proteome inputs (#102).
+
 # 0.30.0
 
 Ribo-seq ORF catalogues for zebrafish, C. elegans and yeast, and two optional

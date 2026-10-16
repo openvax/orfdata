@@ -13,7 +13,13 @@ Zeros, nulls, censoring, uncertainty, nested provenance and derived inputs retai
 their meaning. Foreign keys prevent cross-reference target/assay assignments.
 Internal integer keys never appear as public biological identifiers.
 
-Published storage versions 1, 2 and 3 remain readable. There is no automatic
+ORFdata 0.32 writes storage version 5, which also stores each target mapping's
+candidates as kind, identifier and namespace: they always share the mapping's
+reference, which its row already names. The dog DLA ligand dataset, with 62,492
+mappings, is 255 MB, against 389 MB in the version 4 layout. Version 4 files remain readable, and a
+version 4 fixture written by the released ORFdata 0.30.0 tests that.
+
+Published storage versions 1, 2, 3 and 4 remain readable. There is no automatic
 migration or replacement of downloaded artifacts. A new source rebuild can use
 a different storage layout and therefore a different file checksum while
 returning the same records. Registry downloads always verify the exact published

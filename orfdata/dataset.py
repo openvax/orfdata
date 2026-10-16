@@ -141,6 +141,15 @@ def _measurement_record(observation):
     return result
 
 
+def _mapping_record(mapping):
+    # A TargetMapping's targets all share its reference, which the row's
+    # reference_key already names, so store each target as kind/identifier/namespace.
+    result = mapping.to_dict()
+    del result["reference"]
+    result["targets"] = [[t.kind, t.identifier, t.namespace] for t in mapping.targets]
+    return result
+
+
 def _validate_native_selectors(unit=None, scale=None, log_base=None):
     if unit is not None:
         _identifier(unit, "measurement unit selector")
@@ -186,7 +195,7 @@ class QuantitativeDataset:
         self.path = Path(path).resolve()
         with closing(self._connect()) as connection:
             self._storage_version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if self._storage_version not in (1, 2, 3, 4):
+            if self._storage_version not in (1, 2, 3, 4, 5):
                 raise ValueError("Unsupported quantitative database schema")
             row = connection.execute("SELECT value FROM metadata WHERE name='manifest'").fetchone()
             if row is None:
@@ -220,7 +229,7 @@ class QuantitativeDataset:
             connection = sqlite3.connect(path)
             connection.execute("PRAGMA foreign_keys=ON")
             connection.executescript(_SCHEMA)
-            connection.execute("PRAGMA user_version=4")
+            connection.execute("PRAGMA user_version=5")
             connection.execute("INSERT INTO metadata VALUES ('manifest', ?)",
                                (_json(manifest.to_dict()),))
             reference_ids = {}
@@ -299,12 +308,16 @@ class QuantitativeDataset:
                                     relation.right.reference.key,
                                     _target_key(relation.left), _target_key(relation.right),
                                     _json(relation.to_dict())))
+            declared = {reference.key: reference for reference in manifest.references}
             for mapping in mappings:
                 if not isinstance(mapping, TargetMapping):
                     raise TypeError("mappings must contain TargetMappings")
+                # Storage keeps only the reference key, so reading restores the manifest's record.
+                if declared.get(mapping.reference.key) != mapping.reference:
+                    raise ValueError("A target mapping's reference must equal one the manifest declares")
                 connection.execute("INSERT INTO mapping VALUES (?, ?, ?)",
                                    (mapping.reference.key, mapping.mapping_id,
-                                    _json(mapping.to_dict())))
+                                    _json(_mapping_record(mapping))))
             for mapping in reference_mappings:
                 if not isinstance(mapping, ReferenceMapping):
                     raise TypeError("reference_mappings must contain ReferenceMappings")
@@ -407,7 +420,26 @@ class QuantitativeDataset:
         return self._records("assay", Assay, reference=reference)
 
     def mappings(self, *, reference=None):
-        return self._records("mapping", TargetMapping, reference=reference)
+        if self._storage_version < 5:
+            return self._records("mapping", TargetMapping, reference=reference)
+        return self._compact_mappings(reference)
+
+    def _compact_mappings(self, reference):
+        scope = self._scope(reference)
+        query = "SELECT reference_key, record FROM mapping"
+        params = ()
+        if scope is not None:
+            query += " WHERE reference_key=?"
+            params = (scope,)
+        query += " ORDER BY reference_key, id"
+        with closing(self._connect()) as connection:
+            for key, record in connection.execute(query, params):
+                values = json.loads(record)
+                context = self._references[key]
+                values["reference"] = context
+                values["targets"] = tuple(ScopedTarget(context, kind, identifier, namespace)
+                                          for kind, identifier, namespace in values["targets"])
+                yield TargetMapping(**values)
 
     def reference_mappings(self, *, source_reference=None, target=None):
         """Iterate original source-to-reference mappings, including unresolved IDs."""
@@ -611,7 +643,7 @@ class QuantitativeDataset:
         with closing(self._connect()) as connection:
             for row in connection.execute(query, parameters):
                 values = json.loads(row[0])
-                if self._storage_version == 4:
+                if self._storage_version >= 4:
                     values = dict(_V4_DEFAULTS, **values)
                     values.update(measurement_id=row[5], sample_id=row[6], assay_id=row[7],
                                   quantity=row[8], status=row[9], dataset_id=self.manifest.dataset_id,

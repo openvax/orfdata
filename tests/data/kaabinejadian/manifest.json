@@ -1,0 +1,212 @@
+{
+  "dataset_id": "kaabinejadian-dog-dla-ligands",
+  "version": "fixture",
+  "title": "DLA class I ligands from dog tumours and DLA-88 monoallelic cells (Kaabinejadian et al.)",
+  "references": [
+    {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": null,
+      "annotation_name": null,
+      "annotation_version": null,
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": "6d4eefc3f770f26cca205231b68f2b0f60a1cad1f2a8cef234fe3db0c7a7745d"
+    },
+    {
+      "taxon_id": 9606,
+      "species": "human",
+      "genome_build": null,
+      "annotation_name": null,
+      "annotation_version": null,
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": "6d4eefc3f770f26cca205231b68f2b0f60a1cad1f2a8cef234fe3db0c7a7745d"
+    }
+  ],
+  "sources": [
+    {
+      "asset_id": "Results.zip",
+      "url": "https://example.invalid/kaabinejadian-fixture/Results.zip",
+      "sha256": "6d4eefc3f770f26cca205231b68f2b0f60a1cad1f2a8cef234fe3db0c7a7745d",
+      "size": 6297,
+      "access_terms": "PRIDE PXD074485: Creative Commons Public Domain (CC0); attribute Kaabinejadian et al. (2026)",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "redistributable": true,
+      "metadata": {
+        "upstream": {
+          "asset_id": "Results.zip",
+          "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2026/04/PXD074485/Results.zip",
+          "sha256": "ab4682221b23f3f006892507d82db3622f26f04eacd5e3a97975ed57c03884e4",
+          "size": 10825310,
+          "access_terms": "PRIDE PXD074485: Creative Commons Public Domain (CC0); attribute Kaabinejadian et al. (2026)",
+          "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+          "redistributable": true,
+          "metadata": {
+            "attribution": "Kaabinejadian S, Yari H, et al., Hildebrand WH; University of Oklahoma Health Sciences Center",
+            "deposit": "https://www.ebi.ac.uk/pride/archive/projects/PXD074485",
+            "role": "PEAKS Studio 11.5 peptide tables, one per immunoprecipitation and search database",
+            "source_update": "2026-04-22",
+            "terms_verified": "2026-10-16"
+          }
+        },
+        "role": "small factual fixture slice"
+      }
+    },
+    {
+      "asset_id": "sdrf.tsv",
+      "url": "https://example.invalid/kaabinejadian-fixture/sdrf.tsv",
+      "sha256": "b59816bb157e8ac67dea263803a30dd9bd755fdac097a6a0edc148dc94452803",
+      "size": 11637,
+      "access_terms": "PRIDE PXD074485: Creative Commons Public Domain (CC0); attribute Kaabinejadian et al. (2026)",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "redistributable": true,
+      "metadata": {
+        "upstream": {
+          "asset_id": "sdrf.tsv",
+          "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2026/04/PXD074485/PXD074485_community_annotated.sdrf.tsv",
+          "sha256": "b59816bb157e8ac67dea263803a30dd9bd755fdac097a6a0edc148dc94452803",
+          "size": 11637,
+          "access_terms": "PRIDE PXD074485: Creative Commons Public Domain (CC0); attribute Kaabinejadian et al. (2026)",
+          "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+          "redistributable": true,
+          "metadata": {
+            "attribution": "PRIDE community annotation of PXD074485",
+            "deposit": "https://www.ebi.ac.uk/pride/archive/projects/PXD074485",
+            "role": "Sample, antibody and DLA typing metadata",
+            "source_update": "2026-10-06; community-annotated, so PRIDE may revise it, and a rebuild needs this exact file",
+            "terms_verified": "2026-10-16"
+          }
+        },
+        "role": "complete source file"
+      }
+    }
+  ],
+  "citations": [
+    "https://doi.org/10.1016/j.isci.2026.115975",
+    "https://www.ebi.ac.uk/pride/archive/projects/PXD074485",
+    "https://creativecommons.org/publicdomain/zero/1.0/"
+  ],
+  "assay_kinds": [
+    "mhc_ms"
+  ],
+  "coverage": {
+    "accession": "PXD074485",
+    "target_resolution": "peptide: the unmodified amino-acid sequence; each modified form is a separate source row",
+    "identification": "PEAKS Studio 11.5 at 1% peptide FDR (decoy-fusion), per the article. The tables also export DeepNovo (de novo) and Homolog (SPIDER) identifications, kept with their type.",
+    "search_databases": {
+      "UniProt9615": "UniProt Canis lupus familiaris proteome (taxon 9615) with Biognosys iRT peptides; release not stated",
+      "MergedCanFams": "Merged CanFam3.1 (Ensembl 104), CanFam4 (UCSC), Basenji (Ensembl 104) and Great Dane (Ensembl 104) proteins",
+      "Basenji": "Basenji proteins (Ensembl 104), with Biognosys iRT peptides, per the table name and the article",
+      "Zoey": "Great Dane (Zoey) proteins (Ensembl 104), with Biognosys iRT peptides, per the table name and the article",
+      "SwissProt9606": "SwissProt Homo sapiens (taxon 9606) with Biognosys iRT peptides"
+    },
+    "search_fastas": "not deposited; protein containment of reported accessions is not verified",
+    "repeated_searches": "Each dog tumour's spectra were searched against four databases; one peptide in two of its tables is one observation, not two",
+    "nc_orf_search": "not performed: canonical protein databases only",
+    "raw_files_not_deposited": {
+      "note": "Rows whose best spectrum comes from a run missing from the deposited raw archive (row counts per table set)",
+      "runs": {}
+    },
+    "assays_without_results": [
+      "21-1129-DogECSTumor163828A-H58A-11-24-21-HY (raw files only)"
+    ],
+    "measurement_limits": "PEAKS label-free area and intensity; no copies per cell; no normalization across runs",
+    "missingness": "An empty Area/Intensity is missing; peptides absent from a table have no observation",
+    "mhc_typing": "Deposit SDRF, which the article's Table 1 matches; HCT 116 lines are monoallelic DLA-88 transductants",
+    "source_counts": {
+      "HCT116-DLA8850101-BB76-SwissProt9606": {
+        "rows": 6,
+        "found_by": {
+          "DeepNovo": 2,
+          "DB Search": 3,
+          "Homolog": 1
+        },
+        "irt_standard_rows": 2
+      },
+      "Lola-BB76-MergedCanFams": {
+        "rows": 6,
+        "found_by": {
+          "DeepNovo": 3,
+          "DB Search": 2,
+          "Homolog": 1
+        },
+        "irt_standard_rows": 1
+      },
+      "Lola-BB76-UniProt9615": {
+        "rows": 8,
+        "found_by": {
+          "DeepNovo": 3,
+          "DB Search": 4,
+          "Homolog": 1
+        },
+        "irt_standard_rows": 3
+      },
+      "Lola-H58A-UniProt9615": {
+        "rows": 2,
+        "found_by": {
+          "DB Search": 1,
+          "DeepNovo": 1
+        },
+        "irt_standard_rows": 0
+      }
+    }
+  },
+  "processing": {
+    "importer": "kaabinejadian-dla-v1",
+    "software": "orfdata",
+    "version": "0.32.0",
+    "operations": [
+      "keep every reported peptide row, its identification type, score and modifications",
+      "store native PEAKS area, intensity and spectrum count without normalization",
+      "map each peptide to its PEAKS-reported accessions per search database",
+      "flag Biognosys iRT standards"
+    ],
+    "parameters": {
+      "aggregate_searches": false,
+      "filter_identification_types": false
+    },
+    "tables": {
+      "Lola-BB76": {
+        "sample": "Lola",
+        "antibody": "BB7.6 (anti-MHC class I)",
+        "data_file": "20250310-LolaTumor-BB76-022725.zip",
+        "databases": [
+          "MergedCanFams",
+          "UniProt9615"
+        ],
+        "runs": {
+          "20250310-LolaTumor-BB76-022725": true
+        }
+      },
+      "Lola-H58A": {
+        "sample": "Lola",
+        "antibody": "H58A (anti-MHC class I)",
+        "data_file": "23-0425-LolaCanineTumor-H58A-040423.zip",
+        "databases": [
+          "UniProt9615"
+        ],
+        "runs": {
+          "23-0425-Lola Canine Tumor-H58A-040423": true
+        }
+      },
+      "HCT116-DLA8850101-BB76": {
+        "sample": "HCT116-DLA8850101",
+        "antibody": "BB7.6 (anti-MHC class I)",
+        "data_file": "20241015-HCT116-DLA8850101-BB76.zip",
+        "databases": [
+          "SwissProt9606"
+        ],
+        "runs": {
+          "20241015-HCT116-DLA8850101-BB76": true
+        }
+      }
+    }
+  }
+}

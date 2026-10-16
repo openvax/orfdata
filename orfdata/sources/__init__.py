@@ -23,6 +23,14 @@ def importer(name):
         from .ingolia import import_ribo
 
         return import_ribo
+    if name == "kaabinejadian-dla-v1":
+        from .kaabinejadian import import_ligands
+
+        return import_ligands
+    if name == "peptideatlas-build-v1":
+        from .peptideatlas import import_build
+
+        return import_build
     raise ValueError(f"No packaged importer for {name!r}")
 
 
