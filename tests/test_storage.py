@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from orfdata import DatasetManifest, Measurement, QuantitativeDataset
+from orfdata import DatasetManifest, Measurement, QuantitativeDataset, TargetMapping
 
 FIXTURE = Path(__file__).parent / "data/storage"
 
 
-@pytest.mark.parametrize("version", (1, 2, 3))
+@pytest.mark.parametrize("version", (1, 2, 3, 4))
 def test_released_storage_readers_and_roundtrip(version, tmp_path):
     old = QuantitativeDataset(FIXTURE / f"v{version}.sqlite")
     expected = json.loads((FIXTURE / f"v{version}.json").read_text())
@@ -21,7 +21,12 @@ def test_released_storage_readers_and_roundtrip(version, tmp_path):
     def key(measurement):
         return measurement.target.reference.key, measurement.measurement_id
     assert sorted(old.measurements(), key=key) == sorted(measurements, key=key)
-    new = QuantitativeDataset.create(tmp_path / "v4.sqlite", old.manifest, samples=old.samples(),
+    if version >= 4:
+        def identity(mapping):
+            return mapping.reference.key, mapping.mapping_id
+        stored = [TargetMapping.from_dict(m) for m in expected["mappings"]]
+        assert sorted(old.mappings(), key=identity) == sorted(stored, key=identity)
+    new = QuantitativeDataset.create(tmp_path / "v5.sqlite", old.manifest, samples=old.samples(),
                                     assays=old.assays(), measurements=measurements, mappings=old.mappings(),
                                     pairings=old.pairings(), relations=old.relations(),
                                     reference_mappings=old.reference_mappings())
@@ -29,7 +34,9 @@ def test_released_storage_readers_and_roundtrip(version, tmp_path):
     assert list(new.samples()) == list(old.samples()) and list(new.assays()) == list(old.assays())
     assert list(new.pairings()) == list(old.pairings()) and list(new.relations()) == list(old.relations())
     assert list(new.reference_mappings()) == list(old.reference_mappings())
+    assert list(new.mappings()) == list(old.mappings())
     for reference in old.manifest.references:
+        assert list(new.mappings(reference=reference)) == list(old.mappings(reference=reference))
         for quantity in (None, "rna_abundance", "protein_abundance"):
             for status in (None, "measured", "below_detection", "missing"):
                 filters = dict(reference=reference, quantity=quantity, status=status)
@@ -40,8 +47,11 @@ def test_released_storage_readers_and_roundtrip(version, tmp_path):
         for value in old.measurements(reference=reference):
             assert list(new.measurements(target=value.target)) == list(old.measurements(target=value.target))
     with sqlite3.connect(new.path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        # Mapping targets are stored without repeating the mapping's reference.
+        for (record,) in connection.execute("SELECT record FROM mapping"):
+            assert "reference" not in record
         assert connection.execute("SELECT count(*) FROM observation_input").fetchone()[0] == 4
 
 

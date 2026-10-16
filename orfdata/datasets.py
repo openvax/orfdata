@@ -41,8 +41,10 @@ class DatasetRegistry:
     """Discover manifests offline; explicitly download before opening data.
 
     Definitions map names to a pinned default_version and versions. Each version
-    contains a manifest, distribution access terms, and checksummed assets. No
-    dataset is downloaded on construction, discovery, inspection or open.
+    contains a manifest, distribution access terms, and checksummed assets. A
+    version with no assets is built locally from its pinned sources, and must
+    name a packaged importer. No dataset is downloaded on construction,
+    discovery, inspection or open.
     """
 
     def __init__(self, definitions=None, *, cache_root=None):
@@ -60,8 +62,13 @@ class DatasetRegistry:
                 manifest = DatasetManifest.from_dict(release["manifest"])
                 if (manifest.dataset_id, manifest.version) != (name, version):
                     raise ValueError("Registry and manifest dataset identities disagree")
-                if set(release["assets"]) != {"dataset.sqlite"}:
-                    raise ValueError("A quantitative release must contain dataset.sqlite")
+                if release["assets"]:
+                    if set(release["assets"]) != {"dataset.sqlite"}:
+                        raise ValueError("A quantitative release must contain dataset.sqlite")
+                else:
+                    from .sources import importer
+
+                    importer(manifest.processing.get("importer"))  # A release with nothing to download must be buildable.
                 distribution = release["distribution"]
                 if not isinstance(distribution.get("access_terms"), str) or not distribution["access_terms"].strip():
                     raise ValueError("Dataset artifact access terms are required")
@@ -143,11 +150,33 @@ class DatasetRegistry:
         path = reference_registry(spec, self._cache_root).local_path(spec.dataset_id, spec.dataset_version)
         return SearchReference(path, spec)
 
+    def published(self, name, version=None):
+        """Whether the release has a published artifact to download; otherwise it is built locally."""
+        version = self._version(name, version)
+        return bool(self._definitions[name]["versions"][version]["assets"])
+
+    def _build_hint(self, name, version):
+        release = self._definitions[name]["versions"][version]
+        reason = "" if release["distribution"]["redistributable"] else ", because its source terms don't allow redistribution"
+        return (f"The {name} {version} dataset has no published artifact{reason}; build it from its pinned "
+                f"sources with DatasetRegistry().build({name!r}, {version!r}) or "
+                f"'orfdata datasets build {name} --version {version}'")
+
+    def _published(self, name, version):
+        version = self._version(name, version)
+        if not self.published(name, version):
+            raise ValueError(self._build_hint(name, version))
+        return version
+
     def _data_registry(self):
         if self._registry is None:
-            definitions = {name: dict(default_version=entry["default_version"], versions={
-                version: release["assets"] for version, release in entry["versions"].items()})
-                for name, entry in self._definitions.items()}
+            definitions = {}
+            for name, entry in self._definitions.items():
+                published = {v: r["assets"] for v, r in entry["versions"].items() if r["assets"]}
+                if published:  # Every call names its version; the default only has to be a published one.
+                    default = entry["default_version"]
+                    definitions[name] = dict(default_version=default if default in published else min(published),
+                                             versions=published)
 
             def store_path(name, version):
                 release = self._definitions[name]["versions"][version]
@@ -157,9 +186,13 @@ class DatasetRegistry:
         return self._registry
 
     def inspect(self, name, version=None, *, verify_files=True):
-        """Inspect local bytes offline; never download or repair a bad cache."""
-        version = self._version(name, version)
-        return self._data_registry().inspect(name, version, verify_files=verify_files)
+        """Inspect local bytes offline; never download or repair a bad cache.
+
+        A release that is only built locally reports its build.
+        """
+        if not self.published(name, version):
+            return self.inspect_build(name, version, verify_files=verify_files)
+        return self._data_registry().inspect(name, self._published(name, version), verify_files=verify_files)
 
     def download(self, name, version=None, *, force=False, source_paths=None, **options):
         """Explicitly install verified files; forward timeout/retry/progress options.
@@ -167,8 +200,7 @@ class DatasetRegistry:
         source_paths accepts user-downloaded files while retaining declared URLs
         and hashes. force installs a fresh bundle without deleting readers' files.
         """
-        version = self._version(name, version)
-        return self._data_registry().download(name, version, force=force,
+        return self._data_registry().download(name, self._published(name, version), force=force,
                                              source_paths=source_paths, **options)
 
     def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
@@ -182,8 +214,17 @@ class DatasetRegistry:
                              download_options=download_options)
 
     def open(self, name, version=None, *, verify_files=True):
-        """Open an installed dataset after integrity and identity checks, offline."""
-        version = self._version(name, version)
+        """Open an installed dataset after integrity and identity checks, offline.
+
+        A release that is only built locally opens its build.
+        """
+        if not self.published(name, version):
+            if self.inspect_build(name, version, verify_files=False).status == "missing":
+                version = self._version(name, version)
+                raise FileNotFoundError(self._build_hint(name, version).replace(
+                    "has no published artifact", "hasn't been built, and has no published artifact"))
+            return self.open_build(name, version, verify_files=verify_files)
+        version = self._published(name, version)
         path = self._data_registry().local_path(name, version, asset="dataset.sqlite",
                                                 verify_files=verify_files)
         dataset = QuantitativeDataset(path)

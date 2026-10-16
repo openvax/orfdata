@@ -341,15 +341,16 @@ No public resource gives dog ORF-level translation evidence, as of October
   rough-ER microsomes), deposited no reads.
 - **Mass spectrometry.** Every dog dataset searched canonical proteins only,
   so none reports a noncanonical peptide as deposited: the Canine
-  PeptideAtlas (PXD052932, 245,884 peptides from 13 tissues, plasma and
-  urine), the dog tumour DLA immunopeptidome (PXD074485, about 12,700
-  ligands), the Pfizer TMT atlas (PXD070290) and the dog brain proteome
-  (PXD033420, PXD034449).
+  PeptideAtlas (PXD052932, 149,546 peptides from 13 tissues, plasma and
+  urine), the dog tumour DLA immunopeptidome (PXD074485, 12,949 distinct
+  database-search ligands), the Pfizer TMT atlas (PXD070290) and the dog brain
+  proteome (PXD033420, PXD034449). The first two are available as
+  [dog peptide datasets](dog-peptides.md), as evidence for known proteins.
 
 Dog ncORF evidence therefore needs those spectra searched again against dog
 ORF sequences. Human and mouse ORFs are never transferred to dog by orthology.
-Dog proteomes contain their PyEnsembl-annotated proteins, and dog RNA and
-protein abundance are available as [measurements](measurements.md).
+Dog proteomes contain their PyEnsembl-annotated proteins, and dog RNA, protein
+abundance and peptides are available as [measurements](measurements.md).
 
 ## Every assembly of a species
 

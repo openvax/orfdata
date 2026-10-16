@@ -40,6 +40,7 @@ nav:
       - Dog and mouse RNA: pfizer-rna.md
       - Yeast protein and RNA: copy-yeast.md
       - Yeast RNA and ribosome occupancy: ingolia-yeast.md
+      - Dog MHC ligands and PeptideAtlas: dog-peptides.md
   - Project:
       - Release notes: https://github.com/openvax/orfdata/blob/main/CHANGELOG.md
       - Data roadmap: https://github.com/openvax/orfdata/issues/3

@@ -109,7 +109,7 @@ def run(argv=None, prog=None):
             inspected = inspect(args.name, args.version)
             result = dict(status=inspected.status, path=str(inspected.path),
                           error=str(inspected.error) if inspected.error else None)
-            if args.built:
+            if args.built or not registry.published(args.name, args.version):
                 result.update(origin="source_build", verified=inspected.verified)
         elif args.command == "download":
             options = dict(show_progress=not args.quiet)

@@ -1,0 +1,148 @@
+{
+  "dataset_id": "peptideatlas-dog-peptides",
+  "version": "fixture",
+  "title": "Canine PeptideAtlas 2024-01 (build 573): peptides, PSM counts per sample and protein calls",
+  "references": [
+    {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": "ROS_Cfam_1.0",
+      "annotation_name": "PeptideAtlas biosequence set",
+      "annotation_version": "UP000805418_ENS-ROS_Cfam_1.0_Contam 2024-01-01",
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": "f6417ea8f55a6035e8c2f288a1bedcfbe6ece5193d0641c3374f34d41a8eda61"
+    },
+    {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": "ROS_Cfam_1.0",
+      "annotation_name": "ensembl",
+      "annotation_version": "110",
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": null
+    }
+  ],
+  "sources": [
+    {
+      "asset_id": "atlas_build.tsv.zip",
+      "url": "https://example.invalid/peptideatlas-fixture/atlas_build.tsv.zip",
+      "sha256": "f6417ea8f55a6035e8c2f288a1bedcfbe6ece5193d0641c3374f34d41a8eda61",
+      "size": 14882,
+      "access_terms": "PeptideAtlas build export (Institute for Systems Biology). No licence is stated, so orfdata downloads it from PeptideAtlas and never redistributes it or data built from it",
+      "license_url": null,
+      "redistributable": false,
+      "metadata": {
+        "upstream": {
+          "asset_id": "atlas_build.tsv.zip",
+          "url": "https://peptideatlas.org/builds/canine/202401/atlas_build_573.tsv.zip",
+          "sha256": "023da7591e93ddf8a45e05ecaf22a1b1a0bb151a1d1c06275876a800284eae17",
+          "size": 61131184,
+          "access_terms": "PeptideAtlas build export (Institute for Systems Biology). No licence is stated, so orfdata downloads it from PeptideAtlas and never redistributes it or data built from it",
+          "license_url": null,
+          "redistributable": false,
+          "metadata": {
+            "attribution": "Kusebauch U, Sun Z, et al., Moritz RL; Institute for Systems Biology",
+            "page": "https://peptideatlas.org/builds/canine/",
+            "source_update": "2024-04-30",
+            "terms_verified": "2026-10-16",
+            "role": "TSV export of the build's database tables"
+          }
+        },
+        "role": "small factual fixture slice"
+      }
+    },
+    {
+      "asset_id": "ensembl.pep.fa.gz",
+      "url": "https://example.invalid/peptideatlas-fixture/ensembl.pep.fa.gz",
+      "sha256": "4cf740ea4e6921463a40ca640191a5d518f660892a1310c4e9b82105f49ff041",
+      "size": 5337,
+      "access_terms": "Ensembl data: no restrictions on use or redistribution; attribute Ensembl",
+      "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "upstream": {
+          "asset_id": "ensembl.pep.fa.gz",
+          "url": "https://ftp.ensembl.org/pub/release-110/fasta/canis_lupus_familiaris/pep/Canis_lupus_familiaris.ROS_Cfam_1.0.pep.all.fa.gz",
+          "sha256": "9daa065155157ab337fbdb882914acfd87aefaf8a7425bfcb63a3e1243b0a070",
+          "size": 10045261,
+          "access_terms": "Ensembl data: no restrictions on use or redistribution; attribute Ensembl",
+          "license_url": "https://www.ensembl.org/info/about/legal/disclaimer.html",
+          "redistributable": true,
+          "metadata": {
+            "attribution": "Ensembl release 110",
+            "role": "Dog proteins for identical-sequence mapping",
+            "source_update": "2023-04-22",
+            "terms_verified": "2026-10-16"
+          }
+        },
+        "role": "small factual fixture slice"
+      }
+    }
+  ],
+  "citations": [
+    "https://doi.org/10.1038/s41597-026-06647-z",
+    "https://peptideatlas.org/builds/canine/",
+    "https://www.ebi.ac.uk/pride/archive/projects/PXD052932",
+    "https://www.ensembl.org/info/about/legal/disclaimer.html"
+  ],
+  "assay_kinds": [
+    "digest_ms"
+  ],
+  "coverage": {
+    "accession": "PeptideAtlas build 573 (Canis familiaris 2024-01); raw data PXD052932",
+    "psm_fdr_per_experiment": 0.001,
+    "search": "Comet 2023.01 and MSFragger 4.0 against UniProt UP000805418 (one protein per gene), Ensembl ROS_Cfam_1.0 and contaminants, with Trans-Proteomic Pipeline validation, per the deposit",
+    "breed": "Labrador Retriever",
+    "breed_source": "The deposit's SDRF (PXD052932) for the 108 tissue runs; the article for all samples, including plasma and urine",
+    "target_resolution": "peptide: the unmodified amino-acid sequence, with PSM counts per sample; protein: PeptideAtlas protein calls for the whole build",
+    "peptide_locations": "Each mapping's locations are [protein, start, end, chromosome, strand, chromosome_start, chromosome_end, exact], 1-based and inclusive; chromosome fields are null for UniProt entries, and exact is false where the protein has isoleucine for leucine or the reverse, which PeptideAtlas maps as equal",
+    "peptide_counts": "PSMs per peptide in each search batch where it was observed, from peptide_instance_search_batch.tsv; PeptideAtlas sums modified forms and charge states",
+    "protein_counting": "A protein's PSMs include shared peptides, so they don't sum to the build's PSMs",
+    "ensembl_mapping": "Proteins map to Ensembl 110 by identical full-length sequence; all 25,710 Ensembl proteins in the search set are identical in Ensembl 105-111",
+    "nc_orf_search": "not performed: canonical protein databases only",
+    "web_summary": "PeptideAtlas's page reports 245,884 distinct peptides and 13,716,253 PSMs; its export holds 149,546 peptides, 197,285 distinct modified sequences and 13,781,115 PSMs",
+    "measurement_limits": "PSM counts; no copies per cell or normalization across samples",
+    "source_counts": {
+      "peptides": 6,
+      "protein_calls": 7,
+      "search_batch_rows": 4,
+      "peptide_mappings": 29,
+      "psms": 1448,
+      "searched_spectra": 6823735,
+      "runs": 39,
+      "canonical": 3,
+      "subsumed": 1,
+      "noncore-canonical": 1,
+      "indistinguishable representative": 2
+    }
+  },
+  "processing": {
+    "importer": "peptideatlas-build-v1",
+    "software": "orfdata",
+    "version": "0.31.0",
+    "atlas_build_id": "573",
+    "search_batches": [
+      "16761",
+      "16765",
+      "17123"
+    ],
+    "operations": [
+      "keep per-sample PSM counts for every peptide",
+      "check every peptide location against its protein sequence",
+      "keep the build's protein calls, presence levels and PSM counts",
+      "map called UniProt and Ensembl proteins to Ensembl 110 by identical sequence"
+    ],
+    "parameters": {
+      "modified_forms": "summed per peptide by PeptideAtlas",
+      "decoy_locations": "counted, not mapped"
+    }
+  }
+}

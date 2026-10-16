@@ -13,6 +13,7 @@ Released datasets, each with its own guide:
 - [Matched human tissue RNA and protein](human-tissue.md) (Wang et al.)
 - [Yeast protein and RNA abundance](copy-yeast.md) (CoPY)
 - [Yeast RNA and ribosome occupancy](ingolia-yeast.md) (Ingolia et al.)
+- [Dog MHC ligands and PeptideAtlas peptides](dog-peptides.md) (Kaabinejadian et al.; Kusebauch et al.)
 
 See [released coverage and gaps](coverage.md); the
 [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further

@@ -1,0 +1,983 @@
+{
+  "writer_version": "0.30.0",
+  "manifest": {
+    "dataset_id": "legacy-fixture",
+    "version": "1",
+    "title": "Synthetic legacy storage validation",
+    "references": [
+      {
+        "taxon_id": 9606,
+        "species": "human",
+        "genome_build": "GRCh38",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      {
+        "taxon_id": 10090,
+        "species": "mouse",
+        "genome_build": "GRCm39",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      {
+        "taxon_id": 9615,
+        "species": "dog",
+        "genome_build": "ROS_Cfam_1.0",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      {
+        "taxon_id": 4932,
+        "species": "yeast",
+        "genome_build": "R64-1-1",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      }
+    ],
+    "sources": [
+      {
+        "asset_id": "input.tsv",
+        "url": "https://example.invalid/storage-fixture.tsv",
+        "sha256": "2e872263e12593bf0c92feeb8cad3a84609a638af7515696ed3356631249a6d8",
+        "size": 18,
+        "access_terms": "Synthetic test data; Apache-2.0",
+        "license_url": null,
+        "redistributable": true,
+        "metadata": {}
+      }
+    ],
+    "citations": [
+      "Synthetic, not experimental evidence"
+    ],
+    "assay_kinds": [
+      "rna_seq",
+      "digest_ms"
+    ],
+    "coverage": {
+      "scope": "four deliberately colliding species"
+    },
+    "processing": {
+      "writer": "orfdata",
+      "writer_version": "0.30.0"
+    },
+    "schema": "orfdata.measurements.v1"
+  },
+  "measurements": [
+    {
+      "measurement_id": "rna-value",
+      "target": {
+        "reference": {
+          "taxon_id": 9606,
+          "species": "human",
+          "genome_build": "GRCh38",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 0,
+      "unit": "TPM",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 0
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "protein-value",
+      "target": {
+        "reference": {
+          "taxon_id": 9606,
+          "species": "human",
+          "genome_build": "GRCh38",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "protein",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "protein",
+      "quantity": "protein_abundance",
+      "value": 10.25,
+      "unit": "iBAQ",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": 0.5,
+      "uncertainty_type": "standard_deviation",
+      "detection_limit": null,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 0,
+        "native": "observed"
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "derived",
+      "target": {
+        "reference": {
+          "taxon_id": 9606,
+          "species": "human",
+          "genome_build": "GRCh38",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 1,
+      "unit": "fixture-units",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "derived",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [
+        "rna-value"
+      ],
+      "derivation": {
+        "method": "synthetic lineage fixture"
+      },
+      "provenance": {},
+      "input_references": []
+    },
+    {
+      "measurement_id": "rna-value",
+      "target": {
+        "reference": {
+          "taxon_id": 10090,
+          "species": "mouse",
+          "genome_build": "GRCm39",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 1,
+      "unit": "TPM",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 1
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "protein-value",
+      "target": {
+        "reference": {
+          "taxon_id": 10090,
+          "species": "mouse",
+          "genome_build": "GRCm39",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "protein",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "protein",
+      "quantity": "protein_abundance",
+      "value": null,
+      "unit": "iBAQ",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "below_detection",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": 0.5,
+      "uncertainty_type": "standard_deviation",
+      "detection_limit": 20,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 1,
+        "native": "<20"
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "derived",
+      "target": {
+        "reference": {
+          "taxon_id": 10090,
+          "species": "mouse",
+          "genome_build": "GRCm39",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 1,
+      "unit": "fixture-units",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "derived",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [
+        "rna-value"
+      ],
+      "derivation": {
+        "method": "synthetic lineage fixture"
+      },
+      "provenance": {},
+      "input_references": []
+    },
+    {
+      "measurement_id": "rna-value",
+      "target": {
+        "reference": {
+          "taxon_id": 9615,
+          "species": "dog",
+          "genome_build": "ROS_Cfam_1.0",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 2,
+      "unit": "TPM",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 2
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "protein-value",
+      "target": {
+        "reference": {
+          "taxon_id": 9615,
+          "species": "dog",
+          "genome_build": "ROS_Cfam_1.0",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "protein",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "protein",
+      "quantity": "protein_abundance",
+      "value": 12.25,
+      "unit": "iBAQ",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": 0.5,
+      "uncertainty_type": "standard_deviation",
+      "detection_limit": null,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 2,
+        "native": "observed"
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "derived",
+      "target": {
+        "reference": {
+          "taxon_id": 9615,
+          "species": "dog",
+          "genome_build": "ROS_Cfam_1.0",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 1,
+      "unit": "fixture-units",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "derived",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [
+        "rna-value"
+      ],
+      "derivation": {
+        "method": "synthetic lineage fixture"
+      },
+      "provenance": {},
+      "input_references": []
+    },
+    {
+      "measurement_id": "rna-value",
+      "target": {
+        "reference": {
+          "taxon_id": 4932,
+          "species": "yeast",
+          "genome_build": "R64-1-1",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 3,
+      "unit": "TPM",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 3
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "protein-value",
+      "target": {
+        "reference": {
+          "taxon_id": 4932,
+          "species": "yeast",
+          "genome_build": "R64-1-1",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "protein",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "protein",
+      "quantity": "protein_abundance",
+      "value": 13.25,
+      "unit": "iBAQ",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "observed",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": 0.5,
+      "uncertainty_type": "standard_deviation",
+      "detection_limit": null,
+      "input_measurements": [],
+      "derivation": {},
+      "provenance": {
+        "source_asset": "input.tsv",
+        "row": 3,
+        "native": "observed"
+      },
+      "input_references": []
+    },
+    {
+      "measurement_id": "derived",
+      "target": {
+        "reference": {
+          "taxon_id": 4932,
+          "species": "yeast",
+          "genome_build": "R64-1-1",
+          "annotation_name": "ensembl",
+          "annotation_version": "110",
+          "assembly_accession": null,
+          "strain": null,
+          "strain_taxon_id": null,
+          "sequence_sha256": null,
+          "taxonomy_version": "ncbi-2026-10-12",
+          "source_sha256": null
+        },
+        "kind": "gene",
+        "identifier": "same-id",
+        "namespace": "fixture"
+      },
+      "sample_id": "sample",
+      "assay_id": "rna",
+      "quantity": "rna_abundance",
+      "value": 1,
+      "unit": "fixture-units",
+      "dataset_id": "legacy-fixture",
+      "dataset_version": "1",
+      "status": "measured",
+      "origin": "derived",
+      "scale": "linear",
+      "log_base": null,
+      "uncertainty": null,
+      "uncertainty_type": null,
+      "detection_limit": null,
+      "input_measurements": [
+        "rna-value"
+      ],
+      "derivation": {
+        "method": "synthetic lineage fixture"
+      },
+      "provenance": {},
+      "input_references": []
+    }
+  ],
+  "counts": {
+    "assay": 8,
+    "assay_pair": 4,
+    "mapping": 8,
+    "measurement": 12,
+    "reference_mapping": 4,
+    "sample": 4,
+    "target": 12,
+    "target_relation": 4
+  },
+  "mappings": [
+    {
+      "mapping_id": "peptide",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "PEPTIDE",
+      "reference": {
+        "taxon_id": 9606,
+        "species": "human",
+        "genome_build": "GRCh38",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [
+        {
+          "reference": {
+            "taxon_id": 9606,
+            "species": "human",
+            "genome_build": "GRCh38",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "same-id",
+          "namespace": "fixture"
+        },
+        {
+          "reference": {
+            "taxon_id": 9606,
+            "species": "human",
+            "genome_build": "GRCh38",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "other-id",
+          "namespace": "fixture"
+        }
+      ],
+      "status": "ambiguous",
+      "method": "synthetic source label",
+      "reason": null,
+      "evidence": {
+        "positions": [
+          3,
+          9
+        ]
+      },
+      "provenance": {
+        "source_asset": "input.tsv"
+      }
+    },
+    {
+      "mapping_id": "lost",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "LOST",
+      "reference": {
+        "taxon_id": 9606,
+        "species": "human",
+        "genome_build": "GRCh38",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [],
+      "status": "unmapped",
+      "method": null,
+      "reason": "synthetic failure",
+      "evidence": {},
+      "provenance": {}
+    },
+    {
+      "mapping_id": "peptide",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "PEPTIDE",
+      "reference": {
+        "taxon_id": 10090,
+        "species": "mouse",
+        "genome_build": "GRCm39",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [
+        {
+          "reference": {
+            "taxon_id": 10090,
+            "species": "mouse",
+            "genome_build": "GRCm39",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "same-id",
+          "namespace": "fixture"
+        },
+        {
+          "reference": {
+            "taxon_id": 10090,
+            "species": "mouse",
+            "genome_build": "GRCm39",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "other-id",
+          "namespace": "fixture"
+        }
+      ],
+      "status": "ambiguous",
+      "method": "synthetic source label",
+      "reason": null,
+      "evidence": {
+        "positions": [
+          3,
+          9
+        ]
+      },
+      "provenance": {
+        "source_asset": "input.tsv"
+      }
+    },
+    {
+      "mapping_id": "lost",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "LOST",
+      "reference": {
+        "taxon_id": 10090,
+        "species": "mouse",
+        "genome_build": "GRCm39",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [],
+      "status": "unmapped",
+      "method": null,
+      "reason": "synthetic failure",
+      "evidence": {},
+      "provenance": {}
+    },
+    {
+      "mapping_id": "peptide",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "PEPTIDE",
+      "reference": {
+        "taxon_id": 9615,
+        "species": "dog",
+        "genome_build": "ROS_Cfam_1.0",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [
+        {
+          "reference": {
+            "taxon_id": 9615,
+            "species": "dog",
+            "genome_build": "ROS_Cfam_1.0",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "same-id",
+          "namespace": "fixture"
+        },
+        {
+          "reference": {
+            "taxon_id": 9615,
+            "species": "dog",
+            "genome_build": "ROS_Cfam_1.0",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "other-id",
+          "namespace": "fixture"
+        }
+      ],
+      "status": "ambiguous",
+      "method": "synthetic source label",
+      "reason": null,
+      "evidence": {
+        "positions": [
+          3,
+          9
+        ]
+      },
+      "provenance": {
+        "source_asset": "input.tsv"
+      }
+    },
+    {
+      "mapping_id": "lost",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "LOST",
+      "reference": {
+        "taxon_id": 9615,
+        "species": "dog",
+        "genome_build": "ROS_Cfam_1.0",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [],
+      "status": "unmapped",
+      "method": null,
+      "reason": "synthetic failure",
+      "evidence": {},
+      "provenance": {}
+    },
+    {
+      "mapping_id": "peptide",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "PEPTIDE",
+      "reference": {
+        "taxon_id": 4932,
+        "species": "yeast",
+        "genome_build": "R64-1-1",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [
+        {
+          "reference": {
+            "taxon_id": 4932,
+            "species": "yeast",
+            "genome_build": "R64-1-1",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "same-id",
+          "namespace": "fixture"
+        },
+        {
+          "reference": {
+            "taxon_id": 4932,
+            "species": "yeast",
+            "genome_build": "R64-1-1",
+            "annotation_name": "ensembl",
+            "annotation_version": "110",
+            "assembly_accession": null,
+            "strain": null,
+            "strain_taxon_id": null,
+            "sequence_sha256": null,
+            "taxonomy_version": "ncbi-2026-10-12",
+            "source_sha256": null
+          },
+          "kind": "protein",
+          "identifier": "other-id",
+          "namespace": "fixture"
+        }
+      ],
+      "status": "ambiguous",
+      "method": "synthetic source label",
+      "reason": null,
+      "evidence": {
+        "positions": [
+          3,
+          9
+        ]
+      },
+      "provenance": {
+        "source_asset": "input.tsv"
+      }
+    },
+    {
+      "mapping_id": "lost",
+      "source_namespace": "fixture:peptide",
+      "source_identifier": "LOST",
+      "reference": {
+        "taxon_id": 4932,
+        "species": "yeast",
+        "genome_build": "R64-1-1",
+        "annotation_name": "ensembl",
+        "annotation_version": "110",
+        "assembly_accession": null,
+        "strain": null,
+        "strain_taxon_id": null,
+        "sequence_sha256": null,
+        "taxonomy_version": "ncbi-2026-10-12",
+        "source_sha256": null
+      },
+      "targets": [],
+      "status": "unmapped",
+      "method": null,
+      "reason": "synthetic failure",
+      "evidence": {},
+      "provenance": {}
+    }
+  ]
+}

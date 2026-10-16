@@ -1,4 +1,4 @@
-"""Run from released 0.3.0/0.4.0/0.5.0 to generate genuine legacy databases."""
+"""Run from released 0.3.0/0.4.0/0.5.0/0.30.0 to generate genuine legacy databases."""
 
 import hashlib
 import json
@@ -31,7 +31,7 @@ manifest = DatasetManifest("legacy-fixture", "1", "Synthetic legacy storage vali
                            references, (source,), ("Synthetic, not experimental evidence",),
                            ("rna_seq", "digest_ms"), {"scope": "four deliberately colliding species"},
                            {"writer": "orfdata", "writer_version": orfdata.__version__})
-samples, assays, observations, pairs, relations, mappings = [], [], [], [], [], []
+samples, assays, observations, pairs, relations, mappings, targets = [], [], [], [], [], [], []
 for index, reference in enumerate(references):
     samples.append(Sample("sample", reference, biological_unit_id="culture"))
     assays.extend((Assay("rna", "sample", "rna_seq", reference), Assay("protein", "sample", "digest_ms", reference)))
@@ -63,12 +63,25 @@ for index, reference in enumerate(references):
                                          protein, reference, (ScopedTarget(reference, "protein", "mapped-id", "fixture"),),
                                          "unique", "synthetic identifier match", {"sequence": "not validated"},
                                          provenance={"source_asset": "input.tsv"}))
+    if version >= 4:
+        from orfdata import TargetMapping
+
+        targets.append(TargetMapping("peptide", "fixture:peptide", "PEPTIDE", reference,
+                                     (ScopedTarget(reference, "protein", "same-id", "fixture"),
+                                      ScopedTarget(reference, "protein", "other-id", "fixture")),
+                                     "ambiguous", "synthetic source label", evidence={"positions": [3, 9]},
+                                     provenance={"source_asset": "input.tsv"}))
+        targets.append(TargetMapping("lost", "fixture:peptide", "LOST", reference, reason="synthetic failure"))
 kwargs = dict(samples=samples, assays=assays, measurements=observations)
 if version >= 2:
     kwargs.update(pairings=pairs, relations=relations)
 if version >= 3:
     kwargs.update(reference_mappings=mappings)
+if version >= 4:
+    kwargs.update(mappings=targets)
 dataset = QuantitativeDataset.create(output / f"v{version}.sqlite", manifest, **kwargs)
 expected = dict(writer_version=orfdata.__version__, manifest=manifest.to_dict(),
                 measurements=[m.to_dict() for m in observations], counts=dataset.counts)
+if version >= 4:
+    expected["mappings"] = [m.to_dict() for m in targets]
 (output / f"v{version}.json").write_text(json.dumps(expected, indent=2) + "\n")

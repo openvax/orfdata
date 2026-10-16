@@ -107,6 +107,7 @@ orfdata datasets download ingolia-yeast-rna-ribo
 | [Matched human tissues](https://openvax.github.io/orfdata/human-tissue/) | Human | RNA and protein from adjacent cryosections (Wang et al.) |
 | [Yeast protein and RNA](https://openvax.github.io/orfdata/copy-yeast/) | Budding yeast | Calibrated protein and RNA abundance (CoPY) |
 | [Yeast RNA and ribosome occupancy](https://openvax.github.io/orfdata/ingolia-yeast/) | Budding yeast | Source regions, including UTR and ncRNA labels (Ingolia et al.) |
+| [Dog peptides](https://openvax.github.io/orfdata/dog-peptides/) | Dog | DLA class I ligands from tumours (Kaabinejadian et al.); Canine PeptideAtlas peptides and protein calls, built locally |
 
 Gene RNA and canonical protein measurements do not establish noncanonical ORF
 abundance. See [released data and gaps](https://openvax.github.io/orfdata/coverage/).
