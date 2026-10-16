@@ -626,6 +626,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#human-ribo-seq-orfs-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Human Ribo-seq ORFs (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zebrafish-c-elegans-and-yeast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zebrafish, C. elegans and yeast
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#every-assembly-of-a-species" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1343,6 +1376,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#human-ribo-seq-orfs-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Human Ribo-seq ORFs (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zebrafish-c-elegans-and-yeast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zebrafish, C. elegans and yeast
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#every-assembly-of-a-species" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1439,11 +1505,50 @@ returns the existing <code>ORFCatalog</code>; query results still bind to the
 original PyEnsembl transcript through <code>ReferenceORF</code>. To use several catalogues
 for one species together, see
 <a href="../proteome/#merging-catalogues">merging catalogues</a>.</p>
-<p>The packaged registry has three mouse catalogues, each built from its sources'
-own files: <a href="#mouse-orfs-from-openprot">OpenProt's MS-supported ORFs</a>,
-<a href="#mouse-ribo-seq-orfs-chang-et-al">Chang et al.'s Ribo-seq ORFs</a> and
-<a href="#mouse-riborf-orfs-yang-et-al">Yang et al.'s RibORF ORFs</a>. <code>orfdata setup
---species mouse</code> installs all three, with the chain files. <code>orfdata catalogs status</code>
+<p>The packaged registry builds each catalogue from its sources' own files:</p>
+<table>
+<thead>
+<tr>
+<th>Species</th>
+<th>Catalogues</th>
+<th style="text-align: right;">ORFs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mouse</td>
+<td><a href="#mouse-orfs-from-openprot">OpenProt's MS-supported ORFs</a>, <a href="#mouse-ribo-seq-orfs-chang-et-al">Chang et al.'s</a> and <a href="#mouse-riborf-orfs-yang-et-al">Yang et al.'s</a> Ribo-seq ORFs</td>
+<td style="text-align: right;">48,805 merged</td>
+</tr>
+<tr>
+<td>Human</td>
+<td>the bundled GENCODE set; optionally <a href="#human-ribo-seq-orfs-optional">Chang et al.'s and Yang et al.'s Ribo-seq ORFs</a></td>
+<td style="text-align: right;">7,264; 57,607 with both</td>
+</tr>
+<tr>
+<td>Zebrafish</td>
+<td><a href="#zebrafish-c-elegans-and-yeast">Yang et al.'s Ribo-seq ORFs</a></td>
+<td style="text-align: right;">9,759</td>
+</tr>
+<tr>
+<td>C. elegans</td>
+<td><a href="#zebrafish-c-elegans-and-yeast">Yang et al.'s Ribo-seq ORFs</a></td>
+<td style="text-align: right;">2,849</td>
+</tr>
+<tr>
+<td>Yeast</td>
+<td><a href="#zebrafish-c-elegans-and-yeast">Yang et al.'s Ribo-seq ORFs</a></td>
+<td style="text-align: right;">1,128</td>
+</tr>
+<tr>
+<td>Dog</td>
+<td><a href="#dog">none exists</a></td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<p><code>orfdata setup --species mouse</code> (or zebrafish, worm, yeast) installs a
+species' catalogues, with the chain files. <code>orfdata catalogs status</code>
 (in Python, <code>catalog_status()</code>) lists every catalogue <code>load_catalog</code> can open,
 the bundled one included, with its species, assembly, record count, whether it
 is installed and whether it is used:</p>
@@ -1527,10 +1632,7 @@ Ensembl 115 (GRCm39):</p>
 </table>
 <p>Loading the merged catalogue takes about 10 seconds and 0.9 GB of memory, once
 per process, whichever evidence is selected. On GRCm38 and NCBIM37 all three
-are <a href="#every-assembly-of-a-species">lifted automatically</a>. Dog has no
-experimentally supported ORF catalogue from any source: OpenProt and the
-Ribo-seq resources have no dog data, and dog MS studies searched only canonical
-proteins.</p>
+are <a href="#every-assembly-of-a-species">lifted automatically</a>.</p>
 <h3 id="mouse-ribo-seq-orfs-chang-et-al">Mouse Ribo-seq ORFs (Chang et al.)<a class="headerlink" href="#mouse-ribo-seq-orfs-chang-et-al" title="Permanent link">&para;</a></h3>
 <p><code>ncorf-mammals-mouse</code> holds the mouse ncORFs of Chang et al.
 (eLife 2025, <a href="https://doi.org/10.7554/eLife.109128">doi:10.7554/eLife.109128</a>):
@@ -1662,6 +1764,130 @@ Ensembl release, so all must be installed. With only MS-supported ORFs selected,
 <p>Cite Leblanc S, et al. <em>OpenProt 2.0 builds a path to the functional
 characterization of alternative proteins.</em> Nucleic Acids Res. 2024;52(D1):D522–D528,
 <a href="https://doi.org/10.1093/nar/gkad1050">doi:10.1093/nar/gkad1050</a>.</p>
+<h2 id="human-ribo-seq-orfs-optional">Human Ribo-seq ORFs (optional)<a class="headerlink" href="#human-ribo-seq-orfs-optional" title="Permanent link">&para;</a></h2>
+<p>Human's default is the bundled GENCODE catalogue: 7,264 ORFs, offline, with
+no setup. Two larger Ribo-seq catalogues are optional, used only when asked
+for, because they would change every human selection and make loading human
+ORFs about 60 times slower:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>setup<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--catalogs<span class="w"> </span>all<span class="w">   </span><span class="c1"># Builds both; about 225 MB of sources</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span><span class="p">,</span> <span class="n">extra_orfs</span><span class="p">,</span> <span class="n">load_catalog</span>
+
+<span class="n">catalog</span> <span class="o">=</span> <span class="n">load_catalog</span><span class="p">(</span><span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>   <span class="c1"># Bundled, Chang et al. and Yang et al., merged</span>
+<span class="n">orfs</span> <span class="o">=</span> <span class="n">extra_orfs</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="s2">"ribosome"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="s2">"all"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>
+<span class="n">load_catalog</span><span class="p">(</span><span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="p">[</span><span class="s2">"ncorf-mammals-human"</span><span class="p">])</span>   <span class="c1"># Just one</span>
+</code></pre></div>
+<p><code>orfdata proteome --catalogs all</code> does the same. They merge after the bundled
+catalogue, Chang et al.'s before Yang et al.'s as for mouse, so an ORF in
+several keeps the first one's ID. Together they give 57,607 ORFs, of which 57,485 place on Ensembl 115; that
+takes about a minute and 3.2 GB of memory, against about a second for the
+bundled catalogue alone. Neither adds MS evidence, so <code>"ms"</code> selects the same
+ORFs either way.</p>
+<ul>
+<li><strong><code>ncorf-mammals-human</code>:</strong> the human ncORFs of <a href="#mouse-ribo-seq-orfs-chang-et-al">Chang et
+  al.</a>, from 174 Ribo-seq libraries
+  (Table S1), built as for mouse on Ensembl 107 GRCh38: 11,621 of the
+  source's 11,623, two having a coding length that isn't their protein plus
+  a stop. Types: uORF (6,178), lncORF (2,231), uoORF (1,633), iORF (773),
+  dORF (694) and doORF (112); 997 start at GTG.</li>
+<li><strong><code>riborf-human</code>:</strong> the human ORFs of <a href="#mouse-riborf-orfs-yang-et-al">Yang et
+  al.</a>, from 136 samples in 30 GEO series, on
+  GENCODE V39, placed through the same Ensembl 105 transcripts (GENCODE V39
+  is Ensembl 105): 51,174 of the 51,275 rows long enough; 101 are on
+  transcripts with no sequence in Ensembl 105's FASTAs. Types: uORF (23,664),
+  lncORF (11,379), uoORF (4,548), dORF (3,747), N-terminal truncation (3,561),
+  iORF (2,547), extension (1,046) and doORF (682).</li>
+</ul>
+<p><code>catalogs</code> takes <code>None</code> (the species' default set), <code>"all"</code>, or catalogue
+names, <code>"bundled"</code> among them. <code>orfdata catalogs status</code> marks optional
+catalogues. Everywhere but human, every catalogue is in the default set.</p>
+<h2 id="zebrafish-c-elegans-and-yeast">Zebrafish, C. elegans and yeast<a class="headerlink" href="#zebrafish-c-elegans-and-yeast" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>setup<span class="w"> </span>--species<span class="w"> </span>zebrafish<span class="w">   </span><span class="c1"># or worm, or yeast</span>
+</code></pre></div>
+<p>Yang et al.'s RibORF 2.0 ORFs of <a href="#mouse-riborf-orfs-yang-et-al">the mouse catalogue's
+kind</a>, at least 5 residues long, from each
+species' sheet of Supplementary Data 3, imported the same way:</p>
+<table>
+<thead>
+<tr>
+<th>Catalogue</th>
+<th>Samples (GEO series)</th>
+<th>Placed through</th>
+<th style="text-align: right;">ORFs</th>
+<th style="text-align: right;">On Ensembl 115</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>riborf-zebrafish</code></td>
+<td>20 (2)</td>
+<td>Ensembl 115 GRCz11 transcripts</td>
+<td style="text-align: right;">9,759</td>
+<td style="text-align: right;">9,759</td>
+</tr>
+<tr>
+<td><code>riborf-worm</code></td>
+<td>39 (1)</td>
+<td>Ensembl 105 WBcel235 transcripts</td>
+<td style="text-align: right;">2,849</td>
+<td style="text-align: right;">2,433</td>
+</tr>
+<tr>
+<td><code>riborf-yeast</code></td>
+<td>5 (1)</td>
+<td>the R64-1-1 genome (sacCer3)</td>
+<td style="text-align: right;">1,128</td>
+<td style="text-align: right;">171</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Zebrafish:</strong> every source transcript has the same length in Ensembl 100
+  to 115, so the catalogue uses 115. 18 rows have ambiguous bases in the ORF
+  and are left out. Types: N-terminal truncation (3,805), uORF (3,543), dORF
+  (771), iORF (605), lncORF (411), uoORF (304), extension (224) and doORF (96).</li>
+<li><strong>C. elegans:</strong> the source's transcripts match Ensembl 100 and 105, and
+  WormBase changed many models after, so the catalogue uses 105; all 2,849
+  place there, 2,433 on 115. Transcript names with dots of their own
+  (<code>F45H11.11.1</code>) are kept whole. Types: truncation (614), iORF (596),
+  extension (556), uORF (521), uoORF (217), lncORF (151), doORF (117) and dORF
+  (77).</li>
+<li><strong>Yeast:</strong> the source's yeast transcripts carry UTRs, and some are unstable
+  transcripts (CUTs, SUTs), none of which Ensembl's yeast annotation has; its
+  transcripts span only the CDS. So each ORF is placed from its genomic span
+  and translated from the pinned genome. The source gives block sizes but not
+  starts, so the 4 ORFs on two exons are rebuilt from their first block's
+  size at the start and last block's at the end, each across a GT-AG intron;
+  Ty1's programmed frameshift (<code>YNL284C-B</code>, two blocks 1 nt apart) is left
+  out. A record names the Ensembl transcript (<code>YNL046W_mRNA</code>) only when that
+  transcript carries its coding path; otherwise it names the source's
+  transcript (<code>YNR004W</code>, <code>CUT808</code>), with the Ensembl gene where there is one.
+  Only the 171 ORFs on an Ensembl transcript, such as truncations and iORFs,
+  place on a PyEnsembl genome; the rest (uORFs in 5′ UTRs, ORFs on CUTs) stay
+  in the catalogue, queryable by region and gene, until ORFs on source-defined
+  RNAs are supported (#66). Types: uORF (321), lncORF (249), dORF (224),
+  truncation (137), extension (67), uoORF (55), doORF (40) and iORF (35).</li>
+</ul>
+<h2 id="dog">Dog<a class="headerlink" href="#dog" title="Permanent link">&para;</a></h2>
+<p>No public resource gives dog ORF-level translation evidence, as of October
+2026:</p>
+<ul>
+<li><strong>Ribo-seq.</strong> No dog ribosome profiling is in GEO, SRA or ENA, and none of
+  OpenProt, RiboSeq.org (147 organisms), RPFdb, SmProt or GWIPS-viz has dog.
+  The one dog experiment published, Pfeffer et al. 2015 (canine pancreas
+  rough-ER microsomes), deposited no reads.</li>
+<li><strong>Mass spectrometry.</strong> Every dog dataset searched canonical proteins only,
+  so none reports a noncanonical peptide as deposited: the Canine
+  PeptideAtlas (PXD052932, 245,884 peptides from 13 tissues, plasma and
+  urine), the dog tumour DLA immunopeptidome (PXD074485, about 12,700
+  ligands), the Pfizer TMT atlas (PXD070290) and the dog brain proteome
+  (PXD033420, PXD034449).</li>
+</ul>
+<p>Dog ncORF evidence therefore needs those spectra searched again against dog
+ORF sequences. Human and mouse ORFs are never transferred to dog by orthology.
+Dog proteomes contain their PyEnsembl-annotated proteins, and dog RNA and
+protein abundance are available as <a href="../measurements/">measurements</a>.</p>
 <h2 id="every-assembly-of-a-species">Every assembly of a species<a class="headerlink" href="#every-assembly-of-a-species" title="Permanent link">&para;</a></h2>
 <p>Catalogues on another assembly of the species are lifted automatically. Download
 the pinned chain files once, and <code>load_catalog</code>, <code>extra_orfs(genome)</code> and
