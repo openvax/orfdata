@@ -30,10 +30,10 @@ rows of the same Supplementary Data 3 sheets, used by `tests/test_more_species.p
   N-terminal truncation, each on the shortest such transcript; for zebrafish an
   ORF over an ambiguous base, and for human one on a transcript without
   sequence, both unresolved. C. elegans has no unresolved row.
-- **yeast:** six rows on chromosome XIV: a truncation inside its Ensembl
+- **yeast:** seven rows on chromosome XIV: a truncation inside its Ensembl
   transcript, a uORF in a UTR Ensembl's transcript lacks, an ORF on an unstable
-  transcript (CUT808), a spliced ORF (unresolved), a short ORF and an annotated
-  CDS.
+  transcript (CUT808), an extension across CPT1's intron, Ty1's frameshifted
+  ORF (YNL284C-B, unresolved), a short ORF and an annotated CDS.
 
 `zebrafish-ensembl115.*`, `worm-ensembl105.*` and `human-ensembl105.*` hold the
 GTF lines (with their genes' lines), cDNA and ncRNA sequences of those

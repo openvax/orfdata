@@ -34,7 +34,7 @@ The separate existence-evidence catalogue contains 7,264 human noncanonical
 ORFs, including 2,186 with reported MS support. Mouse has 48,805 ORFs: Ribo-seq ORFs
 from Chang et al. and Yang et al., and 2,976 OpenProt 2.2 ORFs with at least
 two unique MS peptides, built from their sources' files. Yang et al.'s Ribo-seq ORFs
-cover zebrafish (9,759), C. elegans (2,849) and yeast (1,124), and with Chang et al.'s
+cover zebrafish (9,759), C. elegans (2,849) and yeast (1,128), and with Chang et al.'s
 are optional human catalogues; dog has no experimental ncORF catalogue, because no
 dog Ribo-seq or ncORF MS search is public ([details](catalogs.md#dog)). Its
 ribosome evidence and pooled PSM counts are not sample-level ribosome

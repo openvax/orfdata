@@ -165,17 +165,24 @@ def import_genome_orfs(inputs, output, manifest):
 
     For a source whose transcripts the pinned annotation lacks (Yang et al.'s
     yeast transcripts carry UTRs, and some are unstable CUTs and SUTs). The
-    rows are BED lines whose span is the ORF, stop codon included. An ORF on
-    several exons is left out: the source gives its block sizes but not where
-    each block starts. Each record names the Ensembl transcript of the
-    source's transcript where there is one (``processing["transcript_suffix"]``
-    joins a systematic name to it), else the source's own transcript name.
+    rows are BED lines whose span is the ORF, stop codon included, with block
+    sizes but no block starts. An ORF on two exons is rebuilt from its first
+    block's size at its start and its last block's at its end, when the gap
+    between them is a GT-AG intron; one on more exons, or across a gap that
+    isn't an intron (such as Ty1's programmed frameshift), is left out. A
+    record names the Ensembl transcript of the source's transcript
+    (``processing["transcript_suffix"]`` joins a systematic name to it) when
+    that transcript carries the ORF's coding path, else the source's own
+    transcript name, with the Ensembl gene's ID and name where there is one:
+    Ensembl's yeast transcripts span only the CDS, so most uORFs and dORFs
+    lie outside them.
     """
     processing = manifest.processing
     parsed, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
     suffix = processing.get("transcript_suffix", "")
     names = {p[0].split(":")[0] for p in parsed}
-    transcripts = _transcripts(inputs["gtf"], {name + suffix for name in names})
+    # Ensembl names most yeast transcripts with the suffix, transposable elements without it.
+    transcripts = _transcripts(inputs["gtf"], {name + suffix for name in names} | names)
     genome = _genome(inputs["genome"], {str(p[6][0]) for p in parsed})
     code = genetic_code(1)
 
@@ -187,13 +194,25 @@ def import_genome_orfs(inputs, output, manifest):
         def skip(reason):
             unresolved.append(dict(transcript=name, start=start, end=end, reason=reason))
 
-        if block_count != 1:
-            skip("Spliced ORF: the source gives its block sizes but not where each block starts")
-            continue
         if contig not in genome:
             skip("Contig absent from the pinned genome")
             continue
-        coding = genome[contig][first - 1 : last]
+        sequence = genome[contig]
+        if block_count == 1:
+            blocks = ((first, last),)
+        elif block_count == 2 and (int(row[1]), int(row[2])) == (int(row[6]), int(row[7])):
+            head, tail = (int(x) for x in str(row[10]).rstrip(",").split(","))
+            blocks = ((first, first + head - 1), (last - tail + 1, last))
+            gap = sequence[blocks[0][1] : blocks[1][0] - 1]
+            gap = _reverse_complement(gap) if strand == "-" else gap
+            if len(gap) < 2 or gap[:2] not in ("GT", "GC") or gap[-2:] != "AG":
+                skip(f"The source's two blocks are joined across {len(gap)} nt that aren't an intron "
+                     "(a programmed frameshift?)")
+                continue
+        else:
+            skip("Spliced ORF on more than two exons: the source gives block sizes but not where they start")
+            continue
+        coding = "".join(sequence[a - 1 : b] for a, b in blocks)
         if strand == "-":
             coding = _reverse_complement(coding)
         if set(coding) - set("ACGT"):
@@ -205,19 +224,40 @@ def import_genome_orfs(inputs, output, manifest):
             continue
         declared = None if start_codon in code.start_codons else start_codon
         protein = code.translate(coding, start_codon=declared)[:-1]
-        key = (contig, strand, ((first, last),))
+        key = (contig, strand, blocks)
         found = paths.setdefault(key, dict(protein=protein, start_codon=declared, rows=[]))
         found["rows"].append((name, orf_type))
 
     models = {}
-    for key, found in paths.items():
+    for (contig, strand, blocks), found in paths.items():
         name, orf_type = min(found["rows"])
-        entry = transcripts.get(name + suffix)
-        models[key] = ((name + suffix, entry["gene_id"], entry["gene_name"]) if entry is not None
-                       else (name, name, "")) + (orf_type, found["protein"], found["start_codon"])
+        ensembl = next((t for t in (name + suffix, name) if t in transcripts), None)
+        entry = transcripts.get(ensembl)
+        if entry is None:
+            named = (name, name, "")
+        elif _carries(entry, strand, blocks):
+            named = (ensembl, entry["gene_id"], entry["gene_name"])
+        else:  # On the source's longer model of the gene's transcript, outside Ensembl's.
+            named = (name, entry["gene_id"], entry["gene_name"])
+        models[contig, strand, blocks] = named + (orf_type, found["protein"], found["start_codon"])
     counts = dict(source_rows=len(parsed) + short, short_rows=short, resolved_rows=len(parsed) - len(unresolved),
                   unresolved_rows=len(unresolved))
     _write(models, unresolved, counts, output, manifest)
+
+
+def _carries(entry, strand, blocks):
+    """Whether a transcript's exons carry these coding blocks: each in one exon, joined only at splice sites."""
+    if entry["strand"] != strand:
+        return False
+    exons = sorted(entry["exons"])
+    found = []
+    for a, b in blocks:
+        index = next((i for i, (x, y) in enumerate(exons) if x <= a and b <= y), None)
+        if index is None:
+            return False
+        found.append(index)
+    return all(j == i + 1 and b == exons[i][1] and c == exons[j][0]
+               for (_, b), (c, _), i, j in zip(blocks, blocks[1:], found, found[1:]))
 
 
 def _genome(path, contigs):

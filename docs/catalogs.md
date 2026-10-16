@@ -24,7 +24,7 @@ The packaged registry builds each catalogue from its sources' own files:
 | Human | the bundled GENCODE set; optionally [Chang et al.'s and Yang et al.'s Ribo-seq ORFs](#human-ribo-seq-orfs-optional) | 7,264; 57,607 with both |
 | Zebrafish | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 9,759 |
 | C. elegans | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 2,849 |
-| Yeast | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 1,124 |
+| Yeast | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 1,128 |
 | Dog | [none exists](#dog) | 0 |
 
 `orfdata setup --species mouse` (or zebrafish, worm, yeast) installs a
@@ -263,8 +263,9 @@ proteome = Proteome.build(genome, "all", catalogs="all")
 load_catalog(species="human", catalogs=["ncorf-mammals-human"])   # Just one
 ```
 
-`orfdata proteome --catalogs all` does the same. Merged with the bundled
-catalogue, they give 57,607 ORFs, of which 57,485 place on Ensembl 115; that
+`orfdata proteome --catalogs all` does the same. They merge after the bundled
+catalogue, Chang et al.'s before Yang et al.'s as for mouse, so an ORF in
+several keeps the first one's ID. Together they give 57,607 ORFs, of which 57,485 place on Ensembl 115; that
 takes about a minute and 3.2 GB of memory, against about a second for the
 bundled catalogue alone. Neither adds MS evidence, so `"ms"` selects the same
 ORFs either way.
@@ -301,7 +302,7 @@ species' sheet of Supplementary Data 3, imported the same way:
 | --- | --- | --- | ---: | ---: |
 | `riborf-zebrafish` | 20 (2) | Ensembl 115 GRCz11 transcripts | 9,759 | 9,759 |
 | `riborf-worm` | 39 (1) | Ensembl 105 WBcel235 transcripts | 2,849 | 2,433 |
-| `riborf-yeast` | 5 (1) | the R64-1-1 genome (sacCer3) | 1,124 | 170 |
+| `riborf-yeast` | 5 (1) | the R64-1-1 genome (sacCer3) | 1,128 | 171 |
 
 - **Zebrafish:** every source transcript has the same length in Ensembl 100
   to 115, so the catalogue uses 115. 18 rows have ambiguous bases in the ORF
@@ -316,15 +317,18 @@ species' sheet of Supplementary Data 3, imported the same way:
 - **Yeast:** the source's yeast transcripts carry UTRs, and some are unstable
   transcripts (CUTs, SUTs), none of which Ensembl's yeast annotation has; its
   transcripts span only the CDS. So each ORF is placed from its genomic span
-  and translated from the pinned genome. Records name the Ensembl transcript
-  of the source's (`YNL046W_mRNA`) where there is one, else the source's own
-  (`CUT808`). The 5 ORFs on two exons are left out, since the source gives no
-  block starts. Only the 170 ORFs inside an Ensembl transcript, such as
-  truncations and iORFs, place on a PyEnsembl genome; the rest (uORFs in
-  5′ UTRs, ORFs on CUTs) stay in the catalogue, queryable by region and gene,
-  until ORFs on source-defined RNAs are supported (#66). Types: uORF (321),
-  lncORF (249), dORF (224), truncation (136), extension (65), uoORF (54),
-  doORF (40) and iORF (35).
+  and translated from the pinned genome. The source gives block sizes but not
+  starts, so the 4 ORFs on two exons are rebuilt from their first block's
+  size at the start and last block's at the end, each across a GT-AG intron;
+  Ty1's programmed frameshift (`YNL284C-B`, two blocks 1 nt apart) is left
+  out. A record names the Ensembl transcript (`YNL046W_mRNA`) only when that
+  transcript carries its coding path; otherwise it names the source's
+  transcript (`YNR004W`, `CUT808`), with the Ensembl gene where there is one.
+  Only the 171 ORFs on an Ensembl transcript, such as truncations and iORFs,
+  place on a PyEnsembl genome; the rest (uORFs in 5′ UTRs, ORFs on CUTs) stay
+  in the catalogue, queryable by region and gene, until ORFs on source-defined
+  RNAs are supported (#66). Types: uORF (321), lncORF (249), dORF (224),
+  truncation (137), extension (67), uoORF (55), doORF (40) and iORF (35).
 
 ## Dog
 

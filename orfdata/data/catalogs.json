@@ -691,13 +691,13 @@
             "Yang H, Li Q, Stroup EK, Wang S, Ji Z. Widespread stable noncanonical peptides identified by integrated analyses of ribosome profiling and ORF features. Nat Commun. 2024;15:1932. doi:10.1038/s41467-024-46240-9"
           ],
           "coverage": {
-            "records": 1124,
-            "distinct_protein_sequences": 1122,
-            "evidence_summaries": 1124,
+            "records": 1128,
+            "distinct_protein_sequences": 1126,
+            "evidence_summaries": 1128,
             "source_rows": 1370,
             "short_rows": 241,
-            "resolved_rows": 1124,
-            "unresolved_rows": 5
+            "resolved_rows": 1128,
+            "unresolved_rows": 1
           },
           "processing": {
             "importer": "riborf-genome-v1",
@@ -732,6 +732,7 @@
   },
   "ncorf-mammals-human": {
     "default_version": "1",
+    "priority": 20,
     "optional": true,
     "versions": {
       "1": {

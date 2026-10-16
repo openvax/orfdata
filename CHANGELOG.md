@@ -6,13 +6,13 @@ human ones.
 - **Zebrafish, C. elegans and yeast.** Yang et al.'s RibORF 2.0 ORFs
   (Nat Commun 2024) for each species: `riborf-zebrafish` (9,759 ORFs on
   GRCz11, Ensembl 115), `riborf-worm` (2,849 on WBcel235, Ensembl 105) and
-  `riborf-yeast` (1,124 on R64-1-1). `orfdata setup --species zebrafish` (or
+  `riborf-yeast` (1,128 on R64-1-1). `orfdata setup --species zebrafish` (or
   `worm`, `yeast`) builds them from their sources' files. `zebrafish`, `worm`
   and `c_elegans` are known species names.
   - Yeast ORFs are placed from their genomic spans, because the source's yeast
-    transcripts carry UTRs that Ensembl's lack. Only the 170 inside an Ensembl
-    transcript place on a PyEnsembl genome; the rest stay queryable in the
-    catalogue.
+    transcripts carry UTRs that Ensembl's lack. A record names an Ensembl
+    transcript only when it carries the ORF; only those 171 place on a
+    PyEnsembl genome, and the rest stay queryable in the catalogue.
 - **Human, optional.** `ncorf-mammals-human` (Chang et al., 11,621 ORFs) and
   `riborf-human` (Yang et al., 51,174) are used only when asked for:
   `load_catalog(species="human", catalogs="all")`, `extra_orfs(genome, evidence,

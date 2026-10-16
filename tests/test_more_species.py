@@ -35,8 +35,8 @@ COVERAGE = {
                         resolved_rows=5, unresolved_rows=0),
     "riborf-human": dict(records=5, distinct_protein_sequences=5, evidence_summaries=5, source_rows=7, short_rows=1,
                          resolved_rows=5, unresolved_rows=1),
-    "riborf-yeast": dict(records=3, distinct_protein_sequences=3, evidence_summaries=3, source_rows=5, short_rows=1,
-                         resolved_rows=3, unresolved_rows=1),
+    "riborf-yeast": dict(records=4, distinct_protein_sequences=4, evidence_summaries=4, source_rows=6, short_rows=1,
+                         resolved_rows=4, unresolved_rows=1),
     "ncorf-mammals-human": dict(records=3, distinct_protein_sequences=3, evidence_summaries=6, source_rows=4,
                                 resolved_rows=3, unresolved_rows=1),
 }
@@ -125,20 +125,30 @@ def test_worm_names_with_dots_of_their_own_are_kept_whole(tmp_path):
 def test_yeast_orfs_come_from_the_genome_and_place_inside_ensembl_transcripts(tmp_path):
     catalog = built(tmp_path, "riborf-yeast").open("riborf-yeast")
     found = {r.transcript_id: r for r in catalog.records}
-    # Systematic names join Ensembl's transcripts; an unstable transcript Ensembl lacks keeps its own name.
-    assert set(found) == {"YNL046W_mRNA", "YNR004W_mRNA", "CUT808"}
-    assert found["YNR004W_mRNA"].gene_name == "SWM2" and found["CUT808"].biotype == "lncORF"
-    reason, = {u["reason"] for u in catalog.metadata["unresolved"]}
-    assert reason == "Spliced ORF: the source gives its block sizes but not where each block starts"
+    # Only an ORF on Ensembl's (CDS-only) transcript takes its name; the others keep the source's transcript name,
+    # with the Ensembl gene where there is one, and an unstable transcript Ensembl lacks keeps its own.
+    assert set(found) == {"YNL046W_mRNA", "YNR004W", "YNL130C", "CUT808"}
+    assert (found["YNR004W"].biotype, found["YNR004W"].gene_name) == ("uORF", "SWM2")
+    assert (found["CUT808"].biotype, found["CUT808"].gene_id) == ("lncORF", "CUT808")
+    # An extension across CPT1's intron is rebuilt from its two block sizes.
+    extension = found["YNL130C"]
+    assert (extension.biotype, extension.gene_name, len(extension.coding_blocks)) == ("extension", "CPT1", 2)
+    assert len(extension.protein_sequence) == 407 and extension.protein_sequence.startswith("MDSKTV")
+    # Ty1's frameshift joins its blocks across 1 nt, not an intron.
+    unresolved, = catalog.metadata["unresolved"]
+    assert (unresolved["transcript"], unresolved["reason"]) == (
+        "YNL284C-B", "The source's two blocks are joined across 1 nt that aren't an intron (a programmed frameshift?)")
     loaded = genome(tmp_path, "R64-1-1", 115, "saccharomyces_cerevisiae", FILES["riborf-yeast"]["gtf"],
                     (RIBORF / "yeast-ensembl115.cdna.fa.gz",))
     try:
         placed = extra_orfs(loaded, None, catalog=catalog)
-        # The truncation lies inside its Ensembl transcript; the uORF lies in a UTR Ensembl's yeast transcripts lack.
         assert {o.orf_id for o in placed} == {found["YNL046W_mRNA"].orf_id}
         assert {e.orf_id: e.reason for e in placed.excluded} == {
-            found["YNR004W_mRNA"].orf_id: "ORF splice path mismatch",
-            found["CUT808"].orf_id: "Transcript absent from this annotation"}
+            found[t].orf_id: "Transcript absent from this annotation" for t in ("YNR004W", "YNL130C", "CUT808")}
+        # No record names an Ensembl transcript that doesn't carry it.
+        for transcript in loaded.transcripts():
+            assert [o.orf_id for o in catalog.for_transcript(transcript)] == (
+                [found["YNL046W_mRNA"].orf_id] if transcript.id == "YNL046W_mRNA" else [])
     finally:
         loaded.close()
 
@@ -166,6 +176,14 @@ def test_human_ribo_seq_catalogues_are_used_only_when_asked_for(tmp_path):
         load_catalog(species="human", registry=registry, catalogs=["riborf-mouse"])
     with pytest.raises(ValueError, match="empty selection"):
         load_catalog(species="human", registry=registry, catalogs=[])
+    assert load_catalog(species="human", registry=registry, catalogs=["all"]).records == everything.records
+    with pytest.raises(ValueError, match="orfdata setup --species homo_sapiens --catalogs all"):
+        load_catalog(species="human", catalogs="all", registry=CatalogRegistry(
+            definitions("riborf-human", "ncorf-mammals-human"), cache_root=tmp_path / "empty"))
+    with pytest.raises(ValueError, match="No ORF catalogue covers canis_lupus_familiaris"):
+        load_catalog(species="dog", registry=registry, catalogs=["riborf-human"])
+    # Chang et al.'s IDs name ORFs both human Ribo-seq catalogues have, as for mouse.
+    assert registry.priority("ncorf-mammals-human") < registry.priority("riborf-human")
     status = {s.name: s for s in catalog_status(registry=registry)}
     assert status["riborf-human"].optional and not status["riborf-human"].selected
     assert status["bundled"].selected and not status["bundled"].optional

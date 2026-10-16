@@ -1010,8 +1010,10 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         except ImportError:
             step = "orfdata[data] installed, then "
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
+        chosen = ("" if catalogs is None else " --catalogs " + (
+            catalogs if isinstance(catalogs, str) else ",".join(catalogs)))
         raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs)
-                         + f". Or install everything at once with 'orfdata setup --species {species}{accept}"
+                         + f". Or install everything at once with 'orfdata setup --species {species}{chosen}{accept}"
                          f"{cli_root}'")
     # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
     key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
@@ -1081,14 +1083,16 @@ def _selected(found, catalogs, species):
     """The species' catalogues a selection names: None for its default set, "all" for every one, or names."""
     if catalogs is None:
         return [c for c in found if not c.optional]
-    if isinstance(catalogs, str) and catalogs == "all":
-        return found
     names = [catalogs] if isinstance(catalogs, str) else list(catalogs)
+    if "all" in names:
+        return found
     known = sorted({c.name for c in found})
+    if not known:
+        return []  # load_catalog names the species that have catalogues.
     unknown = [n for n in names if n not in known]
     if not names or unknown:
         raise ValueError(f"No {species} catalogue named {', '.join(map(repr, unknown)) or 'in an empty selection'}; "
-                         f"{species} has {', '.join(known) or 'none'}, or pass catalogs='all'")
+                         f"{species} has {', '.join(known)}, or pass catalogs='all'")
     return [c for c in found if c.name in names]
 
 

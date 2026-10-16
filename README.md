@@ -62,7 +62,7 @@ immunopeptidomics: peptides eluted from HLA molecules.
 | Mouse | 48,805 | Chang et al. and Yang et al. Ribo-seq, OpenProt 2.2 MS |
 | Zebrafish | 9,759 | Yang et al. Ribo-seq |
 | C. elegans | 2,849 | Yang et al. Ribo-seq |
-| Yeast | 1,124 | Yang et al. Ribo-seq |
+| Yeast | 1,128 | Yang et al. Ribo-seq |
 | Dog | none: no public dog Ribo-seq or ncORF MS exists | |
 
 Human's bundled catalogue needs no setup. For the others, `pip install

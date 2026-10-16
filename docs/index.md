@@ -100,7 +100,7 @@ transcript alongside them.
 | Mouse | From PyEnsembl | 48,805 ORFs on GRCm39: Ribo-seq ORFs of Chang et al. and Yang et al., and 2,976 MS-supported ones (OpenProt 2.2), [built locally](catalogs.md#mouse) with `orfdata setup --species mouse`; lifted to GRCm38 and NCBIM37 |
 | Zebrafish | From PyEnsembl | 9,759 GRCz11 Ribo-seq ORFs of Yang et al., [built locally](catalogs.md#zebrafish-c-elegans-and-yeast) |
 | C. elegans | From PyEnsembl | 2,849 WBcel235 Ribo-seq ORFs of Yang et al., built locally |
-| Budding yeast | From PyEnsembl | 1,124 R64-1-1 Ribo-seq ORFs of Yang et al., built locally; 170 lie inside Ensembl's transcripts |
+| Budding yeast | From PyEnsembl | 1,128 R64-1-1 Ribo-seq ORFs of Yang et al., built locally; 171 lie on Ensembl's transcripts |
 | Dog | From PyEnsembl | None: [no public dog Ribo-seq or ncORF MS exists](catalogs.md#dog) |
 
 Other assemblies use a catalogue lifted to them once `orfdata chains download`
