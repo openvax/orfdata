@@ -2,17 +2,50 @@
 
 ``RiboSeq(min_studies=2)`` and ``MS(min_peptides=2, unique=True)`` are rules;
 ``a & b`` requires both and ``a | b`` accepts either. The evidence method
-names used elsewhere (``"ms"``, ``"ribosome"``, ``"hla"`` ...) are shorthands
-for the simplest rules. A rule tests what a source reports; passing one is not
+names used elsewhere (``"ms"``, ``"ribosome"``, ``"immunopeptidomics"`` ...)
+are shorthands for the simplest rules, and ``"all"`` selects every ORF. A rule tests what a source reports; passing one is not
 proof that a stable protein exists.
 """
 
 import json
-from dataclasses import dataclass
+import sys
+import warnings
+from dataclasses import InitVar, dataclass
 from typing import Optional
 
-MS_METHODS = ("shotgun", "mhc", "hla", "ms_unclassified")
+# Peptides from digested cellular proteins; peptides eluted from MHC molecules
+# (HLA in human); MS whose kind the source does not state.
+MS_METHODS = ("proteomics", "immunopeptidomics", "ms_unclassified")
 EVIDENCE_METHODS = ("ribosome",) + MS_METHODS + ("ms",)
+# Names before 0.28.0, still read from catalogues, snapshots and saved rules.
+_RENAMED = {"shotgun": "proteomics", "mhc": "immunopeptidomics", "hla": "immunopeptidomics"}
+# Other names a caller may use; data stores "ribosome".
+SYNONYMS = {"riboseq": "ribosome"}
+
+
+def stored_method(method):
+    """An evidence method as stored data names it, under its current name."""
+    return _RENAMED.get(method, method)
+
+
+def _method(method):
+    """A method name a caller passed, under its current name; an old name warns."""
+    if method in _RENAMED:
+        warnings.warn(f"Evidence method {method!r} is now {_RENAMED[method]!r}", DeprecationWarning,
+                      stacklevel=_caller_level())
+    return SYNONYMS.get(method, stored_method(method))
+
+
+def _caller_level():
+    """The warning stacklevel of the caller's first frame outside orfdata, so the warning names its line.
+
+    Frames of orfdata's own code, including the ``__init__`` dataclasses
+    generate for its rules, are skipped.
+    """
+    frame, level = sys._getframe(1), 1
+    while frame is not None and frame.f_globals.get("__name__", "").partition(".")[0] == "orfdata":
+        frame, level = frame.f_back, level + 1
+    return level
 
 
 class EvidenceRule:
@@ -43,9 +76,15 @@ class EvidenceRule:
         if kind == "ribo_seq":
             return RiboSeq(**value)
         if kind == "ms":
-            return MS(**dict(value, methods=None if value["methods"] is None else tuple(value["methods"])))
+            methods = value["methods"]
+            return MS(**dict(value, methods=None if methods is None else tuple(stored_method(m) for m in methods)))
         if kind in ("all", "any"):
-            return (AllOf if kind == "all" else AnyOf)(tuple(EvidenceRule.from_dict(r) for r in value))
+            # Combined with & or |, so parts that 0.28.0's names make equal, such as hla and mhc, are one.
+            rules = [EvidenceRule.from_dict(r) for r in value]
+            combined = rules[0]
+            for rule in rules[1:]:
+                combined = combined & rule if kind == "all" else combined | rule
+            return combined
         raise ValueError(f"Unknown evidence rule: {kind}")
 
 
@@ -123,9 +162,14 @@ class MS(EvidenceRule):
     """Mass spectrometry: at least ``min_peptides`` independent supporting peptides.
 
     Peptides that differ only by I and L count once, and nested peptides,
-    such as HLA length variants, count as one: the count is the largest set
-    of supporting peptides none of which lies inside another. ``methods`` limits the peptide kinds (``"shotgun"``, ``"mhc"``, ``"hla"``,
-    ``"ms_unclassified"``); ``"mhc"`` includes ``"hla"``. ``unique`` needs one
+    such as MHC ligand length variants, count as one: the count is the largest
+    set of supporting peptides none of which lies inside another.
+    ``mhc=True`` counts only peptides eluted from MHC molecules
+    (immunopeptidomics) and ``mhc=False`` only peptides from digested cellular
+    proteins (proteomics); by default every MS peptide counts, including those
+    whose source doesn't say which. ``methods`` names the kinds directly, any
+    of ``"proteomics"``, ``"immunopeptidomics"`` and ``"ms_unclassified"``;
+    ``mhc`` is stored as the same ``methods``. ``unique`` needs one
     protein mapping in the source, not uniqueness in every proteome.
     ``reviewed`` needs convincing reviewed spectra (benchmark scores 4-5).
     A source's aggregate count satisfies only ``min_peptides=1`` without
@@ -137,23 +181,29 @@ class MS(EvidenceRule):
     reviewed: bool = False
     resolved: bool = False
     methods: Optional[tuple] = None
+    mhc: InitVar[Optional[bool]] = None
 
-    def __post_init__(self):
+    def __post_init__(self, mhc):
         _count(self.min_peptides, "min_peptides")
         _flags(self, "unique", "reviewed", "resolved")
+        if mhc is not None:
+            if type(mhc) is not bool:
+                raise TypeError("mhc must be True, False or None")
+            if self.methods is not None:
+                raise ValueError("Pass mhc or methods, not both")
+            object.__setattr__(self, "methods", ("immunopeptidomics",) if mhc else ("proteomics",))
         if self.methods is not None:
             methods = {self.methods} if isinstance(self.methods, str) else set(self.methods)
+            methods = {_method(m) for m in methods}
             if not methods or methods - set(MS_METHODS):
                 raise ValueError(f"MS methods must be drawn from {MS_METHODS}")
-            if "mhc" in methods:  # mhc already includes human hla.
-                methods.discard("hla")
             # One canonical form, so equal rules compare and serialize the same.
             object.__setattr__(self, "methods", tuple(m for m in MS_METHODS if m in methods))
         if self.min_peptides > 1 or self.unique or self.reviewed:  # Aggregate counts can't meet it anyway.
             object.__setattr__(self, "resolved", False)
 
     def _kind(self, method):
-        return self.methods is None or method in self.methods or (method == "hla" and "mhc" in self.methods)
+        return self.methods is None or stored_method(method) in self.methods
 
     def matches(self, evidence):
         if _independent(p.sequence for p in evidence.peptides
@@ -219,24 +269,41 @@ def _flatten(kind, rules):
 
 
 def evidence_rule(evidence, *, require_unique=False, require_reviewed=False, require_resolved=False):
-    """The rule for ``evidence``: a rule, an evidence method name, or None for every ORF.
+    """The rule for ``evidence``: a rule, an evidence method name, None (or ``"all"``) for every ORF,
+    or a list, tuple or set of these for any of them.
 
     A method name with ``require_*`` options becomes the equivalent rule:
-    ``"ms"`` is ``MS()``, ``"hla"`` is ``MS(methods=("hla",))`` and
-    ``"ribosome"`` is ``RiboSeq()``. Options that cannot apply raise.
+    ``"ms"`` is ``MS()``, ``"immunopeptidomics"`` is ``MS(mhc=True)``,
+    ``"proteomics"`` is ``MS(mhc=False)`` and ``"ribosome"`` (or
+    ``"riboseq"``) is ``RiboSeq()``. Options that cannot apply raise.
     """
     if isinstance(evidence, EvidenceRule):
         if require_unique or require_reviewed or require_resolved:
             raise ValueError("Set unique, reviewed or resolved on the rule itself")
         return evidence
-    if evidence is None:
+    if isinstance(evidence, (list, tuple, set, frozenset)):
+        # Any of them: ["ribosome", "immunopeptidomics"] is RiboSeq() | MS(mhc=True).
+        if not evidence:
+            raise ValueError("Name at least one kind of evidence, or pass None or 'all' for every ORF")
+        rules = [evidence_rule(e, require_unique=require_unique, require_reviewed=require_reviewed,
+                               require_resolved=require_resolved) for e in evidence]
+        if any(rule is None for rule in rules):
+            return None
+        either = rules[0]
+        for rule in rules[1:]:
+            either = either | rule
+        return either
+    if isinstance(evidence, str):
+        evidence = _method(evidence)
+    if evidence is None or evidence == "all":
         options = dict(require_unique=require_unique, require_reviewed=require_reviewed,
                        require_resolved=require_resolved)
         if any(options.values()):
             raise ValueError(f"{next(k for k, v in options.items() if v)} requires an evidence method")
         return None
     if evidence not in EVIDENCE_METHODS:
-        raise ValueError(f"Unknown evidence method: {evidence}")
+        raise ValueError(f"Unknown evidence method: {evidence}; use 'all' or one of "
+                         f"{', '.join(EVIDENCE_METHODS + tuple(SYNONYMS))}")
     if evidence == "ribosome":
         if require_unique or require_reviewed:
             raise ValueError("MS filters do not apply to ribosome evidence")

@@ -7,7 +7,7 @@ import re
 import sys
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
-from .evidence import MS, RiboSeq, evidence_rule
+from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
 
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
@@ -86,7 +86,9 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--gene", help="Exact source gene symbol or identifier")
     parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
-    parser.add_argument("--evidence", choices=EVIDENCE_METHODS)
+    parser.add_argument("--evidence", type=_evidence_name(), metavar="NAME",
+                        help="Evidence an ORF needs: ms, ribosome (or riboseq), proteomics, immunopeptidomics, "
+                             "ms_unclassified, or all (the default)")
     _add_rule_arguments(parser)
     parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
                                           "(GENCODE, human); uORF, uoORF, iORF, dORF, doORF, lncORF (mouse Ribo-seq; "
@@ -108,6 +110,21 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--format", choices=("json", "tsv", "fasta"), default="json")
 
 
+def _evidence_name(*extra):
+    """An argparse type for evidence names: those evidence_rule takes, then ``extra``.
+
+    Names from before 0.28.0 are accepted but not listed.
+    """
+    names = EVIDENCE_METHODS + tuple(SYNONYMS) + ("all",) + extra
+
+    def name(value):
+        if value not in names and value not in _RENAMED:
+            raise argparse.ArgumentTypeError(f"invalid choice: {value!r} (choose from {', '.join(names)})")
+        return value
+
+    return name
+
+
 def _add_rule_arguments(parser):
     """Ribo-seq and MS requirements, shared by ORF queries and proteome builds."""
     parser.add_argument("--min-ribo-seq-studies", type=int, metavar="N",
@@ -115,7 +132,8 @@ def _add_rule_arguments(parser):
     parser.add_argument("--min-ms-peptides", type=int, metavar="N",
                         help="Require at least N distinct supporting MS peptides")
     parser.add_argument("--ms-methods", metavar="KINDS",
-                        help="Count only these MS peptide kinds, comma-separated: shotgun, mhc, hla, ms_unclassified")
+                        help="Count only these MS peptide kinds, comma-separated: proteomics (digested cellular "
+                             "proteins), immunopeptidomics (peptides eluted from MHC molecules), ms_unclassified")
     parser.add_argument("--either", action="store_true",
                         help="Accept ORFs meeting the Ribo-seq or the MS requirement, instead of both")
     parser.add_argument("--require-resolved", action="store_true",

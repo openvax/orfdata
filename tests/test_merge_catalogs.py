@@ -21,7 +21,7 @@ from orfdata import (
 
 def other_catalog():
     """A second source: one ORF matching ms-orf, one reusing the ID ribo-orf, one under another code."""
-    peptide = PeptideEvidence("mhc", "KPG", ((2, 4),), "other", "fixture")
+    peptide = PeptideEvidence("immunopeptidomics", "KPG", ((2, 4),), "other", "fixture")
     records = [
         replace(orf("OP_1", peptides=(peptide,), ribosome_studies=("study-b",)), source="other"),
         replace(orf("ribo-orf", blocks=((206, 214),), protein="KP"), source="other"),

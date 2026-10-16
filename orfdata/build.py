@@ -388,7 +388,7 @@ def build(source_dir, destination, *, all_orfs=False):
             aliases[model["orf_id"]] = set(split(row["literature_ORF_names"])) | {model["orf_id"]}
             datasets = sorted(set(split(row["MS_datasets"])))
             method = (
-                "shotgun" if datasets and set(datasets) <= SHOTGUN_STUDIES else "ms_unclassified"
+                "proteomics" if datasets and set(datasets) <= SHOTGUN_STUDIES else "ms_unclassified"
             )
             for peptide in sorted(set(split(row["MS_peptides"]))):
                 if not intervals(model["protein_sequence"], peptide):
@@ -445,7 +445,7 @@ def build(source_dir, destination, *, all_orfs=False):
                 peptide_record(
                     model,
                     row["peptide"],
-                    method="hla",
+                    method="immunopeptidomics",
                     source="author_hla",
                     accession=row["peptide_accession"],
                     mapping_count=int(row["n_pep"]),
@@ -476,7 +476,7 @@ def build(source_dir, destination, *, all_orfs=False):
                     peptide_record(
                         model,
                         first["peptide"],
-                        method="hla" if first["HLA"] == "TRUE" else "shotgun",
+                        method="immunopeptidomics" if first["HLA"] == "TRUE" else "proteomics",
                         source="microprotein_benchmark",
                         accession=usi,
                         spectrum_ids=[usi],
@@ -587,7 +587,7 @@ def build(source_dir, destination, *, all_orfs=False):
         excluded_legacy_assignments=len(excluded),
         **{
             method + "_orfs": len(catalog.query(evidence=method))
-            for method in ("ribosome", "shotgun", "hla", "ms")
+            for method in ("ribosome", "proteomics", "immunopeptidomics", "ms")
         },
         reviewed_ms_orfs=len(catalog.query(evidence="ms", require_reviewed=True)),
     )
