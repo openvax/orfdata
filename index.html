@@ -1348,7 +1348,7 @@ minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.
 </thead>
 <tbody>
 <tr>
-<td><code>"ribosome"</code></td>
+<td><code>"ribosome"</code> or <code>"riboseq"</code></td>
 <td>Ribosome profiling (all bundled ORFs)</td>
 <td style="text-align: right;">7,264</td>
 <td style="text-align: right;">7,239</td>
@@ -1360,20 +1360,26 @@ minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.
 <td style="text-align: right;">2,181</td>
 </tr>
 <tr>
-<td><code>"hla"</code></td>
-<td>Peptides presented by HLA molecules</td>
+<td><code>"immunopeptidomics"</code></td>
+<td>Peptides eluted from MHC (in human, HLA) molecules</td>
 <td style="text-align: right;">1,881</td>
 <td style="text-align: right;">1,879</td>
 </tr>
 <tr>
-<td><code>"shotgun"</code></td>
-<td>Peptides from protease-digest MS</td>
+<td><code>"proteomics"</code></td>
+<td>Peptides from digested cellular proteins</td>
 <td style="text-align: right;">73</td>
 <td style="text-align: right;">72</td>
 </tr>
+<tr>
+<td><code>"all"</code></td>
+<td>Every catalogue ORF</td>
+<td style="text-align: right;">7,264</td>
+<td style="text-align: right;">7,239</td>
+</tr>
 </tbody>
 </table>
-<p>Most MS support in the bundled human catalogue comes from HLA
+<p>Most MS support in the bundled human catalogue comes from
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
 does not establish a stable protein. See
 <a href="proteome/#choose-the-evidence">building a reference proteome</a> for

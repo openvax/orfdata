@@ -1519,7 +1519,12 @@ the bundled human catalogue (dataset <code>2026-10-11.1</code>) and Ensembl 115:
 </thead>
 <tbody>
 <tr>
-<td><code>evidence=None</code> or <code>"ribosome"</code>: translated in ribosome profiling</td>
+<td><code>evidence=None</code> or <code>"all"</code>: every catalogue ORF</td>
+<td style="text-align: right;">7,264</td>
+<td style="text-align: right;">7,239</td>
+</tr>
+<tr>
+<td><code>evidence="ribosome"</code> or <code>"riboseq"</code>: translated in ribosome profiling</td>
 <td style="text-align: right;">7,264</td>
 <td style="text-align: right;">7,239</td>
 </tr>
@@ -1529,7 +1534,7 @@ the bundled human catalogue (dataset <code>2026-10-11.1</code>) and Ensembl 115:
 <td style="text-align: right;">2,181</td>
 </tr>
 <tr>
-<td><code>evidence="hla"</code> or <code>"mhc"</code>: peptides presented by HLA</td>
+<td><code>evidence="immunopeptidomics"</code>: peptides eluted from MHC (in human, HLA) molecules</td>
 <td style="text-align: right;">1,881</td>
 <td style="text-align: right;">1,879</td>
 </tr>
@@ -1539,7 +1544,7 @@ the bundled human catalogue (dataset <code>2026-10-11.1</code>) and Ensembl 115:
 <td style="text-align: right;">535</td>
 </tr>
 <tr>
-<td><code>evidence="shotgun"</code>: protease-digest MS</td>
+<td><code>evidence="proteomics"</code>: peptides from digested cellular proteins</td>
 <td style="text-align: right;">73</td>
 <td style="text-align: right;">72</td>
 </tr>
@@ -1559,23 +1564,32 @@ the bundled human catalogue (dataset <code>2026-10-11.1</code>) and Ensembl 115:
 selects all of them. An MS-supported ORF can have peptides from several assay
 types. <code>require_unique</code> keeps peptides that map to one protein <em>within the MS
 source's search</em>, which is not uniqueness across every possible protein; in
-this catalogue only the author HLA mappings report it. <code>require_reviewed</code>
+this catalogue only the author HLA ligand mappings report it. <code>require_reviewed</code>
 keeps peptides with convincing community spectrum reviews. Because those two
 properties come from different sources, no bundled peptide has both.
 <code>require_resolved</code> excludes support that consists only of aggregate counts.
 See <a href="../reference/#evidence">ORFs and evidence</a> for the full definitions.</p>
+<p>A list (or tuple or set) of names selects ORFs with any of them:
+<code>evidence=["proteomics", "immunopeptidomics"]</code> keeps ORFs with either kind of
+MS peptide, unlike <code>"ms"</code>, which also counts unclassified MS. For ORFs that
+need two kinds of evidence at once, combine rules with <code>&amp;</code>, below.</p>
 <h3 id="separate-ribo-seq-and-ms-stringency">Separate Ribo-seq and MS stringency<a class="headerlink" href="#separate-ribo-seq-and-ms-stringency" title="Permanent link">&para;</a></h3>
 <p>For more control, pass a rule. <code>RiboSeq(min_studies=n)</code> needs ribosome
 profiling in at least <code>n</code> independent studies the source names, and
-<code>MS(min_peptides=n, unique=..., reviewed=..., methods=...)</code> needs at least <code>n</code>
-distinct supporting peptide sequences. <code>&amp;</code> requires both rules and <code>|</code> accepts
-either:</p>
+<code>MS(min_peptides=n, unique=..., reviewed=..., mhc=...)</code> needs at least <code>n</code>
+distinct supporting peptide sequences. <code>MS(mhc=True)</code> counts only peptides
+eluted from MHC molecules (the immunopeptidome) and <code>MS(mhc=False)</code> only
+peptides from digested cellular proteins (the whole proteome). <code>MS()</code> counts
+both, and the MS peptides whose source doesn't say which. <code>methods=</code> names the
+kinds directly, for combinations such as <code>("proteomics", "ms_unclassified")</code>.
+<code>&amp;</code> requires both rules and <code>|</code> accepts either:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">MS</span><span class="p">,</span> <span class="n">RiboSeq</span>
 
 <span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>                        <span class="c1"># replicated Ribo-seq</span>
 <span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># Ribo-seq and MS</span>
 <span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># either</span>
-<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">MS</span><span class="p">(</span><span class="n">methods</span><span class="o">=</span><span class="p">(</span><span class="s2">"shotgun"</span><span class="p">,</span> <span class="s2">"ms_unclassified"</span><span class="p">)))</span>     <span class="c1"># not HLA-only</span>
+<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">(</span><span class="n">mhc</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>                     <span class="c1"># Ribo-seq and an MHC ligand</span>
+<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">MS</span><span class="p">(</span><span class="n">methods</span><span class="o">=</span><span class="p">(</span><span class="s2">"proteomics"</span><span class="p">,</span> <span class="s2">"ms_unclassified"</span><span class="p">)))</span>  <span class="c1"># not immunopeptidomics-only</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1602,7 +1616,7 @@ either:</p>
 <td style="text-align: right;">681</td>
 </tr>
 <tr>
-<td><code>MS(methods=("shotgun", "ms_unclassified"))</code></td>
+<td><code>MS(methods=("proteomics", "ms_unclassified"))</code></td>
 <td style="text-align: right;">610</td>
 <td style="text-align: right;">607</td>
 </tr>
@@ -1624,17 +1638,20 @@ either:</p>
 </tbody>
 </table>
 <p>GENCODE's <code>c…riboseqorf…</code> IDs are the 3,085 ORFs seen in two or more studies.
-Each method name above is the simplest rule: <code>"ms"</code> is <code>MS()</code>, <code>"hla"</code> is
-<code>MS(methods=("hla",))</code> and <code>"ribosome"</code> is <code>RiboSeq()</code>. A peptide counts once
+Each method name above is the simplest rule: <code>"ms"</code> is <code>MS()</code>,
+<code>"immunopeptidomics"</code> is <code>MS(mhc=True)</code>, <code>"proteomics"</code> is <code>MS(mhc=False)</code> and
+<code>"ribosome"</code> (or <code>"riboseq"</code>) is <code>RiboSeq()</code>. The names before 0.28.0 (<code>"shotgun"</code>, and <code>"mhc"</code> or <code>"hla"</code>)
+still work, with a deprecation warning, and catalogues that use them still
+load. A peptide counts once
 however many assay types report it, and so do peptides that differ only by I
-and L (equal in mass). Nested peptides, such as HLA length variants, count as
+and L (equal in mass). Nested peptides, such as MHC ligand length variants, count as
 one: the count is the largest set of supporting peptides none of which lies
 inside another, so a long peptide never hides two shorter, separate ones, and
 a stricter rule always selects a subset of a looser one. Of the 916 ORFs with
 two or more distinct peptide sequences, 234 have fewer than two that aren't
 nested. Each rule in <code>&amp;</code> is checked on its own:
-<code>MS(methods="shotgun") &amp; MS(unique=True)</code> needs a shotgun peptide and a unique
-peptide, not one unique shotgun peptide. A source's aggregate count stands for one observation:
+<code>MS(mhc=False) &amp; MS(unique=True)</code> needs a proteomics peptide and a
+unique peptide, not one unique proteomics peptide. A source's aggregate count stands for one observation:
 it satisfies <code>RiboSeq()</code> and <code>MS()</code> but never <code>min_studies</code> or <code>min_peptides</code>
 above 1, <code>unique</code>, <code>reviewed</code> or <code>resolved=True</code>. The layer stores the rule,
 so a snapshot records exactly how its ORFs were chosen; <code>EvidenceRule.from_dict</code>
@@ -1780,14 +1797,14 @@ on that transcript, and <code>overlapping(...)</code> finds ORFs at a genomic in
 accession: an Ensembl protein ID with its version, a source ORF ID or a viral
 protein ID. Fields that apply follow as <code>key=value</code>:</p>
 <div class="highlight"><pre><span></span><code>&gt;ENSP00000269305.4 kind=annotated taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
-&gt;c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,mhc transcripts=18
-&gt;c10riboseqorf115 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,mhc source_transcript=ENST00000277895 transcripts=10
+&gt;c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,immunopeptidomics transcripts=18
+&gt;c10riboseqorf115 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,immunopeptidomics source_transcript=ENST00000277895 transcripts=10
 </code></pre></div>
 <p>For extra ORFs, the accession is the source ORF ID, <code>transcript</code> is its host
 transcript in this genome, and <code>gene</code>, <code>gene_name</code> and <code>transcript_biotype</code>
 describe that transcript in this genome. <code>orf_type</code> is the source's ORF
 category, kept verbatim; see <a href="../reference/#orf-categories">ORF categories</a>.
-<code>evidence</code> lists the supporting evidence types; <code>mhc</code> includes HLA.
+<code>evidence</code> lists the supporting evidence types.
 <code>transcripts</code> counts the encoding transcripts when there are several, and
 <code>source_transcript</code> names the source's transcript when the header's transcript
 is a different one, as for ABLIM1 above, whose source transcript is gone. See
@@ -1804,7 +1821,7 @@ catalogue ORF, or <code>none</code> for annotated proteins only. <code>--require
 options. Rules have their own options:</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">2</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span>
 orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">3</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">2</span><span class="w"> </span>--either
-orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span><span class="w"> </span>--ms-methods<span class="w"> </span>shotgun,ms_unclassified
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span><span class="w"> </span>--ms-methods<span class="w"> </span>proteomics,ms_unclassified
 </code></pre></div>
 <p>Given both a Ribo-seq and an MS requirement, an ORF needs both unless
 <code>--either</code> is set. <code>--require-unique</code> and <code>--require-reviewed</code> refine the MS

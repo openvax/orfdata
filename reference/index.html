@@ -1569,10 +1569,12 @@ the loaded version.</p>
 <p>The host is one of possibly several transcripts that carry the same ORF; see
 <a href="#transcripts-carrying-an-orf">transcripts carrying an ORF</a>.</p>
 <h2 id="evidence">Evidence<a class="headerlink" href="#evidence" title="Permanent link">&para;</a></h2>
-<p>Use <code>orf.evidence.has_evidence("ribosome")</code>, <code>"shotgun"</code> (protease-digest MS),
-<code>"mhc"</code> (including human HLA), or <code>"ms"</code> (any supporting MS observation).
-<code>"hla"</code> selects human HLA observations specifically. Source observations whose
-MS assay type is unspecified remain labelled <code>"ms_unclassified"</code>.</p>
+<p>Use <code>orf.evidence.has_evidence("ribosome")</code> (or <code>"riboseq"</code>), <code>"proteomics"</code> (peptides from
+digested cellular proteins), <code>"immunopeptidomics"</code> (peptides eluted from MHC
+molecules; HLA in human), or <code>"ms"</code> (any supporting MS observation). Source
+observations whose MS assay type is unspecified remain labelled
+<code>"ms_unclassified"</code>. Catalogues from before 0.28.0 say <code>"shotgun"</code>, <code>"mhc"</code>
+and <code>"hla"</code>; they load with the current names.</p>
 <div class="highlight"><pre><span></span><code><span class="n">orf</span><span class="o">.</span><span class="n">evidence</span><span class="o">.</span><span class="n">has_evidence</span><span class="p">(</span><span class="s2">"ms"</span><span class="p">,</span> <span class="n">require_unique</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">require_reviewed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <p>This requires a supporting spectrum review and a single protein mapping
