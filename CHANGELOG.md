@@ -1,3 +1,7 @@
+# 0.34.1
+
+- Require Python 3.11 or later and test through Python 3.14.
+
 # 0.34.0
 
 - Viral reference queries now return immutable `ViralReference` objects with

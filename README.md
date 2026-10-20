@@ -13,7 +13,7 @@ evidence.
 
 ## Installation
 
-Use Python 3.9 or later. Install orfdata and one PyEnsembl annotation:
+Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
 python -m pip install 'orfdata[pyensembl]'
