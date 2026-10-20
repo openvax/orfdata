@@ -1377,30 +1377,33 @@ pyensembl<span class="w"> </span>install<span class="w"> </span>--release<span c
 never downloads or indexes annotation data itself; it reports what is missing.</p>
 <h2 id="build-a-human-proteome">Build a human proteome<a class="headerlink" href="#build-a-human-proteome" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyensembl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnsemblRelease</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReferenceTranscriptome</span>
 
 <span class="n">genome</span> <span class="o">=</span> <span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">)</span>
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">from_genome</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">evidence</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
+<span class="n">transcriptome</span> <span class="o">=</span> <span class="n">ReferenceTranscriptome</span><span class="o">.</span><span class="n">from_genome</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">()</span>  <span class="c1"># Reference CDS proteins only.</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">nc_orfs</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
 <span class="n">proteome</span><span class="o">.</span><span class="n">write_fasta</span><span class="p">(</span><span class="s2">"human-e115.fasta"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">proteome</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">"kinds"</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">proteome</span><span class="o">.</span><span class="n">excluded</span><span class="p">))</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code>{'annotated': 245535, 'extra_orf': 2181} 5
 </code></pre></div>
-<p><code>Proteome.from_genome</code> takes every protein in the Ensembl 115 annotation.
-<code>with_extra_orfs(evidence="ms")</code> adds the bundled human ORFs that have
+<p><code>proteome()</code> takes every reference CDS protein in the Ensembl 115 annotation.
+Use <code>isoforms="longest"</code> for one reference protein per gene, selected by length.
+<code>nc_orfs="ms"</code> adds the bundled human ORFs that have
 supporting mass-spectrometry (MS) peptides: 2,181 of the 2,186 are encoded by
 an Ensembl 115 transcript, which must contain the ORF's exact spliced coding
 path. The other 5 are listed in <code>proteome.excluded</code> with the reason. Each entry
 lists every transcript encoding it. Building this human proteome takes under a
 minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.</p>
 <p>The same proteome from the command line:</p>
-<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--output<span class="w"> </span>human-e115.fasta
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--nc-orfs<span class="w"> </span>ms<span class="w"> </span>--output<span class="w"> </span>human-e115.fasta
 </code></pre></div>
 <h2 id="choose-the-evidence">Choose the evidence<a class="headerlink" href="#choose-the-evidence" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th><code>evidence=</code></th>
+<th><code>nc_orfs=</code></th>
 <th>Selects ORFs with</th>
 <th style="text-align: right;">Human ORFs</th>
 <th style="text-align: right;">Encoded in Ensembl 115</th>
@@ -1414,7 +1417,7 @@ minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.
 <td style="text-align: right;">7,239</td>
 </tr>
 <tr>
-<td><code>"ms"</code> (default)</td>
+<td><code>"ms"</code> (or <code>True</code>)</td>
 <td>Any supporting MS peptide</td>
 <td style="text-align: right;">2,186</td>
 <td style="text-align: right;">2,181</td>
@@ -1442,7 +1445,7 @@ minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.
 <p>Most MS support in the bundled human catalogue comes from
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
 does not establish a stable protein. See
-<a href="proteome/#choose-the-evidence">building a reference proteome</a> for
+<a href="proteome/#add-ncorfs-with-selected-evidence">building a reference proteome</a> for
 stricter filters and what each level means.</p>
 <h2 id="look-up-the-orfs-on-a-transcript">Look up the ORFs on a transcript<a class="headerlink" href="#look-up-the-orfs-on-a-transcript" title="Permanent link">&para;</a></h2>
 <p>Continue in the same Python session:</p>
@@ -1509,7 +1512,7 @@ transcript alongside them.</p>
 <p>Other assemblies use a catalogue lifted to them once <code>orfdata chains download</code>
 has fetched the chain files (with <code>--accept-terms</code> for UCSC's non-commercial
 mouse chains); see <a href="catalogs/#every-assembly-of-a-species">every assembly of a species</a>.
-<code>with_extra_orfs()</code> raises for a species without a catalogue, or whose
+<code>with_nc_orfs()</code> raises for a species without a catalogue, or whose
 catalogue or chains aren't installed yet, rather than returning an
 annotated-only proteome. Human ORF evidence is never transferred
 to another species. The same API also serves

@@ -1218,7 +1218,7 @@ viral input object:</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span>
 
 <span class="n">genome</span> <span class="o">=</span> <span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">)</span>  <span class="c1"># Already installed with pyensembl install.</span>
-<span class="n">combined</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">extra_orf_evidence</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span> <span class="n">viral</span><span class="o">=</span><span class="s2">"HPV16"</span><span class="p">)</span>
+<span class="n">combined</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">nc_orfs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span> <span class="n">viral</span><span class="o">=</span><span class="s2">"HPV16"</span><span class="p">)</span>
 <span class="n">combined</span><span class="o">.</span><span class="n">write_fasta</span><span class="p">(</span><span class="s2">"human-hpv16.fasta"</span><span class="p">)</span>
 </code></pre></div>
 <p><code>viral="all"</code> includes each distinct bundled viral protein set associated
