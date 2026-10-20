@@ -2,9 +2,14 @@
 
 Proteomes can now select reference CDS proteins, transcript-bound ncORFs and
 host-associated viral proteins in one build. `ReferenceTranscriptome` separates
-the transcript models from the protein sources; `host_sources="nc_orfs"` builds
-an ncORF-only proteome. FASTA headers and summaries expose `protein_source`,
+the transcript models from the protein sources; `nc_orf_proteome(evidence="all")`
+builds an ncORF-only proteome. FASTA headers and summaries expose `protein_source`,
 while the existing `kind` labels remain compatible with saved snapshots.
+Source selection now uses `reference_cds` and `nc_orfs` booleans plus
+`nc_orf_evidence`; the older selectors remain supported. Supplied sample-derived
+host sequences can be added with `DerivedProtein`, preserving parent accessions,
+sample and change IDs without treating them as reference translations. Snapshot
+schema v2 also reads earlier v1 snapshots.
 
 DLA ligand release 2026-10-16.2 marks iRT spike-in spectra that the first
 release missed.

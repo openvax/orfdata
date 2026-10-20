@@ -15,15 +15,15 @@ from orfdata import Proteome, ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")  # Installed with pyensembl install.
 transcriptome = ReferenceTranscriptome.from_genome(genome)
-proteome = transcriptome.proteome(extra_orf_evidence="ms")
-reference_cds = transcriptome.proteome(host_sources="reference_cds")
+proteome = transcriptome.proteome(nc_orf_evidence="ms")
+reference_cds = transcriptome.proteome(nc_orfs=False)
 ```
 
 The examples on this page continue that Python session.
 
 ## Reference CDS proteins
 
-`Proteome.from_genome(genome)` and `host_sources="reference_cds"` take every
+`Proteome.from_genome(genome)` and `nc_orfs=False` take every
 transcript with a reference CDS protein sequence. For Ensembl this matches the annotation's protein FASTA: Ensembl 115
 has 245,535 human proteins with 160,811 distinct sequences. They include
 nonsense-mediated-decay and immunoglobulin/T-cell receptor segment translations,
@@ -253,16 +253,17 @@ Build one proteome with reference CDS proteins, every catalogue ORF that binds t
 the genome, and every distinct bundled viral protein set recorded for this host:
 
 ```python
-combined = transcriptome.proteome(extra_orf_evidence="all", viral="all")
+combined = transcriptome.proteome(nc_orf_evidence="all", viral="all")
 proteins_by_id = combined.by_accession()
 combined.write_fasta("human-all-proteins.fasta")
 combined.save("human-all-proteins.proteome.json.gz")
 ```
 
-`extra_orf_evidence` filters only the ncORF catalogue added to the reference CDS
+`nc_orf_evidence` filters only the ncORF catalogue added to the reference CDS
 proteome. `"all"` selects every catalogue ORF; those that do not bind to this
 genome are reported in `combined.excluded`. Reference CDS and viral proteins are
-unaffected by that option. The older `evidence=` spelling still works.
+unaffected by that option. The older `extra_orf_evidence=` and `evidence=`
+spellings still work on `Proteome.build`.
 
 `proteins_by_id` maps each unique protein accession to a `ProteomeEntry` with
 its sequence, `protein_source`, taxon and source. `by_sequence()` groups entries with
@@ -309,12 +310,12 @@ If you have a PyEnsembl reference transcriptome, build a proteome containing
 only the ncORFs that bind to its transcripts:
 
 ```python
-nc_only = transcriptome.proteome(host_sources="nc_orfs", extra_orf_evidence="all")
+nc_only = transcriptome.nc_orf_proteome(evidence="all")
 nc_only.write_fasta("reference-ncorfs.fasta")
 ```
 
 ```sh
-orfdata proteome --species human --release 115 --host-sources nc-orfs --extra-orf-evidence all --output reference-ncorfs.fasta
+orfdata proteome --species human --release 115 --no-reference-cds --nc-orf-evidence all --output reference-ncorfs.fasta
 ```
 
 This uses the installed annotation and transcript sequences to check exact
@@ -358,6 +359,41 @@ nc_only = combined.filter(lambda entry: entry.kind == "extra_orf")
 virus_only = combined.filter(lambda entry: entry.kind == "viral")
 ```
 
+## Sample-derived proteins
+
+Protein origin and sample-specific sequence changes are separate. A changed
+reference CDS protein or ncORF retains its parent protein source, while its
+derivation names the parent accession, sample and change IDs. Supply the amino
+acid sequence yourself; orfdata does not infer it from a VCF or claim that the
+sample expresses it:
+
+```python
+from orfdata import DerivedProtein
+
+altered = DerivedProtein(
+    accession="sample-A:protein-1",
+    sequence=altered_amino_acids,
+    parent_accessions=("ENSP00000269305.4",),
+    sample_id="sample-A",
+    change_ids=("source-variant-id",),
+    source="variant-caller-and-translation-release",
+)
+sample_proteome = combined.with_derived_proteins(altered)
+sample_proteome.write_fasta("sample-A-proteins.fasta")
+```
+
+The parent must already be in the proteome. A derived entry has `kind="derived"`
+and `protein_source` inherited from its host parent (`mixed` for parents from
+different sources); `entry.derivation` stores
+the parent, its gene/transcript identifiers, sample, changes and optional
+source asset SHA-256. Its FASTA header includes `sample`, `derived_from`,
+`parent_genes`, `parent_transcripts`, `changes` and the supplied `source`.
+When a parent maps to several transcripts, pass `parent_transcript_ids=(...,)`
+to select the transcript for each parent; omitting an ambiguous choice raises.
+Reference transcript coordinates and reference protein measurements are not
+copied onto the altered sequence. Viral parents are not supported for derived
+proteins. The snapshot retains the complete derivation record.
+
 ## Save and reload
 
 ```python
@@ -365,6 +401,9 @@ identity = proteome.save("human-e115.proteome.json.gz")
 same = Proteome.load("human-e115.proteome.json.gz")  # Offline: no genome or catalogue needed.
 assert same.identity == identity
 ```
+
+A new save uses snapshot schema v2 for derivation metadata; `load` also reads
+existing v1 snapshots.
 
 A snapshot holds every entry with its occurrences and evidence, the layers with
 their selections and catalogue identities, and the excluded ORFs. `identity` is
@@ -381,7 +420,7 @@ same bytes.
 
 `ReferenceTranscriptome.proteome` delegates to `Proteome.build`, which makes
 the usual proteome in one call: `from_genome`, then
-`with_extra_orfs(extra_orf_evidence, catalog=...)` and `with_viral` for each of `viral=`.
+`with_extra_orfs(nc_orf_evidence, catalog=...)` and `with_viral` for each of `viral=`.
 `viral=` accepts `"all"`/`True`, a virus type, exact bundled reference ID,
 `ViralReference`, external `ViralProteome`, or a sequence of specific inputs.
 With `cache=True` it keeps the result in the OpenVax DataCache root
@@ -390,7 +429,7 @@ also where the species' registered catalogue is looked for, with or without
 `cache=True`:
 
 ```python
-proteome = transcriptome.proteome(extra_orf_evidence=RiboSeq(min_studies=2) & MS(), cache=True)
+proteome = transcriptome.proteome(nc_orf_evidence=RiboSeq(min_studies=2) & MS(), cache=True)
 ```
 
 The cache key is the reference, evidence rule, catalogue and viral
@@ -402,10 +441,12 @@ by its DataCache checksum, so it skips the re-serialization `load` does. Local
 annotation files of a custom genome are fingerprinted by size and SHA-256, so
 genomes that share names never share an entry. Entries of a cached or loaded
 proteome don't carry `orf`; use `extra_orfs(genome)` for ORF objects. Each cached build sits next
-to a `recipe.json` recording its key and identity. Nothing is downloaded, and
-`host_sources="reference_cds"` builds only the reference CDS proteins, and
-`host_sources=()` with `viral=` builds a viral-only proteome for this host.
-The older `annotated=` and `extra_orfs=` flags on `Proteome.build` still work.
+to a `recipe.json` recording its key and identity. Nothing is downloaded.
+`reference_cds=False` omits reference CDS proteins; `nc_orfs=False` omits
+catalogue ncORFs. Setting both to False with `viral=` builds a viral-only
+proteome for this host. `transcriptome.nc_orf_proteome(evidence="all")` is the
+short form for the ncORF-only case. The older `annotated=`, `extra_orfs=` and
+`host_sources=` selectors still work for existing callers.
 
 ## Lower-level ORF lookup
 
@@ -447,6 +488,9 @@ also [identifiers](reference.md#identifiers). The snapshot keeps every
 occurrence; the FASTA header shows the first. For bundled viral proteins,
 `source` names the exact viral reference; `gene_name` and `product` are the
 source's protein labels. A supplied protein FASTA may lack those annotations.
+For supplied derived proteins, `derived_from` links to their parent accessions,
+and `parent_genes` and `parent_transcripts` label those parents without
+asserting that their reference coordinates still describe the changed sequence.
 The FASTA header shows one host transcript and a count when several encode an
 entry; it does not list every occurrence, evidence record, source checksum or
 host-range attribution. Save a `.proteome.json.gz` snapshot alongside FASTA
@@ -456,18 +500,18 @@ when those details must be recovered exactly.
 
 ```sh
 orfdata proteome --species human --release 115 --output human-e115.fasta
-orfdata proteome --species human --release 115 --extra-orf-evidence all
-orfdata proteome --species human --release 115 --extra-orf-evidence all --viral all --output human-all-proteins.fasta --snapshot human-all-proteins.proteome.json.gz
+orfdata proteome --species human --release 115 --nc-orf-evidence all
+orfdata proteome --species human --release 115 --nc-orf-evidence all --viral all --output human-all-proteins.fasta --snapshot human-all-proteins.proteome.json.gz
 orfdata proteome --species human --release 115 --viral HPV16 --output human-hpv16.fasta
-orfdata proteome --species mouse --release 115 --host-sources reference-cds
-orfdata proteome --species human --release 115 --host-sources nc-orfs --extra-orf-evidence all
-orfdata proteome --species human --release 115 --host-sources none --viral HPV16
+orfdata proteome --species mouse --release 115 --no-nc-orfs
+orfdata proteome --species human --release 115 --no-reference-cds --nc-orf-evidence all
+orfdata proteome --species human --release 115 --no-reference-cds --no-nc-orfs --viral HPV16
 ```
 
-`--extra-orf-evidence` accepts the evidence names above, `all` for every
+`--nc-orf-evidence` accepts the evidence names above, `all` for every
 catalogue ORF, or `none` for reference CDS proteins only. `--require-unique`,
 `--require-reviewed`, `--require-resolved` and `--catalog FILE` match the Python
-options.
+options. The earlier `--extra-orf-evidence` spelling remains accepted.
 
 `--viral all` adds each distinct bundled viral protein set associated with
 the host, choosing its native placement when equivalent references exist.
