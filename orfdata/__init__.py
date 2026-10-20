@@ -56,8 +56,10 @@ from .pairing import (
 )
 from .proteome import (
     BindingFailure,
+    DerivedProtein,
     ExtraORFs,
     Occurrence,
+    ProteinDerivation,
     Proteome,
     ProteomeEntry,
     ReferenceTranscriptome,
@@ -97,6 +99,8 @@ __all__ = [
     "annotated_orfs",
     "ExtraORFs",
     "BindingFailure",
+    "DerivedProtein",
+    "ProteinDerivation",
     "GeneticCode",
     "genetic_code",
     "SourceRNA",

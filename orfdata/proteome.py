@@ -26,7 +26,7 @@ from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_asse
 from .reference import ReferenceContext
 from .viral import ViralProduct, ViralReference, viral_reference, viral_references
 
-SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
+SNAPSHOT_SCHEMA = "orfdata.proteome.v2"
 _SNAPSHOT = "proteome.json.gz"
 # PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
@@ -85,10 +85,95 @@ _OCCURRENCE_FIELDS = ("transcript_id", "gene_id", "gene_name", "transcript_bioty
 
 
 @dataclass(frozen=True)
+class DerivedProtein:
+    """A supplied sample-specific protein sequence with explicit parentage.
+
+    The caller supplies amino acids; this record does not infer translation or
+    establish expression. ``change_ids`` identify the variants or other events
+    used to derive it, in the caller's own namespace.
+    """
+
+    accession: str
+    sequence: str
+    parent_accessions: tuple
+    sample_id: str
+    change_ids: tuple
+    source: str
+    source_sha256: Optional[str] = None
+    parent_transcript_ids: tuple = ()
+
+    def __post_init__(self):
+        if any(isinstance(value, str) for value in
+               (self.parent_accessions, self.change_ids, self.parent_transcript_ids)):
+            raise TypeError("Parent accessions, transcripts and change IDs must be collections")
+        object.__setattr__(self, "parent_accessions", tuple(self.parent_accessions))
+        object.__setattr__(self, "change_ids", tuple(self.change_ids))
+        object.__setattr__(self, "parent_transcript_ids", tuple(self.parent_transcript_ids))
+        if not isinstance(self.accession, str) or not self.accession or re.search(r"\s", self.accession):
+            raise ValueError("A derived protein needs a whitespace-free accession")
+        if not isinstance(self.sequence, str) or re.fullmatch(r"[A-Z*]+", self.sequence) is None:
+            raise ValueError("A derived protein needs an uppercase amino-acid sequence")
+        if not self.parent_accessions or any(not isinstance(p, str) or not p or re.search(r"[\s,]", p)
+                                               for p in self.parent_accessions):
+            raise ValueError("A derived protein needs parent protein accessions")
+        if self.parent_transcript_ids and len(self.parent_transcript_ids) != len(self.parent_accessions):
+            raise ValueError("Specify one transcript per parent protein")
+        if any(t is not None and (not isinstance(t, str) or not t or re.search(r"[\s,]", t))
+               for t in self.parent_transcript_ids):
+            raise ValueError("Parent transcript IDs must be nonempty IDs or None")
+        if not isinstance(self.sample_id, str) or not self.sample_id or re.search(r"[\s,]", self.sample_id):
+            raise ValueError("A derived protein needs a sample ID")
+        if not self.change_ids or any(not isinstance(c, str) or not c or re.search(r"[\s,]", c)
+                                      for c in self.change_ids):
+            raise ValueError("A derived protein needs change IDs")
+        if not isinstance(self.source, str) or not self.source.strip():
+            raise ValueError("A derived protein needs a source")
+        if self.source_sha256 is not None and re.fullmatch(r"[0-9a-f]{64}", self.source_sha256) is None:
+            raise ValueError("source_sha256 must be a lowercase SHA-256 hex digest")
+
+
+@dataclass(frozen=True)
+class ProteinDerivation:
+    """Parent proteins and sample events behind one supplied protein sequence."""
+
+    parent_accessions: tuple
+    parent_sources: tuple
+    sample_id: str
+    change_ids: tuple
+    parent_gene_ids: tuple
+    parent_transcript_ids: tuple
+    source_sha256: Optional[str] = None
+
+    def __post_init__(self):
+        if any(not isinstance(value, tuple) for value in
+               (self.parent_accessions, self.parent_sources, self.change_ids,
+                self.parent_gene_ids, self.parent_transcript_ids)):
+            raise TypeError("Derivation parents, sources, changes and annotations must be tuples")
+        if not self.parent_accessions or len(self.parent_accessions) != len(self.parent_sources):
+            raise ValueError("A derivation needs one parent source per parent accession")
+        if len(set(self.parent_accessions)) != len(self.parent_accessions):
+            raise ValueError("A derivation cannot repeat a parent accession")
+        if (len(self.parent_gene_ids) != len(self.parent_accessions)
+                or len(self.parent_transcript_ids) != len(self.parent_accessions)):
+            raise ValueError("A derivation needs gene and transcript annotations for each parent")
+        if any(value is not None and (not isinstance(value, str) or not value) for value in
+               self.parent_gene_ids + self.parent_transcript_ids):
+            raise ValueError("Parent gene and transcript IDs must be strings or absent")
+        if (any(not isinstance(value, str) or not value or re.search(r"[\s,]", value) for value in
+                self.parent_accessions + self.parent_sources + self.change_ids)
+                or not isinstance(self.sample_id, str) or not self.sample_id
+                or re.search(r"[\s,]", self.sample_id)
+                or not self.change_ids):
+            raise ValueError("A derivation needs a sample and change IDs")
+        if self.source_sha256 is not None and re.fullmatch(r"[0-9a-f]{64}", self.source_sha256) is None:
+            raise ValueError("source_sha256 must be a lowercase SHA-256 hex digest")
+
+
+@dataclass(frozen=True)
 class ProteomeEntry:
     """One protein: its sequence, identity, source and every transcript encoding it.
 
-    ``kind`` is ``"annotated"``, ``"extra_orf"`` or ``"viral"``. ``accession``
+    ``kind`` is ``"annotated"``, ``"extra_orf"``, ``"viral"`` or ``"derived"``. ``accession``
     is the versioned protein ID, the source ORF ID or the viral protein ID.
     ``occurrences`` lists every transcript of this genome encoding the protein,
     the source's own transcript first; viral proteins have none. ``gene_id``,
@@ -100,6 +185,9 @@ class ProteomeEntry:
     the source's evidence records. ``equivalent_ids`` lists other sources'
     ``source:id`` for the same extra ORF when catalogues were merged. Bundled
     viral proteins keep their source's gene and product labels separately.
+    Supplied sample-derived proteins keep parent accessions and annotations,
+    change IDs and sample provenance in ``derivation``; their ``occurrences``
+    remain empty because reference coordinates may no longer describe them.
     """
 
     accession: str
@@ -117,6 +205,13 @@ class ProteomeEntry:
     orf: Optional[TranscriptORF] = field(default=None, compare=False, repr=False)
     viral_gene: Optional[str] = None
     viral_product: Optional[str] = None
+    derivation: Optional[ProteinDerivation] = None
+
+    def __post_init__(self):
+        if (self.kind == "derived") != (self.derivation is not None):
+            raise ValueError("Only derived protein entries have derivation metadata")
+        if self.derivation is not None and self.accession in self.derivation.parent_accessions:
+            raise ValueError("A derived protein cannot name itself as a parent")
 
     @property
     def _first(self):
@@ -145,6 +240,9 @@ class ProteomeEntry:
     @property
     def protein_source(self):
         """The protein source, using names independent of annotation status."""
+        if self.kind == "derived":
+            sources = set(self.derivation.parent_sources)
+            return next(iter(sources)) if len(sources) == 1 else "mixed"
         return {"annotated": "reference_cds", "extra_orf": "nc_orf", "viral": "viral"}[self.kind]
 
     def fasta_header(self):
@@ -154,6 +252,17 @@ class ProteomeEntry:
                       gene_name=self.gene_name, transcript=self.transcript_id, contig=self.contig,
                       transcript_biotype=self.transcript_biotype, orf_type=self.orf_type,
                       product=self.viral_product,
+                      sample=None if self.derivation is None else self.derivation.sample_id,
+                      derived_from=None if self.derivation is None else
+                      ",".join(self.derivation.parent_accessions),
+                      parent_genes=None if self.derivation is None or
+                      not any(self.derivation.parent_gene_ids) else
+                      ",".join(gene or "-" for gene in self.derivation.parent_gene_ids),
+                      parent_transcripts=None if self.derivation is None or
+                      not any(self.derivation.parent_transcript_ids) else
+                      ",".join(transcript or "-" for transcript in self.derivation.parent_transcript_ids),
+                      changes=None if self.derivation is None else ",".join(self.derivation.change_ids),
+                      source_sha256=None if self.derivation is None else self.derivation.source_sha256,
                       evidence=",".join(self.evidence) or None,
                       source_transcript=self.source_transcript_id
                       if first is not None and not first.on_source_transcript else None,
@@ -170,13 +279,23 @@ class ProteomeEntry:
                     source_transcript_id=self.source_transcript_id, source_binding=self.source_binding,
                     **({"equivalent_ids": list(self.equivalent_ids)} if self.equivalent_ids else {}),
                     **({"viral_gene": self.viral_gene} if self.viral_gene is not None else {}),
-                    **({"viral_product": self.viral_product} if self.viral_product is not None else {}))
+                    **({"viral_product": self.viral_product} if self.viral_product is not None else {}),
+                    **({"derivation": asdict(self.derivation)} if self.derivation is not None else {}))
 
     @classmethod
     def from_dict(cls, record):
         record = dict(record)
         record["evidence"] = tuple(record.get("evidence", ()))
         record["equivalent_ids"] = tuple(record.get("equivalent_ids", ()))
+        if record.get("derivation") is not None:
+            derivation = record["derivation"]
+            record["derivation"] = ProteinDerivation(
+                parent_accessions=tuple(derivation["parent_accessions"]),
+                parent_sources=tuple(derivation["parent_sources"]),
+                sample_id=derivation["sample_id"], change_ids=tuple(derivation["change_ids"]),
+                parent_gene_ids=tuple(derivation["parent_gene_ids"]),
+                parent_transcript_ids=tuple(derivation["parent_transcript_ids"]),
+                source_sha256=derivation.get("source_sha256"))
         blocks = _OCCURRENCE_FIELDS.index("coding_blocks")
         record["occurrences"] = tuple(
             Occurrence(*values[:blocks], tuple(map(tuple, values[blocks])), *values[blocks + 1 :])
@@ -517,23 +636,32 @@ class ReferenceTranscriptome:
     def from_genome(cls, genome, *, context=None):
         return cls(genome, ReferenceContext.from_genome(genome, context=context))
 
-    def proteome(self, *, host_sources=("reference_cds", "nc_orfs"), **kwargs):
-        """Translate selected host sources; pass ``viral`` for viral proteins.
+    def proteome(self, *, reference_cds=True, nc_orfs=True, **kwargs):
+        """Select reference CDS proteins and/or transcript-bound catalogue ncORFs.
 
-        ``host_sources`` accepts ``reference_cds`` and ``nc_orfs``. Use only
-        ``nc_orfs`` for a proteome of catalogue ORFs bound to these transcripts,
-        or an empty selection with ``viral`` for viral proteins alone.
+        ``viral`` in ``kwargs`` adds host-associated viral proteins. The older
+        ``host_sources`` selector remains accepted for existing callers.
         """
-        return Proteome.build(self, host_sources=host_sources, **kwargs)
+        host_sources = kwargs.pop("host_sources", None)
+        if host_sources is not None:
+            if reference_cds is not True or nc_orfs is not True:
+                raise ValueError("Pass reference_cds/nc_orfs or host_sources, not both")
+            return Proteome.build(self, host_sources=host_sources, **kwargs)
+        return Proteome.build(self, reference_cds=reference_cds, nc_orfs=nc_orfs, **kwargs)
+
+    def nc_orf_proteome(self, *, evidence="all", **kwargs):
+        """Only catalogue ncORFs that bind to these reference transcripts."""
+        return Proteome.from_nc_orfs(self, evidence=evidence, **kwargs)
 
 
 class Proteome:
     """Selected protein sources for one reference, built in explicit layers.
 
     Build from :class:`ReferenceTranscriptome`, or start with :meth:`from_genome`
-    and add layers with :meth:`with_extra_orfs` and :meth:`with_viral`.
+    and add layers with :meth:`with_extra_orfs`, :meth:`with_viral` and
+    :meth:`with_derived_proteins`.
     Each method returns a new proteome. ``layers`` records
-    every addition with its role (``"host"``, ``"viral"`` or ``"filter"``),
+    every addition with its role (``"host"``, ``"viral"``, ``"derived"`` or ``"filter"``),
     source and selection; ``excluded`` lists selected ORFs found on no
     transcript. :meth:`save` writes a checksummed snapshot that :meth:`load`
     reads back offline, and ``identity`` changes whenever the content does.
@@ -553,12 +681,29 @@ class Proteome:
             raise ValueError("Duplicate proteome accessions: " + ", ".join(duplicated[:5]))
         hosts = {layer["source"]: layer.get("host_taxon_ids", ()) for layer in self.layers
                  if layer["role"] == "viral"}
+        preceding = {}
         for entry in self.entries:
             if entry.kind == "viral":
                 if reference.taxon_id not in hosts.get(entry.source, ()):
                     raise ValueError(f"Viral protein {entry.accession} has no host layer for this species")
             elif entry.taxon_id != reference.taxon_id:
                 raise ValueError(f"Host protein {entry.accession} is from another species")
+            if entry.kind == "derived":
+                for accession, source, gene_id, transcript_id in zip(
+                        entry.derivation.parent_accessions, entry.derivation.parent_sources,
+                        entry.derivation.parent_gene_ids, entry.derivation.parent_transcript_ids):
+                    parent = preceding.get(accession)
+                    if parent is not None:
+                        if parent.kind == "viral":
+                            raise ValueError("Derived proteins from viral parents are unsupported")
+                        occurrence = next((o for o in parent.occurrences
+                                           if o.transcript_id == transcript_id), None)
+                        if (parent.protein_source != source or
+                                (transcript_id is None and (gene_id is not None or parent.occurrences)) or
+                                (transcript_id is not None and
+                                 (occurrence is None or occurrence.gene_id != gene_id))):
+                            raise ValueError(f"Derived protein {entry.accession} has incorrect parent annotations")
+            preceding[entry.accession] = entry
         for layer in self.layers:
             if layer.get("reference") not in (None, reference.key):
                 raise ValueError("A layer declares a different reference")
@@ -596,6 +741,14 @@ class Proteome:
         return cls(reference, entries, (layer,), genome=genome)
 
     @classmethod
+    def from_nc_orfs(cls, transcriptome, evidence="all", *, catalog=None, catalogs=None,
+                     context=None, cache=False, cache_root=None):
+        """Catalogue ncORFs bound to a reference transcriptome, without CDS proteins."""
+        return cls.build(transcriptome, nc_orf_evidence=evidence, catalog=catalog,
+                         catalogs=catalogs, context=context, cache=cache, cache_root=cache_root,
+                         reference_cds=False, nc_orfs=True)
+
+    @classmethod
     def from_refseq(cls, protein_fasta, feature_table, *, reference, expected_sha256):
         """Read pinned RefSeq proteins and NCBI Gene/transcript occurrences offline.
 
@@ -609,24 +762,29 @@ class Proteome:
                               reference=reference, expected_sha256=expected_sha256)
 
     @classmethod
-    def build(cls, genome, evidence=_UNSET, *, extra_orf_evidence=_UNSET, catalog=None, viral=(),
-              annotated=True, extra_orfs=True, host_sources=None, context=None, cache=False,
-              cache_root=None, catalogs=None):
+    def build(cls, genome, evidence=_UNSET, *, nc_orf_evidence=_UNSET, extra_orf_evidence=_UNSET,
+              catalog=None, viral=(), derived=(),
+              annotated=_UNSET, extra_orfs=_UNSET, reference_cds=_UNSET, nc_orfs=_UNSET,
+              host_sources=None, context=None, cache=False, cache_root=None, catalogs=None):
         """The usual reference proteome in one call, optionally kept in a cache.
 
         ``genome`` may be a PyEnsembl genome or a :class:`ReferenceTranscriptome`.
-        ``host_sources`` selects ``reference_cds`` and/or ``nc_orfs``; it also
-        accepts an empty collection for a viral-only proteome. By default this reads
-        annotated proteins with :meth:`from_genome`, then
-        adds :meth:`with_extra_orfs` with ``extra_orf_evidence`` and ``catalog``
-        unless ``extra_orfs=False``. Set ``annotated=False`` for only the
+        ``reference_cds`` and ``nc_orfs`` independently select the two host
+        protein sources; both default to True. The older ``annotated``,
+        ``extra_orfs`` and ``host_sources`` selectors remain accepted. By default
+        this reads reference CDS proteins with :meth:`from_genome`, then
+        adds :meth:`with_extra_orfs` with ``nc_orf_evidence`` and ``catalog``
+        unless ``nc_orfs=False``. Set ``reference_cds=False`` for only the
         catalogue ncORFs bound to this reference's transcripts, without reading
-        its annotated protein FASTA. Then add
+        its reference protein FASTA. Then add
         :meth:`with_viral` for each of ``viral``. Pass ``viral="all"`` (or True)
         for each distinct bundled viral protein set recorded for this host, a
         virus type or exact reference ID for one, or a ViralReference directly.
-        The extra ORF evidence defaults to ``"ms"``; the older ``evidence``
-        argument is retained. Viral additions are opt-in. ``catalogs`` chooses among the
+        The ncORF evidence defaults to ``"ms"``; the older ``evidence`` and
+        ``extra_orf_evidence`` arguments remain accepted. Viral additions are opt-in.
+        ``derived`` accepts supplied :class:`DerivedProtein` records linked to
+        parent entries and sample changes; it does not infer their sequences or
+        expression. ``catalogs`` chooses among the
         species' catalogues as in :func:`load_catalog`. With ``cache=True`` the result
         is saved under the OpenVax DataCache root (``ORFDATA_CACHE``,
         ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, the
@@ -640,26 +798,46 @@ class Proteome:
                 raise ValueError("context differs from the reference transcriptome")
             context, genome = genome.reference, genome.genome
         if host_sources is not None:
-            if annotated is not True or extra_orfs is not True:
-                raise ValueError("Pass host_sources or annotated/extra_orfs, not both")
+            if any(value is not _UNSET for value in (annotated, extra_orfs, reference_cds, nc_orfs)):
+                raise ValueError("Pass host_sources or reference_cds/nc_orfs, not both")
             selected = {host_sources} if isinstance(host_sources, str) else set(host_sources)
             unknown = selected - {"reference_cds", "nc_orfs"}
             if unknown:
                 raise ValueError(f"Unknown host protein sources: {', '.join(sorted(unknown))}")
             annotated, extra_orfs = "reference_cds" in selected, "nc_orfs" in selected
+        else:
+            if reference_cds is not _UNSET and annotated is not _UNSET:
+                raise ValueError("Pass reference_cds or annotated, not both")
+            if nc_orfs is not _UNSET and extra_orfs is not _UNSET:
+                raise ValueError("Pass nc_orfs or extra_orfs, not both")
+            annotated = (True if reference_cds is _UNSET and annotated is _UNSET else
+                         annotated if reference_cds is _UNSET else reference_cds)
+            extra_orfs = (True if nc_orfs is _UNSET and extra_orfs is _UNSET else
+                          extra_orfs if nc_orfs is _UNSET else nc_orfs)
+        if type(annotated) is not bool or type(extra_orfs) is not bool:
+            raise TypeError("reference_cds and nc_orfs must be booleans")
+        if nc_orf_evidence is not _UNSET:
+            if extra_orf_evidence is not _UNSET or evidence is not _UNSET:
+                raise ValueError("Pass nc_orf_evidence, extra_orf_evidence or evidence, not more than one")
+            extra_orf_evidence = nc_orf_evidence
         if extra_orf_evidence is not _UNSET and evidence is not _UNSET:
             raise ValueError("Pass extra_orf_evidence or evidence, not both")
         if extra_orf_evidence is not _UNSET:
             if not extra_orfs:
-                raise ValueError("extra_orf_evidence requires extra_orfs=True")
+                argument = "nc_orf_evidence" if nc_orf_evidence is not _UNSET else "extra_orf_evidence"
+                raise ValueError(f"{argument} requires nc_orfs=True")
             evidence = extra_orf_evidence
         elif evidence is _UNSET:
             evidence = "ms"
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
         viral = _viral_inputs(viral, reference.taxon_id)
+        derived = (() if derived is None else (derived,) if isinstance(derived, DerivedProtein)
+                   else tuple(derived))
+        if any(not isinstance(item, DerivedProtein) for item in derived):
+            raise TypeError("derived must contain DerivedProtein records")
         if not extra_orfs and (catalog is not None or catalogs is not None):
-            raise ValueError("A catalogue needs extra_orfs=True")
+            raise ValueError("A catalogue needs nc_orfs=True")
         rule = None
         if extra_orfs:
             rule = evidence_rule(evidence)
@@ -673,6 +851,8 @@ class Proteome:
                 proteome = proteome.with_extra_orfs(rule, catalog=catalog)
             for virus in viral:
                 proteome = proteome.with_viral(virus)
+            if derived:
+                proteome = proteome.with_derived_proteins(derived)
             built.append(proteome)
             return proteome
 
@@ -687,7 +867,8 @@ class Proteome:
                    extra_orfs=dict(evidence=None if rule is None else rule.to_dict(),
                                    catalog=_catalog_identity(catalog)) if extra_orfs else None,
                    viral=[_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
-                          for virus in viral])
+                          for virus in viral],
+                   derived=[asdict(item) for item in derived])
         path = _cached_snapshot(key, make, cache_root)
         if built:
             return built[0]
@@ -779,6 +960,58 @@ class Proteome:
         return Proteome(self.reference, self.entries + added, self.layers + (layer,),
                         self.excluded, self.genome)
 
+    def with_derived_proteins(self, proteins):
+        """Add supplied sample-specific host sequences linked to parent entries.
+
+        Parent proteins must already be in this proteome. The supplied amino
+        acids and change IDs are recorded as provenance; no sequence inference,
+        expression evidence or reference measurement is implied.
+        """
+        proteins = (proteins,) if isinstance(proteins, DerivedProtein) else tuple(proteins)
+        if any(not isinstance(item, DerivedProtein) for item in proteins):
+            raise TypeError("proteins must contain DerivedProtein records")
+        if not proteins:
+            return self
+        parents = self.by_accession()
+        added = []
+        for item in proteins:
+            missing = [accession for accession in item.parent_accessions if accession not in parents]
+            if missing:
+                raise ValueError(f"Derived protein {item.accession} has missing parents: {', '.join(missing)}")
+            if any(parents[accession].kind == "viral" for accession in item.parent_accessions):
+                raise ValueError("Derived proteins from viral parents are unsupported")
+            selected_occurrences = []
+            requested_transcripts = item.parent_transcript_ids or (None,) * len(item.parent_accessions)
+            for accession, transcript_id in zip(item.parent_accessions, requested_transcripts):
+                occurrences = parents[accession].occurrences
+                if transcript_id is None:
+                    if len(occurrences) > 1:
+                        raise ValueError(f"Derived protein {item.accession} must choose a parent transcript "
+                                         f"for {accession}")
+                    occurrence = occurrences[0] if occurrences else None
+                else:
+                    occurrence = next((o for o in occurrences if o.transcript_id == transcript_id), None)
+                    if occurrence is None:
+                        raise ValueError(f"{transcript_id} is not an occurrence of parent {accession}")
+                selected_occurrences.append(occurrence)
+            derivation = ProteinDerivation(
+                parent_accessions=item.parent_accessions,
+                parent_sources=tuple(parents[accession].protein_source
+                                     for accession in item.parent_accessions),
+                sample_id=item.sample_id, change_ids=item.change_ids,
+                parent_gene_ids=tuple(o.gene_id if o is not None else None
+                                      for o in selected_occurrences),
+                parent_transcript_ids=tuple(o.transcript_id if o is not None else None
+                                            for o in selected_occurrences),
+                source_sha256=item.source_sha256)
+            added.append(ProteomeEntry(item.accession, item.sequence, "derived", self.reference.taxon_id,
+                                       f"derived:{item.source}", derivation=derivation))
+        layer = dict(kind="derived", role="derived", reference=self.reference.key,
+                     source="derived", sources=sorted({item.source for item in proteins}),
+                     samples=sorted({item.sample_id for item in proteins}), added=len(added))
+        return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
+                        self.excluded, self.genome)
+
     def filter(self, predicate, *, description=None):
         """Keep entries for which ``predicate(entry)`` is true; layers are retained."""
         kept = tuple(e for e in self.entries if predicate(e))
@@ -814,6 +1047,7 @@ class Proteome:
             distinct_sequences=len({e.sequence for e in self.entries}),
             kinds=dict(Counter(e.kind for e in self.entries)),
             protein_sources=dict(Counter(e.protein_source for e in self.entries)),
+            derived=sum(e.derivation is not None for e in self.entries),
             layers=[dict(layer) for layer in self.layers], excluded=len(self.excluded),
         )
 
@@ -852,7 +1086,7 @@ class Proteome:
         """
         raw = Path(path).read_bytes()
         snapshot = json.loads(gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw)
-        if snapshot.get("schema") != SNAPSHOT_SCHEMA:
+        if snapshot.get("schema") not in ("orfdata.proteome.v1", SNAPSHOT_SCHEMA):
             raise ValueError(f"Unsupported proteome snapshot schema: {snapshot.get('schema')!r}")
         content = snapshot["content"]
         if _sha256(content) != snapshot.get("identity"):

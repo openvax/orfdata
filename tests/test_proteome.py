@@ -14,6 +14,7 @@ from pyensembl import Genome
 
 from orfdata import (
     MS,
+    DerivedProtein,
     ExtraORFs,
     InitiationContext,
     ORFCatalog,
@@ -600,7 +601,7 @@ def test_reference_bound_ncorf_only_proteome_skips_annotated_proteins(genome, ca
     assert transcriptome.reference == ReferenceContext.from_genome(genome)
     with monkeypatch.context() as patch:
         patch.setattr(genome, "protein_sequence", lambda accession: 1 / 0)
-        only = transcriptome.proteome(host_sources="nc_orfs", extra_orf_evidence="all", catalog=catalog)
+        only = transcriptome.nc_orf_proteome(evidence="all", catalog=catalog)
     assert only.summary()["kinds"] == {"extra_orf": 3}
     assert only.summary()["protein_sources"] == {"nc_orf": 3}
     assert [layer["kind"] for layer in only.layers] == ["extra_orf"]
@@ -613,6 +614,10 @@ def test_reference_bound_ncorf_only_proteome_skips_annotated_proteins(genome, ca
                                            catalog=catalog).identity
     assert only.identity == Proteome.build(transcriptome, host_sources=("nc_orfs",),
                                            extra_orf_evidence="all", catalog=catalog).identity
+    assert only.identity == transcriptome.proteome(reference_cds=False,
+                                                   nc_orf_evidence="all", catalog=catalog).identity
+    assert only.identity == Proteome.build(genome, reference_cds=False, nc_orfs=True,
+                                           nc_orf_evidence="all", catalog=catalog).identity
     assert {entry.protein_source for entry in only} == {"nc_orf"}
     fasta = tmp_path / "ncorfs.fa"
     only.write_fasta(fasta)
@@ -626,20 +631,89 @@ def test_reference_bound_ncorf_only_proteome_skips_annotated_proteins(genome, ca
 
 def test_reference_transcriptome_selects_host_protein_sources(genome, catalog):
     transcriptome = ReferenceTranscriptome.from_genome(genome)
-    cds = transcriptome.proteome(host_sources=("reference_cds",))
+    cds = transcriptome.proteome(nc_orfs=False)
     assert cds.summary()["protein_sources"] == {"reference_cds": 3}
     assert cds.identity == Proteome.from_genome(genome).identity
     assert "protein_source=reference_cds" in cds.entries[0].fasta_header()
-    viral_only = transcriptome.proteome(host_sources=(), viral=[virus()])
+    viral_only = transcriptome.proteome(reference_cds=False, nc_orfs=False, viral=[virus()])
     assert viral_only.summary()["protein_sources"] == {"viral": 1}
     assert viral_only.entries[0].protein_source == "viral"
     with pytest.raises(ValueError, match="Unknown host protein sources"):
         transcriptome.proteome(host_sources=("annotated",))
-    with pytest.raises(ValueError, match="host_sources or annotated/extra_orfs"):
+    with pytest.raises(ValueError, match="host_sources or reference_cds/nc_orfs"):
         Proteome.build(genome, host_sources=("nc_orfs",), annotated=False, catalog=catalog)
+    with pytest.raises(ValueError, match="reference_cds or annotated"):
+        Proteome.build(genome, reference_cds=True, annotated=True)
+    with pytest.raises(TypeError, match="must be booleans"):
+        Proteome.build(genome, reference_cds="reference_cds")
     with pytest.raises(ValueError, match="context differs"):
         Proteome.build(transcriptome, host_sources=("reference_cds",),
                        context=replace(transcriptome.reference, annotation_version="other"))
+
+
+def test_supplied_derived_protein_keeps_parent_and_sample_provenance(genome, catalog, tmp_path):
+    base = Proteome.build(genome, nc_orf_evidence="all", catalog=catalog)
+    record = DerivedProtein("sample-a|ms-orf|v1", "MAA", ("ms-orf",), "sample-a",
+                            ("variant:fixture-1",), "fixture-caller", "a" * 64,
+                            parent_transcript_ids=("test_rna.1",))
+    sample = base.with_derived_proteins(record)
+    entry = sample.by_accession()[record.accession]
+    assert entry.protein_source == "nc_orf"
+    assert entry.derivation.parent_accessions == ("ms-orf",)
+    assert entry.derivation.sample_id == "sample-a"
+    assert entry.derivation.parent_gene_ids == ("test_gene",)
+    assert entry.derivation.parent_transcript_ids == ("test_rna.1",)
+    assert entry.occurrences == ()  # Reference coordinates are not copied to altered amino acids.
+    assert "protein_source=nc_orf" in entry.fasta_header()
+    assert "sample=sample-a derived_from=ms-orf" in entry.fasta_header()
+    assert "parent_genes=test_gene parent_transcripts=test_rna.1" in entry.fasta_header()
+    assert "changes=variant:fixture-1" in entry.fasta_header()
+    assert sample.summary()["derived"] == 1
+    assert sample.summary()["kinds"]["derived"] == 1
+    assert sample.identity == Proteome.build(genome, nc_orf_evidence="all", catalog=catalog,
+                                             derived=[record]).identity
+    assert sample.identity == Proteome.build(genome, nc_orf_evidence="all", catalog=catalog,
+                                             derived=[record], cache=True,
+                                             cache_root=tmp_path / "cache").identity
+    snapshot = tmp_path / "sample.json.gz"
+    sample.save(snapshot)
+    assert Proteome.load(snapshot).by_accession()[record.accession] == entry
+    assert Proteome.load(snapshot).identity == sample.identity
+    assert base.identity != sample.identity
+    derived_only = sample.filter(lambda protein: protein.kind == "derived")
+    assert len(derived_only) == 1 and derived_only.entries[0].derivation == entry.derivation
+    derived_only.save(snapshot)
+    assert Proteome.load(snapshot).entries[0].derivation == entry.derivation
+    with pytest.raises(ValueError, match="missing parents"):
+        base.with_derived_proteins(replace(record, parent_accessions=("missing",)))
+    with pytest.raises(ValueError, match="must choose a parent transcript"):
+        base.with_derived_proteins(replace(record, parent_transcript_ids=()))
+    with pytest.raises(ValueError, match="not an occurrence"):
+        base.with_derived_proteins(replace(record, parent_transcript_ids=("other_rna.1",)))
+    with pytest.raises(ValueError, match="viral parents"):
+        base.with_viral(virus()).with_derived_proteins(
+            replace(record, parent_accessions=("virus-protein",)))
+    with pytest.raises(ValueError, match="change IDs"):
+        replace(record, change_ids=())
+    with pytest.raises(ValueError, match="Duplicate proteome accessions"):
+        base.with_derived_proteins(replace(record, accession="ribo-orf"))
+    with pytest.raises(ValueError, match="cannot name itself as a parent"):
+        base.with_derived_proteins(replace(record, accession="ms-orf"))
+    two_parents = replace(record, accession="sample-a|fusion", parent_accessions=("coding_protein.1", "ms-orf"),
+                          parent_transcript_ids=("coding_rna.1", "test_rna.1"))
+    fused = base.with_derived_proteins(two_parents).by_accession()[two_parents.accession]
+    assert fused.protein_source == "mixed"
+    assert fused.derivation.parent_sources == ("reference_cds", "nc_orf")
+
+
+def test_v1_proteome_snapshot_remains_readable(genome, tmp_path):
+    base = Proteome.from_genome(genome)
+    path = tmp_path / "legacy.json.gz"
+    base.save(path)
+    snapshot = json.loads(gzip.decompress(path.read_bytes()))
+    snapshot["schema"] = "orfdata.proteome.v1"
+    path.write_bytes(gzip.compress(json.dumps(snapshot).encode(), mtime=0))
+    assert Proteome.load(path).identity == base.identity
 
 
 def test_multiple_synthetic_viral_sources_share_one_proteome(genome):
@@ -703,6 +777,11 @@ def test_bundled_virus_builds_into_one_proteome_without_manual_conversion(tmp_pa
             Proteome.build(human, viral=["all", ref.id], **options)
         alias = Proteome.build(human, extra_orf_evidence=None, catalog=human_catalog, viral="HPV16")
         assert alias.identity == by_id.identity
+        assert Proteome.build(human, nc_orf_evidence=None, catalog=human_catalog,
+                              viral="HPV16").identity == by_id.identity
+        with pytest.raises(ValueError, match="not more than one"):
+            Proteome.build(human, nc_orf_evidence="all", extra_orf_evidence="ms",
+                           catalog=human_catalog)
         with pytest.raises(ValueError, match="extra_orf_evidence or evidence"):
             Proteome.build(human, evidence="ribosome", extra_orf_evidence="all", catalog=human_catalog)
         with pytest.raises(ValueError, match="extra_orf_evidence or evidence"):
@@ -767,7 +846,7 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     assert output.read_text().count(">") == 5
     nc_only = tmp_path / "ncorfs.fa"
     run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path),
-         "--extra-orf-evidence", "all", "--host-sources", "nc-orfs", "--output", str(nc_only)])
+         "--nc-orf-evidence", "all", "--no-reference-cds", "--output", str(nc_only)])
     assert json.loads(capsys.readouterr().err)["kinds"] == {"extra_orf": 3}
     assert nc_only.read_text().count(">") == 3
     run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path),
@@ -780,6 +859,9 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     run(["proteome", "--species", "mouse", "--release", "1", "--extra-orf-evidence", "none"])
     captured = capsys.readouterr()
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"annotated": 3}
+    run(["proteome", "--species", "mouse", "--release", "1", "--no-nc-orfs"])
+    captured = capsys.readouterr()
+    assert captured.out.count(">") == 3 and json.loads(captured.err)["protein_sources"] == {"reference_cds": 3}
     with pytest.raises(SystemExit):
         run(["proteome", "--species", "mouse", "--release", "1"])  # The mouse catalogue isn't built.
     assert "openprot-mouse 2.2-1 catalogue, which is not installed" in capsys.readouterr().err
@@ -802,7 +884,7 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     for count in (["--min-ms-peptides", "0"], ["--min-ribo-seq-studies", "0"]):  # Zero is still a requirement.
         with pytest.raises(SystemExit):
             run(["proteome", "--species", "mouse", "--release", "1", "--extra-orf-evidence", "none"] + count)
-        assert "Extra-ORF options require" in capsys.readouterr().err
+        assert "ncORF options require" in capsys.readouterr().err
 
 
 def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, monkeypatch, capsys):
@@ -843,7 +925,7 @@ def test_cache_keys_viral_layers_and_annotation_files(genome, catalog, tmp_path,
         assert "twin_protein.1" not in {e.accession for e in plain}
     finally:
         twins.close()
-    with pytest.raises(ValueError, match="needs extra_orfs=True"):
+    with pytest.raises(ValueError, match="needs nc_orfs=True"):
         Proteome.build(genome, catalog=catalog, extra_orfs=False)
 
 

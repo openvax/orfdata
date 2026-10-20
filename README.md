@@ -28,7 +28,7 @@ from orfdata import ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")
 transcriptome = ReferenceTranscriptome.from_genome(genome)
-proteome = transcriptome.proteome(extra_orf_evidence="ms")
+proteome = transcriptome.proteome(nc_orf_evidence="ms")
 proteome.write_fasta("human-e115.fasta")
 print(proteome.summary()["protein_sources"], len(proteome.excluded))
 ```
@@ -83,17 +83,22 @@ FASTA with the reference CDS proteins, all binding catalogue ORFs and the
 bundled viruses associated with human:
 
 ```python
-combined = transcriptome.proteome(extra_orf_evidence="all", viral="all")
+combined = transcriptome.proteome(nc_orf_evidence="all", viral="all")
 proteins_by_id = combined.by_accession()  # Reference CDS, ncORF and viral entries.
 combined.write_fasta("human-all-proteins.fasta")
 combined.save("human-all-proteins.proteome.json.gz")  # Complete provenance.
 
-nc_only = transcriptome.proteome(host_sources="nc_orfs", extra_orf_evidence="all")
+nc_only = transcriptome.nc_orf_proteome(evidence="all")
 nc_only.write_fasta("human-reference-ncorfs.fasta")
 ```
 
+For sample-specific altered sequences, `DerivedProtein` records the supplied
+amino acids, parent protein accession, sample, change IDs and source before
+`combined.with_derived_proteins(...)` adds them. These sequences are not
+inferred from variants or included in the reference proteome by default.
+
 ```sh
-orfdata proteome --species human --release 115 --extra-orf-evidence all --viral all --output human-all-proteins.fasta
+orfdata proteome --species human --release 115 --nc-orf-evidence all --viral all --output human-all-proteins.fasta
 ```
 
 `viral="all"` selects one protein set per bundled virus and keeps its exact
