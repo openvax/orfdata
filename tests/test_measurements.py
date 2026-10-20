@@ -284,13 +284,19 @@ def test_pyensembl_targets_keep_reference_and_requested_id_version(experiment):
         genome = EnsemblRelease(110, species=reference.species)
         feature = SimpleNamespace(id="gene", versioned_id="gene.2", genome=genome)
         plain = ScopedTarget.from_pyensembl(feature, kind="gene", namespace="ensembl:110")
-        assert plain.reference.key == reference.key
+        # PyEnsembl can update the assembly metadata for a release. Scope the
+        # target to the Genome's declared reference, not this synthetic fixture's build.
+        assert plain.reference.taxon_id == reference.taxon_id
+        assert plain.reference.species == genome.species.latin_name
+        assert plain.reference.genome_build == genome.reference_name
+        assert plain.reference.annotation_name == genome.annotation_name
+        assert plain.reference.annotation_version == reference.annotation_version
         assert plain.identifier == "gene"
         assert ScopedTarget.from_pyensembl(feature, kind="gene", namespace="ensembl:110",
                                           versioned=True).identifier == "gene.2"
         with pytest.raises(ValueError):
             ScopedTarget.from_pyensembl(feature, kind="gene", namespace="ensembl:110",
-                                       context=replace(reference, annotation_version="111"))
+                                       context=replace(plain.reference, annotation_version="111"))
 
 
 def test_orf_target_uses_bound_context_and_rejects_modified_objects(experiment):
