@@ -28,7 +28,9 @@ from orfdata import ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")
 transcriptome = ReferenceTranscriptome.from_genome(genome)
-proteome = transcriptome.proteome(nc_orf_evidence="ms")
+reference = transcriptome.proteome()                    # Reference CDS proteins only; all isoforms.
+one_per_gene = transcriptome.proteome(isoforms="longest")
+proteome = transcriptome.proteome(nc_orfs="ms")          # Explicitly add MS-supported ncORFs.
 proteome.write_fasta("human-e115.fasta")
 print(proteome.summary()["protein_sources"], len(proteome.excluded))
 ```
@@ -37,18 +39,21 @@ print(proteome.summary()["protein_sources"], len(proteome.excluded))
 {'reference_cds': 245535, 'nc_orf': 2181} 5
 ```
 
-This takes every protein in the Ensembl 115 annotation and adds the 2,181
+`proteome()` defaults to reference CDS proteins, with no ncORFs or viruses.
+`isoforms="longest"` selects one protein per gene by length, with accession
+and transcript ID breaking ties. This does not assign Ensembl canonical or
+MANE status. `nc_orfs="ms"` takes every protein in the Ensembl 115 annotation and adds the 2,181
 bundled human ORFs that have supporting mass-spectrometry peptides and are
 encoded by an Ensembl 115 transcript. Each entry lists every transcript encoding
 it; the other 5 selected ORFs are listed in `proteome.excluded` with the
-reason. Use `evidence="ribosome"` for all 7,239 encoded ribosome-profiling ORFs,
+reason. Use `nc_orfs="ribosome"` for all 7,239 encoded ribosome-profiling ORFs,
 or a rule such as `RiboSeq(min_studies=2) & MS()` to set Ribo-seq and MS
 stringency separately (1,293 encoded ORFs).
 `proteome.save(path)` writes a checksummed snapshot that `Proteome.load` reads
 offline. From the command line:
 
 ```sh
-orfdata proteome --species human --release 115 --output human-e115.fasta
+orfdata proteome --species human --release 115 --nc-orfs ms --output human-e115.fasta
 ```
 
 A translated ORF or a detected peptide does not by itself establish a stable,
@@ -75,7 +80,7 @@ After `orfdata chains download` (add
 (GRCh37, NCBI36, GRCm38, NCBIM37) and T2T-CHM13 use these catalogues lifted
 to them; `orfdata genomes install t2t-chm13` installs a CHM13 annotation. Dog proteomes contain their
 PyEnsembl-annotated proteins. `load_catalog(species=...)` and
-`with_extra_orfs()` pick the catalogue for a species and raise when none is
+`with_nc_orfs()` pick the catalogue for a species and raise when none is
 available or built.
 Human evidence is never transferred to another species. Viral proteins can
 be added only to a proteome for a recorded host. To build one dictionary and
@@ -83,12 +88,12 @@ FASTA with the reference CDS proteins, all binding catalogue ORFs and the
 bundled viruses associated with human:
 
 ```python
-combined = transcriptome.proteome(nc_orf_evidence="all", viral="all")
+combined = transcriptome.proteome(nc_orfs="all", viral="all")
 proteins_by_id = combined.by_accession()  # Reference CDS, ncORF and viral entries.
 combined.write_fasta("human-all-proteins.fasta")
 combined.save("human-all-proteins.proteome.json.gz")  # Complete provenance.
 
-nc_only = transcriptome.nc_orf_proteome(evidence="all")
+nc_only = transcriptome.proteome(reference_cds=False, nc_orfs="all")
 nc_only.write_fasta("human-reference-ncorfs.fasta")
 ```
 
@@ -98,7 +103,7 @@ amino acids, parent protein accession, sample, change IDs and source before
 inferred from variants or included in the reference proteome by default.
 
 ```sh
-orfdata proteome --species human --release 115 --nc-orf-evidence all --viral all --output human-all-proteins.fasta
+orfdata proteome --species human --release 115 --nc-orfs all --viral all --output human-all-proteins.fasta
 ```
 
 `viral="all"` selects one protein set per bundled virus and keeps its exact

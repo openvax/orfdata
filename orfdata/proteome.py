@@ -636,29 +636,27 @@ class ReferenceTranscriptome:
     def from_genome(cls, genome, *, context=None):
         return cls(genome, ReferenceContext.from_genome(genome, context=context))
 
-    def proteome(self, *, reference_cds=True, nc_orfs=True, **kwargs):
-        """Select reference CDS proteins and/or transcript-bound catalogue ncORFs.
+    def proteome(self, *, reference_cds=True, isoforms="all", nc_orfs=False, viral=(),
+                 derived=(), catalog=None, catalogs=None, cache=False, cache_root=None):
+        """Reference CDS proteins, with optional ncORF and viral additions.
 
-        ``viral`` in ``kwargs`` adds host-associated viral proteins. The older
-        ``host_sources`` selector remains accepted for existing callers.
+        ``isoforms="all"`` keeps every reference protein; ``"longest"`` keeps
+        one per gene, chosen by protein length. ``nc_orfs=False`` omits ncORFs;
+        use ``"ms"``, ``"ribosome"``, ``"all"`` or an evidence rule to add them
+        (True means ``"ms"``). ``viral`` selects host-associated viruses by name.
+        Set ``reference_cds=False`` to build from only the requested additions.
+        See :meth:`Proteome.build` for catalogue, cache and derived inputs.
         """
-        host_sources = kwargs.pop("host_sources", None)
-        if host_sources is not None:
-            if reference_cds is not True or nc_orfs is not True:
-                raise ValueError("Pass reference_cds/nc_orfs or host_sources, not both")
-            return Proteome.build(self, host_sources=host_sources, **kwargs)
-        return Proteome.build(self, reference_cds=reference_cds, nc_orfs=nc_orfs, **kwargs)
-
-    def nc_orf_proteome(self, *, evidence="all", **kwargs):
-        """Only catalogue ncORFs that bind to these reference transcripts."""
-        return Proteome.from_nc_orfs(self, evidence=evidence, **kwargs)
+        return Proteome.build(
+            self, reference_cds=reference_cds, isoforms=isoforms, nc_orfs=nc_orfs, viral=viral,
+            derived=derived, catalog=catalog, catalogs=catalogs, cache=cache, cache_root=cache_root)
 
 
 class Proteome:
     """Selected protein sources for one reference, built in explicit layers.
 
     Build from :class:`ReferenceTranscriptome`, or start with :meth:`from_genome`
-    and add layers with :meth:`with_extra_orfs`, :meth:`with_viral` and
+    and add layers with :meth:`with_nc_orfs`, :meth:`with_viral` and
     :meth:`with_derived_proteins`.
     Each method returns a new proteome. ``layers`` records
     every addition with its role (``"host"``, ``"viral"``, ``"derived"`` or ``"filter"``),
@@ -709,13 +707,19 @@ class Proteome:
                 raise ValueError("A layer declares a different reference")
 
     @classmethod
-    def from_genome(cls, genome, *, context=None):
-        """Every reference CDS protein with a sequence in this PyEnsembl genome.
+    def from_genome(cls, genome, *, isoforms="all", context=None):
+        """Reference CDS proteins with sequences in this PyEnsembl genome.
 
-        This matches the annotation's protein FASTA, including all transcript
+        ``isoforms="all"`` matches the annotation's protein FASTA, including all transcript
         biotypes with a translation and proteins on patch or haplotype contigs.
+        ``isoforms="longest"`` selects one protein per gene by amino-acid length,
+        excluding a terminal stop. Ties use accession, then transcript ID in
+        lexical order. This is a length-based representative, not an Ensembl
+        canonical or MANE designation. The selection is recorded in the layer.
         Use :meth:`filter` to restrict them, for example by ``contig``.
         """
+        if isoforms not in ("all", "longest"):
+            raise ValueError("isoforms must be 'all' or 'longest'")
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
         source = f"{reference.annotation_name}:{reference.annotation_version}"
@@ -735,18 +739,19 @@ class Proteome:
             entries.append(ProteomeEntry(
                 accession=accession, sequence=sequence, kind="annotated", taxon_id=reference.taxon_id,
                 source=source, occurrences=(occurrence,), source_transcript_id=structure.versioned_id))
+        available = len(entries)
+        if isoforms == "longest":
+            by_gene = {}
+            for entry in sorted(entries, key=lambda e: (
+                    -len(e.sequence.rstrip("*")), e.accession, e.source_transcript_id)):
+                if not entry.gene_id:
+                    raise ValueError(f"isoforms='longest' requires a gene ID for {entry.accession}")
+                by_gene.setdefault(entry.gene_id, entry)
+            entries = list(by_gene.values())
         entries.sort(key=lambda e: e.source_transcript_id)
         layer = dict(kind="annotated", role="host", source=source, reference=reference.key,
-                     added=len(entries))
+                     isoforms=isoforms, available=available, added=len(entries))
         return cls(reference, entries, (layer,), genome=genome)
-
-    @classmethod
-    def from_nc_orfs(cls, transcriptome, evidence="all", *, catalog=None, catalogs=None,
-                     context=None, cache=False, cache_root=None):
-        """Catalogue ncORFs bound to a reference transcriptome, without CDS proteins."""
-        return cls.build(transcriptome, nc_orf_evidence=evidence, catalog=catalog,
-                         catalogs=catalogs, context=context, cache=cache, cache_root=cache_root,
-                         reference_cds=False, nc_orfs=True)
 
     @classmethod
     def from_refseq(cls, protein_fasta, feature_table, *, reference, expected_sha256):
@@ -763,32 +768,34 @@ class Proteome:
 
     @classmethod
     def build(cls, genome, evidence=_UNSET, *, nc_orf_evidence=_UNSET, extra_orf_evidence=_UNSET,
-              catalog=None, viral=(), derived=(),
+              catalog=None, viral=(), derived=(), isoforms="all",
               annotated=_UNSET, extra_orfs=_UNSET, reference_cds=_UNSET, nc_orfs=_UNSET,
               host_sources=None, context=None, cache=False, cache_root=None, catalogs=None):
-        """The usual reference proteome in one call, optionally kept in a cache.
+        """Reference CDS proteins with opt-in additions, optionally kept in a cache.
 
         ``genome`` may be a PyEnsembl genome or a :class:`ReferenceTranscriptome`.
-        ``reference_cds`` and ``nc_orfs`` independently select the two host
-        protein sources; both default to True. The older ``annotated``,
-        ``extra_orfs`` and ``host_sources`` selectors remain accepted. By default
-        this reads reference CDS proteins with :meth:`from_genome`, then
-        adds :meth:`with_extra_orfs` with ``nc_orf_evidence`` and ``catalog``
-        unless ``nc_orfs=False``. Set ``reference_cds=False`` for only the
-        catalogue ncORFs bound to this reference's transcripts, without reading
-        its reference protein FASTA. Then add
+        ``reference_cds=True`` includes reference CDS proteins; ``isoforms="all"``
+        keeps all of them and ``"longest"`` selects one per gene as described
+        in :meth:`from_genome`. ``nc_orfs=False`` is the default. Pass ``"ms"``,
+        ``"ribosome"``, ``"all"``, an evidence rule, or a collection of evidence
+        names to add catalogue ncORFs; True means ``"ms"``. Set
+        ``reference_cds=False, nc_orfs="all"`` for only ncORFs bound to these
+        transcripts, without reading the reference protein FASTA. Then add
         :meth:`with_viral` for each of ``viral``. Pass ``viral="all"`` (or True)
         for each distinct bundled viral protein set recorded for this host, a
         virus type or exact reference ID for one, or a ViralReference directly.
-        The ncORF evidence defaults to ``"ms"``; the older ``evidence`` and
-        ``extra_orf_evidence`` arguments remain accepted. Viral additions are opt-in.
+        Viral additions are opt-in. The older ``annotated``, ``extra_orfs`` and
+        ``host_sources`` selectors remain accepted here. An explicit legacy
+        ``evidence``, ``nc_orf_evidence`` or ``extra_orf_evidence`` also opts into
+        ncORFs unless a source selector disables them; do not combine an
+        evidence alias with a rule in ``nc_orfs``.
         ``derived`` accepts supplied :class:`DerivedProtein` records linked to
         parent entries and sample changes; it does not infer their sequences or
         expression. ``catalogs`` chooses among the
         species' catalogues as in :func:`load_catalog`. With ``cache=True`` the result
         is saved under the OpenVax DataCache root (``ORFDATA_CACHE``,
-        ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, the
-        evidence rule, the catalogue and viral identities, the snapshot schema
+        ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, isoform
+        selection, evidence rule, catalogue and viral identities, the snapshot schema
         and the orfdata version. A later identical build loads that verified
         snapshot instead of rebuilding. ``cache_root`` is also where the
         species' registered catalogue is looked for. Nothing is downloaded.
@@ -810,25 +817,32 @@ class Proteome:
                 raise ValueError("Pass reference_cds or annotated, not both")
             if nc_orfs is not _UNSET and extra_orfs is not _UNSET:
                 raise ValueError("Pass nc_orfs or extra_orfs, not both")
-            annotated = (True if reference_cds is _UNSET and annotated is _UNSET else
-                         annotated if reference_cds is _UNSET else reference_cds)
-            extra_orfs = (True if nc_orfs is _UNSET and extra_orfs is _UNSET else
-                          extra_orfs if nc_orfs is _UNSET else nc_orfs)
-        if type(annotated) is not bool or type(extra_orfs) is not bool:
-            raise TypeError("reference_cds and nc_orfs must be booleans")
-        if nc_orf_evidence is not _UNSET:
-            if extra_orf_evidence is not _UNSET or evidence is not _UNSET:
-                raise ValueError("Pass nc_orf_evidence, extra_orf_evidence or evidence, not more than one")
-            extra_orf_evidence = nc_orf_evidence
-        if extra_orf_evidence is not _UNSET and evidence is not _UNSET:
-            raise ValueError("Pass extra_orf_evidence or evidence, not both")
-        if extra_orf_evidence is not _UNSET:
-            if not extra_orfs:
-                argument = "nc_orf_evidence" if nc_orf_evidence is not _UNSET else "extra_orf_evidence"
-                raise ValueError(f"{argument} requires nc_orfs=True")
-            evidence = extra_orf_evidence
-        elif evidence is _UNSET:
-            evidence = "ms"
+        if annotated is not _UNSET and type(annotated) is not bool:
+            raise TypeError("annotated must be a boolean")
+        if extra_orfs is not _UNSET and type(extra_orfs) is not bool:
+            raise TypeError("extra_orfs must be a boolean")
+        reference_cds = (True if annotated is _UNSET else annotated) if reference_cds is _UNSET else reference_cds
+        nc_orfs = extra_orfs if nc_orfs is _UNSET else nc_orfs
+        if type(reference_cds) is not bool:
+            raise TypeError("reference_cds must be a boolean")
+        if isoforms not in ("all", "longest"):
+            raise ValueError("isoforms must be 'all' or 'longest'")
+        aliases = [value for value in (nc_orf_evidence, extra_orf_evidence, evidence) if value is not _UNSET]
+        if len(aliases) > 1:
+            raise ValueError("Pass nc_orf_evidence, extra_orf_evidence or evidence, not more than one")
+        if nc_orfs is _UNSET:
+            nc_orfs = bool(aliases)
+        if aliases:
+            if nc_orfs is False:
+                raise ValueError("ncORF evidence requires nc_orfs=True")
+            if nc_orfs is not True:
+                raise ValueError("Pass nc_orfs or a legacy evidence argument, not both")
+        include_nc_orfs = nc_orfs is not False
+        rule = None
+        if include_nc_orfs:
+            if nc_orfs is not True and not isinstance(nc_orfs, (str, EvidenceRule, list, tuple, set, frozenset)):
+                raise TypeError("nc_orfs must be False, True, an evidence name, rule or collection of names")
+            rule = evidence_rule(aliases[0] if aliases else "ms" if nc_orfs is True else nc_orfs)
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
         viral = _viral_inputs(viral, reference.taxon_id)
@@ -836,19 +850,17 @@ class Proteome:
                    else tuple(derived))
         if any(not isinstance(item, DerivedProtein) for item in derived):
             raise TypeError("derived must contain DerivedProtein records")
-        if not extra_orfs and (catalog is not None or catalogs is not None):
-            raise ValueError("A catalogue needs nc_orfs=True")
-        rule = None
-        if extra_orfs:
-            rule = evidence_rule(evidence)
+        if not include_nc_orfs and (catalog is not None or catalogs is not None):
+            raise ValueError("A catalogue needs nc_orfs=True or an evidence selection, e.g. nc_orfs='ms'")
+        if include_nc_orfs:
             catalog = _species_catalog(reference, catalog, catalogs, cache_root)
         built = []
 
         def make():
-            proteome = (cls.from_genome(genome, context=context) if annotated else
+            proteome = (cls.from_genome(genome, isoforms=isoforms, context=context) if reference_cds else
                         cls(reference, (), genome=genome))
-            if extra_orfs:
-                proteome = proteome.with_extra_orfs(rule, catalog=catalog)
+            if include_nc_orfs:
+                proteome = proteome.with_nc_orfs(rule, catalog=catalog)
             for virus in viral:
                 proteome = proteome.with_viral(virus)
             if derived:
@@ -862,10 +874,10 @@ class Proteome:
         from .version import __version__
 
         key = dict(schema=SNAPSHOT_SCHEMA, orfdata=__version__, pyensembl=_pyensembl_version(),
-                   reference=reference.to_dict(), annotation=_annotation_files(genome, include_proteins=annotated),
-                   annotated=annotated,
+                   reference=reference.to_dict(), annotation=_annotation_files(genome, include_proteins=reference_cds),
+                   annotated=reference_cds, isoforms=isoforms if reference_cds else None,
                    extra_orfs=dict(evidence=None if rule is None else rule.to_dict(),
-                                   catalog=_catalog_identity(catalog)) if extra_orfs else None,
+                                   catalog=_catalog_identity(catalog)) if include_nc_orfs else None,
                    viral=[_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
                           for virus in viral],
                    derived=[asdict(item) for item in derived])
@@ -877,8 +889,8 @@ class Proteome:
         proteome.__dict__["_identity"] = loaded.identity
         return proteome
 
-    def with_extra_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
-                        require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
+    def with_nc_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
+                     require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
         ``evidence`` is a rule, an evidence method name, a list of names
@@ -933,6 +945,9 @@ class Proteome:
                      identical_to_annotated=sum(e.sequence in annotated for e in added))
         return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
                         self.excluded + found.excluded + found.unlifted, self.genome)
+
+    # Compatibility with the earlier name for catalogue ncORF additions.
+    with_extra_orfs = with_nc_orfs
 
     def with_viral(self, viral):
         """Add a bundled virus by reference ID/type/object, or a FASTA-derived ViralProteome."""
@@ -1161,7 +1176,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     assembly of the species is lifted to this one through the pinned chains.
     ``cache_root`` is where catalogues and chain files are looked for. ``evidence`` is a rule such as
     ``RiboSeq(min_studies=2) & MS()`` or an evidence method name, as in
-    :meth:`Proteome.with_extra_orfs`; ``None`` selects every catalogue ORF.
+    :meth:`Proteome.with_nc_orfs`; ``None`` selects every catalogue ORF.
     """
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)

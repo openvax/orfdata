@@ -179,6 +179,115 @@ def test_annotated_proteome_matches_the_genome_annotation(genome):
                                             removed=1, added=0)
 
 
+def test_longest_isoform_per_gene_is_deterministic_and_keeps_provenance(tmp_path, monkeypatch):
+    from orfdata import proteome as module
+
+    genome = write_genome(tmp_path / "isoforms", twin=True, fragment=True)
+    try:
+        tx = ReferenceTranscriptome.from_genome(genome)
+        all_proteins = tx.proteome()
+        longest = tx.proteome(isoforms="longest")
+        assert len(all_proteins) == 5
+        assert {e.accession for e in longest} == {"alt_protein.1", "coding_protein.1", "mixed_protein.1"}
+        assert len({e.gene_id for e in longest}) == len(longest) == 3
+        assert longest.layers[0]["isoforms"] == "longest"
+        assert longest.layers[0]["available"] == 5 and longest.layers[0]["added"] == 3
+        coding = longest.by_accession()["coding_protein.1"]
+        assert coding == all_proteins.by_accession()[coding.accession]
+        assert "gene=coding_gene" in coding.fasta_header() and "transcript=coding_rna.1" in coding.fasta_header()
+        path = tmp_path / "longest.json.gz"
+        longest.save(path)
+        assert Proteome.load(path).identity == longest.identity
+
+        structures = list(module._coding_structures(genome))
+        monkeypatch.setattr(module, "_coding_structures", lambda genome: reversed(structures))
+        assert tx.proteome(isoforms="longest").identity == longest.identity  # Ties ignore input order.
+        sequence = genome.protein_sequence
+        monkeypatch.setattr(genome, "protein_sequence", lambda accession: {
+            "coding_protein.1": "MK", "fragment_protein.1": "MK*",
+        }.get(accession, sequence(accession)))
+        assert "twin_protein.1" in tx.proteome(isoforms="longest").by_accession()  # Length before ID.
+        monkeypatch.setattr(genome, "protein_sequence", lambda accession: {
+            "coding_protein.1": "MK", "twin_protein.1": "MK", "fragment_protein.1": "MK*",
+        }.get(accession, sequence(accession)))
+        assert "coding_protein.1" in tx.proteome(isoforms="longest").by_accession()  # Stop is not a residue.
+        structures[0] = replace(structures[0], gene_id=None)
+        with pytest.raises(ValueError, match="requires a gene ID"):
+            tx.proteome(isoforms="longest")
+    finally:
+        genome.close()
+
+
+def test_isoform_selection_only_restricts_reference_cds_and_has_its_own_cache(tmp_path, catalog, monkeypatch):
+    genome = write_genome(tmp_path / "isoforms", twin=True, fragment=True)
+    try:
+        tx = ReferenceTranscriptome.from_genome(genome)
+        options = dict(nc_orfs="all", catalog=catalog, viral=[virus()], cache=True, cache_root=tmp_path / "cache")
+        all_proteins = tx.proteome(**options)
+        longest = tx.proteome(isoforms="longest", **options)
+        assert all_proteins.summary()["kinds"] == {"annotated": 5, "extra_orf": 3, "viral": 1}
+        assert longest.summary()["kinds"] == {"annotated": 3, "extra_orf": 3, "viral": 1}
+        assert longest.identity != all_proteins.identity
+        assert [e.to_dict() for e in longest if e.kind != "annotated"] == [
+            e.to_dict() for e in all_proteins if e.kind != "annotated"]
+        monkeypatch.setattr(Proteome, "from_genome", lambda *a, **kw: pytest.fail("Expected a cache hit"))
+        for isoforms, expected in (("all", all_proteins), ("longest", longest)):
+            assert tx.proteome(isoforms=isoforms, **options).identity == expected.identity
+    finally:
+        genome.close()
+
+
+def test_default_proteome_never_loads_ncorf_catalogues(genome, monkeypatch):
+    from orfdata import proteome as module
+
+    monkeypatch.setattr(module, "_species_catalog", lambda *a: pytest.fail("ncORFs must be opt-in"))
+    tx = ReferenceTranscriptome.from_genome(genome)
+    default = tx.proteome()
+    assert default.summary()["protein_sources"] == {"reference_cds": 3}
+    assert default.identity == tx.proteome(nc_orfs=False).identity == Proteome.build(genome).identity
+    assert default.identity == Proteome.from_genome(genome).identity
+    assert tx.proteome(reference_cds=False, viral=[virus()]).summary()["protein_sources"] == {"viral": 1}
+
+
+@pytest.mark.parametrize("selection,expected", [
+    (True, {"ms-orf", "absent-orf"}),
+    ("ms", {"ms-orf", "absent-orf"}),
+    ("all", {"ms-orf", "absent-orf", "ribo-orf"}),
+    ("ribosome", {"ribo-orf"}),
+    (MS() | RiboSeq(), {"ms-orf", "absent-orf", "ribo-orf"}),
+    (MS() & RiboSeq(), set()),
+    (["proteomics", "ribosome"], {"ms-orf", "absent-orf", "ribo-orf"}),
+])
+def test_ncorf_selection_on_the_single_proteome_constructor(genome, catalog, selection, expected):
+    tx = ReferenceTranscriptome.from_genome(genome)
+    enriched = tx.proteome(nc_orfs=selection, catalog=catalog)
+    assert {e.accession for e in enriched if e.kind == "extra_orf"} == expected
+    assert sum(e.kind == "annotated" for e in enriched) == 3
+    evidence = "ms" if selection is True else selection
+    assert enriched.identity == tx.proteome().with_nc_orfs(evidence, catalog=catalog).identity
+    only = tx.proteome(reference_cds=False, nc_orfs=selection, catalog=catalog)
+    assert {e.accession for e in only} == expected
+
+
+def test_proteome_rejects_conflicting_or_ambiguous_source_options(genome, catalog):
+    tx = ReferenceTranscriptome.from_genome(genome)
+    for selection in (None, 0, 1, {}):
+        with pytest.raises(TypeError, match="nc_orfs must be"):
+            tx.proteome(nc_orfs=selection)
+    for options in (dict(catalog=catalog), dict(catalogs="all")):
+        with pytest.raises(ValueError, match="needs nc_orfs"):
+            tx.proteome(**options)
+    for isoforms in ("canonical", "one", None):
+        with pytest.raises(ValueError, match="isoforms must be"):
+            tx.proteome(isoforms=isoforms)
+        with pytest.raises(ValueError, match="isoforms must be"):
+            Proteome.from_genome(genome, isoforms=isoforms)
+    with pytest.raises(ValueError, match="not both"):
+        Proteome.build(genome, nc_orfs="ms", nc_orf_evidence="all")
+    with pytest.raises(ValueError, match="requires nc_orfs=True"):
+        Proteome.build(genome, nc_orfs=False, evidence="all")
+
+
 def test_extra_orfs_sit_on_every_transcript_carrying_their_coding_path(genome, catalog):
     found = extra_orfs(genome, catalog=catalog)
     assert [(o.orf_id, o.transcript.id, o.on_source_transcript) for o in found] == [
@@ -601,7 +710,7 @@ def test_reference_bound_ncorf_only_proteome_skips_annotated_proteins(genome, ca
     assert transcriptome.reference == ReferenceContext.from_genome(genome)
     with monkeypatch.context() as patch:
         patch.setattr(genome, "protein_sequence", lambda accession: 1 / 0)
-        only = transcriptome.nc_orf_proteome(evidence="all", catalog=catalog)
+        only = transcriptome.proteome(reference_cds=False, nc_orfs="all", catalog=catalog)
     assert only.summary()["kinds"] == {"extra_orf": 3}
     assert only.summary()["protein_sources"] == {"nc_orf": 3}
     assert [layer["kind"] for layer in only.layers] == ["extra_orf"]
@@ -615,7 +724,7 @@ def test_reference_bound_ncorf_only_proteome_skips_annotated_proteins(genome, ca
     assert only.identity == Proteome.build(transcriptome, host_sources=("nc_orfs",),
                                            extra_orf_evidence="all", catalog=catalog).identity
     assert only.identity == transcriptome.proteome(reference_cds=False,
-                                                   nc_orf_evidence="all", catalog=catalog).identity
+                                                   nc_orfs="all", catalog=catalog).identity
     assert only.identity == Proteome.build(genome, reference_cds=False, nc_orfs=True,
                                            nc_orf_evidence="all", catalog=catalog).identity
     assert {entry.protein_source for entry in only} == {"nc_orf"}
@@ -631,7 +740,7 @@ def test_reference_bound_ncorf_only_proteome_skips_annotated_proteins(genome, ca
 
 def test_reference_transcriptome_selects_host_protein_sources(genome, catalog):
     transcriptome = ReferenceTranscriptome.from_genome(genome)
-    cds = transcriptome.proteome(nc_orfs=False)
+    cds = transcriptome.proteome()
     assert cds.summary()["protein_sources"] == {"reference_cds": 3}
     assert cds.identity == Proteome.from_genome(genome).identity
     assert "protein_source=reference_cds" in cds.entries[0].fasta_header()
@@ -639,12 +748,12 @@ def test_reference_transcriptome_selects_host_protein_sources(genome, catalog):
     assert viral_only.summary()["protein_sources"] == {"viral": 1}
     assert viral_only.entries[0].protein_source == "viral"
     with pytest.raises(ValueError, match="Unknown host protein sources"):
-        transcriptome.proteome(host_sources=("annotated",))
+        Proteome.build(transcriptome, host_sources=("annotated",))
     with pytest.raises(ValueError, match="host_sources or reference_cds/nc_orfs"):
         Proteome.build(genome, host_sources=("nc_orfs",), annotated=False, catalog=catalog)
     with pytest.raises(ValueError, match="reference_cds or annotated"):
         Proteome.build(genome, reference_cds=True, annotated=True)
-    with pytest.raises(TypeError, match="must be booleans"):
+    with pytest.raises(TypeError, match="must be a boolean"):
         Proteome.build(genome, reference_cds="reference_cds")
     with pytest.raises(ValueError, match="context differs"):
         Proteome.build(transcriptome, host_sources=("reference_cds",),
@@ -839,7 +948,8 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     path = tmp_path / "catalog.json"
     path.write_text(json.dumps(catalog.to_dict()))
     output = tmp_path / "proteome.fa"
-    run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--output", str(output)])
+    run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path),
+         "--nc-orfs", "ms", "--output", str(output)])
     summary = json.loads(capsys.readouterr().err)
     assert summary["kinds"] == {"annotated": 3, "extra_orf": 2}
     assert [e["orf_id"] for e in summary["excluded_orfs"]] == ["changed-orf"]
@@ -854,7 +964,7 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     assert json.loads(capsys.readouterr().err)["protein_sources"] == {"nc_orf": 3}
     snapshot = tmp_path / "proteome.json.gz"
     run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--output", str(output),
-         "--snapshot", str(snapshot)])
+         "--nc-orfs", "ms", "--snapshot", str(snapshot)])
     assert Proteome.load(snapshot).identity == json.loads(capsys.readouterr().err)["identity"]
     run(["proteome", "--species", "mouse", "--release", "1", "--extra-orf-evidence", "none"])
     captured = capsys.readouterr()
@@ -862,8 +972,14 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     run(["proteome", "--species", "mouse", "--release", "1", "--no-nc-orfs"])
     captured = capsys.readouterr()
     assert captured.out.count(">") == 3 and json.loads(captured.err)["protein_sources"] == {"reference_cds": 3}
+    run(["proteome", "--species", "mouse", "--release", "1"])
+    captured = capsys.readouterr()
+    assert captured.out.count(">") == 3 and json.loads(captured.err)["protein_sources"] == {"reference_cds": 3}
     with pytest.raises(SystemExit):
-        run(["proteome", "--species", "mouse", "--release", "1"])  # The mouse catalogue isn't built.
+        run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path)])
+    assert "ncORF options require --nc-orfs" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        run(["proteome", "--species", "mouse", "--release", "1", "--nc-orfs", "ms"])  # Catalogue isn't built.
     assert "openprot-mouse 2.2-1 catalogue, which is not installed" in capsys.readouterr().err
     rules = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path)]
     for options, kinds in ((["--min-ribo-seq-studies", "1", "--min-ms-peptides", "1", "--either"], 3),
@@ -887,6 +1003,20 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
         assert "ncORF options require" in capsys.readouterr().err
 
 
+def test_cli_longest_isoform_selection(tmp_path, monkeypatch, capsys):
+    from orfdata import proteome_cli
+
+    genome = write_genome(tmp_path / "isoforms", twin=True, fragment=True)
+    try:
+        monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: genome)
+        run(["proteome", "--species", "mouse", "--release", "1", "--isoforms", "longest"])
+        captured = capsys.readouterr()
+        assert captured.out.count(">") == 3 and "twin_protein" not in captured.out
+        assert json.loads(captured.err)["layers"][0]["isoforms"] == "longest"
+    finally:
+        genome.close()
+
+
 def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, monkeypatch, capsys):
     from orfdata import proteome_cli
 
@@ -905,7 +1035,7 @@ def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, mo
     monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: genome)
     path = tmp_path / "catalog.json"
     path.write_text(json.dumps(catalog.to_dict()))
-    command = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--cache",
+    command = ["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--nc-orfs", "ms", "--cache",
                "--cache-root", str(tmp_path)]
     run(command)
     first = json.loads(capsys.readouterr().err)["identity"]
@@ -914,8 +1044,8 @@ def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, mo
 
 
 def test_cache_keys_viral_layers_and_annotation_files(genome, catalog, tmp_path, monkeypatch):
-    with_virus = Proteome.build(genome, catalog=catalog, viral=[virus()], cache=True, cache_root=tmp_path)
-    assert with_virus.identity == Proteome.build(genome, catalog=catalog, viral=[virus()]).identity
+    with_virus = Proteome.build(genome, nc_orfs=True, catalog=catalog, viral=[virus()], cache=True, cache_root=tmp_path)
+    assert with_virus.identity == Proteome.build(genome, nc_orfs=True, catalog=catalog, viral=[virus()]).identity
     # Same names, different annotation files: never the same cache entry.
     twins = write_genome(tmp_path / "twins", twin=True)
     try:
@@ -957,7 +1087,7 @@ def test_cache_root_is_where_catalogues_are_found_and_killed_builds_are_swept(ge
 
     seen = []
     monkeypatch.setattr(module, "load_catalog", lambda **kw: seen.append(kw["registry"]) or make_catalog())
-    Proteome.build(genome, cache_root=tmp_path / "root")  # Without cache=True too: lookups use it.
+    Proteome.build(genome, nc_orfs=True, cache_root=tmp_path / "root")  # Without cache=True too: lookups use it.
     assert seen[0]._cache_root == tmp_path / "root"
     proteomes = tmp_path / "root" / "orfdata" / "proteomes"
     proteomes.mkdir(parents=True)
@@ -965,12 +1095,12 @@ def test_cache_root_is_where_catalogues_are_found_and_killed_builds_are_swept(ge
     for path in (stale, fresh):
         path.mkdir()
     os.utime(stale, (0, 0))
-    Proteome.build(genome, cache=True, cache_root=tmp_path / "root")
+    Proteome.build(genome, nc_orfs=True, cache=True, cache_root=tmp_path / "root")
     assert not stale.exists() and fresh.exists()
 
 
-def test_a_species_without_a_catalogue_says_how_to_build_annotated_proteins_only():
-    with pytest.raises(ValueError, match=r"pass extra_orfs=False \(orfdata proteome --extra-orf-evidence none\)"):
+def test_a_species_without_a_catalogue_says_how_to_build_reference_proteins_only():
+    with pytest.raises(ValueError, match=r"use Proteome.build\(genome\) without ncORF options"):
         load_catalog(species="dog")
 
 

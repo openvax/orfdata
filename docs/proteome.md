@@ -15,15 +15,18 @@ from orfdata import Proteome, ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")  # Installed with pyensembl install.
 transcriptome = ReferenceTranscriptome.from_genome(genome)
-proteome = transcriptome.proteome(nc_orf_evidence="ms")
-reference_cds = transcriptome.proteome(nc_orfs=False)
+reference_cds = transcriptome.proteome()                  # Default: all reference CDS isoforms.
+one_per_gene = transcriptome.proteome(isoforms="longest")
+proteome = transcriptome.proteome(nc_orfs="ms")            # Add MS-supported ncORFs.
 ```
 
-The examples on this page continue that Python session.
+The examples on this page continue that Python session. `nc_orfs=False` and
+`viral=()` are the defaults; a reference-only build does not load an ncORF
+catalogue. `nc_orfs=True` is shorthand for `nc_orfs="ms"`.
 
 ## Reference CDS proteins
 
-`Proteome.from_genome(genome)` and `nc_orfs=False` take every
+`transcriptome.proteome()` and `Proteome.from_genome(genome)` take every
 transcript with a reference CDS protein sequence. For Ensembl this matches the annotation's protein FASTA: Ensembl 115
 has 245,535 human proteins with 160,811 distinct sequences. They include
 nonsense-mediated-decay and immunoglobulin/T-cell receptor segment translations,
@@ -42,6 +45,18 @@ print(len(chromosomes))
 ```
 
 `filter` records its description and the number of removed entries as a layer.
+Set `isoforms="longest"` on either constructor to choose one reference protein
+per gene. Selection uses amino-acid length without a terminal stop, then
+accession and transcript ID in lexical order to break ties. Every selected
+protein retains its original identifiers and occurrence. This is a length-based
+representative, not an Ensembl canonical or MANE designation. A missing gene
+ID raises an error. `layers[0]` records `isoforms`, the number `available`
+before selection and the number `added`.
+
+Isoform selection applies only to reference CDS proteins. Added ncORFs retain
+all matching transcripts, and viral and derived proteins keep their own
+identities. Identical sequences from different genes remain separate entries.
+
 Mouse, dog, yeast and other PyEnsembl species work the same way; mouse Ensembl
 115 has 66,668 annotated proteins. orfdata does not download or index
 annotation data. An uninstalled genome raises an error naming the
@@ -74,9 +89,11 @@ The annotated layer retains both asset hashes and identifier namespaces. Its
 are genomic envelopes, so occurrence CDS offsets/blocks and transcript biotypes
 remain unknown. No annotation indexing or downloads occur.
 
-## Choose the evidence
+## Add ncORFs with selected evidence
 
-`with_extra_orfs(evidence=...)` selects catalogue ORFs by evidence and adds each
+Pass `nc_orfs="ms"`, `"ribosome"`, `"all"` or an evidence rule to `proteome()`,
+or add to an existing proteome with `with_nc_orfs(evidence=...)`.
+This selects catalogue ORFs by evidence and adds each
 one that a transcript of this genome encodes: the transcript contains the ORF's
 exact spliced coding path and translates to its protein. Counts below are for
 the bundled human catalogue (dataset `2026-10-11.1`) and Ensembl 115:
@@ -122,11 +139,11 @@ kinds directly, for combinations such as `("proteomics", "ms_unclassified")`.
 ```python
 from orfdata import MS, RiboSeq
 
-reference_cds.with_extra_orfs(RiboSeq(min_studies=2))                        # replicated Ribo-seq
-reference_cds.with_extra_orfs(RiboSeq(min_studies=2) & MS())                 # Ribo-seq and MS
-reference_cds.with_extra_orfs(RiboSeq(min_studies=2) | MS())                 # either
-reference_cds.with_extra_orfs(RiboSeq() & MS(mhc=True))                     # Ribo-seq and an MHC ligand
-reference_cds.with_extra_orfs(MS(methods=("proteomics", "ms_unclassified")))  # not immunopeptidomics-only
+reference_cds.with_nc_orfs(RiboSeq(min_studies=2))                        # replicated Ribo-seq
+reference_cds.with_nc_orfs(RiboSeq(min_studies=2) & MS())                 # Ribo-seq and MS
+reference_cds.with_nc_orfs(RiboSeq(min_studies=2) | MS())                 # either
+reference_cds.with_nc_orfs(RiboSeq() & MS(mhc=True))                     # Ribo-seq and an MHC ligand
+reference_cds.with_nc_orfs(MS(methods=("proteomics", "ms_unclassified")))  # not immunopeptidomics-only
 ```
 
 | Rule | Human ORFs | Encoded in Ensembl 115 |
@@ -213,7 +230,7 @@ Pass several catalogues for one species and assembly to use their ORFs together:
 from orfdata import load_catalog, merge_catalogs
 
 catalogs = [load_catalog(), load_catalog("study-orfs.json.gz")]  # The bundled one and a local file.
-proteome = reference_cds.with_extra_orfs("ms", catalog=catalogs)  # Or merge_catalogs(catalogs).
+proteome = reference_cds.with_nc_orfs("ms", catalog=catalogs)  # Or merge_catalogs(catalogs).
 ```
 
 Records from different catalogues are one ORF when they have the same spliced
@@ -253,16 +270,16 @@ Build one proteome with reference CDS proteins, every catalogue ORF that binds t
 the genome, and every distinct bundled viral protein set recorded for this host:
 
 ```python
-combined = transcriptome.proteome(nc_orf_evidence="all", viral="all")
+combined = transcriptome.proteome(nc_orfs="all", viral="all")
 proteins_by_id = combined.by_accession()
 combined.write_fasta("human-all-proteins.fasta")
 combined.save("human-all-proteins.proteome.json.gz")
 ```
 
-`nc_orf_evidence` filters only the ncORF catalogue added to the reference CDS
+`nc_orfs` selects only the ncORF catalogue added to the reference CDS
 proteome. `"all"` selects every catalogue ORF; those that do not bind to this
 genome are reported in `combined.excluded`. Reference CDS and viral proteins are
-unaffected by that option. The older `extra_orf_evidence=` and `evidence=`
+unaffected by that option. The older `nc_orf_evidence=`, `extra_orf_evidence=` and `evidence=`
 spellings still work on `Proteome.build`.
 
 `proteins_by_id` maps each unique protein accession to a `ProteomeEntry` with
@@ -310,12 +327,12 @@ If you have a PyEnsembl reference transcriptome, build a proteome containing
 only the ncORFs that bind to its transcripts:
 
 ```python
-nc_only = transcriptome.nc_orf_proteome(evidence="all")
+nc_only = transcriptome.proteome(reference_cds=False, nc_orfs="all")
 nc_only.write_fasta("reference-ncorfs.fasta")
 ```
 
 ```sh
-orfdata proteome --species human --release 115 --no-reference-cds --nc-orf-evidence all --output reference-ncorfs.fasta
+orfdata proteome --species human --release 115 --no-reference-cds --nc-orfs all --output reference-ncorfs.fasta
 ```
 
 This uses the installed annotation and transcript sequences to check exact
@@ -418,9 +435,10 @@ same bytes.
 
 ### Cache a built proteome
 
-`ReferenceTranscriptome.proteome` delegates to `Proteome.build`, which makes
-the usual proteome in one call: `from_genome`, then
-`with_extra_orfs(nc_orf_evidence, catalog=...)` and `with_viral` for each of `viral=`.
+`ReferenceTranscriptome.proteome` delegates to `Proteome.build`. Both default
+to reference CDS proteins, then add only the requested ncORFs and viruses.
+The equivalent incremental methods are `from_genome(isoforms=...)`,
+`with_nc_orfs(evidence, catalog=...)` and `with_viral(viral)`.
 `viral=` accepts `"all"`/`True`, a virus type, exact bundled reference ID,
 `ViralReference`, external `ViralProteome`, or a sequence of specific inputs.
 With `cache=True` it keeps the result in the OpenVax DataCache root
@@ -429,10 +447,10 @@ also where the species' registered catalogue is looked for, with or without
 `cache=True`:
 
 ```python
-proteome = transcriptome.proteome(nc_orf_evidence=RiboSeq(min_studies=2) & MS(), cache=True)
+proteome = transcriptome.proteome(nc_orfs=RiboSeq(min_studies=2) & MS(), cache=True)
 ```
 
-The cache key is the reference, evidence rule, catalogue and viral
+The cache key includes the reference, isoform selection, evidence rule, catalogue and viral
 identities, snapshot schema and orfdata version. A later identical build,
 from any program, loads that verified snapshot, so tools share one identity.
 For human Ensembl 115 with MS-supported ORFs, the first build takes about
@@ -442,11 +460,13 @@ annotation files of a custom genome are fingerprinted by size and SHA-256, so
 genomes that share names never share an entry. Entries of a cached or loaded
 proteome don't carry `orf`; use `extra_orfs(genome)` for ORF objects. Each cached build sits next
 to a `recipe.json` recording its key and identity. Nothing is downloaded.
-`reference_cds=False` omits reference CDS proteins; `nc_orfs=False` omits
-catalogue ncORFs. Setting both to False with `viral=` builds a viral-only
-proteome for this host. `transcriptome.nc_orf_proteome(evidence="all")` is the
-short form for the ncORF-only case. The older `annotated=`, `extra_orfs=` and
-`host_sources=` selectors still work for existing callers.
+`reference_cds=False` omits reference CDS proteins; `nc_orfs=False` is the
+default. `proteome(reference_cds=False, viral=...)` builds a viral-only
+proteome for this host. Use `proteome(reference_cds=False, nc_orfs="all")`
+for ncORFs alone. The older `annotated=`, `extra_orfs=` and `host_sources=`
+selectors still work on `Proteome.build`. Explicit legacy evidence arguments
+also enable ncORFs there; an explicit false source selector conflicts with
+an evidence request. `with_extra_orfs` remains an alias for `with_nc_orfs`.
 
 ## Lower-level ORF lookup
 
@@ -500,25 +520,29 @@ when those details must be recovered exactly.
 
 ```sh
 orfdata proteome --species human --release 115 --output human-e115.fasta
-orfdata proteome --species human --release 115 --nc-orf-evidence all
-orfdata proteome --species human --release 115 --nc-orf-evidence all --viral all --output human-all-proteins.fasta --snapshot human-all-proteins.proteome.json.gz
+orfdata proteome --species human --release 115 --isoforms longest --output human-one-per-gene.fasta
+orfdata proteome --species human --release 115 --nc-orfs all
+orfdata proteome --species human --release 115 --nc-orfs all --viral all --output human-all-proteins.fasta --snapshot human-all-proteins.proteome.json.gz
 orfdata proteome --species human --release 115 --viral HPV16 --output human-hpv16.fasta
-orfdata proteome --species mouse --release 115 --no-nc-orfs
-orfdata proteome --species human --release 115 --no-reference-cds --nc-orf-evidence all
-orfdata proteome --species human --release 115 --no-reference-cds --no-nc-orfs --viral HPV16
+orfdata proteome --species mouse --release 115
+orfdata proteome --species human --release 115 --no-reference-cds --nc-orfs all
+orfdata proteome --species human --release 115 --no-reference-cds --viral HPV16
 ```
 
-`--nc-orf-evidence` accepts the evidence names above, `all` for every
-catalogue ORF, or `none` for reference CDS proteins only. `--require-unique`,
+The default is reference CDS proteins with all isoforms. `--isoforms longest`
+selects one per gene. `--nc-orfs` opts into ncORFs and accepts the evidence
+names above or `all` for every catalogue ORF. `--require-unique`,
 `--require-reviewed`, `--require-resolved` and `--catalog FILE` match the Python
-options. The earlier `--extra-orf-evidence` spelling remains accepted.
+options. The earlier `--nc-orf-evidence` and `--extra-orf-evidence` spellings,
+including `none` to omit ncORFs, remain accepted. Catalogue options require
+an ncORF selection; supplying a catalogue alone does not enable ncORFs.
 
 `--viral all` adds each distinct bundled viral protein set associated with
 the host, choosing its native placement when equivalent references exist.
 Use `--viral` with an exact reference ID to choose a placement; repeat the
 option for several specific viruses.
 
-Evidence rules have their own options:
+Evidence rules have their own options, which also opt into ncORFs:
 
 ```sh
 orfdata proteome --species human --release 115 --min-ribo-seq-studies 2 --min-ms-peptides 1
