@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Reference proteomes with evidence-backed noncanonical ORFs on PyEnsembl genomes"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [{name = "OpenVax"}]
 dependencies = []
 
@@ -33,7 +33,7 @@ include = ["orfdata*"]
 orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/ires/*", "data/viral/*", "data/datasets.json", "data/catalogs.json", "data/chains.json", "data/genomes.json"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
