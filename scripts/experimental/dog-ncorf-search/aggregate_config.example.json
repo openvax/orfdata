@@ -1,0 +1,20 @@
+{
+  "psm_dir": "WORK/results/psms",
+  "runs_tsv": "WORK/runs.tsv",
+  "manifest_tsv": "WORK/results/run_manifest.tsv",
+  "out_dir": "WORK/aggregate",
+  "db_fasta": "WORK/db/dog_db.fasta",
+  "candidates_tsv": "WORK/db/ncorf_candidates.tsv",
+  "extra_dog_fastas": [],
+  "human_pep": "ENSEMBL/Homo_sapiens.GRCh38.pep.all.fa.gz",
+  "mouse_pep": "ENSEMBL/Mus_musculus.GRCm39.pep.all.fa.gz",
+  "gtf": "ENSEMBL/Canis_lupus_familiaris.ROS_Cfam_1.0.110.gtf.gz",
+  "cdna": "ENSEMBL/Canis_lupus_familiaris.ROS_Cfam_1.0.cdna.all.fa.gz",
+  "ncrna": "ENSEMBL/Canis_lupus_familiaris.ROS_Cfam_1.0.ncrna.fa.gz",
+  "pep": "ENSEMBL/Canis_lupus_familiaris.ROS_Cfam_1.0.pep.all.fa.gz",
+  "pyensembl_cache": "WORK/pyensembl-cache",
+  "fdr": 0.01,
+  "homology_min_score": 100,
+  "homology_min_identity": 0.4,
+  "isobaric_tolerance_da": 0.02
+}
