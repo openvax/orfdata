@@ -206,7 +206,9 @@ def test_cli_keeps_pinned_reference_in_json_tsv_and_fasta(tmp_path, capsys):
     row = next(csv.DictReader(io.StringIO(capsys.readouterr().out), delimiter="\t"))
     assert json.loads(row["reference_context_json"])["annotation_version"] == "110"
     run(["--catalog", str(path), "--format", "fasta"])
-    assert f"taxon=9615 reference={c.key}" in capsys.readouterr().out
+    fasta = capsys.readouterr().out
+    assert f"taxon=9615 reference={c.key}" in fasta
+    assert f"kind=extra_orf source={catalogue.source}" in fasta
 
 
 def test_taxonomy_conflicts_and_unsupported_alias_versions_fail():

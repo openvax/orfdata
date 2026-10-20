@@ -14,7 +14,7 @@
       "strain_taxon_id": null,
       "sequence_sha256": null,
       "taxonomy_version": "ncbi-2026-10-12",
-      "source_sha256": "6d4eefc3f770f26cca205231b68f2b0f60a1cad1f2a8cef234fe3db0c7a7745d"
+      "source_sha256": "25cba0b6fb1394ae3b61566927bb239b63f87562c7e14e4cd8071ece884560fd"
     },
     {
       "taxon_id": 9606,
@@ -27,15 +27,15 @@
       "strain_taxon_id": null,
       "sequence_sha256": null,
       "taxonomy_version": "ncbi-2026-10-12",
-      "source_sha256": "6d4eefc3f770f26cca205231b68f2b0f60a1cad1f2a8cef234fe3db0c7a7745d"
+      "source_sha256": "25cba0b6fb1394ae3b61566927bb239b63f87562c7e14e4cd8071ece884560fd"
     }
   ],
   "sources": [
     {
       "asset_id": "Results.zip",
       "url": "https://example.invalid/kaabinejadian-fixture/Results.zip",
-      "sha256": "6d4eefc3f770f26cca205231b68f2b0f60a1cad1f2a8cef234fe3db0c7a7745d",
-      "size": 6297,
+      "sha256": "25cba0b6fb1394ae3b61566927bb239b63f87562c7e14e4cd8071ece884560fd",
+      "size": 9345,
       "access_terms": "PRIDE PXD074485: Creative Commons Public Domain (CC0); attribute Kaabinejadian et al. (2026)",
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "redistributable": true,
@@ -111,7 +111,7 @@
     "repeated_searches": "Each dog tumour's spectra were searched against four databases; one peptide in two of its tables is one observation, not two",
     "nc_orf_search": "not performed: canonical protein databases only",
     "raw_files_not_deposited": {
-      "note": "Rows whose best spectrum comes from a run missing from the deposited raw archive (row counts per table set)",
+      "note": "Rows whose best spectrum comes from a run missing from the deposited raw archives (row counts per table set). PEAKS reports, for each peptide, the raw file and scan of its best spectrum; the authors' PEAKS projects for these two immunoprecipitations included runs that the deposit lacks: Lily's 22-1107 re-injection of the remaining 1 uL (fractions 12-30), and DLA-88*012:01's 20240929 acquisition (fractions 14-25), whose archive holds only the 20241013 runs of fractions 26-28 and blanks. The SDRF names the 20240929 run as that assay.",
       "runs": {}
     },
     "assays_without_results": [
@@ -128,25 +128,39 @@
           "DB Search": 3,
           "Homolog": 1
         },
-        "irt_standard_rows": 2
+        "irt_standard_rows": 2,
+        "irt_rules": {
+          "irt_sequence": 1,
+          "kit_only": 1
+        }
       },
       "Lola-BB76-MergedCanFams": {
-        "rows": 6,
+        "rows": 8,
         "found_by": {
-          "DeepNovo": 3,
+          "DeepNovo": 5,
           "DB Search": 2,
           "Homolog": 1
         },
-        "irt_standard_rows": 1
+        "irt_standard_rows": 4,
+        "irt_rules": {
+          "de_novo_irt": 2,
+          "irt_precursor": 1,
+          "irt_sequence": 1
+        }
       },
       "Lola-BB76-UniProt9615": {
-        "rows": 8,
+        "rows": 9,
         "found_by": {
           "DeepNovo": 3,
-          "DB Search": 4,
+          "DB Search": 5,
           "Homolog": 1
         },
-        "irt_standard_rows": 3
+        "irt_standard_rows": 5,
+        "irt_rules": {
+          "de_novo_irt": 1,
+          "irt_sequence": 3,
+          "kit_only": 1
+        }
       },
       "Lola-H58A-UniProt9615": {
         "rows": 2,
@@ -154,23 +168,61 @@
           "DB Search": 1,
           "DeepNovo": 1
         },
-        "irt_standard_rows": 0
+        "irt_standard_rows": 1,
+        "irt_rules": {
+          "de_novo_irt": 1
+        }
+      },
+      "Tumor163828A-BB76-MergedCanFams": {
+        "rows": 2,
+        "found_by": {
+          "DB Search": 2
+        },
+        "irt_standard_rows": 1,
+        "irt_rules": {
+          "irt_precursor": 1
+        }
+      },
+      "Tumor163828A-BB76-UniProt9615": {
+        "rows": 6,
+        "found_by": {
+          "DB Search": 4,
+          "Homolog": 2
+        },
+        "irt_standard_rows": 4,
+        "irt_rules": {
+          "irt_precursor": 1,
+          "irt_sequence": 2,
+          "kit_only": 1
+        }
       }
-    }
+    },
+    "irt_standards": "Every run was spiked with Biognosys iRT peptides. A row is flagged irt_standard by the first rule that holds: irt_sequence (with I and L equal, a kit peptide or a fragment of one); kit_only (PEAKS attributes it only to the kit); irt_precursor (de novo and homology rows, and database-search rows of the merged search, which lacks the kit, whose sequence no search with the kit identified, at the precursor of an irt_sequence or kit_only row of the same immunoprecipitation: same charge, m/z within 20 ppm, retention time within 1 min); de_novo_irt (a de novo sequence that PEAKS matches to the kit among other proteins, or that shares 6 or more consecutive residues, I and L equal, with a kit peptide). A mapping is unmapped when any of its rows is flagged."
   },
   "processing": {
-    "importer": "kaabinejadian-dla-v1",
+    "importer": "kaabinejadian-dla-v2",
     "software": "orfdata",
-    "version": "0.32.0",
+    "version": "0.35.0",
     "operations": [
       "keep every reported peptide row, its identification type, score and modifications",
       "store native PEAKS area, intensity and spectrum count without normalization",
       "map each peptide to its PEAKS-reported accessions per search database",
-      "flag Biognosys iRT standards"
+      "flag Biognosys iRT standards and identifications derived from iRT spectra (irt_rule)"
     ],
     "parameters": {
       "aggregate_searches": false,
-      "filter_identification_types": false
+      "filter_identification_types": false,
+      "irt": {
+        "kit_databases": [
+          "Basenji",
+          "SwissProt9606",
+          "UniProt9615",
+          "Zoey"
+        ],
+        "precursor_ppm": 20,
+        "precursor_rt_minutes": 1.0,
+        "de_novo_min_shared_residues": 6
+      }
     },
     "tables": {
       "Lola-BB76": {
@@ -205,6 +257,18 @@
         ],
         "runs": {
           "20241015-HCT116-DLA8850101-BB76": true
+        }
+      },
+      "Tumor163828A-BB76": {
+        "sample": "163828A",
+        "antibody": "BB7.6 (anti-MHC class I)",
+        "data_file": "20250313-Tumor163828A-BB76-030425.zip",
+        "databases": [
+          "MergedCanFams",
+          "UniProt9615"
+        ],
+        "runs": {
+          "20250313-Tumor163828A-BB76-030425": true
         }
       }
     }

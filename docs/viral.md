@@ -28,6 +28,26 @@ not by result position: the native and GDC sequences have different coordinates.
 Use `ref.to_dict()` when serializing reference metadata to JSON; it does not
 load DNA or ORF models.
 
+For a combined protein FASTA, callers can pass the virus type or exact
+reference ID directly to `Proteome.build` without constructing a separate
+viral input object:
+
+```python
+from pyensembl import EnsemblRelease
+from orfdata import Proteome
+
+genome = EnsemblRelease(115, species="human")  # Already installed with pyensembl install.
+combined = Proteome.build(genome, extra_orf_evidence="all", viral="HPV16")
+combined.write_fasta("human-hpv16.fasta")
+```
+
+`viral="all"` includes each distinct bundled viral protein set associated
+with the host. When equivalent references differ only in DNA coordinate
+placement, it chooses the native source ID. The viral FASTA header records
+the chosen exact reference ID, source gene and product label; the snapshot
+keeps its source checksum and host-range attribution. See
+[Build a reference proteome](proteome.md#viral-proteomes).
+
 `host` accepts a known species name such as `"human"` or an NCBI taxon ID such
 as `9606`. The released HPV16 reference objects have viral `taxon_id=333760`
 and `host_taxon_ids=(9606,)`; these are different identities. Their documented

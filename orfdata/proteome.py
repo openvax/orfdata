@@ -1,7 +1,7 @@
-"""Reference proteomes: annotated proteins plus explicit, scoped additions.
+"""Reference proteomes derived from transcript models and selected protein sources.
 
-A proteome starts from the proteins annotated in one PyEnsembl genome. Extra
-ORFs and viral proteins are separate, opt-in layers. Each layer keeps its
+A reference transcriptome supplies transcript models; a proteome selects
+reference CDS products, catalogue ORFs and optionally viral proteins. Each layer keeps its
 source and selection, every transcript a protein is encoded on is kept, and
 every catalogue ORF that cannot be placed on the genome is reported rather
 than dropped silently. A proteome can be saved as a checksummed snapshot and
@@ -24,6 +24,7 @@ from .catalog import ORFCatalog, load_catalog, merge_catalogs
 from .evidence import EvidenceRule, evidence_rule
 from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_assembly, _versioned
 from .reference import ReferenceContext
+from .viral import ViralProduct, ViralReference, viral_reference, viral_references
 
 SNAPSHOT_SCHEMA = "orfdata.proteome.v1"
 _SNAPSHOT = "proteome.json.gz"
@@ -31,6 +32,7 @@ _SNAPSHOT = "proteome.json.gz"
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 # Evidence labels reported for an included ORF. Snapshots from before 0.28.0 keep "shotgun" and "mhc".
 _EVIDENCE_LABELS = ("ribosome", "proteomics", "immunopeptidomics", "ms_unclassified")
+_UNSET = object()
 
 
 def _evidence_labels(evidence):
@@ -96,7 +98,8 @@ class ProteomeEntry:
     ``orf_type`` is an extra ORF's source category, kept verbatim, and
     ``evidence`` lists its supporting evidence types; ``evidence_detail`` holds
     the source's evidence records. ``equivalent_ids`` lists other sources'
-    ``source:id`` for the same extra ORF when catalogues were merged.
+    ``source:id`` for the same extra ORF when catalogues were merged. Bundled
+    viral proteins keep their source's gene and product labels separately.
     """
 
     accession: str
@@ -112,6 +115,8 @@ class ProteomeEntry:
     source_binding: Optional[str] = None
     equivalent_ids: tuple = ()
     orf: Optional[TranscriptORF] = field(default=None, compare=False, repr=False)
+    viral_gene: Optional[str] = None
+    viral_product: Optional[str] = None
 
     @property
     def _first(self):
@@ -123,7 +128,7 @@ class ProteomeEntry:
 
     @property
     def gene_name(self):
-        return self._first and self._first.gene_name
+        return self._first.gene_name if self._first else self.viral_gene
 
     @property
     def transcript_id(self):
@@ -137,11 +142,18 @@ class ProteomeEntry:
     def transcript_biotype(self):
         return self._first and self._first.transcript_biotype
 
+    @property
+    def protein_source(self):
+        """The protein source, using names independent of annotation status."""
+        return {"annotated": "reference_cds", "extra_orf": "nc_orf", "viral": "viral"}[self.kind]
+
     def fasta_header(self):
         first = self._first
-        fields = dict(kind=self.kind, taxon=self.taxon_id, source=self.source, gene=self.gene_id,
+        fields = dict(kind=self.kind, protein_source=self.protein_source, taxon=self.taxon_id,
+                      source=self.source, gene=self.gene_id,
                       gene_name=self.gene_name, transcript=self.transcript_id, contig=self.contig,
                       transcript_biotype=self.transcript_biotype, orf_type=self.orf_type,
+                      product=self.viral_product,
                       evidence=",".join(self.evidence) or None,
                       source_transcript=self.source_transcript_id
                       if first is not None and not first.on_source_transcript else None,
@@ -156,7 +168,9 @@ class ProteomeEntry:
                     evidence=list(self.evidence), evidence_detail=self.evidence_detail,
                     occurrences=[[getattr(o, name) for name in _OCCURRENCE_FIELDS] for o in self.occurrences],
                     source_transcript_id=self.source_transcript_id, source_binding=self.source_binding,
-                    **({"equivalent_ids": list(self.equivalent_ids)} if self.equivalent_ids else {}))
+                    **({"equivalent_ids": list(self.equivalent_ids)} if self.equivalent_ids else {}),
+                    **({"viral_gene": self.viral_gene} if self.viral_gene is not None else {}),
+                    **({"viral_product": self.viral_product} if self.viral_product is not None else {}))
 
     @classmethod
     def from_dict(cls, record):
@@ -350,11 +364,12 @@ def annotated_orfs(transcript, *, context=None):
 
 @dataclass(frozen=True)
 class ViralProteome:
-    """Proteins of one virus, usable only with its recorded host species.
+    """Input proteins for one virus, usable only with its recorded host species.
 
     ``host_taxon_ids`` are NCBI species taxa, and ``host_source`` says where
     that host range comes from. Adding the proteins to a proteome for any other
     species fails; no host is inferred from orthology or a virus name.
+    ``products`` optionally supplies source gene and product labels.
     """
 
     name: str
@@ -364,10 +379,12 @@ class ViralProteome:
     source: str
     host_source: str
     source_sha256: Optional[str] = None
+    products: tuple = ()
 
     def __post_init__(self):
         object.__setattr__(self, "host_taxon_ids", frozenset(self.host_taxon_ids))
         object.__setattr__(self, "proteins", tuple(tuple(p) for p in self.proteins))
+        object.__setattr__(self, "products", tuple(self.products))
         if type(self.taxon_id) is not int or self.taxon_id < 1:
             raise ValueError("A viral proteome requires a positive NCBI taxon_id")
         if not self.host_taxon_ids or any(type(t) is not int or t < 1 for t in self.host_taxon_ids):
@@ -381,6 +398,10 @@ class ViralProteome:
                 raise ValueError(f"Invalid viral protein record: {accession!r}")
         if len({a for a, _ in self.proteins}) != len(self.proteins):
             raise ValueError("Duplicate viral protein accessions")
+        product_ids = [p.protein_id for p in self.products if isinstance(p, ViralProduct)]
+        if (len(product_ids) != len(self.products) or len(set(product_ids)) != len(product_ids)
+                or not set(product_ids) <= {a for a, _ in self.proteins}):
+            raise ValueError("Viral products must uniquely annotate proteins in this input")
 
     @classmethod
     def from_fasta(cls, path, *, name, taxon_id, host_taxon_ids, host_source, source=None):
@@ -398,12 +419,120 @@ class ViralProteome:
         return cls(name, taxon_id, host_taxon_ids, tuple(proteins), source or Path(path).name,
                    host_source, hashlib.sha256(raw).hexdigest())
 
+    @classmethod
+    def from_reference(cls, reference):
+        """Use a bundled viral coding reference without copying its metadata by hand."""
+        if not isinstance(reference, ViralReference):
+            raise TypeError("Expected a ViralReference")
+        return cls(name=f"{reference.virus_type}@{reference.id}", taxon_id=reference.taxon_id,
+                   host_taxon_ids=reference.host_taxon_ids,
+                   proteins=tuple((orf.orf_id, orf.protein_sequence) for orf in reference.orfs),
+                   source=reference.source_accession, host_source=reference.host_source,
+                   source_sha256=reference.source_sha256, products=reference.products)
+
+
+def _canonical_viral_references(references):
+    """Collapse coordinate placements of the same proteins, preferring a native source ID."""
+    chosen = {}
+    for reference in references:
+        candidate = ViralProteome.from_reference(reference)
+        signature = tuple(sorted(candidate.proteins))
+        current = chosen.get(reference.taxon_id)
+        if current is not None and current[1] != signature:
+            raise ValueError(f"Bundled references for viral taxon {reference.taxon_id} have different proteins; "
+                             "choose an exact reference ID with viral= instead of 'all'")
+        if current is None or (reference.id == reference.source_accession,
+                               reference.id) > (current[0].id == current[0].source_accession,
+                                                current[0].id):
+            chosen[reference.taxon_id] = reference, signature
+    return tuple(chosen[taxon_id][0] for taxon_id in sorted(chosen))
+
+
+def _viral_inputs(selection, host_taxon_id):
+    """Resolve caller selections to one validated protein input per viral source."""
+    if selection is None or selection is False:
+        return ()
+    if selection is True or selection == "all":
+        references = viral_references(host=host_taxon_id)
+        if not references:
+            raise ValueError(f"No bundled viral references for host taxon {host_taxon_id}")
+        selection = _canonical_viral_references(references)
+    elif isinstance(selection, (ViralProteome, ViralReference, str)):
+        selection = (selection,)
+    else:
+        try:
+            selection = tuple(selection)
+        except TypeError as error:
+            raise TypeError("viral must be a reference ID, virus type, ViralReference, "
+                            "ViralProteome, 'all', or a sequence of them") from error
+    if "all" in selection:
+        if len(selection) != 1:
+            raise ValueError("Choose viral='all' or specific viruses, not both")
+        return _viral_inputs("all", host_taxon_id)
+    resolved = []
+    for item in selection:
+        if isinstance(item, ViralProteome):
+            resolved.append(item)
+        elif isinstance(item, ViralReference):
+            resolved.append(ViralProteome.from_reference(item))
+        elif isinstance(item, str):
+            try:
+                reference = viral_reference(item)
+            except ValueError:
+                matches = viral_references(host=host_taxon_id, virus_type=item)
+                if not matches:
+                    raise ValueError(f"No bundled viral reference ID or virus type matches {item!r} "
+                                     f"for host taxon {host_taxon_id}") from None
+                canonical = _canonical_viral_references(matches)
+                if len(canonical) != 1:
+                    raise ValueError(f"Virus type {item!r} matches multiple viral taxa; "
+                                     "choose an exact reference ID")
+                reference = canonical[0]
+            resolved.append(ViralProteome.from_reference(reference))
+        else:
+            raise TypeError("viral entries must be reference IDs, virus types, ViralReference "
+                            "or ViralProteome objects")
+    return tuple(resolved)
+
+
+@dataclass(frozen=True)
+class ReferenceTranscriptome:
+    """One installed PyEnsembl annotation's transcript models, without protein selection.
+
+    The genome supplies transcript structures and sequences. A proteome is a
+    projection of selected protein sources onto these models; viral proteins
+    can be added as a separate source for the reference's host species.
+    """
+
+    genome: object = field(repr=False, compare=False)
+    reference: ReferenceContext
+
+    def __post_init__(self):
+        if not isinstance(self.reference, ReferenceContext):
+            raise TypeError("A reference transcriptome requires a ReferenceContext")
+        _require_installed(self.genome)
+        self.reference.validate_genome(self.genome)
+
+    @classmethod
+    def from_genome(cls, genome, *, context=None):
+        return cls(genome, ReferenceContext.from_genome(genome, context=context))
+
+    def proteome(self, *, host_sources=("reference_cds", "nc_orfs"), **kwargs):
+        """Translate selected host sources; pass ``viral`` for viral proteins.
+
+        ``host_sources`` accepts ``reference_cds`` and ``nc_orfs``. Use only
+        ``nc_orfs`` for a proteome of catalogue ORFs bound to these transcripts,
+        or an empty selection with ``viral`` for viral proteins alone.
+        """
+        return Proteome.build(self, host_sources=host_sources, **kwargs)
+
 
 class Proteome:
-    """Protein sequences for one species and genome, built in explicit layers.
+    """Selected protein sources for one reference, built in explicit layers.
 
-    Start with :meth:`from_genome`; add layers with :meth:`with_extra_orfs` and
-    :meth:`with_viral`. Each method returns a new proteome. ``layers`` records
+    Build from :class:`ReferenceTranscriptome`, or start with :meth:`from_genome`
+    and add layers with :meth:`with_extra_orfs` and :meth:`with_viral`.
+    Each method returns a new proteome. ``layers`` records
     every addition with its role (``"host"``, ``"viral"`` or ``"filter"``),
     source and selection; ``excluded`` lists selected ORFs found on no
     transcript. :meth:`save` writes a checksummed snapshot that :meth:`load`
@@ -436,7 +565,7 @@ class Proteome:
 
     @classmethod
     def from_genome(cls, genome, *, context=None):
-        """Every annotated protein with a sequence in this PyEnsembl genome.
+        """Every reference CDS protein with a sequence in this PyEnsembl genome.
 
         This matches the annotation's protein FASTA, including all transcript
         biotypes with a translation and proteins on patch or haplotype contigs.
@@ -480,13 +609,24 @@ class Proteome:
                               reference=reference, expected_sha256=expected_sha256)
 
     @classmethod
-    def build(cls, genome, evidence="ms", *, catalog=None, viral=(), extra_orfs=True, context=None,
-              cache=False, cache_root=None, catalogs=None):
+    def build(cls, genome, evidence=_UNSET, *, extra_orf_evidence=_UNSET, catalog=None, viral=(),
+              annotated=True, extra_orfs=True, host_sources=None, context=None, cache=False,
+              cache_root=None, catalogs=None):
         """The usual reference proteome in one call, optionally kept in a cache.
 
-        That is :meth:`from_genome`, then :meth:`with_extra_orfs` with
-        ``evidence`` and ``catalog`` unless ``extra_orfs=False``, then
-        :meth:`with_viral` for each of ``viral``; ``catalogs`` chooses among the
+        ``genome`` may be a PyEnsembl genome or a :class:`ReferenceTranscriptome`.
+        ``host_sources`` selects ``reference_cds`` and/or ``nc_orfs``; it also
+        accepts an empty collection for a viral-only proteome. By default this reads
+        annotated proteins with :meth:`from_genome`, then
+        adds :meth:`with_extra_orfs` with ``extra_orf_evidence`` and ``catalog``
+        unless ``extra_orfs=False``. Set ``annotated=False`` for only the
+        catalogue ncORFs bound to this reference's transcripts, without reading
+        its annotated protein FASTA. Then add
+        :meth:`with_viral` for each of ``viral``. Pass ``viral="all"`` (or True)
+        for each distinct bundled viral protein set recorded for this host, a
+        virus type or exact reference ID for one, or a ViralReference directly.
+        The extra ORF evidence defaults to ``"ms"``; the older ``evidence``
+        argument is retained. Viral additions are opt-in. ``catalogs`` chooses among the
         species' catalogues as in :func:`load_catalog`. With ``cache=True`` the result
         is saved under the OpenVax DataCache root (``ORFDATA_CACHE``,
         ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, the
@@ -495,9 +635,29 @@ class Proteome:
         snapshot instead of rebuilding. ``cache_root`` is also where the
         species' registered catalogue is looked for. Nothing is downloaded.
         """
+        if isinstance(genome, ReferenceTranscriptome):
+            if context is not None and context != genome.reference:
+                raise ValueError("context differs from the reference transcriptome")
+            context, genome = genome.reference, genome.genome
+        if host_sources is not None:
+            if annotated is not True or extra_orfs is not True:
+                raise ValueError("Pass host_sources or annotated/extra_orfs, not both")
+            selected = {host_sources} if isinstance(host_sources, str) else set(host_sources)
+            unknown = selected - {"reference_cds", "nc_orfs"}
+            if unknown:
+                raise ValueError(f"Unknown host protein sources: {', '.join(sorted(unknown))}")
+            annotated, extra_orfs = "reference_cds" in selected, "nc_orfs" in selected
+        if extra_orf_evidence is not _UNSET and evidence is not _UNSET:
+            raise ValueError("Pass extra_orf_evidence or evidence, not both")
+        if extra_orf_evidence is not _UNSET:
+            if not extra_orfs:
+                raise ValueError("extra_orf_evidence requires extra_orfs=True")
+            evidence = extra_orf_evidence
+        elif evidence is _UNSET:
+            evidence = "ms"
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
-        viral = tuple(viral)
+        viral = _viral_inputs(viral, reference.taxon_id)
         if not extra_orfs and (catalog is not None or catalogs is not None):
             raise ValueError("A catalogue needs extra_orfs=True")
         rule = None
@@ -507,7 +667,8 @@ class Proteome:
         built = []
 
         def make():
-            proteome = cls.from_genome(genome, context=context)
+            proteome = (cls.from_genome(genome, context=context) if annotated else
+                        cls(reference, (), genome=genome))
             if extra_orfs:
                 proteome = proteome.with_extra_orfs(rule, catalog=catalog)
             for virus in viral:
@@ -521,7 +682,8 @@ class Proteome:
         from .version import __version__
 
         key = dict(schema=SNAPSHOT_SCHEMA, orfdata=__version__, pyensembl=_pyensembl_version(),
-                   reference=reference.to_dict(), annotation=_annotation_files(genome),
+                   reference=reference.to_dict(), annotation=_annotation_files(genome, include_proteins=annotated),
+                   annotated=annotated,
                    extra_orfs=dict(evidence=None if rule is None else rule.to_dict(),
                                    catalog=_catalog_identity(catalog)) if extra_orfs else None,
                    viral=[_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
@@ -592,16 +754,24 @@ class Proteome:
                         self.excluded + found.excluded + found.unlifted, self.genome)
 
     def with_viral(self, viral):
-        """Add a viral proteome whose recorded hosts include this species."""
-        if not isinstance(viral, ViralProteome):
-            raise TypeError("Expected a ViralProteome")
+        """Add a bundled virus by reference ID/type/object, or a FASTA-derived ViralProteome."""
+        inputs = _viral_inputs(viral, self.reference.taxon_id)
+        proteome = self
+        for source in inputs:
+            proteome = proteome._with_viral_proteins(source)
+        return proteome
+
+    def _with_viral_proteins(self, viral):
         if self.reference.taxon_id not in viral.host_taxon_ids:
             raise ValueError(
                 f"{viral.name} (taxon {viral.taxon_id}) has no recorded host matching "
                 f"{self.reference.species} (taxon {self.reference.taxon_id})"
             )
         source = f"viral:{viral.name}"
-        added = tuple(ProteomeEntry(accession, sequence, "viral", viral.taxon_id, source)
+        products = {product.protein_id: product for product in viral.products}
+        added = tuple(ProteomeEntry(accession, sequence, "viral", viral.taxon_id, source,
+                                   viral_gene=products[accession].gene if accession in products else None,
+                                   viral_product=products[accession].product if accession in products else None)
                       for accession, sequence in viral.proteins)
         layer = dict(kind="viral", role="viral", source=source, taxon_id=viral.taxon_id,
                      host_taxon_ids=sorted(viral.host_taxon_ids), host_source=viral.host_source,
@@ -627,6 +797,10 @@ class Proteome:
             groups.setdefault(entry.sequence, []).append(entry)
         return {sequence: tuple(entries) for sequence, entries in groups.items()}
 
+    def by_accession(self):
+        """Every protein entry keyed by its unique accession."""
+        return {entry.accession: entry for entry in self.entries}
+
     def __iter__(self):
         return iter(self.entries)
 
@@ -639,6 +813,7 @@ class Proteome:
             reference=self.reference.to_dict(), identity=self.identity, entries=len(self.entries),
             distinct_sequences=len({e.sequence for e in self.entries}),
             kinds=dict(Counter(e.kind for e in self.entries)),
+            protein_sources=dict(Counter(e.protein_source for e in self.entries)),
             layers=[dict(layer) for layer in self.layers], excluded=len(self.excluded),
         )
 
@@ -939,11 +1114,12 @@ def _pyensembl_version():
     return __version__
 
 
-def _annotation_files(genome):
-    """The genome's annotation sources: release URLs as given, local files by size and SHA-256."""
+def _annotation_files(genome, *, include_proteins=True):
+    """Inputs used by the build: release URLs as given, local files by size and SHA-256."""
     sources = [getattr(genome, "_gtf_path_or_url", None),
-               *(getattr(genome, "_transcript_fasta_paths_or_urls", None) or ()),
-               *(getattr(genome, "_protein_fasta_paths_or_urls", None) or ())]
+               *(getattr(genome, "_transcript_fasta_paths_or_urls", None) or ())]
+    if include_proteins:
+        sources.extend(getattr(genome, "_protein_fasta_paths_or_urls", None) or ())
     found = []
     for source in (str(s) for s in sources if s is not None):
         path = Path(source)

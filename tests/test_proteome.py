@@ -24,12 +24,14 @@ from orfdata import (
     Proteome,
     ReferenceContext,
     ReferenceORF,
+    ReferenceTranscriptome,
     RiboSeq,
     TranscriptORF,
     ViralProteome,
     annotated_orfs,
     extra_orfs,
     load_catalog,
+    viral_reference,
 )
 from orfdata.cli import run
 from orfdata.proteome import _sha256
@@ -593,6 +595,145 @@ def test_viral_fasta_is_pinned_and_parsed(tmp_path):
     assert parsed.proteins == (("p1", "MSTVK"), ("p2", "MAA")) and len(parsed.source_sha256) == 64
 
 
+def test_reference_bound_ncorf_only_proteome_skips_annotated_proteins(genome, catalog, tmp_path, monkeypatch):
+    transcriptome = ReferenceTranscriptome.from_genome(genome)
+    assert transcriptome.reference == ReferenceContext.from_genome(genome)
+    with monkeypatch.context() as patch:
+        patch.setattr(genome, "protein_sequence", lambda accession: 1 / 0)
+        only = transcriptome.proteome(host_sources="nc_orfs", extra_orf_evidence="all", catalog=catalog)
+    assert only.summary()["kinds"] == {"extra_orf": 3}
+    assert only.summary()["protein_sources"] == {"nc_orf": 3}
+    assert [layer["kind"] for layer in only.layers] == ["extra_orf"]
+    assert {entry.accession for entry in only} == {"ms-orf", "ribo-orf", "absent-orf"}
+    assert [entry.to_dict() for entry in only] == [entry.to_dict() for entry in
+                                                Proteome.build(genome, extra_orf_evidence="all",
+                                                               catalog=catalog) if entry.kind == "extra_orf"]
+    assert [failure.orf_id for failure in only.excluded] == ["changed-orf"]
+    assert only.identity == Proteome.build(genome, extra_orf_evidence="all", annotated=False,
+                                           catalog=catalog).identity
+    assert only.identity == Proteome.build(transcriptome, host_sources=("nc_orfs",),
+                                           extra_orf_evidence="all", catalog=catalog).identity
+    assert {entry.protein_source for entry in only} == {"nc_orf"}
+    fasta = tmp_path / "ncorfs.fa"
+    only.write_fasta(fasta)
+    assert fasta.read_text().count(">") == 3
+    cached = Proteome.build(genome, extra_orf_evidence="all", annotated=False,
+                            catalog=catalog, cache=True, cache_root=tmp_path / "cache")
+    assert cached.identity == only.identity
+    assert Proteome.build(genome, extra_orf_evidence="all", catalog=catalog,
+                          cache=True, cache_root=tmp_path / "cache").identity != only.identity
+
+
+def test_reference_transcriptome_selects_host_protein_sources(genome, catalog):
+    transcriptome = ReferenceTranscriptome.from_genome(genome)
+    cds = transcriptome.proteome(host_sources=("reference_cds",))
+    assert cds.summary()["protein_sources"] == {"reference_cds": 3}
+    assert cds.identity == Proteome.from_genome(genome).identity
+    assert "protein_source=reference_cds" in cds.entries[0].fasta_header()
+    viral_only = transcriptome.proteome(host_sources=(), viral=[virus()])
+    assert viral_only.summary()["protein_sources"] == {"viral": 1}
+    assert viral_only.entries[0].protein_source == "viral"
+    with pytest.raises(ValueError, match="Unknown host protein sources"):
+        transcriptome.proteome(host_sources=("annotated",))
+    with pytest.raises(ValueError, match="host_sources or annotated/extra_orfs"):
+        Proteome.build(genome, host_sources=("nc_orfs",), annotated=False, catalog=catalog)
+    with pytest.raises(ValueError, match="context differs"):
+        Proteome.build(transcriptome, host_sources=("reference_cds",),
+                       context=replace(transcriptome.reference, annotation_version="other"))
+
+
+def test_multiple_synthetic_viral_sources_share_one_proteome(genome):
+    second = ViralProteome("synthetic-virus-two", 999998, {10090}, (("toy-protein-two", "MAA"),),
+                           "synthetic fixture", "test-declared host range")
+    combined = Proteome.from_genome(genome).with_viral([virus(), second])
+    assert combined.summary()["kinds"] == {"annotated": 3, "viral": 2}
+    assert {entry.source for entry in combined if entry.kind == "viral"} == {
+        "viral:synthetic-virus", "viral:synthetic-virus-two"}
+    assert combined.by_accession()["toy-protein-two"].sequence == "MAA"
+
+
+def test_bundled_virus_builds_into_one_proteome_without_manual_conversion(tmp_path, catalog):
+    human = write_genome(tmp_path / "human", "GRCh38", "homo_sapiens")
+    try:
+        ref = viral_reference("NC_001526.4")
+        human_catalog = ORFCatalog(
+            [replace(record, genome_build="GRCh38", taxon_id=9606, species="homo_sapiens")
+             for record in catalog.records],
+            dict(catalog.metadata, genome_build="GRCh38", taxon_id=9606, species="homo_sapiens"))
+        options = dict(evidence=None, catalog=human_catalog)
+        by_id = Proteome.build(human, viral=ref.id, **options)
+        by_type = Proteome.build(human, viral="HPV16", **options)
+        by_object = Proteome.build(human, viral=ref, **options)
+        all_bundled = Proteome.build(human, viral=True, **options)
+        assert by_id.identity == by_type.identity == by_object.identity == all_bundled.identity
+        assert by_id.identity == Proteome.build(human, viral="all", **options).identity
+        assert by_id.identity == Proteome.build(human, viral="all", cache=True,
+                                               cache_root=tmp_path / "cache", **options).identity
+        assert by_id.identity == Proteome.from_genome(human).with_extra_orfs(
+            None, catalog=human_catalog).with_viral("HPV16").identity
+        assert by_id.summary()["kinds"] == {"annotated": 3, "extra_orf": 3, "viral": 9}
+        assert len(by_id.by_accession()) == len(by_id) == 15
+        viral = [entry for entry in by_id if entry.kind == "viral"]
+        assert {entry.accession for entry in viral} == {product.protein_id for product in ref.products}
+        assert all(entry.taxon_id == ref.taxon_id and entry.source == "viral:HPV16@NC_001526.4"
+                   for entry in viral)
+        assert by_id.layers[-1]["provenance"] == ref.source_accession
+        assert by_id.layers[-1]["source_sha256"] == ref.source_sha256
+        fasta = tmp_path / "combined.fa"
+        by_id.write_fasta(fasta)
+        assert fasta.read_text().count(">") == 15
+        product = next(p for p in ref.products if p.protein_id == "NP_041327.2")
+        assert (f">{product.protein_id} kind=viral protein_source=viral taxon=333760 "
+                f"source=viral:HPV16@NC_001526.4 gene_name={product.gene} "
+                f"product={product.product.replace(' ', '_')}\n") in fasta.read_text()
+        assert by_id.by_accession()[product.protein_id].gene_name == product.gene
+        assert by_id.by_accession()[product.protein_id].viral_product == product.product
+        snapshot = tmp_path / "combined.json.gz"
+        by_id.save(snapshot)
+        assert Proteome.load(snapshot).by_accession()[product.protein_id].viral_product == product.product
+        assert ViralProteome.from_reference(ref).proteins == tuple(
+            (orf.orf_id, orf.protein_sequence) for orf in ref.orfs)
+        gdc = Proteome.build(human, viral="GRCh38.d1.vd1:HPV16", **options)
+        assert gdc.identity != by_id.identity
+        assert all(entry.source == "viral:HPV16@GRCh38.d1.vd1:HPV16"
+                   for entry in gdc if entry.kind == "viral")
+        with pytest.raises(ValueError, match="No bundled viral reference"):
+            Proteome.build(human, viral="HPV18", **options)
+        with pytest.raises(ValueError, match="Choose viral='all'"):
+            Proteome.build(human, viral=["all", ref.id], **options)
+        alias = Proteome.build(human, extra_orf_evidence=None, catalog=human_catalog, viral="HPV16")
+        assert alias.identity == by_id.identity
+        with pytest.raises(ValueError, match="extra_orf_evidence or evidence"):
+            Proteome.build(human, evidence="ribosome", extra_orf_evidence="all", catalog=human_catalog)
+        with pytest.raises(ValueError, match="extra_orf_evidence or evidence"):
+            Proteome.build(human, evidence="ms", extra_orf_evidence="all", catalog=human_catalog)
+    finally:
+        human.close()
+
+
+def test_bundled_viral_reference_rejects_an_unrecorded_host(genome):
+    with pytest.raises(ValueError, match="no recorded host matching mus_musculus"):
+        Proteome.build(genome, extra_orfs=False, viral="NC_001526.4")
+    with pytest.raises(ValueError, match="No bundled viral references for host taxon 10090"):
+        Proteome.build(genome, extra_orfs=False, viral="all")
+
+
+def test_cli_adds_bundled_viral_proteins_to_fasta(tmp_path, monkeypatch, capsys):
+    from orfdata import proteome_cli
+
+    human = write_genome(tmp_path / "human", "GRCh38", "homo_sapiens")
+    try:
+        monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: human)
+        fasta = tmp_path / "combined.fa"
+        run(["proteome", "--species", "human", "--release", "1", "--extra-orf-evidence", "none",
+             "--viral", "all", "--output", str(fasta)])
+        assert json.loads(capsys.readouterr().err)["kinds"] == {"annotated": 3, "viral": 9}
+        assert fasta.read_text().count(">") == 12
+        assert "source=viral:HPV16@NC_001526.4" in fasta.read_text()
+    finally:
+        human.close()
+
+
 def test_fasta_export_round_trips_sequences_and_provenance(genome, catalog):
     proteome = Proteome.from_genome(genome).with_extra_orfs(catalog=catalog).with_viral(virus())
     handle = io.StringIO()
@@ -605,7 +746,7 @@ def test_fasta_export_round_trips_sequences_and_provenance(genome, catalog):
         else:
             records[header] += line
     assert records == {e.fasta_header(): e.sequence for e in proteome}
-    assert (">ms-orf kind=extra_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE "
+    assert (">ms-orf kind=extra_orf protein_source=nc_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE "
             "transcript=test_rna.1 contig=1 transcript_biotype=lncRNA orf_type=lncRNA evidence=proteomics transcripts=2") in records
     # An ORF whose source transcript is gone names it, beside the transcript that carries it.
     assert any(h.startswith(">absent-orf ") and "transcript=test_rna.1 " in h and "source_transcript=missing_rna" in h
@@ -624,6 +765,14 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     assert summary["kinds"] == {"annotated": 3, "extra_orf": 2}
     assert [e["orf_id"] for e in summary["excluded_orfs"]] == ["changed-orf"]
     assert output.read_text().count(">") == 5
+    nc_only = tmp_path / "ncorfs.fa"
+    run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path),
+         "--extra-orf-evidence", "all", "--host-sources", "nc-orfs", "--output", str(nc_only)])
+    assert json.loads(capsys.readouterr().err)["kinds"] == {"extra_orf": 3}
+    assert nc_only.read_text().count(">") == 3
+    run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path),
+         "--extra-orf-evidence", "all", "--no-annotated", "--output", str(nc_only)])
+    assert json.loads(capsys.readouterr().err)["protein_sources"] == {"nc_orf": 3}
     snapshot = tmp_path / "proteome.json.gz"
     run(["proteome", "--species", "mouse", "--release", "1", "--catalog", str(path), "--output", str(output),
          "--snapshot", str(snapshot)])
