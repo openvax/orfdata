@@ -3,8 +3,8 @@
 
 # orfdata
 
-orfdata builds the protein reference for a species: the proteins annotated in
-a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus open reading
+orfdata builds protein references from transcript models in
+a [PyEnsembl](https://github.com/openvax/pyensembl) annotation, plus open reading
 frames (ORFs) that ribosome-profiling studies found translated outside those
 annotations. These include upstream and downstream ORFs, ORFs in other reading
 frames of a coding sequence, and ORFs on RNAs annotated as noncoding. Each added
@@ -24,16 +24,17 @@ pyensembl install --release 115 --species human
 
 ```python
 from pyensembl import EnsemblRelease
-from orfdata import Proteome
+from orfdata import ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")
-proteome = Proteome.from_genome(genome).with_extra_orfs(evidence="ms")
+transcriptome = ReferenceTranscriptome.from_genome(genome)
+proteome = transcriptome.proteome(extra_orf_evidence="ms")
 proteome.write_fasta("human-e115.fasta")
-print(proteome.summary()["kinds"], len(proteome.excluded))
+print(proteome.summary()["protein_sources"], len(proteome.excluded))
 ```
 
 ```text
-{'annotated': 245535, 'extra_orf': 2181} 5
+{'reference_cds': 245535, 'nc_orf': 2181} 5
 ```
 
 This takes every protein in the Ensembl 115 annotation and adds the 2,181
@@ -76,8 +77,30 @@ to them; `orfdata genomes install t2t-chm13` installs a CHM13 annotation. Dog pr
 PyEnsembl-annotated proteins. `load_catalog(species=...)` and
 `with_extra_orfs()` pick the catalogue for a species and raise when none is
 available or built.
-Human evidence is never transferred to another species. Viral proteomes can be added with
-`with_viral(...)`, but only to a proteome for one of the virus's recorded hosts.
+Human evidence is never transferred to another species. Viral proteins can
+be added only to a proteome for a recorded host. To build one dictionary and
+FASTA with the reference CDS proteins, all binding catalogue ORFs and the
+bundled viruses associated with human:
+
+```python
+combined = transcriptome.proteome(extra_orf_evidence="all", viral="all")
+proteins_by_id = combined.by_accession()  # Reference CDS, ncORF and viral entries.
+combined.write_fasta("human-all-proteins.fasta")
+combined.save("human-all-proteins.proteome.json.gz")  # Complete provenance.
+
+nc_only = transcriptome.proteome(host_sources="nc_orfs", extra_orf_evidence="all")
+nc_only.write_fasta("human-reference-ncorfs.fasta")
+```
+
+```sh
+orfdata proteome --species human --release 115 --extra-orf-evidence all --viral all --output human-all-proteins.fasta
+```
+
+`viral="all"` selects one protein set per bundled virus and keeps its exact
+reference ID in FASTA headers. To select one virus, use `viral="HPV16"` or
+`with_viral("HPV16")`.
+Viral proteins are included only when requested; a recorded host association
+does not say which virus is present in a sample.
 orfdata also provides [RNA, ribosome and protein measurements](https://openvax.github.io/orfdata/measurements/)
 for human, mouse, dog and yeast.
 

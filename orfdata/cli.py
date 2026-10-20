@@ -267,7 +267,9 @@ def _query(args, parser, catalog_loader):
             reference = "" if r.reference_context is None else " reference=" + r.reference_context.key
             scope = "" if isinstance(catalog, UORFCatalog) else f" taxon={r.taxon_id}{reference}"
             sys.stdout.write(
-                f">{r.orf_id} gene={r.gene_name} transcript={r.transcript_id} assembly={r.genome_build} biotype={r.biotype}{scope}\n{r.protein_sequence}\n"
+                f">{r.orf_id} gene={r.gene_name} transcript={r.transcript_id} assembly={r.genome_build} "
+                f"biotype={r.biotype}{scope} kind=extra_orf source={catalog.source} gene_id={r.gene_id}\n"
+                f"{r.protein_sequence}\n"
             )
     else:
         fields = (
