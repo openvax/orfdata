@@ -29,18 +29,19 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--genome", metavar="NAME",
                         help="A pinned annotation installed with 'orfdata genomes install', e.g. t2t-chm13, "
                              "instead of --species and --release")
-    parser.add_argument("--nc-orf-evidence", "--extra-orf-evidence", dest="extra_orf_evidence",
+    parser.add_argument("--isoforms", choices=("all", "longest"), default="all",
+                        help="Reference CDS isoforms: all (default), or the longest protein per gene")
+    parser.add_argument("--nc-orfs", "--nc-orf-evidence", "--extra-orf-evidence", dest="extra_orf_evidence",
                         type=_evidence_name("none"), metavar="NAME",
-                        help="Evidence a catalogue ncORF needs: 'ms' (default), 'ribosome' (or 'riboseq'), etc.; "
-                             "'all' for every catalogue ORF; 'none' to omit ncORFs")
+                        help="Add catalogue ncORFs with this evidence: 'ms', 'ribosome' (or 'riboseq'), etc.; "
+                             "'all' for every catalogue ORF. ncORFs are omitted by default")
     source_group = parser.add_mutually_exclusive_group()
     source_group.add_argument("--no-reference-cds", action="store_true",
                               help="Omit proteins translated from the reference annotation's CDS features")
     source_group.add_argument("--host-sources", choices=("all", "reference-cds", "nc-orfs", "none"),
                               help=argparse.SUPPRESS)
     source_group.add_argument("--no-annotated", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--no-nc-orfs", action="store_true",
-                        help="Omit catalogue ncORFs; keep reference CDS and any selected viral proteins")
+    parser.add_argument("--no-nc-orfs", action="store_true", help=argparse.SUPPRESS)
     _add_rule_arguments(parser)
     parser.add_argument("--catalog", action="append",
                         help="Use a local JSON/JSON.gz ORF catalogue for this genome; repeat to merge several")
@@ -64,20 +65,22 @@ def run(argv=None, prog=None, *, genome_loader=None):
             raise ValueError("--no-nc-orfs conflicts with --host-sources")
         if sources is not None and args.extra_orf_evidence is not None:
             if ("nc_orfs" in sources) == (args.extra_orf_evidence == "none"):
-                raise ValueError("--nc-orf-evidence conflicts with --host-sources")
+                raise ValueError("--nc-orfs conflicts with --host-sources")
         if args.no_nc_orfs and args.extra_orf_evidence not in (None, "none"):
-            raise ValueError("--nc-orf-evidence conflicts with --no-nc-orfs")
+            raise ValueError("--nc-orfs conflicts with --no-nc-orfs")
+        requirements = (args.either or args.require_resolved or args.require_unique or args.require_reviewed
+                        or any(value is not None for value in (
+                            args.min_ribo_seq_studies, args.min_ms_peptides, args.ms_methods)))
         extra = ("nc_orfs" in sources if sources is not None else
-                 not args.no_nc_orfs and args.extra_orf_evidence != "none")
+                 not args.no_nc_orfs and args.extra_orf_evidence != "none" and
+                 (args.extra_orf_evidence is not None or requirements))
         reference_cds = "reference_cds" in sources if sources is not None else not (
             args.no_reference_cds or args.no_annotated)
-        if not extra and (args.catalog or args.catalogs or args.either or args.require_resolved or args.require_unique
-                          or args.require_reviewed or any(value is not None for value in (
-                              args.min_ribo_seq_studies, args.min_ms_peptides, args.ms_methods))):
-            raise ValueError("ncORF options require --nc-orf-evidence other than 'none'")
+        if not extra and (args.catalog or args.catalogs or requirements):
+            raise ValueError("ncORF options require --nc-orfs NAME (for example, --nc-orfs ms)")
         if not reference_cds and not extra and not args.viral:
-            raise ValueError("No protein layers selected: enable extra ORFs or --viral")
-        rule = _rule(args, args.extra_orf_evidence, "--nc-orf-evidence", default="ms") if extra else None
+            raise ValueError("No protein layers selected: add --nc-orfs NAME or --viral")
+        rule = _rule(args, args.extra_orf_evidence, "--nc-orfs", default="ms") if extra else None
         if args.genome is not None:
             if args.species is not None or args.release is not None:
                 raise ValueError("Pass --genome or --species and --release, not both")
@@ -88,10 +91,9 @@ def run(argv=None, prog=None, *, genome_loader=None):
             raise ValueError("Pass --species and --release, or --genome")
         else:
             genome = (genome_loader or _ensembl_genome)(args.release, args.species)
-        selection = (dict(host_sources=sources) if sources is not None else
-                     dict(reference_cds=reference_cds, nc_orfs=extra))
         proteome = Proteome.build(
-            genome, rule, **selection,
+            genome, reference_cds=reference_cds, isoforms=args.isoforms,
+            nc_orfs=(rule if rule is not None else "all") if extra else False,
             catalog=[load_catalog(path) for path in args.catalog] if args.catalog else None,
             catalogs=args.catalogs, viral=args.viral or (), cache=args.cache, cache_root=args.cache_root)
         proteome.write_fasta(args.output or sys.stdout)

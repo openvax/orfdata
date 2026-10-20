@@ -2,11 +2,17 @@
 
 Proteomes can now select reference CDS proteins, transcript-bound ncORFs and
 host-associated viral proteins in one build. `ReferenceTranscriptome` separates
-the transcript models from the protein sources; `nc_orf_proteome(evidence="all")`
-builds an ncORF-only proteome. FASTA headers and summaries expose `protein_source`,
+the transcript models from the protein sources. `proteome()` defaults to
+reference CDS proteins, with `isoforms="all"` or `"longest"` to select every
+isoform or one protein per gene. ncORFs are opt-in: `nc_orfs="ms"`, `"ribosome"`,
+`"all"` or an evidence rule selects them; `nc_orfs=True` means `"ms"`.
+`proteome(reference_cds=False, nc_orfs="all")` builds an ncORF-only proteome
+through the same API. FASTA headers and summaries expose `protein_source`,
 while the existing `kind` labels remain compatible with saved snapshots.
-Source selection now uses `reference_cds` and `nc_orfs` booleans plus
-`nc_orf_evidence`; the older selectors remain supported. Supplied sample-derived
+`Proteome.build` and the CLI use the same reference-only default; the CLI adds
+`--isoforms longest` and `--nc-orfs NAME`. The older selectors remain supported
+on `Proteome.build`, and `with_extra_orfs` is an alias for `with_nc_orfs`.
+Supplied sample-derived
 host sequences can be added with `DerivedProtein`, preserving parent accessions,
 sample and change IDs without treating them as reference translations. Snapshot
 schema v2 also reads earlier v1 snapshots.

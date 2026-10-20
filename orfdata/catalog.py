@@ -963,8 +963,8 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     builds = sorted({c.genome_build for c in found})
     known = "; ".join(f"{c.species} {c.genome_build} ({c.label})"
                       for c in sorted(choices, key=lambda c: (c.species, c.genome_build, c.name))) or "none"
-    annotated_only = (" For a proteome of annotated proteins only, pass extra_orfs=False "
-                      "(orfdata proteome --extra-orf-evidence none).")
+    annotated_only = (" For reference CDS proteins only, use Proteome.build(genome) "
+                      "without ncORF options (the default for orfdata proteome too).")
     if not found:
         raise ValueError(f"No ORF catalogue covers {species}{'' if genome_build is None else ' ' + genome_build}. "
                          f"Catalogues exist for: {known}. Load a local file with load_catalog(path) or add one "

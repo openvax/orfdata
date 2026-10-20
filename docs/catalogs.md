@@ -5,7 +5,7 @@ downloads. `CatalogRegistry` manages additional versioned ORF catalogues, with
 the same explicit discovery, download, build and offline-open workflow as
 `DatasetRegistry`. Once a species' catalogue in the packaged registry is
 downloaded or built, `load_catalog(species=...)` opens it, so `extra_orfs(genome)` and
-`Proteome.with_extra_orfs()` use it without `catalog=`; pass
+`Proteome.with_nc_orfs()` use it without `catalog=`; pass
 `load_catalog(species=..., registry=...)` as `catalog=` for your own registry.
 Every catalogue for the species is used, merged: those on the requested
 assembly as they are, and those on another assembly the pinned chains reach,
@@ -181,14 +181,14 @@ build the catalogue from OpenProt's own downloads (3.4 MB, about 5 seconds),
 each checked against its pinned size and SHA-256, with `orfdata setup --species
 mouse` along with the Ribo-seq catalogue above, or alone with `orfdata catalogs
 build openprot-mouse`. `load_catalog(species="mouse")`, `extra_orfs(genome)`
-and `Proteome.build(genome)` use all three mouse catalogues, for any GRCm39
-Ensembl release, so all must be installed. With only MS-supported ORFs selected, the default:
+and `Proteome.build(genome, nc_orfs="ms")` use all three mouse catalogues, for any GRCm39
+Ensembl release, so all must be installed. To add only MS-supported ORFs:
 
 ```python
 from pyensembl import EnsemblRelease
 from orfdata import Proteome
 
-proteome = Proteome.build(EnsemblRelease(115, species="mouse"))
+proteome = Proteome.build(EnsemblRelease(115, species="mouse"), nc_orfs="ms")
 print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
 
@@ -259,7 +259,7 @@ from orfdata import Proteome, extra_orfs, load_catalog
 
 catalog = load_catalog(species="human", catalogs="all")   # Bundled, Chang et al. and Yang et al., merged
 orfs = extra_orfs(genome, "ribosome", catalogs="all")
-proteome = Proteome.build(genome, "all", catalogs="all")
+proteome = Proteome.build(genome, nc_orfs="all", catalogs="all")
 load_catalog(species="human", catalogs=["ncorf-mammals-human"])   # Just one
 ```
 
@@ -356,7 +356,7 @@ abundance and peptides are available as [measurements](measurements.md).
 
 Catalogues on another assembly of the species are lifted automatically. Download
 the pinned chain files once, and `load_catalog`, `extra_orfs(genome)` and
-`Proteome.build(genome)` work on every human and mouse assembly PyEnsembl
+`Proteome.build(genome, nc_orfs="ms")` work on every human and mouse assembly PyEnsembl
 knows:
 
 ```sh
@@ -367,7 +367,7 @@ orfdata chains download --accept-terms   # Every pinned chain; without --accept-
 from pyensembl import EnsemblRelease
 from orfdata import Proteome
 
-Proteome.build(EnsemblRelease(75))       # GRCh37: the GRCh38 catalogue, lifted
+Proteome.build(EnsemblRelease(75), nc_orfs="ms")  # GRCh37: the GRCh38 catalogue, lifted
 ```
 
 With evidence `None` (every catalogue ORF), each assembly gets:
@@ -399,7 +399,7 @@ silently dropped.
   each with the command that installs it; nothing is downloaded while
   loading. `cache_root` (or `--cache-root`) is where both are looked for.
 - **Your own catalogues.** `extra_orfs(genome, catalog=...)` and
-  `Proteome.build(genome, catalog=...)` lift a catalogue, or each of a list,
+  `Proteome.build(genome, nc_orfs="ms", catalog=...)` lift a catalogue, or each of a list,
   that is on another assembly of the species through the same chains.
 - **Other names.** Assemblies go by Ensembl's names. `hg38`, `GRCh38.p14`,
   `mm39` and the like get an error that names the assembly to use, and a
@@ -427,14 +427,14 @@ GRCh38-to-CHM13 chain is public domain (CC0):
 ```sh
 orfdata genomes install t2t-chm13          # 143 MB of Ensembl files, plus about 1.1 GB of PyEnsembl index
 orfdata chains download GRCh38 T2T-CHM13v2.0
-orfdata proteome --genome t2t-chm13 --output chm13.fasta
+orfdata proteome --genome t2t-chm13 --nc-orfs ms --output chm13.fasta
 ```
 
 ```python
 from orfdata import Proteome, load_genome
 
 genome = load_genome("t2t-chm13")          # A PyEnsembl Genome named T2T-CHM13v2.0, offline
-proteome = Proteome.build(genome)          # 104,957 annotated proteins + 2,039 MS-supported ORFs
+proteome = Proteome.build(genome, nc_orfs="ms")  # 104,957 reference proteins + 2,039 MS-supported ORFs
 ```
 
 The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and

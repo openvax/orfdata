@@ -23,10 +23,12 @@ never downloads or indexes annotation data itself; it reports what is missing.
 
 ```python
 from pyensembl import EnsemblRelease
-from orfdata import Proteome
+from orfdata import ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")
-proteome = Proteome.from_genome(genome).with_extra_orfs(evidence="ms")
+transcriptome = ReferenceTranscriptome.from_genome(genome)
+reference = transcriptome.proteome()  # Reference CDS proteins only.
+proteome = transcriptome.proteome(nc_orfs="ms")
 proteome.write_fasta("human-e115.fasta")
 print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
@@ -35,8 +37,9 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
 {'annotated': 245535, 'extra_orf': 2181} 5
 ```
 
-`Proteome.from_genome` takes every protein in the Ensembl 115 annotation.
-`with_extra_orfs(evidence="ms")` adds the bundled human ORFs that have
+`proteome()` takes every reference CDS protein in the Ensembl 115 annotation.
+Use `isoforms="longest"` for one reference protein per gene, selected by length.
+`nc_orfs="ms"` adds the bundled human ORFs that have
 supporting mass-spectrometry (MS) peptides: 2,181 of the 2,186 are encoded by
 an Ensembl 115 transcript, which must contain the ORF's exact spliced coding
 path. The other 5 are listed in `proteome.excluded` with the reason. Each entry
@@ -46,15 +49,15 @@ minute, and `proteome.save(path)` keeps it as a checksummed snapshot.
 The same proteome from the command line:
 
 ```sh
-orfdata proteome --species human --release 115 --output human-e115.fasta
+orfdata proteome --species human --release 115 --nc-orfs ms --output human-e115.fasta
 ```
 
 ## Choose the evidence
 
-| `evidence=` | Selects ORFs with | Human ORFs | Encoded in Ensembl 115 |
+| `nc_orfs=` | Selects ORFs with | Human ORFs | Encoded in Ensembl 115 |
 | --- | --- | ---: | ---: |
 | `"ribosome"` or `"riboseq"` | Ribosome profiling (all bundled ORFs) | 7,264 | 7,239 |
-| `"ms"` (default) | Any supporting MS peptide | 2,186 | 2,181 |
+| `"ms"` (or `True`) | Any supporting MS peptide | 2,186 | 2,181 |
 | `"immunopeptidomics"` | Peptides eluted from MHC (in human, HLA) molecules | 1,881 | 1,879 |
 | `"proteomics"` | Peptides from digested cellular proteins | 73 | 72 |
 | `"all"` | Every catalogue ORF | 7,264 | 7,239 |
@@ -62,7 +65,7 @@ orfdata proteome --species human --release 115 --output human-e115.fasta
 Most MS support in the bundled human catalogue comes from
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
 does not establish a stable protein. See
-[building a reference proteome](proteome.md#choose-the-evidence) for
+[building a reference proteome](proteome.md#add-ncorfs-with-selected-evidence) for
 stricter filters and what each level means.
 
 ## Look up the ORFs on a transcript
@@ -106,7 +109,7 @@ transcript alongside them.
 Other assemblies use a catalogue lifted to them once `orfdata chains download`
 has fetched the chain files (with `--accept-terms` for UCSC's non-commercial
 mouse chains); see [every assembly of a species](catalogs.md#every-assembly-of-a-species).
-`with_extra_orfs()` raises for a species without a catalogue, or whose
+`with_nc_orfs()` raises for a species without a catalogue, or whose
 catalogue or chains aren't installed yet, rather than returning an
 annotated-only proteome. Human ORF evidence is never transferred
 to another species. The same API also serves
