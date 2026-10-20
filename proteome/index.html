@@ -370,10 +370,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#annotated-proteins" class="md-nav__link">
+  <a href="#reference-cds-proteins" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Annotated proteins
+        Reference CDS proteins
       
     </span>
   </a>
@@ -455,6 +455,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Viral proteomes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ncorfs-with-or-without-an-installed-transcriptome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ncORFs with or without an installed transcriptome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1373,10 +1390,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#annotated-proteins" class="md-nav__link">
+  <a href="#reference-cds-proteins" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Annotated proteins
+        Reference CDS proteins
       
     </span>
   </a>
@@ -1458,6 +1475,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Viral proteomes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ncorfs-with-or-without-an-installed-transcriptome" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ncORFs with or without an installed transcriptome
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1554,29 +1588,33 @@
 
 
 <h1 id="build-a-reference-proteome">Build a reference proteome<a class="headerlink" href="#build-a-reference-proteome" title="Permanent link">&para;</a></h1>
-<p>A <code>Proteome</code> holds protein sequences for one species and genome. It is built
-in explicit layers: annotated proteins first, then optional extra ORFs and
-viral proteins. Each method returns a new proteome. <code>proteome.layers</code> records
+<p>A <code>ReferenceTranscriptome</code> names the transcript models in one installed
+PyEnsembl annotation. A <code>Proteome</code> selects protein products from those models:
+translations of the reference CDSs, catalogue ncORFs bound to the transcripts,
+and optionally viral proteins associated with the host. All three sources have
+annotations; <code>reference_cds</code> identifies the proteins induced by the reference
+annotation's CDS features. Each method returns a new proteome. <code>proteome.layers</code> records
 every addition with its role (<code>host</code>, <code>viral</code> or <code>filter</code>), source, selection
 and counts, and each entry lists every transcript that encodes it.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyensembl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnsemblRelease</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span><span class="p">,</span> <span class="n">ReferenceTranscriptome</span>
 
 <span class="n">genome</span> <span class="o">=</span> <span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">)</span>  <span class="c1"># Installed with pyensembl install.</span>
-<span class="n">annotated</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">from_genome</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">evidence</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
+<span class="n">transcriptome</span> <span class="o">=</span> <span class="n">ReferenceTranscriptome</span><span class="o">.</span><span class="n">from_genome</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">extra_orf_evidence</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
+<span class="n">reference_cds</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">host_sources</span><span class="o">=</span><span class="s2">"reference_cds"</span><span class="p">)</span>
 </code></pre></div>
 <p>The examples on this page continue that Python session.</p>
-<h2 id="annotated-proteins">Annotated proteins<a class="headerlink" href="#annotated-proteins" title="Permanent link">&para;</a></h2>
-<p><code>Proteome.from_genome(genome)</code> takes every transcript with an annotated protein
-sequence. For Ensembl this matches the annotation's protein FASTA: Ensembl 115
+<h2 id="reference-cds-proteins">Reference CDS proteins<a class="headerlink" href="#reference-cds-proteins" title="Permanent link">&para;</a></h2>
+<p><code>Proteome.from_genome(genome)</code> and <code>host_sources="reference_cds"</code> take every
+transcript with a reference CDS protein sequence. For Ensembl this matches the annotation's protein FASTA: Ensembl 115
 has 245,535 human proteins with 160,811 distinct sequences. They include
 nonsense-mediated-decay and immunoglobulin/T-cell receptor segment translations,
 and 11,540 proteins on patch, haplotype and unplaced contigs. Each entry
 records its accession, gene, transcript, contig and transcript biotype, so you
 can restrict them explicitly:</p>
 <div class="highlight"><pre><span></span><code><span class="n">primary</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">23</span><span class="p">)}</span> <span class="o">|</span> <span class="p">{</span><span class="s2">"X"</span><span class="p">,</span> <span class="s2">"Y"</span><span class="p">,</span> <span class="s2">"MT"</span><span class="p">}</span>
-<span class="n">chromosomes</span> <span class="o">=</span> <span class="n">annotated</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">contig</span> <span class="ow">in</span> <span class="n">primary</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">"primary chromosomes"</span><span class="p">)</span>
+<span class="n">chromosomes</span> <span class="o">=</span> <span class="n">reference_cds</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">e</span><span class="o">.</span><span class="n">contig</span> <span class="ow">in</span> <span class="n">primary</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">"primary chromosomes"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">))</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code>233995
@@ -1688,11 +1726,11 @@ kinds directly, for combinations such as <code>("proteomics", "ms_unclassified")
 <code>&amp;</code> requires both rules and <code>|</code> accepts either:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">MS</span><span class="p">,</span> <span class="n">RiboSeq</span>
 
-<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>                        <span class="c1"># replicated Ribo-seq</span>
-<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># Ribo-seq and MS</span>
-<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># either</span>
-<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">(</span><span class="n">mhc</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>                     <span class="c1"># Ribo-seq and an MHC ligand</span>
-<span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">MS</span><span class="p">(</span><span class="n">methods</span><span class="o">=</span><span class="p">(</span><span class="s2">"proteomics"</span><span class="p">,</span> <span class="s2">"ms_unclassified"</span><span class="p">)))</span>  <span class="c1"># not immunopeptidomics-only</span>
+<span class="n">reference_cds</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>                        <span class="c1"># replicated Ribo-seq</span>
+<span class="n">reference_cds</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># Ribo-seq and MS</span>
+<span class="n">reference_cds</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">|</span> <span class="n">MS</span><span class="p">())</span>                 <span class="c1"># either</span>
+<span class="n">reference_cds</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">RiboSeq</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">(</span><span class="n">mhc</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>                     <span class="c1"># Ribo-seq and an MHC ligand</span>
+<span class="n">reference_cds</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="n">MS</span><span class="p">(</span><span class="n">methods</span><span class="o">=</span><span class="p">(</span><span class="s2">"proteomics"</span><span class="p">,</span> <span class="s2">"ms_unclassified"</span><span class="p">)))</span>  <span class="c1"># not immunopeptidomics-only</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1801,7 +1839,7 @@ assembly is rejected.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_catalog</span><span class="p">,</span> <span class="n">merge_catalogs</span>
 
 <span class="n">catalogs</span> <span class="o">=</span> <span class="p">[</span><span class="n">load_catalog</span><span class="p">(),</span> <span class="n">load_catalog</span><span class="p">(</span><span class="s2">"study-orfs.json.gz"</span><span class="p">)]</span>  <span class="c1"># The bundled one and a local file.</span>
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">annotated</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="s2">"ms"</span><span class="p">,</span> <span class="n">catalog</span><span class="o">=</span><span class="n">catalogs</span><span class="p">)</span>  <span class="c1"># Or merge_catalogs(catalogs).</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">reference_cds</span><span class="o">.</span><span class="n">with_extra_orfs</span><span class="p">(</span><span class="s2">"ms"</span><span class="p">,</span> <span class="n">catalog</span><span class="o">=</span><span class="n">catalogs</span><span class="p">)</span>  <span class="c1"># Or merge_catalogs(catalogs).</span>
 </code></pre></div>
 <p>Records from different catalogues are one ORF when they have the same spliced
 coding path, protein, genetic code and start codon; declaring a start the code
@@ -1834,9 +1872,32 @@ other.</p>
 <code>orfdata-catalog:2026-10-11.1+orfdata-catalog:study-v1</code>. On the command line, repeat
 <code>--catalog FILE</code>.</p>
 <h2 id="viral-proteomes">Viral proteomes<a class="headerlink" href="#viral-proteomes" title="Permanent link">&para;</a></h2>
-<p>A <code>ViralProteome</code> holds one virus's proteins, its NCBI taxon, and the NCBI
-species taxa recorded as its hosts, with the source of that host range. It can
-only be added to a proteome for one of those hosts:</p>
+<p>Build one proteome with reference CDS proteins, every catalogue ORF that binds to
+the genome, and every distinct bundled viral protein set recorded for this host:</p>
+<div class="highlight"><pre><span></span><code><span class="n">combined</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">extra_orf_evidence</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span> <span class="n">viral</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>
+<span class="n">proteins_by_id</span> <span class="o">=</span> <span class="n">combined</span><span class="o">.</span><span class="n">by_accession</span><span class="p">()</span>
+<span class="n">combined</span><span class="o">.</span><span class="n">write_fasta</span><span class="p">(</span><span class="s2">"human-all-proteins.fasta"</span><span class="p">)</span>
+<span class="n">combined</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"human-all-proteins.proteome.json.gz"</span><span class="p">)</span>
+</code></pre></div>
+<p><code>extra_orf_evidence</code> filters only the ncORF catalogue added to the reference CDS
+proteome. <code>"all"</code> selects every catalogue ORF; those that do not bind to this
+genome are reported in <code>combined.excluded</code>. Reference CDS and viral proteins are
+unaffected by that option. The older <code>evidence=</code> spelling still works.</p>
+<p><code>proteins_by_id</code> maps each unique protein accession to a <code>ProteomeEntry</code> with
+its sequence, <code>protein_source</code>, taxon and source. <code>by_sequence()</code> groups entries with
+identical amino-acid sequences while retaining their separate identities.
+<code>viral="all"</code> chooses the native RefSeq placement when bundled references
+contain the same protein set at different DNA coordinate placements, as with
+HPV16. To request only one virus, use <code>viral="HPV16"</code> or an exact reference ID
+such as <code>viral="NC_001526.4"</code>. <code>with_viral("HPV16")</code> accepts the same choices,
+as well as a <code>ViralReference</code> returned by <code>viral_reference(...)</code>. Viral proteins
+are opt-in: a recorded host association does not mean every sample contains
+that virus. A virus without a recorded association to the host is rejected.
+Requesting <code>viral="all"</code> for a host with no bundled viral references raises
+instead of silently returning a host-only proteome.</p>
+<p><code>ViralProteome</code> is the input adapter for a protein FASTA supplied outside the
+bundled references. It holds that virus's NCBI taxon, recorded host taxa and
+host-range source, so the same host check applies:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViralProteome</span>
 
 <span class="c1"># Template: substitute your FASTA, the virus taxon and your host-range source.</span>
@@ -1846,10 +1907,52 @@ only be added to a proteome for one of those hosts:</p>
 <span class="p">)</span>
 <span class="n">with_virus</span> <span class="o">=</span> <span class="n">proteome</span><span class="o">.</span><span class="n">with_viral</span><span class="p">(</span><span class="n">hpv16</span><span class="p">)</span>
 </code></pre></div>
-<p>Adding it to a mouse or dog proteome raises an error. orfdata does not infer
-hosts from a virus's name or from related viruses. Viral entries keep the
-virus's taxon, and their layer has the role <code>viral</code>; <code>proteome.host()</code> returns
-the host's own proteins without them, for example as a self reference.</p>
+<p><code>viral=[first, second]</code> accepts several specific inputs. The tests exercise
+this with two synthetic viruses; HPV16 is the only released biological viral
+reference at present.</p>
+<p>All three protein kinds use the same <code>ProteomeEntry</code> and appear in the same
+<code>Proteome</code>. The distinct <code>ViralProteome</code> type describes an external input,
+not a second output collection. Viral entries keep the virus's taxon and a
+source label such as <code>viral:HPV16@NC_001526.4</code>; their layer records the source
+accession, checksum and host-range source. <code>proteome.host()</code> returns the host's
+own proteins without viral entries, for example as a self reference.</p>
+<h3 id="ncorfs-with-or-without-an-installed-transcriptome">ncORFs with or without an installed transcriptome<a class="headerlink" href="#ncorfs-with-or-without-an-installed-transcriptome" title="Permanent link">&para;</a></h3>
+<p>If you have a PyEnsembl reference transcriptome, build a proteome containing
+only the ncORFs that bind to its transcripts:</p>
+<div class="highlight"><pre><span></span><code><span class="n">nc_only</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">host_sources</span><span class="o">=</span><span class="s2">"nc_orfs"</span><span class="p">,</span> <span class="n">extra_orf_evidence</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>
+<span class="n">nc_only</span><span class="o">.</span><span class="n">write_fasta</span><span class="p">(</span><span class="s2">"reference-ncorfs.fasta"</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--host-sources<span class="w"> </span>nc-orfs<span class="w"> </span>--extra-orf-evidence<span class="w"> </span>all<span class="w"> </span>--output<span class="w"> </span>reference-ncorfs.fasta
+</code></pre></div>
+<p>This uses the installed annotation and transcript sequences to check exact
+ORF paths. It does not read or include reference CDS proteins, and it does not
+need a whole-genome DNA FASTA. ORFs that do not bind are reported in
+<code>nc_only.excluded</code>.</p>
+<p>If no transcriptome is installed, use the source ncORF catalogue directly;
+its source transcript and assembly identifiers remain attached, but no
+binding to a particular reference transcriptome is claimed:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_catalog</span>
+
+<span class="n">catalog</span> <span class="o">=</span> <span class="n">load_catalog</span><span class="p">(</span><span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">)</span>
+<span class="n">nc_orfs_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">record</span><span class="o">.</span><span class="n">orf_id</span><span class="p">:</span> <span class="n">record</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">evidence</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--evidence<span class="w"> </span>all<span class="w"> </span>--format<span class="w"> </span>fasta<span class="w"> </span>&gt;<span class="w"> </span>nc-orfs.fasta
+</code></pre></div>
+<p>For viral source records alone, use <code>viral_references(host="human")</code> and each
+reference's <code>.products</code> and <code>.orfs</code>; this also needs no PyEnsembl genome:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">viral_reference</span>
+
+<span class="n">ref</span> <span class="o">=</span> <span class="n">viral_reference</span><span class="p">(</span><span class="s2">"NC_001526.4"</span><span class="p">)</span>
+<span class="n">viral_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">orf</span><span class="o">.</span><span class="n">orf_id</span><span class="p">:</span> <span class="n">orf</span> <span class="k">for</span> <span class="n">orf</span> <span class="ow">in</span> <span class="n">ref</span><span class="o">.</span><span class="n">orfs</span><span class="p">}</span>
+</code></pre></div>
+<p>The released collection currently has HPV16 in two DNA coordinate placements.
+Specifying <code>viral=</code> in <code>Proteome.build</code> only applies when building a host
+proteome. With an installed genome, filter entries by <code>kind</code> to obtain only
+<code>extra_orf</code> or only <code>viral</code> proteins; the result retains <code>write_fasta</code>,
+<code>by_accession</code>, and <code>save</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">nc_only</span> <span class="o">=</span> <span class="n">combined</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">entry</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"extra_orf"</span><span class="p">)</span>
+<span class="n">virus_only</span> <span class="o">=</span> <span class="n">combined</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">entry</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"viral"</span><span class="p">)</span>
+</code></pre></div>
 <h2 id="save-and-reload">Save and reload<a class="headerlink" href="#save-and-reload" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">identity</span> <span class="o">=</span> <span class="n">proteome</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>
 <span class="n">same</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>  <span class="c1"># Offline: no genome or catalogue needed.</span>
@@ -1866,13 +1969,16 @@ matching host layer and layers declaring another reference. The human Ensembl
 and loads in about 11 s. Saving is deterministic: the same proteome gives the
 same bytes.</p>
 <h3 id="cache-a-built-proteome">Cache a built proteome<a class="headerlink" href="#cache-a-built-proteome" title="Permanent link">&para;</a></h3>
-<p><code>Proteome.build</code> makes the usual proteome in one call: <code>from_genome</code>, then
-<code>with_extra_orfs(evidence, catalog=...)</code> and <code>with_viral</code> for each of <code>viral=</code>.
+<p><code>ReferenceTranscriptome.proteome</code> delegates to <code>Proteome.build</code>, which makes
+the usual proteome in one call: <code>from_genome</code>, then
+<code>with_extra_orfs(extra_orf_evidence, catalog=...)</code> and <code>with_viral</code> for each of <code>viral=</code>.
+<code>viral=</code> accepts <code>"all"</code>/<code>True</code>, a virus type, exact bundled reference ID,
+<code>ViralReference</code>, external <code>ViralProteome</code>, or a sequence of specific inputs.
 With <code>cache=True</code> it keeps the result in the OpenVax DataCache root
 (<code>ORFDATA_CACHE</code>, <code>OPENVAX_DATA_CACHE</code>, or <code>cache_root=</code>). <code>cache_root=</code> is
 also where the species' registered catalogue is looked for, with or without
 <code>cache=True</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">(),</span> <span class="n">cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="n">proteome</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">extra_orf_evidence</span><span class="o">=</span><span class="n">RiboSeq</span><span class="p">(</span><span class="n">min_studies</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">MS</span><span class="p">(),</span> <span class="n">cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <p>The cache key is the reference, evidence rule, catalogue and viral
 identities, snapshot schema and orfdata version. A later identical build,
@@ -1884,7 +1990,9 @@ annotation files of a custom genome are fingerprinted by size and SHA-256, so
 genomes that share names never share an entry. Entries of a cached or loaded
 proteome don't carry <code>orf</code>; use <code>extra_orfs(genome)</code> for ORF objects. Each cached build sits next
 to a <code>recipe.json</code> recording its key and identity. Nothing is downloaded, and
-<code>extra_orfs=False</code> builds the annotated proteome alone.</p>
+<code>host_sources="reference_cds"</code> builds only the reference CDS proteins, and
+<code>host_sources=()</code> with <code>viral=</code> builds a viral-only proteome for this host.
+The older <code>annotated=</code> and <code>extra_orfs=</code> flags on <code>Proteome.build</code> still work.</p>
 <h2 id="lower-level-orf-lookup">Lower-level ORF lookup<a class="headerlink" href="#lower-level-orf-lookup" title="Permanent link">&para;</a></h2>
 <p><code>extra_orfs(genome, evidence=None)</code> returns every catalogue ORF on every
 transcript carrying it, as <a href="../reference/#objects-and-queries"><code>TranscriptORF</code></a>
@@ -1899,11 +2007,15 @@ on that transcript, and <code>overlapping(...)</code> finds ORFs at a genomic in
 <p><code>write_fasta</code> writes 60-column sequences. The first word of each header is the
 accession: an Ensembl protein ID with its version, a source ORF ID or a viral
 protein ID. Fields that apply follow as <code>key=value</code>:</p>
-<div class="highlight"><pre><span></span><code>&gt;ENSP00000269305.4 kind=annotated taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
-&gt;c7riboseqorf56 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,immunopeptidomics transcripts=18
-&gt;c10riboseqorf115 kind=extra_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,immunopeptidomics source_transcript=ENST00000277895 transcripts=10
+<div class="highlight"><pre><span></span><code>&gt;ENSP00000269305.4 kind=annotated protein_source=reference_cds taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
+&gt;c7riboseqorf56 kind=extra_orf protein_source=nc_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,immunopeptidomics transcripts=18
+&gt;c10riboseqorf115 kind=extra_orf protein_source=nc_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,immunopeptidomics source_transcript=ENST00000277895 transcripts=10
+&gt;NP_041327.2 kind=viral protein_source=viral taxon=333760 source=viral:HPV16@NC_001526.4 gene_name=E1 product=replication_protein_E1
 </code></pre></div>
-<p>For extra ORFs, the accession is the source ORF ID, <code>transcript</code> is its host
+<p><code>protein_source</code> uses <code>reference_cds</code>, <code>nc_orf</code> or <code>viral</code>. The older <code>kind</code>
+field remains in FASTA and snapshots for compatibility; <code>annotated</code> there
+means a reference CDS protein and <code>extra_orf</code> means a catalogue ncORF.
+For extra ORFs, the accession is the source ORF ID, <code>transcript</code> is its host
 transcript in this genome, and <code>gene</code>, <code>gene_name</code> and <code>transcript_biotype</code>
 describe that transcript in this genome. <code>orf_type</code> is the source's ORF
 category, kept verbatim; see <a href="../reference/#orf-categories">ORF categories</a>.
@@ -1912,16 +2024,31 @@ category, kept verbatim; see <a href="../reference/#orf-categories">ORF categori
 <code>source_transcript</code> names the source's transcript when the header's transcript
 is a different one, as for ABLIM1 above, whose source transcript is gone. See
 also <a href="../reference/#identifiers">identifiers</a>. The snapshot keeps every
-occurrence; the FASTA header shows the first.</p>
+occurrence; the FASTA header shows the first. For bundled viral proteins,
+<code>source</code> names the exact viral reference; <code>gene_name</code> and <code>product</code> are the
+source's protein labels. A supplied protein FASTA may lack those annotations.
+The FASTA header shows one host transcript and a count when several encode an
+entry; it does not list every occurrence, evidence record, source checksum or
+host-range attribution. Save a <code>.proteome.json.gz</code> snapshot alongside FASTA
+when those details must be recovered exactly.</p>
 <h2 id="command-line">Command line<a class="headerlink" href="#command-line" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--output<span class="w"> </span>human-e115.fasta
 orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--extra-orf-evidence<span class="w"> </span>all
-orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>mouse<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--extra-orf-evidence<span class="w"> </span>none
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--extra-orf-evidence<span class="w"> </span>all<span class="w"> </span>--viral<span class="w"> </span>all<span class="w"> </span>--output<span class="w"> </span>human-all-proteins.fasta<span class="w"> </span>--snapshot<span class="w"> </span>human-all-proteins.proteome.json.gz
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--viral<span class="w"> </span>HPV16<span class="w"> </span>--output<span class="w"> </span>human-hpv16.fasta
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>mouse<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--host-sources<span class="w"> </span>reference-cds
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--host-sources<span class="w"> </span>nc-orfs<span class="w"> </span>--extra-orf-evidence<span class="w"> </span>all
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--host-sources<span class="w"> </span>none<span class="w"> </span>--viral<span class="w"> </span>HPV16
 </code></pre></div>
 <p><code>--extra-orf-evidence</code> accepts the evidence names above, <code>all</code> for every
-catalogue ORF, or <code>none</code> for annotated proteins only. <code>--require-unique</code>,
+catalogue ORF, or <code>none</code> for reference CDS proteins only. <code>--require-unique</code>,
 <code>--require-reviewed</code>, <code>--require-resolved</code> and <code>--catalog FILE</code> match the Python
-options. Rules have their own options:</p>
+options.</p>
+<p><code>--viral all</code> adds each distinct bundled viral protein set associated with
+the host, choosing its native placement when equivalent references exist.
+Use <code>--viral</code> with an exact reference ID to choose a placement; repeat the
+option for several specific viruses.</p>
+<p>Evidence rules have their own options:</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">2</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span>
 orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ribo-seq-studies<span class="w"> </span><span class="m">3</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">2</span><span class="w"> </span>--either
 orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--min-ms-peptides<span class="w"> </span><span class="m">1</span><span class="w"> </span>--ms-methods<span class="w"> </span>proteomics,ms_unclassified

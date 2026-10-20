@@ -1058,6 +1058,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DLA class I ligands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#irt-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iRT standards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runs-missing-from-the-deposit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs missing from the deposit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1240,6 +1268,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DLA class I ligands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#irt-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iRT standards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runs-missing-from-the-deposit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs missing from the deposit
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1361,17 +1417,69 @@ two searches of one sample is one observation, not two. The HCT 116 lines were
 searched against human SwissProt, and their peptides are human proteins, so
 they sit in the dataset's separate human reference context.</p>
 <p>Database search finds 11,363 distinct dog peptides in the UniProt searches and
-12,949 across all four databases. For the cell lines, the counts of unique
-8–14-mers from database search (591 for DLA-88*003:02, 1,465 for *501:01) match
-the article's. The article's tumour counts come from its curated supplementary
+12,948 across all four databases, leaving out iRT standards (below). For the
+cell lines, the counts of unique 8–14-mers from database search (591 for
+DLA-88*003:02, 1,465 for *501:01) match the article's. The article's tumour counts come from its curated supplementary
 lists, which aren't imported (they are CC BY-NC-ND), and match no single table.</p>
 <p>Every row keeps its PEAKS identification type in provenance as <code>found_by</code>:
 <code>DB Search</code>, <code>DeepNovo</code> (de novo sequencing) or <code>Homolog</code> (SPIDER homology
 search). Only database-search peptides are guaranteed to occur in a listed
-protein, so filter on it for a conservative ligand list. Rows of the Biognosys
-iRT retention-time standards and their fragments (2,242) are marked
-<code>irt_standard</code> in every search. That includes the merged database, which lacks
-the kit, so PEAKS named dog proteins for them there.</p>
+protein, so filter on it for a conservative ligand list.</p>
+<h3 id="irt-standards">iRT standards<a class="headerlink" href="#irt-standards" title="Permanent link">&para;</a></h3>
+<p>Every run was spiked with Biognosys iRT retention-time peptides, and their
+spectra appear in every search, often in disguise. 10,629 rows are marked
+<code>irt_standard</code>, and <code>irt_rule</code> names the first rule that marked them:</p>
+<table>
+<thead>
+<tr>
+<th><code>irt_rule</code></th>
+<th>Rows</th>
+<th>Marks a row that</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>irt_sequence</code></td>
+<td>1,179</td>
+<td>is a kit peptide or a fragment of one, with I and L equal</td>
+</tr>
+<tr>
+<td><code>kit_only</code></td>
+<td>1,097</td>
+<td>PEAKS attributes only to the kit (homology reads of kit peptides)</td>
+</tr>
+<tr>
+<td><code>irt_precursor</code></td>
+<td>1,276</td>
+<td>sits at the precursor of a row marked by the first two rules in the same immunoprecipitation: same charge, m/z within 20 ppm, retention time within a minute</td>
+</tr>
+<tr>
+<td><code>de_novo_irt</code></td>
+<td>7,077</td>
+<td>is a de novo sequence that PEAKS matches to the kit, or that shares 6 or more consecutive residues with a kit peptide</td>
+</tr>
+</tbody>
+</table>
+<p>The precursor rule applies to de novo and homology rows. It applies to
+database-search rows only in the merged database, which lacks the kit, and only
+when no search with the kit found the same peptide. Elsewhere PEAKS could
+choose the kit peptide and didn't.</p>
+<ul>
+<li><strong>De novo rows:</strong> half of them (8,448 of 16,830) are iRT reads, often a
+  kit peptide with residues added or changed (<code>KATLFLQFGAQGSPFLK</code>). Don't take
+  an unmarked de novo sequence for a new ligand without checking its spectrum.</li>
+<li><strong>Homology rows:</strong> 8 are marked by precursor, such as <code>TGFLLDPVLNR</code>, which
+  has exactly the mass of <code>GTFIIDPGGVIR</code> and co-elutes with it.</li>
+<li><strong>Database-search rows:</strong> apart from 1,075 kit peptides, only one is marked:
+  <code>IFLAFQQKAYVAP</code>, matched to dog proteins in the merged database at the
+  precursor of <code>LFLQFGAAGSPFLK</code>.</li>
+<li><strong>Chance matches:</strong> few. Shuffled kit sequences share 6 residues with about
+  3 de novo rows, and shifting the kit's retention times by 10–20 minutes puts
+  about 14 de novo rows at a kit precursor.</li>
+</ul>
+<p>A mapping is <code>unmapped</code> when any of its rows is marked. Release 2026-10-16.1
+(importer <code>kaabinejadian-dla-v1</code>) marked only exact kit sequences and kit-only
+attributions (2,242 rows), so it missed the disguised reads.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatasetRegistry</span><span class="p">,</span> <span class="n">ScopedTarget</span>
 
 <span class="n">registry</span> <span class="o">=</span> <span class="n">DatasetRegistry</span><span class="p">()</span>
@@ -1387,6 +1495,10 @@ the kit, so PEAKS named dog proteins for them there.</p>
 <span class="n">lola</span> <span class="o">=</span> <span class="p">{</span><span class="n">m</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">identifier</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">ligands</span><span class="o">.</span><span class="n">measurements</span><span class="p">(</span>
             <span class="n">reference</span><span class="o">=</span><span class="n">dog</span><span class="p">,</span> <span class="n">assay_id</span><span class="o">=</span><span class="s2">"Lola-BB76:UniProt9615"</span><span class="p">,</span> <span class="n">quantity</span><span class="o">=</span><span class="s2">"spectrum_count"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">provenance</span><span class="p">[</span><span class="s2">"found_by"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"DB Search"</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">m</span><span class="o">.</span><span class="n">provenance</span><span class="p">[</span><span class="s2">"irt_standard"</span><span class="p">]}</span>
+
+<span class="c1"># Why a row is marked as an iRT standard.</span>
+<span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">ligands</span><span class="o">.</span><span class="n">measurements</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">peptide</span><span class="p">,</span> <span class="n">quantity</span><span class="o">=</span><span class="s2">"spectrum_count"</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">assay_id</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">provenance</span><span class="p">[</span><span class="s2">"irt_standard"</span><span class="p">],</span> <span class="n">m</span><span class="o">.</span><span class="n">provenance</span><span class="p">[</span><span class="s2">"irt_rule"</span><span class="p">])</span>
 </code></pre></div>
 <p>Targets are unmodified sequences; each row's modified form (for example
 <code>M(+15.99)</code>) is in its provenance as <code>peptide</code>. <code>mappings()</code> lists, for each
@@ -1395,10 +1507,24 @@ search and identification type, the proteins PEAKS reported for a peptide:
 <code>unmapped</code> with a reason for iRT standards and de novo sequences, whose listed
 proteins stay in the mapping's evidence. The search FASTAs weren't deposited,
 so no accession can be checked against a sequence.</p>
-<p>Each row also records <code>raw_file_deposited</code>. For 1,695 rows the best spectrum
-comes from a run missing from the deposit: Lily's second injection (22-1107,
-299 rows) and the first DLA-88*012:01 runs (20240929, 1,396 rows). The raw
-files of 163828A's H58A run have no deposited results and aren't included.</p>
+<h3 id="runs-missing-from-the-deposit">Runs missing from the deposit<a class="headerlink" href="#runs-missing-from-the-deposit" title="Permanent link">&para;</a></h3>
+<p>PEAKS reports, for each peptide, the raw file and scan of its best spectrum,
+and sums its spectra and area over all of the sample's runs. The authors' PEAKS
+projects for two immunoprecipitations included runs that the deposit lacks, so
+each row records <code>raw_file_deposited</code>. For 1,695 rows the best spectrum comes
+from a missing run:</p>
+<ul>
+<li><strong>Lily (H58A):</strong> a second injection of the remaining eluate, 22-1107 "1uL
+  Residue" (fractions 12–30), 299 rows. The first injection, 22-1104, is
+  deposited.</li>
+<li><strong>DLA-88*012:01:</strong> the 20240929 acquisition (fractions 14–25), 1,396 of its
+  1,635 rows. The line's archive holds only its 20241013 runs (fractions 26–28
+  in triplicate, and blanks), though the SDRF names the 20240929 run as the
+  assay.</li>
+</ul>
+<p>Those identifications come from the authors' tables, but their spectra can't
+be checked against the deposit. The raw files of 163828A's H58A run have no
+deposited results and aren't included.</p>
 <h2 id="canine-peptideatlas">Canine PeptideAtlas<a class="headerlink" href="#canine-peptideatlas" title="Permanent link">&para;</a></h2>
 <p>The <a href="https://peptideatlas.org/builds/canine/">Canine PeptideAtlas</a>
 (<a href="https://doi.org/10.1038/s41597-026-06647-z">Kusebauch et al. 2026</a>)
