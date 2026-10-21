@@ -1,5 +1,9 @@
 # Unreleased
 
+- Resolve PyEnsembl 2.31 reference strains using `species_taxon_id`, while
+  preserving registered organism identities (including domestic dog), explicit
+  strain checks and compatibility with earlier PyEnsembl releases.
+
 - Replace the proteome constructor's separate ncORF and catalogue arguments with
   `nc_orf_sources`: a string or list of dataset names/evidence presets, a composed
   evidence rule, or loaded `ORFCatalog` objects. Empty selections add no ncORFs;
