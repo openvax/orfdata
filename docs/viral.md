@@ -1,5 +1,39 @@
 # Viral coding references
 
+## GDC panel coverage
+
+The GDC reference is named `GRCh38.d1.vd1`. Its [published viral
+inventory](https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt)
+contains 200 rows: 189 HPV entries and 11 other viral entries. The published
+file name spells `GRCh83`; ORFdata retains that exact source URL and checksum.
+Use the bundled, offline coverage ledger to see both available and missing
+coding references:
+
+```python
+from orfdata import viral_panel_coverage
+
+coverage = viral_panel_coverage()
+available = [row for row in coverage if row.status == "source_cds_bundled"]
+missing = [row for row in coverage if row.status == "not_bundled"]
+print(len(coverage), len(available), len(missing))  # 200 1 199
+print(available[0].abbreviation, available[0].bundled_reference_id)
+# HPV16 GRCh38.d1.vd1:HPV16
+```
+
+Each row preserves the GDC inventory's names, abbreviations, source accession
+fields and PaVE notes as published. Those accession fields may lack version
+numbers; a versioned, sequence-qualified coding reference is reported only
+after it is bundled. `source_cds_bundled` means that source CDS models are
+available; it does not claim that all reported ORFs or full transcripts are
+covered. `not_bundled` describes ORFdata coverage, not the availability of
+annotations elsewhere. The ledger contains metadata only and does not make
+unavailable entries selectable through `viral_references()` or `viral="all"`.
+
+The [viral panel roadmap](https://github.com/openvax/orfdata/issues/91) tracks
+the remaining imports. GDC panel membership and a documented host association
+are separate facts; `viral="all"` still selects bundled references associated
+with the proteome's host.
+
 Browse the packaged viral references by host, convenience group and virus type,
 then load their source-annotated coding paths without fetching the genome:
 

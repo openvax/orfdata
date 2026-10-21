@@ -1,4 +1,21 @@
-# HPV16 coding reference
+# Viral reference data
+
+The metadata-only GDC `GRCh38.d1.vd1` coverage ledger is built from the
+[published viral inventory](https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt).
+The source file's SHA256 is
+`f221e758f47e4784714b4a89198b89536ddacdc905da9c778a6802d3e1e51c56`.
+The unusual `GRCh83` spelling belongs to GDC's file name; the reference name
+is `GRCh38.d1.vd1`. Rebuild the ledger with:
+
+```sh
+python tools/build_gdc_viral_coverage.py GRCh83.d1.vd1_virus_decoy.txt \
+  orfdata/data/viral/gdc-grch38-d1-vd1-coverage.tsv
+```
+
+This inventory supplies names and source accession leads, not qualified coding
+annotations. Only the released HPV16 GDC placement is marked as bundled.
+
+## HPV16 coding reference
 
 Source: NCBI RefSeq **NC_001526.4**, complete GenBank record:
 https://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?id=NC_001526.4&db=nuccore&report=genbank&retmode=text
