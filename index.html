@@ -308,10 +308,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-the-evidence" class="md-nav__link">
+  <a href="#choose-ncorf-sources" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose the evidence
+        Choose ncORF sources
       
     </span>
   </a>
@@ -1298,10 +1298,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choose-the-evidence" class="md-nav__link">
+  <a href="#choose-ncorf-sources" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Choose the evidence
+        Choose ncORF sources
       
     </span>
   </a>
@@ -1370,8 +1370,9 @@ source, category and evidence. Viral proteomes can be added explicitly, but only
 is a recorded host of the virus.</p>
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>
 <p>Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'orfdata[pyensembl]'</span>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'orfdata[pyensembl,data,build-data]'</span>
 pyensembl<span class="w"> </span>install<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--species<span class="w"> </span>human
+orfdata<span class="w"> </span>setup<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--catalogs<span class="w"> </span>all<span class="w">  </span><span class="c1"># For ncORF presets and "all"</span>
 </code></pre></div>
 <p>The second command downloads and indexes Ensembl 115 for human GRCh38. orfdata
 never downloads or indexes annotation data itself; it reports what is missing.</p>
@@ -1382,7 +1383,7 @@ never downloads or indexes annotation data itself; it reports what is missing.</
 <span class="n">genome</span> <span class="o">=</span> <span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">)</span>
 <span class="n">transcriptome</span> <span class="o">=</span> <span class="n">ReferenceTranscriptome</span><span class="o">.</span><span class="n">from_genome</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>
 <span class="n">reference</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">()</span>  <span class="c1"># Reference CDS proteins only.</span>
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">nc_orfs</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span><span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
 <span class="n">proteome</span><span class="o">.</span><span class="n">write_fasta</span><span class="p">(</span><span class="s2">"human-e115.fasta"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">proteome</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">"kinds"</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">proteome</span><span class="o">.</span><span class="n">excluded</span><span class="p">))</span>
 </code></pre></div>
@@ -1390,20 +1391,20 @@ never downloads or indexes annotation data itself; it reports what is missing.</
 </code></pre></div>
 <p><code>proteome()</code> takes every reference CDS protein in the Ensembl 115 annotation.
 Use <code>isoforms="longest"</code> for one reference protein per gene, selected by length.
-<code>nc_orfs="ms"</code> adds the bundled human ORFs that have
+<code>nc_orf_sources="ms"</code> adds the bundled human ORFs that have
 supporting mass-spectrometry (MS) peptides: 2,181 of the 2,186 are encoded by
 an Ensembl 115 transcript, which must contain the ORF's exact spliced coding
 path. The other 5 are listed in <code>proteome.excluded</code> with the reason. Each entry
 lists every transcript encoding it. Building this human proteome takes under a
 minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.</p>
 <p>The same proteome from the command line:</p>
-<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--nc-orfs<span class="w"> </span>ms<span class="w"> </span>--output<span class="w"> </span>human-e115.fasta
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--nc-orf-sources<span class="w"> </span>ms<span class="w"> </span>--output<span class="w"> </span>human-e115.fasta
 </code></pre></div>
-<h2 id="choose-the-evidence">Choose the evidence<a class="headerlink" href="#choose-the-evidence" title="Permanent link">&para;</a></h2>
+<h2 id="choose-ncorf-sources">Choose ncORF sources<a class="headerlink" href="#choose-ncorf-sources" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th><code>nc_orfs=</code></th>
+<th><code>nc_orf_sources=</code></th>
 <th>Selects ORFs with</th>
 <th style="text-align: right;">Human ORFs</th>
 <th style="text-align: right;">Encoded in Ensembl 115</th>
@@ -1412,12 +1413,12 @@ minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.
 <tbody>
 <tr>
 <td><code>"ribosome"</code> or <code>"riboseq"</code></td>
-<td>Ribosome profiling (all bundled ORFs)</td>
-<td style="text-align: right;">7,264</td>
-<td style="text-align: right;">7,239</td>
+<td>Ribosome profiling across all datasets</td>
+<td style="text-align: right;">57,607</td>
+<td style="text-align: right;">57,485</td>
 </tr>
 <tr>
-<td><code>"ms"</code> (or <code>True</code>)</td>
+<td><code>"ms"</code></td>
 <td>Any supporting MS peptide</td>
 <td style="text-align: right;">2,186</td>
 <td style="text-align: right;">2,181</td>
@@ -1436,12 +1437,17 @@ minute, and <code>proteome.save(path)</code> keeps it as a checksummed snapshot.
 </tr>
 <tr>
 <td><code>"all"</code></td>
-<td>Every catalogue ORF</td>
-<td style="text-align: right;">7,264</td>
-<td style="text-align: right;">7,239</td>
+<td>Every compatible dataset</td>
+<td style="text-align: right;">57,607</td>
+<td style="text-align: right;">57,485</td>
 </tr>
 </tbody>
 </table>
+<p>Use <code>nc_orf_sources="bundled"</code> for the bundled dataset alone, or a list of
+names such as <code>["bundled", "ncorf-mammals-human"]</code> for a subset. Evidence presets
+and <code>"all"</code> require all compatible datasets; install human's optional datasets
+once with <code>orfdata setup --species human --catalogs all</code>. Missing resources
+produce installation instructions. The defaults still add no ncORFs.</p>
 <p>Most MS support in the bundled human catalogue comes from
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
 does not establish a stable protein. See
@@ -1480,7 +1486,7 @@ transcript alongside them.</p>
 <tr>
 <td>Human</td>
 <td>From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation</td>
-<td>7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and <a href="catalogs/#t2t-chm13">T2T-CHM13</a>. 57,607 with the <a href="catalogs/#human-ribo-seq-orfs-optional">optional Ribo-seq catalogues</a> of Chang et al. and Yang et al. (<code>catalogs="all"</code>)</td>
+<td>7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and <a href="catalogs/#t2t-chm13">T2T-CHM13</a>. 57,607 with the <a href="catalogs/#human-ribo-seq-orfs-optional">optional Ribo-seq catalogues</a> of Chang et al. and Yang et al. (<code>nc_orf_sources="all"</code>)</td>
 </tr>
 <tr>
 <td>Mouse</td>

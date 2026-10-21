@@ -1525,8 +1525,9 @@ downloads. <code>CatalogRegistry</code> manages additional versioned ORF catalog
 the same explicit discovery, download, build and offline-open workflow as
 <code>DatasetRegistry</code>. Once a species' catalogue in the packaged registry is
 downloaded or built, <code>load_catalog(species=...)</code> opens it, so <code>extra_orfs(genome)</code> and
-<code>Proteome.with_nc_orfs()</code> use it without <code>catalog=</code>; pass
-<code>load_catalog(species=..., registry=...)</code> as <code>catalog=</code> for your own registry.
+<code>Proteome.with_nc_orfs("all")</code> use registered sources. Pass
+<code>load_catalog(species=..., registry=...)</code> as <code>nc_orf_sources=</code> to a proteome
+constructor for your own registry.
 Every catalogue for the species is used, merged: those on the requested
 assembly as they are, and those on another assembly the pinned chains reach,
 lifted (<a href="#every-assembly-of-a-species">details</a>). Each catalogue contributes its
@@ -1737,12 +1738,12 @@ build the catalogue from OpenProt's own downloads (3.4 MB, about 5 seconds),
 each checked against its pinned size and SHA-256, with <code>orfdata setup --species
 mouse</code> along with the Ribo-seq catalogue above, or alone with <code>orfdata catalogs
 build openprot-mouse</code>. <code>load_catalog(species="mouse")</code>, <code>extra_orfs(genome)</code>
-and <code>Proteome.build(genome, nc_orfs="ms")</code> use all three mouse catalogues, for any GRCm39
+and <code>Proteome.build(genome, nc_orf_sources="ms")</code> use all three mouse catalogues, for any GRCm39
 Ensembl release, so all must be installed. To add only MS-supported ORFs:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyensembl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnsemblRelease</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span>
 
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"mouse"</span><span class="p">),</span> <span class="n">nc_orfs</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">115</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">"mouse"</span><span class="p">),</span> <span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">proteome</span><span class="o">.</span><span class="n">summary</span><span class="p">()[</span><span class="s2">"kinds"</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">proteome</span><span class="o">.</span><span class="n">excluded</span><span class="p">))</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code>{'annotated': 66668, 'extra_orf': 2854} 122
@@ -1795,7 +1796,7 @@ Ensembl release, so all must be installed. To add only MS-supported ORFs:</p>
 characterization of alternative proteins.</em> Nucleic Acids Res. 2024;52(D1):D522–D528,
 <a href="https://doi.org/10.1093/nar/gkad1050">doi:10.1093/nar/gkad1050</a>.</p>
 <h2 id="human-ribo-seq-orfs-optional">Human Ribo-seq ORFs (optional)<a class="headerlink" href="#human-ribo-seq-orfs-optional" title="Permanent link">&para;</a></h2>
-<p>Human's default is the bundled GENCODE catalogue: 7,264 ORFs, offline, with
+<p><code>load_catalog(species="human")</code> defaults to the bundled GENCODE catalogue: 7,264 ORFs, offline, with
 no setup. Two larger Ribo-seq catalogues are optional, used only when asked
 for, because they would change every human selection and make loading human
 ORFs about 60 times slower:</p>
@@ -1805,10 +1806,12 @@ ORFs about 60 times slower:</p>
 
 <span class="n">catalog</span> <span class="o">=</span> <span class="n">load_catalog</span><span class="p">(</span><span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>   <span class="c1"># Bundled, Chang et al. and Yang et al., merged</span>
 <span class="n">orfs</span> <span class="o">=</span> <span class="n">extra_orfs</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="s2">"ribosome"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">nc_orfs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"all"</span><span class="p">)</span>
 <span class="n">load_catalog</span><span class="p">(</span><span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">,</span> <span class="n">catalogs</span><span class="o">=</span><span class="p">[</span><span class="s2">"ncorf-mammals-human"</span><span class="p">])</span>   <span class="c1"># Just one</span>
 </code></pre></div>
-<p><code>orfdata proteome --catalogs all</code> does the same. They merge after the bundled
+<p><code>orfdata proteome --nc-orf-sources all</code> selects every dataset. Evidence presets
+such as <code>nc_orf_sources="ms"</code> also query every compatible dataset; use
+<code>nc_orf_sources="bundled"</code> for only the bundled set. They merge after the bundled
 catalogue, Chang et al.'s before Yang et al.'s as for mouse, so an ORF in
 several keeps the first one's ID. Together they give 57,607 ORFs, of which 57,485 place on Ensembl 115; that
 takes about a minute and 3.2 GB of memory, against about a second for the
@@ -1922,14 +1925,14 @@ abundance and peptides are available as <a href="../measurements/">measurements<
 <h2 id="every-assembly-of-a-species">Every assembly of a species<a class="headerlink" href="#every-assembly-of-a-species" title="Permanent link">&para;</a></h2>
 <p>Catalogues on another assembly of the species are lifted automatically. Download
 the pinned chain files once, and <code>load_catalog</code>, <code>extra_orfs(genome)</code> and
-<code>Proteome.build(genome, nc_orfs="ms")</code> work on every human and mouse assembly PyEnsembl
+<code>Proteome.build(genome, nc_orf_sources="ms")</code> work on every human and mouse assembly PyEnsembl
 knows:</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>chains<span class="w"> </span>download<span class="w"> </span>--accept-terms<span class="w">   </span><span class="c1"># Every pinned chain; without --accept-terms, UCSC's mouse ones are skipped</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyensembl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnsemblRelease</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span>
 
-<span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">75</span><span class="p">),</span> <span class="n">nc_orfs</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>  <span class="c1"># GRCh37: the GRCh38 catalogue, lifted</span>
+<span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">EnsemblRelease</span><span class="p">(</span><span class="mi">75</span><span class="p">),</span> <span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>  <span class="c1"># GRCh37: the GRCh38 catalogue, lifted</span>
 </code></pre></div>
 <p>With evidence <code>None</code> (every catalogue ORF), each assembly gets:</p>
 <table>
@@ -2011,7 +2014,7 @@ silently dropped.</p>
   each with the command that installs it; nothing is downloaded while
   loading. <code>cache_root</code> (or <code>--cache-root</code>) is where both are looked for.</li>
 <li><strong>Your own catalogues.</strong> <code>extra_orfs(genome, catalog=...)</code> and
-  <code>Proteome.build(genome, nc_orfs="ms", catalog=...)</code> lift a catalogue, or each of a list,
+  <code>Proteome.build(genome, nc_orf_sources=catalog)</code> lift a catalogue, or each of a list,
   that is on another assembly of the species through the same chains.</li>
 <li><strong>Other names.</strong> Assemblies go by Ensembl's names. <code>hg38</code>, <code>GRCh38.p14</code>,
   <code>mm39</code> and the like get an error that names the assembly to use, and a
@@ -2036,12 +2039,12 @@ file's size and SHA-256 (it needs <code>orfdata[pyensembl]</code>). The T2T Cons
 GRCh38-to-CHM13 chain is public domain (CC0):</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>genomes<span class="w"> </span>install<span class="w"> </span>t2t-chm13<span class="w">          </span><span class="c1"># 143 MB of Ensembl files, plus about 1.1 GB of PyEnsembl index</span>
 orfdata<span class="w"> </span>chains<span class="w"> </span>download<span class="w"> </span>GRCh38<span class="w"> </span>T2T-CHM13v2.0
-orfdata<span class="w"> </span>proteome<span class="w"> </span>--genome<span class="w"> </span>t2t-chm13<span class="w"> </span>--nc-orfs<span class="w"> </span>ms<span class="w"> </span>--output<span class="w"> </span>chm13.fasta
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--genome<span class="w"> </span>t2t-chm13<span class="w"> </span>--nc-orf-sources<span class="w"> </span>ms<span class="w"> </span>--output<span class="w"> </span>chm13.fasta
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span><span class="p">,</span> <span class="n">load_genome</span>
 
 <span class="n">genome</span> <span class="o">=</span> <span class="n">load_genome</span><span class="p">(</span><span class="s2">"t2t-chm13"</span><span class="p">)</span>          <span class="c1"># A PyEnsembl Genome named T2T-CHM13v2.0, offline</span>
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">nc_orfs</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>  <span class="c1"># 104,957 reference proteins + 2,039 MS-supported ORFs</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>  <span class="c1"># 104,957 reference proteins + 2,039 MS-supported ORFs</span>
 </code></pre></div>
 <p>The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
 6,767 place on CHM13 transcripts with their exact coding path and protein.
@@ -2070,7 +2073,7 @@ chains cover or with your own chain file:</p>
 <p><code>orfdata lift</code> writes the lifted catalogue and prints a summary to standard
 error. <code>--catalog FILE</code> lifts a local catalogue instead, and <code>--chain FILE</code> uses
 your own chain file instead of a downloaded pin. Pass the result back with
-<code>--catalog</code>, for example to <code>orfdata proteome</code>; JSON and TSV exports include
+<code>--nc-orf-sources</code> for <code>orfdata proteome</code>; JSON and TSV exports include
 each record's original and the chain. Downloading chains needs the
 <code>orfdata[data]</code> extra, which adds DataCache. In Python:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">download_chain</span><span class="p">,</span> <span class="n">lift_catalog</span><span class="p">,</span> <span class="n">load_catalog</span><span class="p">,</span> <span class="n">load_chain</span>
