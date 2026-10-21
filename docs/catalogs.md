@@ -5,8 +5,9 @@ downloads. `CatalogRegistry` manages additional versioned ORF catalogues, with
 the same explicit discovery, download, build and offline-open workflow as
 `DatasetRegistry`. Once a species' catalogue in the packaged registry is
 downloaded or built, `load_catalog(species=...)` opens it, so `extra_orfs(genome)` and
-`Proteome.with_nc_orfs()` use it without `catalog=`; pass
-`load_catalog(species=..., registry=...)` as `catalog=` for your own registry.
+`Proteome.with_nc_orfs("all")` use registered sources. Pass
+`load_catalog(species=..., registry=...)` as `nc_orf_sources=` to a proteome
+constructor for your own registry.
 Every catalogue for the species is used, merged: those on the requested
 assembly as they are, and those on another assembly the pinned chains reach,
 lifted ([details](#every-assembly-of-a-species)). Each catalogue contributes its
@@ -181,14 +182,14 @@ build the catalogue from OpenProt's own downloads (3.4 MB, about 5 seconds),
 each checked against its pinned size and SHA-256, with `orfdata setup --species
 mouse` along with the Ribo-seq catalogue above, or alone with `orfdata catalogs
 build openprot-mouse`. `load_catalog(species="mouse")`, `extra_orfs(genome)`
-and `Proteome.build(genome, nc_orfs="ms")` use all three mouse catalogues, for any GRCm39
+and `Proteome.build(genome, nc_orf_sources="ms")` use all three mouse catalogues, for any GRCm39
 Ensembl release, so all must be installed. To add only MS-supported ORFs:
 
 ```python
 from pyensembl import EnsemblRelease
 from orfdata import Proteome
 
-proteome = Proteome.build(EnsemblRelease(115, species="mouse"), nc_orfs="ms")
+proteome = Proteome.build(EnsemblRelease(115, species="mouse"), nc_orf_sources="ms")
 print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
 
@@ -245,7 +246,7 @@ characterization of alternative proteins.* Nucleic Acids Res. 2024;52(D1):D522â€
 
 ## Human Ribo-seq ORFs (optional)
 
-Human's default is the bundled GENCODE catalogue: 7,264 ORFs, offline, with
+`load_catalog(species="human")` defaults to the bundled GENCODE catalogue: 7,264 ORFs, offline, with
 no setup. Two larger Ribo-seq catalogues are optional, used only when asked
 for, because they would change every human selection and make loading human
 ORFs about 60 times slower:
@@ -259,11 +260,13 @@ from orfdata import Proteome, extra_orfs, load_catalog
 
 catalog = load_catalog(species="human", catalogs="all")   # Bundled, Chang et al. and Yang et al., merged
 orfs = extra_orfs(genome, "ribosome", catalogs="all")
-proteome = Proteome.build(genome, nc_orfs="all", catalogs="all")
+proteome = Proteome.build(genome, nc_orf_sources="all")
 load_catalog(species="human", catalogs=["ncorf-mammals-human"])   # Just one
 ```
 
-`orfdata proteome --catalogs all` does the same. They merge after the bundled
+`orfdata proteome --nc-orf-sources all` selects every dataset. Evidence presets
+such as `nc_orf_sources="ms"` also query every compatible dataset; use
+`nc_orf_sources="bundled"` for only the bundled set. They merge after the bundled
 catalogue, Chang et al.'s before Yang et al.'s as for mouse, so an ORF in
 several keeps the first one's ID. Together they give 57,607 ORFs, of which 57,485 place on Ensembl 115; that
 takes about a minute and 3.2 GB of memory, against about a second for the
@@ -356,7 +359,7 @@ abundance and peptides are available as [measurements](measurements.md).
 
 Catalogues on another assembly of the species are lifted automatically. Download
 the pinned chain files once, and `load_catalog`, `extra_orfs(genome)` and
-`Proteome.build(genome, nc_orfs="ms")` work on every human and mouse assembly PyEnsembl
+`Proteome.build(genome, nc_orf_sources="ms")` work on every human and mouse assembly PyEnsembl
 knows:
 
 ```sh
@@ -367,7 +370,7 @@ orfdata chains download --accept-terms   # Every pinned chain; without --accept-
 from pyensembl import EnsemblRelease
 from orfdata import Proteome
 
-Proteome.build(EnsemblRelease(75), nc_orfs="ms")  # GRCh37: the GRCh38 catalogue, lifted
+Proteome.build(EnsemblRelease(75), nc_orf_sources="ms")  # GRCh37: the GRCh38 catalogue, lifted
 ```
 
 With evidence `None` (every catalogue ORF), each assembly gets:
@@ -399,7 +402,7 @@ silently dropped.
   each with the command that installs it; nothing is downloaded while
   loading. `cache_root` (or `--cache-root`) is where both are looked for.
 - **Your own catalogues.** `extra_orfs(genome, catalog=...)` and
-  `Proteome.build(genome, nc_orfs="ms", catalog=...)` lift a catalogue, or each of a list,
+  `Proteome.build(genome, nc_orf_sources=catalog)` lift a catalogue, or each of a list,
   that is on another assembly of the species through the same chains.
 - **Other names.** Assemblies go by Ensembl's names. `hg38`, `GRCh38.p14`,
   `mm39` and the like get an error that names the assembly to use, and a
@@ -427,14 +430,14 @@ GRCh38-to-CHM13 chain is public domain (CC0):
 ```sh
 orfdata genomes install t2t-chm13          # 143 MB of Ensembl files, plus about 1.1 GB of PyEnsembl index
 orfdata chains download GRCh38 T2T-CHM13v2.0
-orfdata proteome --genome t2t-chm13 --nc-orfs ms --output chm13.fasta
+orfdata proteome --genome t2t-chm13 --nc-orf-sources ms --output chm13.fasta
 ```
 
 ```python
 from orfdata import Proteome, load_genome
 
 genome = load_genome("t2t-chm13")          # A PyEnsembl Genome named T2T-CHM13v2.0, offline
-proteome = Proteome.build(genome, nc_orfs="ms")  # 104,957 reference proteins + 2,039 MS-supported ORFs
+proteome = Proteome.build(genome, nc_orf_sources="ms")  # 104,957 reference proteins + 2,039 MS-supported ORFs
 ```
 
 The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
@@ -471,7 +474,7 @@ orfdata lift --species human --to GRCh37 --output orfs-grch37.json.gz
 `orfdata lift` writes the lifted catalogue and prints a summary to standard
 error. `--catalog FILE` lifts a local catalogue instead, and `--chain FILE` uses
 your own chain file instead of a downloaded pin. Pass the result back with
-`--catalog`, for example to `orfdata proteome`; JSON and TSV exports include
+`--nc-orf-sources` for `orfdata proteome`; JSON and TSV exports include
 each record's original and the chain. Downloading chains needs the
 `orfdata[data]` extra, which adds DataCache. In Python:
 

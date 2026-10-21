@@ -1,3 +1,19 @@
+# Unreleased
+
+- Replace the proteome constructor's separate ncORF and catalogue arguments with
+  `nc_orf_sources`: a string or list of dataset names/evidence presets, a composed
+  evidence rule, or loaded `ORFCatalog` objects. Empty selections add no ncORFs;
+  lists take the union. `"all"` and evidence presets search every compatible
+  registered dataset, including optional ones. Missing resources fail with
+  installation instructions instead of silently omitting datasets.
+- `ReferenceTranscriptome.proteome`, `Proteome.build`, and `with_nc_orfs` share
+  this selection. `nc_orfs`, `catalog`, `catalogs` and legacy constructor
+  selectors are removed. Use `nc_orf_sources=catalog` for loaded data. The
+  lower-level `with_extra_orfs(evidence, catalog=...)` API remains available.
+- The proteome CLI uses `--nc-orf-sources` for presets, dataset names and local
+  files; repeat it or use comma-separated strings. Separate catalogue and
+  evidence flags are removed from this command.
+
 # 0.35.0
 
 Proteomes can now select reference CDS proteins, transcript-bound ncORFs and

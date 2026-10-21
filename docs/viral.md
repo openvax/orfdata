@@ -37,7 +37,7 @@ from pyensembl import EnsemblRelease
 from orfdata import Proteome
 
 genome = EnsemblRelease(115, species="human")  # Already installed with pyensembl install.
-combined = Proteome.build(genome, nc_orfs="all", viral="HPV16")
+combined = Proteome.build(genome, nc_orf_sources="all", viral="HPV16")
 combined.write_fasta("human-hpv16.fasta")
 ```
 

@@ -21,7 +21,7 @@ from typing import Mapping, Optional
 
 from . import _structure
 from .catalog import ORFCatalog, load_catalog, merge_catalogs
-from .evidence import EvidenceRule, evidence_rule
+from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
 from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_assembly, _versioned
 from .reference import ReferenceContext
 from .viral import ViralProduct, ViralReference, viral_reference, viral_references
@@ -32,7 +32,6 @@ _SNAPSHOT = "proteome.json.gz"
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
 # Evidence labels reported for an included ORF. Snapshots from before 0.28.0 keep "shotgun" and "mhc".
 _EVIDENCE_LABELS = ("ribosome", "proteomics", "immunopeptidomics", "ms_unclassified")
-_UNSET = object()
 
 
 def _evidence_labels(evidence):
@@ -636,20 +635,23 @@ class ReferenceTranscriptome:
     def from_genome(cls, genome, *, context=None):
         return cls(genome, ReferenceContext.from_genome(genome, context=context))
 
-    def proteome(self, *, reference_cds=True, isoforms="all", nc_orfs=False, viral=(),
-                 derived=(), catalog=None, catalogs=None, cache=False, cache_root=None):
-        """Reference CDS proteins, with optional ncORF and viral additions.
+    def proteome(self, *, reference_cds=True, isoforms="all", nc_orf_sources=(), viral=(),
+                 derived=(), cache=False, cache_root=None):
+        """Reference CDS proteins with optional ncORF and viral sources.
 
         ``isoforms="all"`` keeps every reference protein; ``"longest"`` keeps
-        one per gene, chosen by protein length. ``nc_orfs=False`` omits ncORFs;
-        use ``"ms"``, ``"ribosome"``, ``"all"`` or an evidence rule to add them
-        (True means ``"ms"``). ``viral`` selects host-associated viruses by name.
-        Set ``reference_cds=False`` to build from only the requested additions.
-        See :meth:`Proteome.build` for catalogue, cache and derived inputs.
+        one per gene, chosen by protein length. ``nc_orf_sources`` accepts a
+        string or list: ``"all"`` for every compatible ncORF dataset,
+        ``"ms"`` or ``"ribosome"`` for evidence-supported records across those
+        datasets, or dataset names such as ``"bundled"``. Lists take the union.
+        Evidence rules and loaded ORFCatalog objects are also accepted.
+        The default empty selection adds no ncORFs. ``viral`` selects
+        host-associated viruses by name. Set ``reference_cds=False`` to build
+        from only the requested additions. See :meth:`Proteome.build`.
         """
         return Proteome.build(
-            self, reference_cds=reference_cds, isoforms=isoforms, nc_orfs=nc_orfs, viral=viral,
-            derived=derived, catalog=catalog, catalogs=catalogs, cache=cache, cache_root=cache_root)
+            self, reference_cds=reference_cds, isoforms=isoforms, nc_orf_sources=nc_orf_sources,
+            viral=viral, derived=derived, cache=cache, cache_root=cache_root)
 
 
 class Proteome:
@@ -767,82 +769,40 @@ class Proteome:
                               reference=reference, expected_sha256=expected_sha256)
 
     @classmethod
-    def build(cls, genome, evidence=_UNSET, *, nc_orf_evidence=_UNSET, extra_orf_evidence=_UNSET,
-              catalog=None, viral=(), derived=(), isoforms="all",
-              annotated=_UNSET, extra_orfs=_UNSET, reference_cds=_UNSET, nc_orfs=_UNSET,
-              host_sources=None, context=None, cache=False, cache_root=None, catalogs=None):
-        """Reference CDS proteins with opt-in additions, optionally kept in a cache.
+    def build(cls, genome, *, reference_cds=True, isoforms="all", nc_orf_sources=(),
+              viral=(), derived=(), context=None, cache=False, cache_root=None):
+        """Reference CDS proteins with optional sources, optionally cached.
 
-        ``genome`` may be a PyEnsembl genome or a :class:`ReferenceTranscriptome`.
-        ``reference_cds=True`` includes reference CDS proteins; ``isoforms="all"``
-        keeps all of them and ``"longest"`` selects one per gene as described
-        in :meth:`from_genome`. ``nc_orfs=False`` is the default. Pass ``"ms"``,
-        ``"ribosome"``, ``"all"``, an evidence rule, or a collection of evidence
-        names to add catalogue ncORFs; True means ``"ms"``. Set
-        ``reference_cds=False, nc_orfs="all"`` for only ncORFs bound to these
-        transcripts, without reading the reference protein FASTA. Then add
-        :meth:`with_viral` for each of ``viral``. Pass ``viral="all"`` (or True)
-        for each distinct bundled viral protein set recorded for this host, a
-        virus type or exact reference ID for one, or a ViralReference directly.
-        Viral additions are opt-in. The older ``annotated``, ``extra_orfs`` and
-        ``host_sources`` selectors remain accepted here. An explicit legacy
-        ``evidence``, ``nc_orf_evidence`` or ``extra_orf_evidence`` also opts into
-        ncORFs unless a source selector disables them; do not combine an
-        evidence alias with a rule in ``nc_orfs``.
-        ``derived`` accepts supplied :class:`DerivedProtein` records linked to
-        parent entries and sample changes; it does not infer their sequences or
-        expression. ``catalogs`` chooses among the
-        species' catalogues as in :func:`load_catalog`. With ``cache=True`` the result
-        is saved under the OpenVax DataCache root (``ORFDATA_CACHE``,
-        ``OPENVAX_DATA_CACHE`` or ``cache_root``), keyed by the reference, isoform
-        selection, evidence rule, catalogue and viral identities, the snapshot schema
-        and the orfdata version. A later identical build loads that verified
-        snapshot instead of rebuilding. ``cache_root`` is also where the
-        species' registered catalogue is looked for. Nothing is downloaded.
+        ``genome`` may be a PyEnsembl genome or ReferenceTranscriptome.
+        ``reference_cds=True`` includes reference CDS proteins; ``isoforms``
+        is ``"all"`` or ``"longest"`` (one protein per gene by length).
+
+        ``nc_orf_sources`` is the sole ncORF selector: an empty list/tuple or
+        None adds none; ``"all"`` includes every compatible registered dataset
+        including optional ones; ``"ms"``, ``"ribosome"`` and other evidence
+        names select supported records across all those datasets. A dataset
+        name (``"bundled"`` for the bundled GENCODE data), an EvidenceRule or
+        a loaded ORFCatalog is also a source. Lists combine selections by
+        union, so ["bundled", "ms"] adds every bundled record and MS-supported
+        records from other datasets. Set ``reference_cds=False`` for ncORFs
+        alone. Required datasets and liftover chains must already be installed;
+        missing resources raise with installation instructions.
+
+        ``viral`` accepts host-associated virus names, reference IDs or objects;
+        ``"all"`` selects every distinct bundled viral protein set for this host.
+        ``derived`` accepts supplied DerivedProtein records linked to parents.
+        ``cache=True`` saves a verified snapshot keyed by the reference, source
+        content, selection, isoforms and package versions. ``cache_root`` also
+        controls where datasets and chains are found. Nothing is downloaded.
         """
         if isinstance(genome, ReferenceTranscriptome):
             if context is not None and context != genome.reference:
                 raise ValueError("context differs from the reference transcriptome")
             context, genome = genome.reference, genome.genome
-        if host_sources is not None:
-            if any(value is not _UNSET for value in (annotated, extra_orfs, reference_cds, nc_orfs)):
-                raise ValueError("Pass host_sources or reference_cds/nc_orfs, not both")
-            selected = {host_sources} if isinstance(host_sources, str) else set(host_sources)
-            unknown = selected - {"reference_cds", "nc_orfs"}
-            if unknown:
-                raise ValueError(f"Unknown host protein sources: {', '.join(sorted(unknown))}")
-            annotated, extra_orfs = "reference_cds" in selected, "nc_orfs" in selected
-        else:
-            if reference_cds is not _UNSET and annotated is not _UNSET:
-                raise ValueError("Pass reference_cds or annotated, not both")
-            if nc_orfs is not _UNSET and extra_orfs is not _UNSET:
-                raise ValueError("Pass nc_orfs or extra_orfs, not both")
-        if annotated is not _UNSET and type(annotated) is not bool:
-            raise TypeError("annotated must be a boolean")
-        if extra_orfs is not _UNSET and type(extra_orfs) is not bool:
-            raise TypeError("extra_orfs must be a boolean")
-        reference_cds = (True if annotated is _UNSET else annotated) if reference_cds is _UNSET else reference_cds
-        nc_orfs = extra_orfs if nc_orfs is _UNSET else nc_orfs
         if type(reference_cds) is not bool:
             raise TypeError("reference_cds must be a boolean")
         if isoforms not in ("all", "longest"):
             raise ValueError("isoforms must be 'all' or 'longest'")
-        aliases = [value for value in (nc_orf_evidence, extra_orf_evidence, evidence) if value is not _UNSET]
-        if len(aliases) > 1:
-            raise ValueError("Pass nc_orf_evidence, extra_orf_evidence or evidence, not more than one")
-        if nc_orfs is _UNSET:
-            nc_orfs = bool(aliases)
-        if aliases:
-            if nc_orfs is False:
-                raise ValueError("ncORF evidence requires nc_orfs=True")
-            if nc_orfs is not True:
-                raise ValueError("Pass nc_orfs or a legacy evidence argument, not both")
-        include_nc_orfs = nc_orfs is not False
-        rule = None
-        if include_nc_orfs:
-            if nc_orfs is not True and not isinstance(nc_orfs, (str, EvidenceRule, list, tuple, set, frozenset)):
-                raise TypeError("nc_orfs must be False, True, an evidence name, rule or collection of names")
-            rule = evidence_rule(aliases[0] if aliases else "ms" if nc_orfs is True else nc_orfs)
         _require_installed(genome)
         reference = ReferenceContext.from_genome(genome, context=context)
         viral = _viral_inputs(viral, reference.taxon_id)
@@ -850,17 +810,15 @@ class Proteome:
                    else tuple(derived))
         if any(not isinstance(item, DerivedProtein) for item in derived):
             raise TypeError("derived must contain DerivedProtein records")
-        if not include_nc_orfs and (catalog is not None or catalogs is not None):
-            raise ValueError("A catalogue needs nc_orfs=True or an evidence selection, e.g. nc_orfs='ms'")
-        if include_nc_orfs:
-            catalog = _species_catalog(reference, catalog, catalogs, cache_root)
+        catalog, rule = _nc_orf_inputs(reference, nc_orf_sources, cache_root)
+        include_nc_orfs = catalog is not None
         built = []
 
         def make():
             proteome = (cls.from_genome(genome, isoforms=isoforms, context=context) if reference_cds else
                         cls(reference, (), genome=genome))
             if include_nc_orfs:
-                proteome = proteome.with_nc_orfs(rule, catalog=catalog)
+                proteome = proteome.with_extra_orfs(rule, catalog=catalog)
             for virus in viral:
                 proteome = proteome.with_viral(virus)
             if derived:
@@ -889,8 +847,23 @@ class Proteome:
         proteome.__dict__["_identity"] = loaded.identity
         return proteome
 
-    def with_nc_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
-                     require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
+    def with_nc_orfs(self, nc_orf_sources="all", *, cache_root=None):
+        """Add ncORFs selected by names, evidence presets/rules or loaded datasets.
+
+        Uses the same selector as :meth:`build`; a list takes the union and
+        an empty selection returns this proteome unchanged.
+        """
+        if nc_orf_sources is None or isinstance(nc_orf_sources, (list, tuple)) and not nc_orf_sources:
+            return self
+        if self.genome is None:
+            raise ValueError("ncORFs bind to a genome; build this proteome with from_genome")
+        catalog, rule = _nc_orf_inputs(self.reference, nc_orf_sources, cache_root)
+        if catalog is None:
+            return self
+        return self.with_extra_orfs(rule, catalog=catalog, cache_root=cache_root)
+
+    def with_extra_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
+                        require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
         ``evidence`` is a rule, an evidence method name, a list of names
@@ -943,11 +916,11 @@ class Proteome:
                      unlifted=len(found.unlifted),
                      not_on_source_transcript=sum(e.source_binding is not None for e in added),
                      identical_to_annotated=sum(e.sequence in annotated for e in added))
+        selection = found.catalog._metadata.get("proteome_selection")
+        if selection is not None:
+            layer["selection"] = selection
         return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
                         self.excluded + found.excluded + found.unlifted, self.genome)
-
-    # Compatibility with the earlier name for catalogue ncORF additions.
-    with_extra_orfs = with_nc_orfs
 
     def with_viral(self, viral):
         """Add a bundled virus by reference ID/type/object, or a FASTA-derived ViralProteome."""
@@ -1130,6 +1103,81 @@ class Proteome:
                 handle.write(entry.sequence[i : i + width] + "\n")
 
 
+def _nc_orf_inputs(reference, sources, cache_root):
+    """Resolve one source selection to a catalogue and an optional evidence rule."""
+    if sources is None:
+        return None, None
+    if isinstance(sources, (str, EvidenceRule, ORFCatalog)):
+        sources = (sources,)
+    if not isinstance(sources, (list, tuple)):
+        raise TypeError("nc_orf_sources must be a string, a list, an evidence rule or an ORFCatalog")
+    names, rules, supplied = [], [], []
+    all_sources = False
+    for source in sources:
+        if isinstance(source, ORFCatalog):
+            supplied.append(source)
+        elif isinstance(source, EvidenceRule):
+            rules.append(source)
+        elif isinstance(source, str) and source:
+            if source == "all":
+                all_sources = True
+            elif source in EVIDENCE_METHODS or source in SYNONYMS:
+                rules.append(evidence_rule(source))
+            else:
+                names.append(source)
+        else:
+            raise TypeError("Each nc_orf_sources item must be a nonempty string, evidence rule or ORFCatalog")
+    if not sources:
+        return None, None
+    # Resolve explicit names even beside 'all', so a misspelling never disappears.
+    named = _species_catalog(reference, None, sorted(set(names)), cache_root) if names else None
+    rule = evidence_rule(rules) if rules else None
+    registered = (_species_catalog(reference, None, "all", cache_root)
+                  if all_sources or rules else named)
+    catalogs = ([registered] if registered is not None else []) + supplied
+    unique = {}
+    for catalog in catalogs:
+        unique.setdefault(_catalog_identity(catalog)["sha256"], catalog)
+    catalog = _onto(list(unique.values()), reference, cache_root)
+    if all_sources or not rules:
+        return catalog, None
+    if not names and not supplied:
+        return catalog, rule
+
+    # A list is a union: named/supplied sources contribute all their records;
+    # the rule selects from the remaining sources after evidence is merged.
+    from .liftover import unlifted
+
+    complete_sources = set()
+    for selected in ([named] if named is not None else []) + supplied:
+        records = list(selected.records) + [r for r, _, _ in unlifted(selected.metadata)]
+        complete_sources.update(m.source for r in records for m in (r.members or (r,)))
+
+    def accepts(record):
+        return (any(m.source in complete_sources for m in (record.members or (record,)))
+                or rule.matches(record.evidence))
+
+    metadata = catalog.metadata
+    metadata["proteome_selection"] = dict(
+        complete_sources=sorted(complete_sources), evidence=rule.to_dict(),
+        input=_catalog_identity(catalog))
+    _filter_unlifted(metadata, accepts)
+    return ORFCatalog([r for r in catalog.records if accepts(r)], metadata), None
+
+
+def _filter_unlifted(metadata, accepts):
+    """Apply a union selection to failed lifts as well as placed records."""
+    from .catalog import _record
+
+    lift = metadata.get("liftover")
+    if lift:
+        _filter_unlifted(lift["input"]["metadata"], accepts)
+        lift["unmapped"] = [entry for entry in lift["unmapped"]
+                            if entry.get("record") is None or accepts(_record(entry["record"], False))]
+    for merged in metadata.get("merged_from", ()):
+        _filter_unlifted(merged["metadata"], accepts)
+
+
 def _species_catalog(reference, catalog, catalogs, cache_root):
     """An explicit catalogue placed onto the reference's assembly, or the species' catalogues ``catalogs`` names."""
     if catalog is not None:
@@ -1176,7 +1224,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     assembly of the species is lifted to this one through the pinned chains.
     ``cache_root`` is where catalogues and chain files are looked for. ``evidence`` is a rule such as
     ``RiboSeq(min_studies=2) & MS()`` or an evidence method name, as in
-    :meth:`Proteome.with_nc_orfs`; ``None`` selects every catalogue ORF.
+    :meth:`Proteome.with_extra_orfs`; ``None`` selects every catalogue ORF.
     """
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)
