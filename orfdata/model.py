@@ -269,9 +269,6 @@ class TranscriptORF:
         species = getattr(genome, "species", None)
         if species is not None and _species(species) != _species(model.species):
             raise ValueError("ORF transcript species mismatch")
-        taxon = getattr(genome, "taxon_id", None)
-        if taxon is not None and taxon != model.taxon_id:
-            raise ValueError("ORF transcript taxon mismatch")
         resolved_context = ReferenceContext.from_genome(genome, context=context)
         if resolved_context.taxon_id != model.taxon_id:
             raise ValueError("ORF transcript taxon mismatch")

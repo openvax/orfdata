@@ -57,6 +57,25 @@ def species_name_for_taxon(taxon_id):
     return names[0] if names is not None else None
 
 
+def _genome_species_taxon(genome):
+    """PyEnsembl 2.31 distinguishes a reference taxon from its species ancestor."""
+    taxon = getattr(genome, "taxon_id", None)
+    ancestor = getattr(genome, "species_taxon_id", None)
+    if ancestor is None:
+        return taxon
+    # Keep supported organism taxa such as domestic dog (9615); its species
+    # ancestor is wolf (9612). A reference-specific yeast strain, in contrast,
+    # uses the species ancestor for ORFdata's species-level comparisons.
+    if taxon in _SPECIES:
+        if ancestor in _SPECIES and ancestor != taxon:
+            raise ValueError("Genome reference taxon and species taxonomy disagree")
+        return taxon
+    parent = _STRAINS.get(taxon, (None,))[0]
+    if parent is not None and parent != ancestor:
+        raise ValueError("Genome reference taxon and species taxonomy disagree")
+    return ancestor
+
+
 def _positive(value, name):
     if type(value) is not int or value < 1:
         raise ValueError(f"{name} must be a positive NCBI taxonomy ID")
@@ -159,7 +178,7 @@ class ReferenceContext:
         inferred merely from a colliding assembly or transcript identifier.
         """
         species = getattr(genome, "species", None)
-        taxon = getattr(genome, "taxon_id", None)
+        taxon = _genome_species_taxon(genome)
         named_taxon = species_taxon(species) if species is not None else None
         if taxon is not None and named_taxon is not None and taxon != named_taxon:
             raise ValueError("Genome species and taxonomy disagree")
@@ -196,7 +215,7 @@ class ReferenceContext:
         if self.genome_build is None or (include_annotation and self.annotation_name is None):
             raise ValueError("Incomplete source reference cannot bind a Genome; use an explicit reference mapping")
         species = getattr(genome, "species", None)
-        taxon = getattr(genome, "taxon_id", None)
+        taxon = _genome_species_taxon(genome)
         named_taxon = species_taxon(species) if species is not None else None
         if taxon is not None and named_taxon is not None and taxon != named_taxon:
             raise ValueError("Genome species and taxonomy disagree")

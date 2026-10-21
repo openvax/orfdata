@@ -1092,7 +1092,7 @@ def _selected(found, catalogs, species):
     unknown = [n for n in names if n not in known]
     if not names or unknown:
         raise ValueError(f"No {species} catalogue named {', '.join(map(repr, unknown)) or 'in an empty selection'}; "
-                         f"{species} has {', '.join(known)}, or pass catalogs='all'")
+                         f"{species} has {', '.join(known)}, or select 'all'")
     return [c for c in found if c.name in names]
 
 
