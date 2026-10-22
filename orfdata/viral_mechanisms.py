@@ -5,7 +5,6 @@ from importlib.resources import files
 
 import yaml
 
-
 _RESOURCE = "data/viral/mechanisms.yaml"
 _SCHEMA = "orfdata.viral_mechanisms.v1"
 

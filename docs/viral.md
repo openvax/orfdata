@@ -54,7 +54,7 @@ unavailable entries selectable through `viral_references()` or `viral="all"`.
 
 ORFdata also records NCBI ESummary metadata for the 200 GenBank accession
 leads in
-[`gdc-grch38-d1-vd1-genbank-summaries.tsv`](../orfdata/data/viral/gdc-grch38-d1-vd1-genbank-summaries.tsv):
+[`gdc-grch38-d1-vd1-genbank-summaries.tsv`](https://github.com/openvax/orfdata/blob/main/orfdata/data/viral/gdc-grch38-d1-vd1-genbank-summaries.tsv):
 current accession versions, titles, sequence lengths, taxon IDs and record
 dates. This bundled metadata lookup matched all 200 inventory accessions; it
 does not itself contain sequence payloads or CDS annotations.

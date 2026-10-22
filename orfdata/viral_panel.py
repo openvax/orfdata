@@ -27,7 +27,6 @@ from .viral_mechanisms import (
     viral_subset_abbreviations,
 )
 
-
 NCBI_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 SUMMARY_RESOURCE = "data/viral/gdc-grch38-d1-vd1-genbank-summaries.tsv"
 SUMMARY_SHA256 = "5d6c7cbc3f77ba5236acc2e94bc49cf78e3ff486c12535d2b51e80f3ab875498"
