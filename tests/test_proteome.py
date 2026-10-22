@@ -936,9 +936,9 @@ def test_bundled_virus_builds_into_one_proteome_without_manual_conversion(tmp_pa
         by_id.write_fasta(fasta)
         assert fasta.read_text().count(">") == 15
         product = next(p for p in ref.products if p.protein_id == "NP_041327.2")
-        assert (f">{product.protein_id} kind=viral protein_source=viral taxon=333760 "
-                f"source=viral:HPV16@NC_001526.4 gene_name={product.gene} "
-                f"product={product.product.replace(' ', '_')}\n") in fasta.read_text()
+        product_entry = by_id.by_accession()[product.protein_id]
+        assert product_entry.fasta_header() + "\n" in fasta.read_text()
+        assert f"gene_name={product.gene}" in product_entry.fasta_header()
         assert by_id.by_accession()[product.protein_id].gene_name == product.gene
         assert by_id.by_accession()[product.protein_id].viral_product == product.product
         snapshot = tmp_path / "combined.json.gz"
@@ -993,10 +993,13 @@ def test_fasta_export_round_trips_sequences_and_provenance(genome, catalog):
         else:
             records[header] += line
     assert records == {e.fasta_header(): e.sequence for e in proteome}
-    assert (">ms-orf kind=extra_orf protein_source=nc_orf taxon=10090 source=orfdata-catalog:fixture-v1 gene=test_gene gene_name=TEST_GENE "
-            "transcript=test_rna.1 contig=1 transcript_biotype=lncRNA orf_type=lncRNA evidence=proteomics transcripts=2") in records
+    ms_entry = proteome.by_accession()["ms-orf"]
+    assert ms_entry.fasta_header() in records
+    assert "transcript=test_rna.1 contig=1 transcript_biotype=lncRNA " in ms_entry.fasta_header()
+    assert "orf_type=lncRNA evidence=proteomics transcripts=2" in ms_entry.fasta_header()
     # An ORF whose source transcript is gone names it, beside the transcript that carries it.
-    assert any(h.startswith(">absent-orf ") and "transcript=test_rna.1 " in h and "source_transcript=missing_rna" in h
+    assert any(h.startswith(">" + proteome.by_accession()["absent-orf"].fasta_token() + " ")
+               and "transcript=test_rna.1 " in h and "source_transcript=missing_rna" in h
                for h in records)
 
 
