@@ -68,11 +68,12 @@ orfdata download viral --species human
 ```
 
 The downloader and its Biopython/DataCache dependencies are part of a regular
-`pip install orfdata`; the sequence payload stays on demand. The command
-installs a checked bundle under `ORFDATA_CACHE` (or the normal OpenVax cache),
-rather than asking for an export directory. Use `--cache-root DIRECTORY` to
-select another cache and `--force` to refresh or repair the installed files.
-`orfdata viral download` remains a compatibility alias.
+`pip install orfdata`. `orfdata setup --species human` installs this default
+human collection alongside the human catalogues and chains. The command above
+installs only this checked bundle under `ORFDATA_CACHE` (or the normal OpenVax
+cache), rather than asking for an export directory. Use `--cache-root
+DIRECTORY` to select another cache and `--force` to refresh or repair the
+installed files. `orfdata viral download` remains a compatibility alias.
 
 Here `--species human` is the target analysis species. It does not assert that
 every source record declared a human host. The default collection is
@@ -97,18 +98,21 @@ cancer connection.
 
 ## Tumour mechanism selectors
 
-Contexts describe why a collection may be useful. Mechanism selectors describe
-an evidence-backed virus--tumour relationship and can be combined to make a
-derived FASTA index:
+Contexts describe why a collection may be useful. Mechanisms describe
+evidence-backed virus--tumour relationships. A named subset is a reproducible
+selection composed from those mechanisms:
 
 ```sh
-orfdata viral mechanisms
+orfdata viral subsets
 # 12 Group 1 HPV types, HBV, HTLV-1 and MCV: 15 references
-orfdata download viral \
-  --mechanism host-genome-integrating \
-  --mechanism direct-tumor-cell-driver \
-  --mechanism-match all
+orfdata download viral --subset integrated-direct-driver
 ```
+
+The equivalent advanced form is `--mechanism host-genome-integrating
+--mechanism direct-tumor-cell-driver --mechanism-match all`.
+`--mechanism-match all` says how the selected biological properties are
+combined; a `--mechanism` value names one property. The named subset is the
+preferred CLI interface for this fixed selection.
 
 `host-genome-integrating` also includes HIV-1 and HIV-2, because retroviral
 integration is part of their lifecycle. They are removed by the
@@ -118,8 +122,16 @@ driver in the tumour cell. EBV and KSHV are direct drivers in relevant tumours
 but normally persist as episomes, so the same intersection excludes them.
 
 `viral-oncogene-dependence-evidence` is deliberately narrower: it currently
-contains HPV16, HPV18 and MCV, for which direct experimental evidence supports
-continued viral-oncogene expression in named virus-positive tumour settings.
+contains HPV16, HPV18, HTLV-1 and MCV, for which direct experimental evidence
+supports continued viral-oncogene expression in named virus-positive tumour
+settings. `orfdata viral mechanisms --json` includes those settings and their
+source URLs as plain dictionaries loaded from package YAML. The friendly named
+selector is:
+
+```sh
+orfdata download viral --subset tumor-cell-oncogene-dependence
+```
+
 It is not a claim that every tumour carrying the virus is dependent, nor a
 prediction that antiviral treatment will eradicate the cancer. The exact
 tumour type, viral integration, viral expression and clonal distribution must

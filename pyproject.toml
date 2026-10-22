@@ -10,7 +10,7 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{name = "OpenVax"}]
-dependencies = ["biopython>=1.80,<2", "datacache>=1.25.1,<2"]
+dependencies = ["biopython>=1.80,<2", "datacache>=1.25.1,<2", "pyyaml>=6,<7"]
 
 [project.optional-dependencies]
 pyensembl = ["pyensembl>=2.27.2"]

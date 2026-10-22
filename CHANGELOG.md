@@ -9,8 +9,9 @@
   native search references, pinned genomes and chain files; the existing
   resource-specific commands remain available. Viral contexts are nonexclusive
   metadata; the stable collection name and source-manifest checksum identify the
-  cache entry. Biopython and DataCache are base dependencies so a regular
-  ORFdata install can perform the viral download. `index_viral_references()`
+  cache entry. Biopython, DataCache and PyYAML are base dependencies so a
+  regular ORFdata install can perform the viral download. `orfdata setup
+  --species human` installs the default collection. `index_viral_references()`
   creates reusable union or intersection FASTA indexes for nonexclusive
   contexts without giving an accession/version a context-specific identity.
   `human` is an analysis target; source-host taxon IDs remain empty when the
@@ -22,8 +23,11 @@
   non-carcinogenic.
   Tumour-mechanism selectors are separate from contexts: they expose
   host-genome integration, direct tumour-cell driving and narrower experimental
-  viral-oncogene-dependence evidence. The selectors are scoped to the stated
-  evidence and do not predict response to virus-directed therapy.
+  viral-oncogene-dependence evidence. This registry is package YAML and its
+  public API returns plain dictionaries. The selectors are scoped to the stated
+  evidence and do not predict response to virus-directed therapy. Named subsets
+  such as `integrated-direct-driver` and `tumor-cell-oncogene-dependence`
+  compose those selectors into reproducible download choices.
 
 - Resolve PyEnsembl 2.31 reference strains using `species_taxon_id`, while
   preserving registered organism identities (including domestic dog), explicit

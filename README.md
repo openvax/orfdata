@@ -30,8 +30,8 @@ orfdata download status
 ```
 
 Viral download support and its Biopython/DataCache dependencies are included in
-the regular installation. The genome, coding-sequence and protein FASTAs remain
-on demand:
+the regular installation. `orfdata setup --species human` also installs the
+default human viral collection. To acquire only those source references:
 
 ```sh
 orfdata download viral --species human
@@ -142,10 +142,12 @@ packaged bases and coding paths. The functional loaders remain available.
 When annotating an existing alignment, `viral_orfs(reference_dna,
 contig="HPV16")` checks its actual reference sequence before applying the same
 models.
-The first [coding reference](https://openvax.github.io/orfdata/viral/) contains
-the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC placements;
-the host association is distinct from the virus's own taxon. Broader
-imports remain in [the viral roadmap](https://github.com/openvax/orfdata/issues/91).
+The curated [coding reference](https://openvax.github.io/orfdata/viral/)
+contains the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC
+placements; the host association is distinct from the virus's own taxon. The
+separate GDC source bundle contains all 200 selected source genomes and their
+annotated CDS/protein FASTAs. Promoting further source records into the curated
+`ViralReference` API remains in the [viral roadmap](https://github.com/openvax/orfdata/issues/91).
 
 ## Measurement datasets
 

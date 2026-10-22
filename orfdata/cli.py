@@ -66,8 +66,8 @@ def _setup(argv, prog):
     from .install import InstallError, install_species
 
     parser = argparse.ArgumentParser(
-        prog=prog, description="Install a species' ORF catalogues and chain files, so its proteomes work offline "
-                               "on every assembly the chains reach.")
+        prog=prog, description="Install a species' ORF catalogues, chains and default reference collections, so its "
+                               "proteomes work offline on every assembly the chains reach.")
     parser.add_argument("--species", required=True, help="e.g. human or mouse")
     parser.add_argument("--accept-terms", action="store_true",
                         help="Accept usage terms of restricted chain files, such as UCSC's non-commercial ones")

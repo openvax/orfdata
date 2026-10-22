@@ -1,0 +1,135 @@
+schema: orfdata.viral_mechanisms.v1
+mechanisms:
+  host-genome-integrating:
+    title: Viruses that integrate into the host genome
+    description: >-
+      Host-genome integration is part of viral persistence or is documented in a
+      relevant tumour setting.
+    abbreviations:
+      - HBV
+      - HIV-1
+      - HIV-2
+      - HPV16
+      - HPV18
+      - HPV31
+      - HPV33
+      - HPV35
+      - HPV39
+      - HPV45
+      - HPV51
+      - HPV52
+      - HPV56
+      - HPV58
+      - HPV59
+      - HTLV-1
+      - MCV
+    source_urls:
+      - https://pubmed.ncbi.nlm.nih.gov/38624210/
+      - https://pubmed.ncbi.nlm.nih.gov/33563643/
+      - https://pubmed.ncbi.nlm.nih.gov/6328324/
+      - https://pmc.ncbi.nlm.nih.gov/articles/PMC2740911/
+    limitations: >-
+      Integration is not universal across every tumour, and retroviral
+      integration alone does not establish direct tumour-cell causality.
+  direct-tumor-cell-driver:
+    title: Direct tumour-cell viral drivers
+    description: >-
+      IARC Group 1 viruses with a direct oncogenic role in at least one
+      relevant tumour setting.
+    abbreviations:
+      - EBV (HHV-4)
+      - HBV
+      - HHV-8, KSHV
+      - HPV16
+      - HPV18
+      - HPV31
+      - HPV33
+      - HPV35
+      - HPV39
+      - HPV45
+      - HPV51
+      - HPV52
+      - HPV56
+      - HPV58
+      - HPV59
+      - HTLV-1
+      - MCV
+    source_urls:
+      - https://publications.iarc.who.int/119
+      - https://www.iarc.who.int/news-events/iarc-monographs-evaluation-of-the-carcinogenicity-of-hepatitis-d-virus-human-cytomegalovirus-and-merkel-cell-polyomavirus/
+    limitations: >-
+      The relationship is specific to particular tumour types and does not
+      imply that every infected cell or every tumour with a matching read is
+      virus-driven.
+  viral-oncogene-dependence-evidence:
+    title: Tumour-cell dependence on viral oncogene expression
+    description: >-
+      Direct experimental evidence supports continued viral-oncogene expression
+      in named virus-positive tumour settings.
+    abbreviations:
+      - HPV16
+      - HPV18
+      - HTLV-1
+      - MCV
+    source_urls:
+      - https://pubmed.ncbi.nlm.nih.gov/22056390/
+      - https://www.nature.com/articles/s41408-023-00841-7
+      - https://pubmed.ncbi.nlm.nih.gov/20444890/
+    tumour_settings:
+      - abbreviations: [HPV16, HPV18]
+        tumour_types: [HPV16- or HPV18-positive cervical carcinoma]
+        viral_feature: continued E6/E7 expression
+        evidence: >-
+          Repressing E6/E7 caused primary cervical carcinoma cells to undergo
+          senescence, while HPV-negative primary cells were largely unaffected.
+        source_urls:
+          - https://pubmed.ncbi.nlm.nih.gov/22056390/
+      - abbreviations: [HTLV-1]
+        tumour_types: [acute or chronic adult T-cell leukaemia/lymphoma]
+        viral_feature: continued Tax expression
+        evidence: >-
+          Tax depletion induced apoptosis in primary ATL cells from six
+          patients, despite very low baseline Tax expression.
+        source_urls:
+          - https://www.nature.com/articles/s41408-023-00841-7
+      - abbreviations: [MCV]
+        tumour_types: [MCPyV-positive Merkel cell carcinoma]
+        viral_feature: continued T-antigen expression
+        evidence: >-
+          Viral T-antigen knockdown inhibited growth of MCPyV-positive Merkel
+          cell carcinoma cell lines.
+        source_urls:
+          - https://pubmed.ncbi.nlm.nih.gov/20444890/
+    limitations: >-
+      The evidence is subtype- and tumour-specific. It does not predict whether
+      antiviral, immune, or cell-directed treatment will eradicate a patient's
+      cancer.
+subsets:
+  integrated-direct-driver:
+    title: Integrated direct tumour-cell drivers
+    description: >-
+      Viruses with both host-genome integration and a direct tumour-cell driver
+      role in a relevant setting.
+    mechanisms:
+      - host-genome-integrating
+      - direct-tumor-cell-driver
+    mechanism_match: all
+  tumor-cell-oncogene-dependence:
+    title: Tumour settings with viral-oncogene dependence evidence
+    description: >-
+      Virus references with direct experimental evidence for continued viral
+      oncogene expression in a specified tumour setting.
+    mechanisms:
+      - viral-oncogene-dependence-evidence
+    mechanism_match: all
+aliases:
+  mechanisms:
+    integrating: host-genome-integrating
+    integration: host-genome-integrating
+    direct-driver: direct-tumor-cell-driver
+    oncogene-dependence: viral-oncogene-dependence-evidence
+  subsets:
+    integrating-causal: integrated-direct-driver
+    integrated-causal: integrated-direct-driver
+    cancer-cell-oncogene-dependence: tumor-cell-oncogene-dependence
+    tumour-cell-oncogene-dependence: tumor-cell-oncogene-dependence

@@ -11,7 +11,7 @@ class InstallError(ValueError):
 
 def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=60,
                     catalogs=None):
-    """Download or build each registered catalogue for ``species`` and download its pinned chain files.
+    """Install a species' registered catalogues, chains and default reference collections.
 
     Afterwards ``load_catalog``, ``extra_orfs`` and ``Proteome.build`` work
     offline on every assembly of the species the chains reach: every release
@@ -24,8 +24,10 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     once. ``catalogs`` chooses which of the species' catalogues, as in
     ``load_catalog``: its default set unless ``"all"`` or names are given.
 
-    Returns ``{"species", "catalogs", "chains"}``, each item mapped to what
-    happened to it. Every item is tried; if any fails, :class:`InstallError`
+    Human setup also installs the default GDC viral reference collection.
+
+    The returned mapping adds ``"viral"`` for a human setup. Every item is
+    tried; if any fails, :class:`InstallError`
     (a ``ValueError``) names each failure after the rest are installed, and
     carries the same result.
     """
@@ -99,10 +101,36 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
         except Exception as error:
             result["chains"][chain.name] = f"failed: {error}"
             failed.append(chain.name)
+    if species == "homo_sapiens":
+        from .viral_panel import VIRAL_COLLECTION, download_viral_references, viral_reference_bundle
+
+        result["viral"] = {}
+        try:
+            viral_timeout = 120 if timeout is None else timeout
+            try:
+                viral_reference_bundle(
+                    species=species, collection=VIRAL_COLLECTION, cache_root=root)
+                present = True
+            except (FileNotFoundError, ValueError):
+                present = False
+            if present and not force:
+                result["viral"][VIRAL_COLLECTION] = "already installed"
+            else:
+                download_viral_references(
+                    species=species, collection=VIRAL_COLLECTION, cache_root=root,
+                    force=force or not present, timeout=viral_timeout)
+                result["viral"][VIRAL_COLLECTION] = "repaired" if present else "downloaded"
+        except Exception as error:
+            result["viral"][VIRAL_COLLECTION] = f"failed: {error}"
+            failed.append(VIRAL_COLLECTION)
     if failed:
+        messages = []
+        for item in failed:
+            state = (result["catalogs"].get(item) or result["chains"].get(item)
+                     or result.get("viral", {}).get(item))
+            messages.append(f"{item}: {state[8:]}")
         raise InstallError(f"Could not install {', '.join(failed)} for {species}: "
-                           + "; ".join(f"{item}: {(result['catalogs'].get(item) or result['chains'][item])[8:]}"
-                                       for item in failed), result)
+                           + "; ".join(messages), result)
     return result
 
 
