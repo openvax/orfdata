@@ -52,6 +52,13 @@ covered. `not_bundled` describes ORFdata coverage, not the availability of
 annotations elsewhere. The ledger contains metadata only and does not make
 unavailable entries selectable through `viral_references()` or `viral="all"`.
 
+ORFdata also records NCBI ESummary metadata for the 200 GenBank accession
+leads in
+[`gdc-grch38-d1-vd1-genbank-summaries.tsv`](../orfdata/data/viral/gdc-grch38-d1-vd1-genbank-summaries.tsv):
+current accession versions, titles, sequence lengths, taxon IDs and record
+dates. This metadata lookup matched all 200 inventory accessions; it did not
+download sequence payloads or provide CDS annotations.
+
 The [viral panel roadmap](https://github.com/openvax/orfdata/issues/91) tracks
 the remaining imports. GDC panel membership and a documented host association
 are separate facts; `viral="all"` still selects bundled references associated
