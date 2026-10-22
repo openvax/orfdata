@@ -27,7 +27,7 @@ from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_asse
 from .reference import ReferenceContext
 from .viral import ViralProduct, ViralReference, viral_reference, viral_references
 
-SNAPSHOT_SCHEMA = "orfdata.proteome.v3"
+SNAPSHOT_SCHEMA = "orfdata.proteome.v4"
 _SNAPSHOT = "proteome.json.gz"
 # PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
@@ -243,6 +243,123 @@ def _producer_accession(info, taxon_id):
                       source_sha256=info.source_sha256)
     return "producer|" + "|".join(f"{name}={quote(str(value), safe='')}"
                                     for name, value in components.items() if value is not None)
+
+
+def _record_key(record):
+    fields = dict(namespace=record.namespace, provider=record.provider,
+                  exporter=record.exporter, sample=record.sample_id, run=record.run_id,
+                  kind=record.kind, native=record.native_id)
+    return "record|" + "|".join(f"{name}={quote(value, safe='')}"
+                                  for name, value in fields.items() if value is not None)
+
+
+def _freeze_json(value):
+    """Keep caller-owned producer payloads immutable inside a snapshot."""
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise TypeError("Producer payload object keys must be strings")
+        return MappingProxyType({key: _freeze_json(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_json(item) for item in value)
+    if value is None or type(value) in (str, int, float, bool):
+        if type(value) is float and not (-float("inf") < value < float("inf")):
+            raise ValueError("Producer payload numbers must be finite")
+        return value
+    raise TypeError(f"Producer payload contains a non-JSON value: {type(value).__name__}")
+
+
+def _thaw_json(value):
+    if isinstance(value, Mapping):
+        return {key: _thaw_json(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw_json(item) for item in value]
+    return value
+
+
+@dataclass(frozen=True)
+class ProducerRecord:
+    """Versioned producer record, including translations, evidence and events.
+
+    The core retains ``payload`` without interpreting its producer schema.
+    ``status`` distinguishes events without a sequence from an absent record.
+    Evidence ``support`` states what was observed, independently of links to
+    translations or proteins. ``scope`` identifies the observed material.
+    """
+
+    namespace: str
+    schema_version: str
+    kind: str
+    native_id: str
+    provider: Optional[str] = None
+    exporter: Optional[str] = None
+    sample_id: Optional[str] = None
+    run_id: Optional[str] = None
+    status: Optional[str] = None
+    support: Optional[str] = None
+    scope: Mapping = field(default_factory=dict)
+    complete: Optional[bool] = None
+    limits: Mapping = field(default_factory=dict)
+    payload: Mapping = field(default_factory=dict)
+
+    def __post_init__(self):
+        for name in ("namespace", "schema_version", "kind", "native_id"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"Producer record {name} must be a nonempty string")
+        for name in ("provider", "exporter", "sample_id", "run_id", "status", "support"):
+            value = getattr(self, name)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise ValueError(f"Producer record {name} must be a nonempty string or None")
+        if self.complete is not None and type(self.complete) is not bool:
+            raise ValueError("Producer record complete must be True, False, or None")
+        if self.kind == "evidence" and self.support is None:
+            raise ValueError("Producer evidence needs an explicit support type")
+        if self.kind == "evidence" and not self.scope:
+            raise ValueError("Producer evidence needs an explicit observation scope")
+        if self.kind == "event" and self.status is None:
+            raise ValueError("Producer event needs an explicit outcome status")
+        for name in ("scope", "limits", "payload"):
+            value = getattr(self, name)
+            if not isinstance(value, Mapping):
+                raise TypeError(f"Producer record {name} must be a JSON object")
+            object.__setattr__(self, name, _freeze_json(dict(value)))
+
+    @property
+    def key(self):
+        return _record_key(self)
+
+    def to_dict(self):
+        result = {name: getattr(self, name) for name in
+                  ("namespace", "schema_version", "kind", "native_id", "provider", "exporter",
+                   "sample_id", "run_id", "status", "support", "complete")}
+        result.update(scope=_thaw_json(self.scope), limits=_thaw_json(self.limits),
+                      payload=_thaw_json(self.payload))
+        return result
+
+
+@dataclass(frozen=True)
+class ProducerLink:
+    """A typed relationship from a producer record to a record or protein entry."""
+
+    source: str
+    target: str
+    target_kind: str
+    relation: str
+    payload: Mapping = field(default_factory=dict)
+
+    def __post_init__(self):
+        if any(not isinstance(getattr(self, name), str) or not getattr(self, name).strip()
+               for name in ("source", "target", "relation")):
+            raise ValueError("Producer links need source, target and relation IDs")
+        if self.target_kind not in ("entry", "record"):
+            raise ValueError("Producer link target_kind must be 'entry' or 'record'")
+        if not isinstance(self.payload, Mapping):
+            raise TypeError("Producer link payload must be a JSON object")
+        object.__setattr__(self, "payload", _freeze_json(dict(self.payload)))
+
+    def to_dict(self):
+        return dict(source=self.source, target=self.target, target_kind=self.target_kind,
+                    relation=self.relation, payload=_thaw_json(self.payload))
 
 
 @dataclass(frozen=True)
@@ -790,7 +907,7 @@ class Proteome:
     """
 
     def __init__(self, reference, entries, layers=(), excluded=(), genome=None,
-                 reference_policy="strict"):
+                 reference_policy="strict", records=(), links=()):
         if reference is not None and not isinstance(reference, ReferenceContext):
             raise TypeError("A proteome reference must be a ReferenceContext or None")
         if reference is None and reference_policy != "mixed":
@@ -803,6 +920,8 @@ class Proteome:
         self.layers = tuple(MappingProxyType(_json(dict(layer))) for layer in layers)
         self.excluded = tuple(excluded)
         self.genome = genome
+        self.records = tuple(records)
+        self.links = tuple(links)
         accessions = Counter(e.accession for e in self.entries)
         duplicated = sorted(a for a, n in accessions.items() if n > 1)
         if duplicated:
@@ -849,9 +968,25 @@ class Proteome:
         for layer in self.layers:
             if layer.get("reference") not in (None, None if reference is None else reference.key):
                 raise ValueError("A layer declares a different reference")
+        if any(not isinstance(record, ProducerRecord) for record in self.records):
+            raise TypeError("Proteome records must be ProducerRecord objects")
+        record_keys = {record.key for record in self.records}
+        if len(record_keys) != len(self.records):
+            raise ValueError("Duplicate producer record identity")
+        if any(not isinstance(link, ProducerLink) for link in self.links):
+            raise TypeError("Proteome links must be ProducerLink objects")
+        if len({json.dumps(link.to_dict(), sort_keys=True) for link in self.links}) != len(self.links):
+            raise ValueError("Duplicate producer links")
+        for link in self.links:
+            if link.source not in record_keys:
+                raise ValueError(f"Producer link has unknown source: {link.source}")
+            targets = accessions if link.target_kind == "entry" else record_keys
+            if link.target not in targets:
+                raise ValueError(f"Producer link has unknown target: {link.target}")
 
     @classmethod
-    def from_entries(cls, entries, *, reference=None, compatibility="strict"):
+    def from_entries(cls, entries, *, reference=None, compatibility="strict",
+                     records=(), links=()):
         """Make a collection from external entries, with an explicit reference policy.
 
         Use ``compatibility='mixed'`` for a standalone collection whose
@@ -859,7 +994,8 @@ class Proteome:
         ``compatibility='allow_unknown'`` explicitly admits producer entries
         lacking an exact source reference; known conflicting references fail.
         """
-        return cls(reference, (), reference_policy=compatibility).with_entries(entries)
+        result = cls(reference, (), reference_policy=compatibility).with_entries(entries)
+        return result.with_records(records, links=links)
 
     def with_entries(self, entries, *, compatibility=None):
         """Add producer entries without inventing parents or genomic occurrences."""
@@ -883,7 +1019,39 @@ class Proteome:
                      producers=sorted({entry.producer.tool for entry in added}), added=len(added),
                      reference=None if self.reference is None else self.reference.key)
         return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
-                        self.excluded, self.genome, reference_policy=policy)
+                        self.excluded, self.genome, reference_policy=policy,
+                        records=self.records, links=self.links)
+
+    def with_records(self, records=(), *, links=()):
+        """Add portable producer records and relationships to existing entries."""
+        records = (records,) if isinstance(records, ProducerRecord) else tuple(records)
+        links = (links,) if isinstance(links, ProducerLink) else tuple(links)
+        if any(not isinstance(record, ProducerRecord) for record in records):
+            raise TypeError("with_records requires ProducerRecord objects")
+        if any(not isinstance(link, ProducerLink) for link in links):
+            raise TypeError("with_records requires ProducerLink objects")
+        known = {record.key: record for record in self.records}
+        added = []
+        for record in records:
+            previous = known.get(record.key)
+            if previous is not None:
+                if previous.to_dict() != record.to_dict():
+                    raise ValueError(f"Conflicting producer record identity: {record.key}")
+                continue
+            known[record.key] = record
+            added.append(record)
+        seen_links = {json.dumps(link.to_dict(), sort_keys=True) for link in self.links}
+        added_links = []
+        for link in links:
+            key = json.dumps(link.to_dict(), sort_keys=True)
+            if key not in seen_links:
+                added_links.append(link)
+                seen_links.add(key)
+        if not added and not added_links:
+            return self
+        return Proteome(self.reference, self.entries, self.layers, self.excluded, self.genome,
+                        reference_policy=self.reference_policy,
+                        records=self.records + tuple(added), links=self.links + tuple(added_links))
 
     def merge(self, *others, compatibility=None):
         """Compose compatible proteomes; equal source records are idempotent."""
@@ -922,8 +1090,26 @@ class Proteome:
             for failure in other.excluded:
                 if failure not in excluded:
                     excluded.append(failure)
+            records = {record.key: record for record in result.records}
+            ordered_records = list(result.records)
+            for record in other.records:
+                previous = records.get(record.key)
+                if previous is not None:
+                    if previous.to_dict() != record.to_dict():
+                        raise ValueError(f"Conflicting producer record identity: {record.key}")
+                    continue
+                records[record.key] = record
+                ordered_records.append(record)
+            links = list(result.links)
+            link_keys = {json.dumps(link.to_dict(), sort_keys=True) for link in links}
+            for link in other.links:
+                key = json.dumps(link.to_dict(), sort_keys=True)
+                if key not in link_keys:
+                    links.append(link)
+                    link_keys.add(key)
             result = Proteome(reference, entries, layers, excluded,
-                              result.genome or other.genome, reference_policy=policy)
+                              result.genome or other.genome, reference_policy=policy,
+                              records=ordered_records, links=links)
         return result
 
     @classmethod
@@ -1062,7 +1248,8 @@ class Proteome:
             return built[0]
         loaded = cls.load(path, _verified=True)
         proteome = cls(loaded.reference, loaded.entries, loaded.layers, loaded.excluded, genome,
-                       reference_policy=loaded.reference_policy)
+                       reference_policy=loaded.reference_policy,
+                       records=loaded.records, links=loaded.links)
         proteome.__dict__["_identity"] = loaded.identity
         return proteome
 
@@ -1140,7 +1327,7 @@ class Proteome:
             layer["selection"] = selection
         return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
                         self.excluded + found.excluded + found.unlifted, self.genome,
-                        reference_policy=self.reference_policy)
+                        reference_policy=self.reference_policy, records=self.records, links=self.links)
 
     def with_viral(self, viral):
         """Add a bundled virus by reference ID/type/object, or a FASTA-derived ViralProteome."""
@@ -1166,7 +1353,8 @@ class Proteome:
                      host_taxon_ids=sorted(viral.host_taxon_ids), host_source=viral.host_source,
                      provenance=viral.source, source_sha256=viral.source_sha256, added=len(added))
         return Proteome(self.reference, self.entries + added, self.layers + (layer,),
-                        self.excluded, self.genome, reference_policy=self.reference_policy)
+                        self.excluded, self.genome, reference_policy=self.reference_policy,
+                        records=self.records, links=self.links)
 
     def with_derived_proteins(self, proteins):
         """Add supplied sample-specific host sequences linked to parent entries.
@@ -1218,15 +1406,19 @@ class Proteome:
                      source="derived", sources=sorted({item.source for item in proteins}),
                      samples=sorted({item.sample_id for item in proteins}), added=len(added))
         return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
-                        self.excluded, self.genome, reference_policy=self.reference_policy)
+                        self.excluded, self.genome, reference_policy=self.reference_policy,
+                        records=self.records, links=self.links)
 
     def filter(self, predicate, *, description=None):
         """Keep entries for which ``predicate(entry)`` is true; layers are retained."""
         kept = tuple(e for e in self.entries if predicate(e))
         layer = dict(kind="filter", role="filter", description=description,
                      removed=len(self.entries) - len(kept), added=0)
+        retained = {entry.accession for entry in kept}
+        links = tuple(link for link in self.links
+                      if link.target_kind != "entry" or link.target in retained)
         return Proteome(self.reference, kept, self.layers + (layer,), self.excluded, self.genome,
-                        reference_policy=self.reference_policy)
+                        reference_policy=self.reference_policy, records=self.records, links=links)
 
     def host(self):
         """The host's own proteins: annotated and extra ORFs, without viral layers."""
@@ -1258,6 +1450,7 @@ class Proteome:
             kinds=dict(Counter(e.kind for e in self.entries)),
             protein_sources=dict(Counter(e.protein_source for e in self.entries)),
             derived=sum(e.derivation is not None for e in self.entries),
+            producer_records=len(self.records), producer_links=len(self.links),
             layers=[dict(layer) for layer in self.layers], excluded=len(self.excluded),
         )
 
@@ -1270,6 +1463,10 @@ class Proteome:
         )
         if self.reference_policy != "strict":
             content["reference_policy"] = self.reference_policy
+        if self.records or self.links:
+            content["producer_graph"] = dict(
+                records=[record.to_dict() for record in self.records],
+                links=[link.to_dict() for link in self.links])
         return content
 
     @property
@@ -1299,16 +1496,20 @@ class Proteome:
         """
         raw = Path(path).read_bytes()
         snapshot = json.loads(gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw)
-        if snapshot.get("schema") not in ("orfdata.proteome.v1", "orfdata.proteome.v2", SNAPSHOT_SCHEMA):
+        if snapshot.get("schema") not in ("orfdata.proteome.v1", "orfdata.proteome.v2",
+                                          "orfdata.proteome.v3", SNAPSHOT_SCHEMA):
             raise ValueError(f"Unsupported proteome snapshot schema: {snapshot.get('schema')!r}")
         content = snapshot["content"]
         if _sha256(content) != snapshot.get("identity"):
             raise ValueError("Proteome snapshot content does not match its identity")
         reference = None if content["reference"] is None else ReferenceContext(**content["reference"])
+        graph = content.get("producer_graph", {})
         proteome = cls(reference,
                        (ProteomeEntry.from_dict(e) for e in content["entries"]),
                        content["layers"], (BindingFailure(**e) for e in content["excluded"]),
-                       reference_policy=content.get("reference_policy", "strict"))
+                       reference_policy=content.get("reference_policy", "strict"),
+                       records=(ProducerRecord(**record) for record in graph.get("records", ())),
+                       links=(ProducerLink(**link) for link in graph.get("links", ())))
         # A snapshot from the cache was written by save() and checksummed by DataCache; any other
         # file must also re-serialize to its identity, so non-canonical content is rejected.
         if not _verified and _sha256(proteome._content()) != snapshot["identity"]:
