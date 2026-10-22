@@ -26,8 +26,9 @@
   viral-oncogene-dependence evidence. This registry is package YAML and its
   public API returns plain dictionaries. The selectors are scoped to the stated
   evidence and do not predict response to virus-directed therapy. Named subsets
-  such as `integrated-direct-driver` and `tumor-cell-oncogene-dependence`
-  compose those selectors into reproducible download choices.
+  such as `integrated-direct-driver`, the cited `cancer-causing-hpv` set, and
+  `tumor-cell-oncogene-dependence-evidence` provide reproducible download
+  choices.
 
 - Resolve PyEnsembl 2.31 reference strains using `species_taxon_id`, while
   preserving registered organism identities (including domestic dog), explicit

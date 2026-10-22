@@ -114,7 +114,7 @@ subsets:
       - host-genome-integrating
       - direct-tumor-cell-driver
     mechanism_match: all
-  tumor-cell-oncogene-dependence:
+  tumor-cell-oncogene-dependence-evidence:
     title: Tumour settings with viral-oncogene dependence evidence
     description: >-
       Virus references with direct experimental evidence for continued viral
@@ -122,6 +122,26 @@ subsets:
     mechanisms:
       - viral-oncogene-dependence-evidence
     mechanism_match: all
+  cancer-causing-hpv:
+    title: Cancer-causing HPV types
+    description: >-
+      The 12 human papillomavirus types classified by IARC as carcinogenic to
+      humans (Group 1) and represented in this collection.
+    abbreviations:
+      - HPV16
+      - HPV18
+      - HPV31
+      - HPV33
+      - HPV35
+      - HPV39
+      - HPV45
+      - HPV51
+      - HPV52
+      - HPV56
+      - HPV58
+      - HPV59
+    source_urls:
+      - https://monographs.iarc.who.int/agents-classified-by-the-iarc/
 aliases:
   mechanisms:
     integrating: host-genome-integrating
@@ -131,5 +151,6 @@ aliases:
   subsets:
     integrating-causal: integrated-direct-driver
     integrated-causal: integrated-direct-driver
-    cancer-cell-oncogene-dependence: tumor-cell-oncogene-dependence
-    tumour-cell-oncogene-dependence: tumor-cell-oncogene-dependence
+    cancer-cell-oncogene-dependence: tumor-cell-oncogene-dependence-evidence
+    tumor-cell-oncogene-dependence: tumor-cell-oncogene-dependence-evidence
+    tumour-cell-oncogene-dependence: tumor-cell-oncogene-dependence-evidence

@@ -100,7 +100,7 @@ cancer connection.
 
 Contexts describe why a collection may be useful. Mechanisms describe
 evidence-backed virus--tumour relationships. A named subset is a reproducible
-selection composed from those mechanisms:
+selection that either declares a cited set or composes mechanisms:
 
 ```sh
 orfdata viral subsets
@@ -129,7 +129,7 @@ source URLs as plain dictionaries loaded from package YAML. The friendly named
 selector is:
 
 ```sh
-orfdata download viral --subset tumor-cell-oncogene-dependence
+orfdata download viral --subset tumor-cell-oncogene-dependence-evidence
 ```
 
 It is not a claim that every tumour carrying the virus is dependent, nor a
@@ -138,6 +138,15 @@ tumour type, viral integration, viral expression and clonal distribution must
 be resolved in the sample. The mechanism table links the supporting primary
 studies for HPV integration and E6/E7 dependence, HBV integration, HTLV-1
 proviral integration, and MCV integration and T-antigen dependence.
+
+HPV16 and HPV18 appear in that narrow evidence selector because the cited
+primary study tested those types. They are not the complete cancer-causing HPV
+set. Use the named 12-type selector when the intent is carcinogenic HPV
+coverage:
+
+```sh
+orfdata download viral --subset cancer-causing-hpv
+```
 
 List registered contexts with `orfdata viral contexts`. Supplying one or more
 contexts creates a derived index from the shared collection: repeated

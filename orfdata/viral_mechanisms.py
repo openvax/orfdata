@@ -47,17 +47,25 @@ def _registry():
                     or not all(value.startswith("https://") for value in setting["source_urls"])):
                 raise ValueError("Invalid viral tumour setting sources")
     for name, record in data["subsets"].items():
-        required = {"title", "description", "mechanisms"}
+        required = {"title", "description"}
         if not isinstance(name, str) or not isinstance(record, dict) or required - set(record):
             raise ValueError("Invalid viral subset record")
         if not all(isinstance(record[field], str) and record[field]
                    for field in ("title", "description")):
             raise ValueError("Invalid viral subset text")
-        if not _strings(record["mechanisms"]):
+        if "mechanisms" not in record and "abbreviations" not in record:
             raise ValueError("Invalid viral subset mechanisms")
-        if record.get("mechanism_match", "all") not in ("any", "all"):
+        if "mechanisms" in record and not _strings(record["mechanisms"]):
+            raise ValueError("Invalid viral subset mechanisms")
+        if "abbreviations" in record and not _strings(record["abbreviations"]):
+            raise ValueError("Invalid viral subset abbreviations")
+        if "source_urls" in record and (not _strings(record["source_urls"])
+                                        or not all(value.startswith("https://")
+                                                   for value in record["source_urls"])):
+            raise ValueError("Invalid viral subset sources")
+        if "mechanisms" in record and record.get("mechanism_match", "all") not in ("any", "all"):
             raise ValueError("Invalid viral subset mechanism match")
-        if set(record["mechanisms"]) - set(data["mechanisms"]):
+        if "mechanisms" in record and set(record["mechanisms"]) - set(data["mechanisms"]):
             raise ValueError("Unknown viral subset mechanism")
     return data
 
@@ -146,6 +154,8 @@ def viral_subset_abbreviations(subsets):
     selected = set()
     for name in names:
         record = records[name]
-        selected.update(viral_mechanism_abbreviations(
-            record["mechanisms"], match=record.get("mechanism_match", "all")))
+        selected.update(record.get("abbreviations", ()))
+        if "mechanisms" in record:
+            selected.update(viral_mechanism_abbreviations(
+                record["mechanisms"], match=record.get("mechanism_match", "all")))
     return tuple(sorted(selected))

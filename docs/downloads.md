@@ -125,9 +125,9 @@ overlap this one.
 
 Mechanism selectors are separate from contexts because they describe
 virus--tumour biology, not a collection's intended analysis use. Named subsets
-provide reusable selections composed from mechanisms. List them with `orfdata
-viral subsets`. For a conservative set with evidence of both host-genome
-integration and direct tumour-cell driving, use:
+provide reusable cited sets or selections composed from mechanisms. List them
+with `orfdata viral subsets`. For a conservative set with evidence of both
+host-genome integration and direct tumour-cell driving, use:
 
 ```sh
 orfdata download viral --subset integrated-direct-driver
@@ -142,7 +142,7 @@ For the narrower evidence set where continued viral-oncogene expression has
 been tested in named tumour settings, use:
 
 ```sh
-orfdata download viral --subset tumor-cell-oncogene-dependence
+orfdata download viral --subset tumor-cell-oncogene-dependence-evidence
 ```
 
 ## Cache output
