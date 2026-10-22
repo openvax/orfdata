@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from orfdata import ViralPanelEntry, viral_panel_coverage, viral_references
+from orfdata import (
+    ViralPanelEntry,
+    download_viral_inventory,
+    viral_panel_coverage,
+    viral_references,
+)
 from tools.build_gdc_viral_coverage import SOURCE_SHA256, build
 
 FIXTURE = Path(__file__).parent / "data/viral/GRCh83.d1.vd1_virus_decoy.txt.gz"
@@ -46,3 +51,41 @@ def test_coverage_agrees_with_released_gdc_coding_references():
     assert covered == bundled
     with pytest.raises(ValueError, match="Unknown viral panel"):
         viral_panel_coverage("GRCh38.d1.v1")
+
+
+def test_coverage_filters_by_availability_and_source_name():
+    hpv16, = viral_panel_coverage(available=True)
+    assert hpv16.available and hpv16.abbreviation == "HPV16"
+    assert len(viral_panel_coverage(available=False)) == 199
+    cmv, = viral_panel_coverage(search="nc_006273.2")
+    assert cmv.abbreviation == "CMV ( HHV-5)" and not cmv.available
+    hpv18, = viral_panel_coverage(available=False, virus="hpv18")
+    assert hpv18.name == "Human papillomavirus 18"
+    for bad in ("", "   ", True):
+        with pytest.raises(ValueError, match="search"):
+            viral_panel_coverage(search=bad)
+    with pytest.raises(ValueError, match="available"):
+        viral_panel_coverage(available="yes")
+    with pytest.raises(ValueError, match="virus"):
+        viral_panel_coverage(virus="")
+
+
+def test_inventory_download_uses_datacache_with_the_published_pin(monkeypatch, tmp_path):
+    import orfdata.datasets as datasets
+
+    called = {}
+
+    class FakeDataCache:
+        def fetch_file(self, url, **kwargs):
+            called.update(url=url, **kwargs)
+            return tmp_path / "inventory.txt"
+
+    monkeypatch.setattr(datasets, "_datacache", lambda: FakeDataCache())
+    monkeypatch.setattr(datasets, "get_data_dir", lambda root: tmp_path / "orfdata")
+    assert download_viral_inventory(cache_root=tmp_path, force=True, timeout=12) == (
+        tmp_path / "inventory.txt")
+    assert called["url"] == "https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt"
+    assert called["expected_sha256"] == SOURCE_SHA256
+    assert called["expected_size"] == called["max_bytes"] == len(gzip.decompress(FIXTURE.read_bytes()))
+    assert called["raw"] and called["record_provenance"] and called["force"]
+    assert called["timeout"] == 12
