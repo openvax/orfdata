@@ -487,6 +487,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#proteins-supplied-by-other-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proteins supplied by other tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#save-and-reload" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1518,6 +1529,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#proteins-supplied-by-other-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proteins supplied by other tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#save-and-reload" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2066,13 +2088,49 @@ to select the transcript for each parent; omitting an ambiguous choice raises.
 Reference transcript coordinates and reference protein measurements are not
 copied onto the altered sequence. Viral parents are not supported for derived
 proteins. The snapshot retains the complete derivation record.</p>
+<h2 id="proteins-supplied-by-other-tools">Proteins supplied by other tools<a class="headerlink" href="#proteins-supplied-by-other-tools" title="Permanent link">&para;</a></h2>
+<p>An adapter for an RNA assembly or DNA prediction can submit its amino-acid
+sequence without naming an included parent protein. It supplies source claims
+as <code>ProducerInfo</code>; these do not create genomic <code>Occurrence</code> mappings:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProducerInfo</span><span class="p">,</span> <span class="n">ProteomeEntry</span>
+
+<span class="n">reference</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">()</span>
+<span class="n">rna_product</span> <span class="o">=</span> <span class="n">ProteomeEntry</span><span class="o">.</span><span class="n">from_producer</span><span class="p">(</span>
+    <span class="s2">"MPEPTIDE"</span><span class="p">,</span> <span class="n">taxon_id</span><span class="o">=</span><span class="mi">9606</span><span class="p">,</span>
+    <span class="n">producer</span><span class="o">=</span><span class="n">ProducerInfo</span><span class="p">(</span>
+        <span class="n">origin</span><span class="o">=</span><span class="s2">"nc_orf"</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"rna_assembly"</span><span class="p">,</span> <span class="n">tool</span><span class="o">=</span><span class="s2">"isovar"</span><span class="p">,</span>
+        <span class="n">tool_version</span><span class="o">=</span><span class="s2">"2.0"</span><span class="p">,</span> <span class="n">native_id</span><span class="o">=</span><span class="s2">"ASM42"</span><span class="p">,</span> <span class="n">sample_id</span><span class="o">=</span><span class="s2">"sample-A"</span><span class="p">,</span>
+        <span class="n">gene_names</span><span class="o">=</span><span class="p">(</span><span class="s2">"GENE1"</span><span class="p">,),</span> <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">reference</span><span class="p">,</span>
+        <span class="n">start_complete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stop_complete</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+<span class="n">joint</span> <span class="o">=</span> <span class="n">reference</span><span class="o">.</span><span class="n">with_entries</span><span class="p">([</span><span class="n">rna_product</span><span class="p">])</span>
+<span class="n">joint</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"joint.proteome.json.gz"</span><span class="p">)</span>
+</code></pre></div>
+<p><code>origin</code> describes the source protein or ORF category; <code>method</code> and <code>tool</code>
+describe how the supplied sequence was produced. The entry keeps provider,
+exporter, sample/run, native record, gene/transcript/ORF IDs, source hash and
+known reference when supplied. Its <code>accession</code> qualifies the native ID by
+producer and sample, so two samples can reuse the same native ID. Equal amino
+acid sequences stay distinct entries. Readding the same record is idempotent;
+changing content under the same identity raises.</p>
+<p>Build a standalone producer collection with
+<code>Proteome.from_entries(entries, reference=reference.reference)</code>, then use
+<code>reference.merge(producer_collection)</code>. If a producer does not know its exact
+reference, the caller must explicitly choose
+<code>compatibility="allow_unknown"</code> when adding it to a known host reference.
+A standalone collection with mixed or unknown references uses
+<code>Proteome.from_entries(entries, compatibility="mixed")</code>; merging it into a
+host reference also requires an explicit compatibility choice. Known wrong
+species or reference declarations always fail. These collection operations
+preserve source entries through offline save/load.</p>
 <h2 id="save-and-reload">Save and reload<a class="headerlink" href="#save-and-reload" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">identity</span> <span class="o">=</span> <span class="n">proteome</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>
 <span class="n">same</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>  <span class="c1"># Offline: no genome or catalogue needed.</span>
 <span class="k">assert</span> <span class="n">same</span><span class="o">.</span><span class="n">identity</span> <span class="o">==</span> <span class="n">identity</span>
 </code></pre></div>
-<p>A new save uses snapshot schema v2 for derivation metadata; <code>load</code> also reads
-existing v1 snapshots.</p>
+<p>A new save uses snapshot schema v3 for producer entries and explicit reference
+policy; <code>load</code> also reads existing v1 and v2 snapshots.</p>
 <p>A snapshot holds every entry with its occurrences and evidence, the layers with
 their selections and catalogue identities, and the excluded ORFs. <code>identity</code> is
 the SHA-256 of that content, so it changes when any sequence, occurrence,
