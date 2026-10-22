@@ -13,6 +13,11 @@ from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     """Export reference records as JSON, TSV or FASTA."""
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv == ["--version"]:
+        from .version import __version__
+
+        print(f"orfdata {__version__}")
+        return
     if argv and argv[0] == "catalogs":
         from .catalog_cli import run as catalog_run
 
@@ -25,6 +30,10 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         from .proteome_cli import run as proteome_run
 
         return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
+    if argv and argv[0] == "download":
+        from .download_cli import run as download_run
+
+        return download_run(argv[1:], prog=(prog or "orfdata") + " download")
     if argv and argv[0] == "viral":
         from .viral_cli import run as viral_run
 
@@ -46,8 +55,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
                "Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
                "catalogues with 'orfdata catalogs --help'; lift a catalogue to another assembly with "
                "'orfdata lift --help' and 'orfdata chains --help'; annotations PyEnsembl lacks, such as "
-               "T2T-CHM13, with 'orfdata genomes --help'; quantitative data with "
-               "'orfdata datasets --help'; viral inventory coverage with 'orfdata viral --help'.")
+               "T2T-CHM13, with 'orfdata genomes --help'; discover and acquire data with "
+               "'orfdata download --help'; viral inventory coverage with 'orfdata viral --help'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)

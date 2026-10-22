@@ -16,10 +16,25 @@ evidence.
 Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl,data,build-data]'
+python -m pip install 'orfdata[pyensembl,build-data]'
 pyensembl install --release 115 --species human
 # For the ncORF evidence presets and "all":
 orfdata setup --species human --catalogs all
+```
+
+List every bundled, downloadable or buildable resource and what is installed:
+
+```sh
+orfdata download list
+orfdata download status
+```
+
+Viral download support and its Biopython/DataCache dependencies are included in
+the regular installation. The genome, coding-sequence and protein FASTAs remain
+on demand:
+
+```sh
+orfdata download viral --species human
 ```
 
 ## Example
@@ -162,6 +177,7 @@ The [documentation](https://openvax.github.io/orfdata/) covers:
 
 | Task | Guide |
 | --- | --- |
+| Discover, inspect and download data | [Discover and download data](https://openvax.github.io/orfdata/downloads/) |
 | Build a proteome: evidence levels, exclusions, contigs, viral proteins | [Build a reference proteome](https://openvax.github.io/orfdata/proteome/) |
 | ORF classes, evidence definitions, Varcode and Isovar integration | [ORFs and evidence](https://openvax.github.io/orfdata/reference/) |
 | Species and reference identity, mitochondrial genetic codes | [Species, references and genetic codes](https://openvax.github.io/orfdata/species/) |

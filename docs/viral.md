@@ -28,20 +28,20 @@ source accessions. The equivalent CLI works offline:
 ```sh
 orfdata viral coverage --available
 orfdata viral coverage --missing --virus HPV18
-orfdata viral coverage --format json
+orfdata viral coverage --json
 orfdata viral coverage --format tsv > gdc-viral-coverage.tsv
 ```
 
 To download the **published inventory metadata** into the OpenVax DataCache
-and verify its pinned SHA256 and byte size, install `orfdata[data]` and run:
+for audit purposes, run:
 
 ```sh
 orfdata viral inventory download
 ```
 
 The Python equivalent is `download_viral_inventory(cache_root=...)`. Repeated
-calls reuse a verified cache entry. This download is optional; the coverage
-ledger is bundled and needs no network access.
+calls reuse a verified cache entry. This metadata download is optional; the
+coverage ledger is bundled and needs no network access.
 
 Each row preserves the GDC inventory's names, abbreviations, source accession
 fields and PaVE notes as published. Those accession fields may lack version
@@ -56,8 +56,126 @@ ORFdata also records NCBI ESummary metadata for the 200 GenBank accession
 leads in
 [`gdc-grch38-d1-vd1-genbank-summaries.tsv`](../orfdata/data/viral/gdc-grch38-d1-vd1-genbank-summaries.tsv):
 current accession versions, titles, sequence lengths, taxon IDs and record
-dates. This metadata lookup matched all 200 inventory accessions; it did not
-download sequence payloads or provide CDS annotations.
+dates. This bundled metadata lookup matched all 200 inventory accessions; it
+does not itself contain sequence payloads or CDS annotations.
+
+## Download source genomes, coding sequences and proteins
+
+To install all 200 GenBank source records for annotation, run:
+
+```sh
+orfdata download viral --species human
+```
+
+The downloader and its Biopython/DataCache dependencies are part of a regular
+`pip install orfdata`; the sequence payload stays on demand. The command
+installs a checked bundle under `ORFDATA_CACHE` (or the normal OpenVax cache),
+rather than asking for an export directory. Use `--cache-root DIRECTORY` to
+select another cache and `--force` to refresh or repair the installed files.
+`orfdata viral download` remains a compatibility alias.
+
+Here `--species human` is the target analysis species. It does not assert that
+every source record declared a human host. The default collection is
+`gdc-grch38-d1-vd1`; pass that value with `--collection` when an explicit
+configuration is useful. The collection's
+`cancer-transcriptome-screening` context is descriptive, nonexclusive metadata.
+It does not classify each virus as cancer-causing. A user may request CMV or EBV
+for both cancer and autoimmune workflows, so a disease context is not a mutually
+exclusive download selector or part of cache identity. Future collections can
+carry several context tags and share exact accession/version records. This is
+the only viral download collection currently published; unsupported species or
+collections fail with the available choice.
+
+`cancer-causing` selects the 20 viral-agent references represented
+here that [IARC classifies as Group 1, carcinogenic to humans](https://monographs.iarc.who.int/agents-classified-by-the-iarc/).
+It is a source-backed selector for viral agents that can cause cancer rather than an assertion that every GDC
+screening entry causes cancer. Excluding it selects the remaining GDC screen;
+that result must not be interpreted as a non-carcinogenic list.
+
+List registered contexts with `orfdata viral contexts`. Supplying one or more
+contexts creates a derived index from the shared collection: repeated
+`--context` values select a union and `--context-match all` selects an
+intersection. The index has its own checked FASTAs but reuses the same cached
+source records, so a reference shared by cancer and autoimmune contexts keeps
+one accession-based identity.
+
+```sh
+orfdata download viral --context cancer-transcriptome-screening
+orfdata download viral --context cancer-causing  # `iarc-group-1` is an alias
+# Excludes the Group 1 subset from the GDC screen; it does not assert the rest are safe.
+orfdata download viral --exclude-context cancer-causing
+# Once another listed context is published, select its union or intersection:
+orfdata download viral --context cancer-transcriptome-screening --context <another-listed-context>
+orfdata download viral --context cancer-transcriptome-screening --context <another-listed-context> --context-match all
+```
+
+The bundle contains `genomes.fasta`, `coding_sequences.fasta`,
+`proteins.fasta`, `cds.tsv`, `manifest.tsv`, individual gzipped GenBank records,
+and `SHA256SUMS`. The version-pinned accession summary selects the exact NCBI
+records. Each genome FASTA record starts with `viral:<accession.version>`. The
+coding-sequence and protein FASTAs contain one paired entry per source CDS
+feature and use the same FASTA identifier, including for joined or
+reverse-strand CDS features. The identifier starts with the exact
+accession/version rather than the collection, so importing the same record
+through another collection or context retains its sequence and product
+identity.
+
+PyEnsembl calls these protein FASTAs rather than proteome FASTAs. Its transcript
+FASTA contains spliced cDNA transcripts, including UTRs. The GDC source records
+have 1,678 CDS features but only 39 explicit `mRNA` features across five of the
+200 records. ORFdata therefore calls the nucleotide export
+`coding_sequences.fasta`; calling it a transcriptome would imply transcript
+models that the sources do not provide.
+
+The Python API returns the generated paths and record counts:
+
+```python
+from orfdata import (
+    download_viral_references,
+    index_viral_references,
+    viral_reference_bundle,
+)
+
+bundle = viral_reference_bundle(
+    download_if_missing=True,
+    species="human",
+)
+print(bundle.genome_fasta)
+print(bundle.coding_sequence_fasta, bundle.protein_fasta)
+print(bundle.genome_count, bundle.protein_count)  # 200, 1678 for the pinned records
+print(bundle.collection, bundle.contexts)
+
+# Later, reopen the verified cached files without a network request.
+bundle = viral_reference_bundle(species="human")
+
+# The explicit downloader is equivalent to download_if_missing=True.
+bundle = download_viral_references(species="human")
+
+# A context index reuses the source bundle and can fetch it on demand.
+cancer_index = index_viral_references(
+    contexts=["cancer-causing"],
+    species="human",
+    download_if_missing=True,
+)
+print(cancer_index.protein_fasta)
+```
+
+Discover this collection alongside every catalogue, quantitative dataset,
+pinned genome and chain file, without downloading anything:
+
+```sh
+orfdata download list
+orfdata download list --kind viral --species human
+orfdata download status
+orfdata download list --missing
+```
+
+Use `--json` for machine-readable output and `--verify` to hash installed files.
+The Python equivalent is `list_downloads()`.
+
+This is a source-record download for alignment and annotation workflows. It
+does not change the curated, sequence-qualified references exposed through
+`viral_references()` or selected by `Proteome.build(..., viral=...)`.
 
 The [viral panel roadmap](https://github.com/openvax/orfdata/issues/91) tracks
 the remaining imports. GDC panel membership and a documented host association

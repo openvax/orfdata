@@ -10,11 +10,11 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{name = "OpenVax"}]
-dependencies = []
+dependencies = ["biopython>=1.80,<2", "datacache>=1.25.1,<2"]
 
 [project.optional-dependencies]
 pyensembl = ["pyensembl>=2.27.2"]
-build-data = ["openpyxl>=3.1", "biopython>=1.80,<2"]
+build-data = ["openpyxl>=3.1"]
 data = ["datacache>=1.25.1,<2"]
 columnar = ["pyarrow>=14"]
 dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "biopython>=1.80,<2", "pyensembl>=2.27.2", "datacache>=1.25.1,<2"]

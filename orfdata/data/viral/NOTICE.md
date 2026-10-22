@@ -27,6 +27,25 @@ https://www.ncbi.nlm.nih.gov/books/NBK25501/ .
 Summary manifest SHA256:
 `5d6c7cbc3f77ba5236acc2e94bc49cf78e3ff486c12535d2b51e80f3ab875498`.
 
+## On-demand GenBank source-record bundle
+
+`download_viral_references()` and
+`orfdata download viral --species human` use the
+version-pinned accessions in the summary manifest to retrieve all 200 GenBank
+records from NCBI EFetch. The bundle is installed in the ORFdata cache and
+includes genome, source-CDS nucleotide and protein FASTAs, manifest and feature tables,
+individual compressed GenBank records, and a SHA256 manifest. These are source
+records for alignment and annotation workflows; downloading them does not make
+the entries bundled, curated coding references in ORFdata.
+
+`human` is the target analysis species. It is not a claim that every source
+record declared a human host. `gdc-grch38-d1-vd1` is the collection identity;
+`cancer-transcriptome-screening` and `cancer-causing` are nonexclusive
+contexts recorded for it. The latter selects viral agents that IARC classifies
+as Group 1 carcinogenic to humans; GDC membership is not a claim that each virus causes cancer,
+and contexts do not determine cache identity. `orfdata viral download` remains
+a compatibility alias.
+
 ## HPV16 coding reference
 
 Source: NCBI RefSeq **NC_001526.4**, complete GenBank record:
