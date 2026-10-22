@@ -20,6 +20,10 @@
   1, 2A and 2B subset, and the 20-reference `cancer-causing` IARC Group 1
   subset. Being outside one tier does not classify a reference as
   non-carcinogenic.
+  Tumour-mechanism selectors are separate from contexts: they expose
+  host-genome integration, direct tumour-cell driving and narrower experimental
+  viral-oncogene-dependence evidence. The selectors are scoped to the stated
+  evidence and do not predict response to virus-directed therapy.
 
 - Resolve PyEnsembl 2.31 reference strains using `species_taxon_id`, while
   preserving registered organism identities (including domestic dog), explicit

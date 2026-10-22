@@ -112,6 +112,10 @@ def run(argv=None, prog="orfdata download"):
                        help="Exclude this context from the derived index; repeat as needed")
     viral.add_argument("--context-match", choices=("any", "all"), default="any",
                        help="Match any selected context (default) or require all")
+    viral.add_argument("--mechanism", action="append",
+                       help="Build an index for this tumour mechanism; repeat for a union")
+    viral.add_argument("--mechanism-match", choices=("any", "all"), default="any",
+                       help="Match any selected mechanism (default) or require all")
     _add_cache(viral)
     _add_force_timeout(viral, timeout=120)
     _add_json(viral)
@@ -176,11 +180,13 @@ def run(argv=None, prog="orfdata download"):
             bundle = download_viral_references(
                 species=args.species, collection=args.collection, cache_root=args.cache_root,
                 force=args.force, timeout=args.timeout)
-            if args.context or args.exclude_context:
-                contexts = args.context or ["cancer-transcriptome-screening"]
+            if args.context or args.exclude_context or args.mechanism:
+                contexts = args.context or (["cancer-transcriptome-screening"]
+                                            if args.exclude_context else None)
                 indexed = index_viral_references(
                     contexts=contexts, exclude_contexts=args.exclude_context,
-                    context_match=args.context_match,
+                    context_match=args.context_match, mechanisms=args.mechanism,
+                    mechanism_match=args.mechanism_match,
                     species=args.species, collection=args.collection,
                     cache_root=args.cache_root, force=args.force, timeout=args.timeout)
                 output = dict(indexed.to_dict(), kind="viral-index", status="available")

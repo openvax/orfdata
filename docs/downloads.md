@@ -123,6 +123,23 @@ operational selection is what a workflow needs. Respiratory and autoimmune
 contexts can be added from their own versioned, scoped authorities and can
 overlap this one.
 
+Mechanism selectors are separate from contexts because they describe
+virus--tumour biology, not a collection's intended analysis use. List them
+with `orfdata viral mechanisms`. For a conservative set with evidence of both
+host-genome integration and direct tumour-cell driving, use:
+
+```sh
+orfdata download viral \
+  --mechanism host-genome-integrating \
+  --mechanism direct-tumor-cell-driver \
+  --mechanism-match all
+```
+
+This derived index contains 15 references: the 12 IARC Group 1 HPV types,
+HBV, HTLV-1 and MCV. It must not be read as a treatment-response prediction;
+the relevant tumour, integration event, viral expression and clonal state need
+sample-level evidence.
+
 ## Cache output
 
 Downloads have a canonical, versioned path under `ORFDATA_CACHE`,
@@ -160,6 +177,12 @@ from orfdata import index_viral_references
 cancer_index = index_viral_references(
     contexts=["cancer-causing"],
     species="human",
+    download_if_missing=True,
+)
+
+integrated_drivers = index_viral_references(
+    mechanisms=["host-genome-integrating", "direct-tumor-cell-driver"],
+    mechanism_match="all",
     download_if_missing=True,
 )
 ```

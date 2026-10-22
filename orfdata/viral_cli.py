@@ -7,6 +7,7 @@ import sys
 from dataclasses import asdict
 
 from .viral_coverage import PANEL, download_viral_inventory, viral_contexts, viral_panel_coverage
+from .viral_mechanisms import viral_mechanisms
 from .viral_panel import VIRAL_COLLECTION, download_viral_references, index_viral_references
 
 
@@ -33,6 +34,9 @@ def run(argv=None, prog="orfdata viral"):
     contexts = commands.add_parser("contexts", help="List selectable viral-reference contexts")
     contexts.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
+    mechanisms = commands.add_parser("mechanisms", help="List tumour-scoped viral mechanism selectors")
+    mechanisms.add_argument("--json", action="store_true", help="Write machine-readable JSON")
+
     inventory = commands.add_parser("inventory", help="Manage the published GDC inventory metadata")
     inventory_commands = inventory.add_subparsers(dest="inventory_command", required=True)
     download = inventory_commands.add_parser("download", help="Download the pinned inventory via DataCache")
@@ -53,6 +57,10 @@ def run(argv=None, prog="orfdata viral"):
                                      help="Exclude this context from the derived index; repeat as needed")
     download_references.add_argument("--context-match", choices=("any", "all"), default="any",
                                      help="Match any selected context (default) or require all")
+    download_references.add_argument("--mechanism", action="append",
+                                     help="Build an index for this tumour mechanism; repeat for a union")
+    download_references.add_argument("--mechanism-match", choices=("any", "all"), default="any",
+                                     help="Match any selected mechanism (default) or require all")
     download_references.add_argument("--cache-root",
                                      help="Cache directory instead of ORFDATA_CACHE or the default")
     download_references.add_argument("--force", action="store_true",
@@ -72,6 +80,22 @@ def run(argv=None, prog="orfdata viral"):
             headings = ("CONTEXT", "ALIASES", "REFERENCES", "DESCRIPTION")
             values = [(row.name, ",".join(row.aliases) or "-", str(row.references), row.description)
                       for row in rows]
+            widths = [max(len(heading), *(len(row[index]) for row in values))
+                      for index, heading in enumerate(headings)]
+            print("  ".join(heading.ljust(widths[index])
+                            for index, heading in enumerate(headings)))
+            for row in values:
+                print("  ".join(value.ljust(widths[index])
+                                for index, value in enumerate(row)))
+        return
+    if args.command == "mechanisms":
+        rows = viral_mechanisms()
+        if args.json:
+            json.dump([asdict(row) for row in rows], sys.stdout, indent=2)
+            sys.stdout.write("\n")
+        else:
+            headings = ("MECHANISM", "REFERENCES", "DESCRIPTION")
+            values = [(row.name, str(row.references), row.description) for row in rows]
             widths = [max(len(heading), *(len(row[index]) for row in values))
                       for index, heading in enumerate(headings)]
             print("  ".join(heading.ljust(widths[index])
@@ -130,11 +154,13 @@ def run(argv=None, prog="orfdata viral"):
         bundle = download_viral_references(
             species=args.species, collection=args.collection, cache_root=args.cache_root,
             force=args.force, timeout=args.timeout)
-        if args.context or args.exclude_context:
-            contexts = args.context or ["cancer-transcriptome-screening"]
+        if args.context or args.exclude_context or args.mechanism:
+            contexts = args.context or (["cancer-transcriptome-screening"]
+                                        if args.exclude_context else None)
             bundle = index_viral_references(
                 contexts=contexts, exclude_contexts=args.exclude_context,
-                context_match=args.context_match,
+                context_match=args.context_match, mechanisms=args.mechanism,
+                mechanism_match=args.mechanism_match,
                 species=args.species, collection=args.collection,
                 cache_root=args.cache_root, force=args.force, timeout=args.timeout)
     except (ImportError, RuntimeError, ValueError, OSError) as error:

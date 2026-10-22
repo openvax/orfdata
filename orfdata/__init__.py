@@ -92,6 +92,12 @@ from .viral_coverage import (
     viral_contexts,
     viral_panel_coverage,
 )
+from .viral_mechanisms import (
+    ViralMechanism,
+    normalize_viral_mechanisms,
+    viral_mechanism_abbreviations,
+    viral_mechanisms,
+)
 from .viral_panel import (
     ViralReferenceBundle,
     ViralReferenceIndex,
@@ -112,6 +118,10 @@ __all__ = [
     "download_viral_inventory",
     "viral_contexts",
     "viral_panel_coverage",
+    "ViralMechanism",
+    "viral_mechanisms",
+    "normalize_viral_mechanisms",
+    "viral_mechanism_abbreviations",
     "ViralReferenceBundle",
     "ViralReferenceIndex",
     "download_viral_references",

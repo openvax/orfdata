@@ -95,6 +95,38 @@ weaker or conditional IARC classifications. These selectors describe evidence
 tiers, rather than declaring that the remaining GDC screening entries lack a
 cancer connection.
 
+## Tumour mechanism selectors
+
+Contexts describe why a collection may be useful. Mechanism selectors describe
+an evidence-backed virus--tumour relationship and can be combined to make a
+derived FASTA index:
+
+```sh
+orfdata viral mechanisms
+# 12 Group 1 HPV types, HBV, HTLV-1 and MCV: 15 references
+orfdata download viral \
+  --mechanism host-genome-integrating \
+  --mechanism direct-tumor-cell-driver \
+  --mechanism-match all
+```
+
+`host-genome-integrating` also includes HIV-1 and HIV-2, because retroviral
+integration is part of their lifecycle. They are removed by the
+`direct-tumor-cell-driver` intersection: HIV-associated cancer risk commonly
+involves immune dysfunction and other oncogenic viruses rather than HIV as a
+driver in the tumour cell. EBV and KSHV are direct drivers in relevant tumours
+but normally persist as episomes, so the same intersection excludes them.
+
+`viral-oncogene-dependence-evidence` is deliberately narrower: it currently
+contains HPV16, HPV18 and MCV, for which direct experimental evidence supports
+continued viral-oncogene expression in named virus-positive tumour settings.
+It is not a claim that every tumour carrying the virus is dependent, nor a
+prediction that antiviral treatment will eradicate the cancer. The exact
+tumour type, viral integration, viral expression and clonal distribution must
+be resolved in the sample. The mechanism table links the supporting primary
+studies for HPV integration and E6/E7 dependence, HBV integration, HTLV-1
+proviral integration, and MCV integration and T-antigen dependence.
+
 List registered contexts with `orfdata viral contexts`. Supplying one or more
 contexts creates a derived index from the shared collection: repeated
 `--context` values select a union and `--context-match all` selects an
