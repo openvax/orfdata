@@ -2261,18 +2261,34 @@ for how versions and references are checked.
 <code>for_transcript(transcript, include_annotated=True)</code> adds the annotated CDSs
 on that transcript, and <code>overlapping(...)</code> finds ORFs at a genomic interval.</p>
 <h2 id="fasta-headers">FASTA headers<a class="headerlink" href="#fasta-headers" title="Permanent link">&para;</a></h2>
-<p><code>write_fasta</code> writes 60-column sequences. The first word of each header is the
-accession: an Ensembl protein ID with its version, a source ORF ID or a viral
-protein ID. Fields that apply follow as <code>key=value</code>:</p>
-<div class="highlight"><pre><span></span><code>&gt;ENSP00000269305.4 kind=annotated protein_source=reference_cds taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
-&gt;c7riboseqorf56 kind=extra_orf protein_source=nc_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,immunopeptidomics transcripts=18
-&gt;c10riboseqorf115 kind=extra_orf protein_source=nc_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,immunopeptidomics source_transcript=ENST00000277895 transcripts=10
-&gt;NP_041327.2 kind=viral protein_source=viral taxon=333760 source=viral:HPV16@NC_001526.4 gene_name=E1 product=replication_protein_E1
+<p><code>write_fasta</code> writes 60-column sequences and, by default, one FASTA record per
+source entry. The first whitespace-delimited token has the same policy for
+reference CDS, ncORF, viral and supplied proteins:</p>
+<div class="highlight"><pre><span></span><code>&gt;origin=nc_orf|orf=uORF|method=rna_assembly|tool=isovar|gene=GENE1|aa=8|taxon=9606|source=producer%3Aisovar|sample=T1|id=ASM42|key=... kind=external protein_source=nc_orf ...
 </code></pre></div>
-<p><code>protein_source</code> uses <code>reference_cds</code>, <code>nc_orf</code> or <code>viral</code>. The older <code>kind</code>
+<p>The <code>key</code> suffix is a 16-character digest of the source-qualified accession;
+it disambiguates records without replacing the readable origin, ORF kind,
+method, tool, gene, amino-acid length, source, sample and native ID. Optional
+<code>run</code> and <code>gene_count</code> fields appear when needed. <code>gene=unknown</code> means no gene
+was supplied. Multiple gene names appear as a comma-separated value with
+<code>gene_count</code>; punctuation and whitespace inside values are percent-escaped
+with UTF-8, including <code>|</code>, <code>=</code>, commas and spaces. <code>orf=unknown</code> means the
+producer did not state an ORF category. Supplied products may set
+<code>ProducerInfo.orf_kind</code> (for example <code>uORF</code>).</p>
+<p>The complete source-qualified accession and original native ID stay in the
+snapshot. After <code>Proteome.load</code>, <code>proteome.fasta_index()</code> maps every FASTA
+first token to a tuple containing its source entry. A token collision raises
+before writing. <code>write_fasta(..., deduplicate=True)</code> groups <em>exactly equal</em>
+amino-acid sequences; its token adds a source count and group key, and
+<code>fasta_index(deduplicate=True)</code> maps it to every contributing entry. This
+option never groups a partial sequence with a longer sequence that contains
+it. Keep the snapshot beside the FASTA to recover all producer records,
+evidence and no-sequence outcomes.</p>
+<p>Additional <code>key=value</code> fields follow the first token in the description.
+<code>protein_source</code> uses <code>reference_cds</code>, <code>nc_orf</code> or <code>viral</code>. The older <code>kind</code>
 field remains in FASTA and snapshots for compatibility; <code>annotated</code> there
 means a reference CDS protein and <code>extra_orf</code> means a catalogue ncORF.
-For extra ORFs, the accession is the source ORF ID, <code>transcript</code> is its host
+For extra ORFs, the native accession is the source ORF ID, <code>transcript</code> is its host
 transcript in this genome, and <code>gene</code>, <code>gene_name</code> and <code>transcript_biotype</code>
 describe that transcript in this genome. <code>orf_type</code> is the source's ORF
 category, kept verbatim; see <a href="../reference/#orf-categories">ORF categories</a>.
