@@ -37,7 +37,9 @@ _MAX_ATTEMPTS = 5
 VIRAL_TARGET_SPECIES = "homo_sapiens"
 VIRAL_TARGET_TAXON_ID = 9606
 VIRAL_COLLECTION = "gdc-grch38-d1-vd1"
-VIRAL_CONTEXTS = ("cancer-transcriptome-screening", "cancer-causing")
+VIRAL_CONTEXTS = (
+    "cancer-transcriptome-screening", "cancer-associated", "cancer-causing",
+)
 _COLLECTION_ALIASES = {
     "gdc": VIRAL_COLLECTION,
     "gdc-grch38-d1-vd1": VIRAL_COLLECTION,

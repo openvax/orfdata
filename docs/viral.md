@@ -78,7 +78,8 @@ Here `--species human` is the target analysis species. It does not assert that
 every source record declared a human host. The default collection is
 `gdc-grch38-d1-vd1`; pass that value with `--collection` when an explicit
 configuration is useful. The collection's
-`cancer-transcriptome-screening` context is descriptive, nonexclusive metadata.
+`cancer-transcriptome-screening` context (with the convenient alias `cancer`)
+is descriptive, nonexclusive metadata.
 It does not classify each virus as cancer-causing. A user may request CMV or EBV
 for both cancer and autoimmune workflows, so a disease context is not a mutually
 exclusive download selector or part of cache identity. Future collections can
@@ -88,9 +89,11 @@ collections fail with the available choice.
 
 `cancer-causing` selects the 20 viral-agent references represented
 here that [IARC classifies as Group 1, carcinogenic to humans](https://monographs.iarc.who.int/agents-classified-by-the-iarc/).
-It is a source-backed selector for viral agents that can cause cancer rather than an assertion that every GDC
-screening entry causes cancer. Excluding it selects the remaining GDC screen;
-that result must not be interpreted as a non-carcinogenic list.
+`cancer-associated` selects the 37 references classified by IARC in Groups 1,
+2A or 2B; it includes the Group 1 set, HPV68, CMV, HIV-2, and HPV types with
+weaker or conditional IARC classifications. These selectors describe evidence
+tiers, rather than declaring that the remaining GDC screening entries lack a
+cancer connection.
 
 List registered contexts with `orfdata viral contexts`. Supplying one or more
 contexts creates a derived index from the shared collection: repeated
@@ -100,7 +103,8 @@ source records, so a reference shared by cancer and autoimmune contexts keeps
 one accession-based identity.
 
 ```sh
-orfdata download viral --context cancer-transcriptome-screening
+orfdata download viral --context cancer  # all 200 GDC screening references
+orfdata download viral --context cancer-associated  # IARC Groups 1, 2A and 2B
 orfdata download viral --context cancer-causing  # `iarc-group-1` is an alias
 # Excludes the Group 1 subset from the GDC screen; it does not assert the rest are safe.
 orfdata download viral --exclude-context cancer-causing

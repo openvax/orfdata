@@ -21,6 +21,13 @@ _CONTEXTS = {
         "title": "GDC cancer transcriptome screening references",
         "description": "Membership in the GDC GRCh38.d1.vd1 viral screening inventory",
         "source": INVENTORY_URL,
+        "aliases": ("cancer", "cancer-screening", "gdc-cancer"),
+    },
+    "cancer-associated": {
+        "title": "Cancer-associated viral agents",
+        "description": "Viral agents classified by IARC in Groups 1, 2A, or 2B",
+        "source": "https://monographs.iarc.who.int/agents-classified-by-the-iarc/",
+        "aliases": ("potentially-carcinogenic", "iarc-groups-1-2"),
     },
     "cancer-causing": {
         "title": "Cancer-causing viral agents",
@@ -42,6 +49,14 @@ _IARC_GROUP_1_ABBREVIATIONS = frozenset((
     "HPV16", "HPV18", "HPV31", "HPV33", "HPV35", "HPV39", "HPV45", "HPV51", "HPV52",
     "HPV56", "HPV58", "HPV59",
 ))
+_IARC_GROUP_2A_ABBREVIATIONS = frozenset(("HPV68",))
+_IARC_GROUP_2B_ABBREVIATIONS = frozenset((
+    "CMV ( HHV-5)", "HIV-2", "HPV5", "HPV8", "HPV26", "HPV30", "HPV34", "HPV53",
+    "HPV66", "HPV67", "HPV69", "HPV70", "HPV73", "HPV82", "HPV85", "HPV97",
+))
+_IARC_CANCER_ASSOCIATED_ABBREVIATIONS = (
+    _IARC_GROUP_1_ABBREVIATIONS | _IARC_GROUP_2A_ABBREVIATIONS | _IARC_GROUP_2B_ABBREVIATIONS
+)
 
 
 @dataclass(frozen=True)
@@ -86,6 +101,8 @@ class ViralPanelEntry:
 
 def _entry_contexts(abbreviation):
     contexts = ["cancer-transcriptome-screening"]
+    if abbreviation in _IARC_CANCER_ASSOCIATED_ABBREVIATIONS:
+        contexts.append("cancer-associated")
     if abbreviation in _IARC_GROUP_1_ABBREVIATIONS:
         contexts.append("cancer-causing")
     return tuple(contexts)

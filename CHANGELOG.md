@@ -15,10 +15,11 @@
   contexts without giving an accession/version a context-specific identity.
   `human` is an analysis target; source-host taxon IDs remain empty when the
   supplied source inventory does not establish them. The initially published
-  contexts are the 200-reference GDC cancer-transcriptome screen and its
-  20-reference `cancer-causing` viral-agent subset, based on IARC Group 1;
-  excluding the latter does not
-  classify the remaining references as non-carcinogenic.
+  contexts are the 200-reference GDC cancer-transcriptome screen (also
+  selectable as `cancer`), its 37-reference `cancer-associated` IARC Groups
+  1, 2A and 2B subset, and the 20-reference `cancer-causing` IARC Group 1
+  subset. Being outside one tier does not classify a reference as
+  non-carcinogenic.
 
 - Resolve PyEnsembl 2.31 reference strains using `species_taxon_id`, while
   preserving registered organism identities (including domestic dog), explicit

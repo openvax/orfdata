@@ -64,7 +64,7 @@ The published viral collection currently has these properties:
 | --- | --- | --- |
 | Species | `human` | Target analysis species, NCBI taxon 9606 |
 | Collection | `gdc-grch38-d1-vd1` | Stable identity of the 200-reference GDC set |
-| Contexts | `cancer-transcriptome-screening`, `cancer-causing` | Screening-use and cancer-causation selections |
+| Contexts | `cancer-transcriptome-screening` (`cancer`), `cancer-associated`, `cancer-causing` | Full screen plus IARC evidence tiers |
 
 Run the default collection with:
 
@@ -88,7 +88,8 @@ reference.
 
 ```sh
 orfdata viral contexts
-orfdata download viral --context cancer-transcriptome-screening
+orfdata download viral --context cancer  # all 200 GDC screening references
+orfdata download viral --context cancer-associated  # 37 IARC Group 1, 2A or 2B references
 orfdata download viral --context cancer-causing  # `iarc-group-1` is an alias
 # The other 180 GDC screening references are not described as non-carcinogenic:
 orfdata download viral --exclude-context cancer-causing
@@ -113,13 +114,14 @@ because it describes the source inventory. The managed download API calls the
 versioned artifact a collection, which is the value used for lookup and cache
 identity.
 
-Use `cancer-causing` for the 20 viral-agent references represented
-in this collection that [IARC classifies as Group 1, carcinogenic to humans](https://monographs.iarc.who.int/agents-classified-by-the-iarc/).
-This is a source-backed interpretation of viruses that can cause cancer. The complementary GDC
-screening records are not evidence of no cancer association; use
-`--exclude-context cancer-causing` only when that operational
-selection is what a workflow needs. Respiratory and autoimmune contexts can be
-added from their own versioned, scoped authorities and can overlap this one.
+Use `cancer` for the full 200-reference GDC screen. Use `cancer-associated`
+for the 37 references in IARC Groups 1, 2A or 2B, and `cancer-causing` for
+the 20 [Group 1 references](https://monographs.iarc.who.int/agents-classified-by-the-iarc/).
+These selections represent evidence tiers: references outside one tier are not
+evidence of no cancer association. Use `--exclude-context` only when that
+operational selection is what a workflow needs. Respiratory and autoimmune
+contexts can be added from their own versioned, scoped authorities and can
+overlap this one.
 
 ## Cache output
 
