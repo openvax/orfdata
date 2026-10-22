@@ -13,12 +13,35 @@ coding references:
 from orfdata import viral_panel_coverage
 
 coverage = viral_panel_coverage()
-available = [row for row in coverage if row.status == "source_cds_bundled"]
-missing = [row for row in coverage if row.status == "not_bundled"]
+available = viral_panel_coverage(available=True)
+missing = viral_panel_coverage(available=False)
 print(len(coverage), len(available), len(missing))  # 200 1 199
 print(available[0].abbreviation, available[0].bundled_reference_id)
 # HPV16 GRCh38.d1.vd1:HPV16
 ```
+
+Use `viral_panel_coverage(available=True)` for bundled references,
+`available=False` for rows still missing from ORFdata, `virus="HPV18"` for one
+exact GDC abbreviation, or `search="NC_001357"` to search labels, names and
+source accessions. The equivalent CLI works offline:
+
+```sh
+orfdata viral coverage --available
+orfdata viral coverage --missing --virus HPV18
+orfdata viral coverage --format json
+orfdata viral coverage --format tsv > gdc-viral-coverage.tsv
+```
+
+To download the **published inventory metadata** into the OpenVax DataCache
+and verify its pinned SHA256 and byte size, install `orfdata[data]` and run:
+
+```sh
+orfdata viral inventory download
+```
+
+The Python equivalent is `download_viral_inventory(cache_root=...)`. Repeated
+calls reuse a verified cache entry. This download is optional; the coverage
+ledger is bundled and needs no network access.
 
 Each row preserves the GDC inventory's names, abbreviations, source accession
 fields and PaVE notes as published. Those accession fields may lack version

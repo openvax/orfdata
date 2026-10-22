@@ -25,6 +25,10 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         from .proteome_cli import run as proteome_run
 
         return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
+    if argv and argv[0] == "viral":
+        from .viral_cli import run as viral_run
+
+        return viral_run(argv[1:], prog=(prog or "orfdata") + " viral")
     if argv and argv[0] == "setup":
         return _setup(argv[1:], prog=(prog or "orfdata") + " setup")
     if argv and argv[0] == "genomes":
@@ -43,7 +47,7 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
                "catalogues with 'orfdata catalogs --help'; lift a catalogue to another assembly with "
                "'orfdata lift --help' and 'orfdata chains --help'; annotations PyEnsembl lacks, such as "
                "T2T-CHM13, with 'orfdata genomes --help'; quantitative data with "
-               "'orfdata datasets --help'.")
+               "'orfdata datasets --help'; viral inventory coverage with 'orfdata viral --help'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)

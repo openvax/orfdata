@@ -6,10 +6,12 @@ import io
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib.resources import files
+from pathlib import Path
 
 PANEL = "GRCh38.d1.vd1"
 INVENTORY_URL = "https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt"
 INVENTORY_SHA256 = "f221e758f47e4784714b4a89198b89536ddacdc905da9c778a6802d3e1e51c56"
+INVENTORY_SIZE = 13398
 _COVERAGE_SHA256 = "0bfa5ffc184eafcdb615b00cbe79acdd6e5e4f22ff2f919a2c31d62eb4cc1492"
 _RESOURCE = "data/viral/gdc-grch38-d1-vd1-coverage.tsv"
 _HEADER = ("index", "name", "abbreviation", "refseq", "genbank", "pave_id",
@@ -36,6 +38,11 @@ class ViralPanelEntry:
     status: str
     bundled_reference_id: str | None
     coding_models: int | None
+
+    @property
+    def available(self):
+        """Whether ORFdata bundles source CDS models for this panel row."""
+        return self.bundled_reference_id is not None
 
 
 @lru_cache(maxsize=1)
@@ -67,7 +74,7 @@ def _coverage():
     return entries
 
 
-def viral_panel_coverage(panel=PANEL):
+def viral_panel_coverage(panel=PANEL, *, available=None, virus=None, search=None):
     """Return all GDC viral inventory rows, including references not yet bundled.
 
     This is an inventory and coverage query, not a selection of protein
@@ -76,4 +83,32 @@ def viral_panel_coverage(panel=PANEL):
     """
     if panel != PANEL:
         raise ValueError(f"Unknown viral panel {panel!r}; available panel: {PANEL}")
-    return _coverage()
+    if available is not None and type(available) is not bool:
+        raise ValueError("available must be True, False, or None")
+    if virus is not None and (not isinstance(virus, str) or not virus.strip()):
+        raise ValueError("virus must be a nonempty GDC inventory abbreviation")
+    if search is not None and (not isinstance(search, str) or not search.strip()):
+        raise ValueError("search must be a nonempty string")
+    query = search.casefold() if search is not None else None
+    return tuple(entry for entry in _coverage()
+                 if (available is None or entry.available == available)
+                 and (virus is None or entry.abbreviation.casefold() == virus.casefold())
+                 and (query is None or any(query in (value or "").casefold() for value in (
+                     entry.name, entry.abbreviation, entry.refseq, entry.genbank, entry.pave_id))))
+
+
+def download_viral_inventory(*, cache_root=None, force=False, timeout=60):
+    """Fetch the pinned GDC inventory metadata through DataCache.
+
+    This downloads GDC's inventory text, not viral genomes or proteins. The
+    published bytes are checked by SHA-256 and size on both download and cache
+    reuse. ``viral_panel_coverage()`` works offline without this download.
+    """
+    from .datasets import _datacache, get_data_dir
+
+    cache = get_data_dir(cache_root) / "viral" / "inventories" / PANEL
+    return Path(_datacache().fetch_file(
+        INVENTORY_URL, filename="GRCh83.d1.vd1_virus_decoy.txt", cache_root=cache,
+        expected_sha256=INVENTORY_SHA256, expected_size=INVENTORY_SIZE,
+        max_bytes=INVENTORY_SIZE, raw=True, record_provenance=True,
+        force=force, timeout=timeout))

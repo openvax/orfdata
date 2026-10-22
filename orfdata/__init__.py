@@ -81,7 +81,7 @@ from .viral import (
     viral_reference_sequence,
     viral_references,
 )
-from .viral_coverage import ViralPanelEntry, viral_panel_coverage
+from .viral_coverage import ViralPanelEntry, download_viral_inventory, viral_panel_coverage
 
 __all__ = [
     "ViralProduct",
@@ -91,6 +91,7 @@ __all__ = [
     "viral_reference_sequence",
     "viral_references",
     "ViralPanelEntry",
+    "download_viral_inventory",
     "viral_panel_coverage",
     "__version__",
     "Proteome",
