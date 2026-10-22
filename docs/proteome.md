@@ -593,21 +593,39 @@ on that transcript, and `overlapping(...)` finds ORFs at a genomic interval.
 
 ## FASTA headers
 
-`write_fasta` writes 60-column sequences. The first word of each header is the
-accession: an Ensembl protein ID with its version, a source ORF ID or a viral
-protein ID. Fields that apply follow as `key=value`:
+`write_fasta` writes 60-column sequences and, by default, one FASTA record per
+source entry. The first whitespace-delimited token has the same policy for
+reference CDS, ncORF, viral and supplied proteins:
 
 ```text
->ENSP00000269305.4 kind=annotated protein_source=reference_cds taxon=9606 source=ensembl:115 gene=ENSG00000141510 gene_name=TP53 transcript=ENST00000269305.9 contig=17 transcript_biotype=protein_coding
->c7riboseqorf56 kind=extra_orf protein_source=nc_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000169902 gene_name=TPST1 transcript=ENST00000304842.6 contig=7 transcript_biotype=protein_coding orf_type=uORF evidence=ribosome,immunopeptidomics transcripts=18
->c10riboseqorf115 kind=extra_orf protein_source=nc_orf taxon=9606 source=orfdata-catalog:2026-10-11.1 gene=ENSG00000099204 gene_name=ABLIM1 transcript=ENST00000369253.6 contig=10 transcript_biotype=protein_coding orf_type=intORF evidence=ribosome,immunopeptidomics source_transcript=ENST00000277895 transcripts=10
->NP_041327.2 kind=viral protein_source=viral taxon=333760 source=viral:HPV16@NC_001526.4 gene_name=E1 product=replication_protein_E1
+>origin=nc_orf|orf=uORF|method=rna_assembly|tool=isovar|gene=GENE1|aa=8|taxon=9606|source=producer%3Aisovar|sample=T1|id=ASM42|key=... kind=external protein_source=nc_orf ...
 ```
 
+The `key` suffix is a 16-character digest of the source-qualified accession;
+it disambiguates records without replacing the readable origin, ORF kind,
+method, tool, gene, amino-acid length, source, sample and native ID. Optional
+`run` and `gene_count` fields appear when needed. `gene=unknown` means no gene
+was supplied. Multiple gene names appear as a comma-separated value with
+`gene_count`; punctuation and whitespace inside values are percent-escaped
+with UTF-8, including `|`, `=`, commas and spaces. `orf=unknown` means the
+producer did not state an ORF category. Supplied products may set
+`ProducerInfo.orf_kind` (for example `uORF`).
+
+The complete source-qualified accession and original native ID stay in the
+snapshot. After `Proteome.load`, `proteome.fasta_index()` maps every FASTA
+first token to a tuple containing its source entry. A token collision raises
+before writing. `write_fasta(..., deduplicate=True)` groups *exactly equal*
+amino-acid sequences; its token adds a source count and group key, and
+`fasta_index(deduplicate=True)` maps it to every contributing entry. This
+option never groups a partial sequence with a longer sequence that contains
+it. Keep the snapshot beside the FASTA to recover all producer records,
+evidence and no-sequence outcomes.
+
+Additional `key=value` fields follow the first token in the description.
 `protein_source` uses `reference_cds`, `nc_orf` or `viral`. The older `kind`
 field remains in FASTA and snapshots for compatibility; `annotated` there
 means a reference CDS protein and `extra_orf` means a catalogue ncORF.
-For extra ORFs, the accession is the source ORF ID, `transcript` is its host
+For extra ORFs, the native accession is the source ORF ID, `transcript` is its host
 transcript in this genome, and `gene`, `gene_name` and `transcript_biotype`
 describe that transcript in this genome. `orf_type` is the source's ORF
 category, kept verbatim; see [ORF categories](reference.md#orf-categories).

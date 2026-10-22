@@ -197,13 +197,15 @@ class ProducerInfo:
     source_sha256: Optional[str] = None
     host_taxon_ids: tuple = ()
     host_source: Optional[str] = None
+    orf_kind: Optional[str] = None
 
     def __post_init__(self):
         for name in ("origin", "method", "tool", "native_id"):
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"Producer {name} must be a nonempty string")
-        for name in ("tool_version", "provider", "exporter", "sample_id", "run_id", "host_source"):
+        for name in ("tool_version", "provider", "exporter", "sample_id", "run_id",
+                     "host_source", "orf_kind"):
             value = getattr(self, name)
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise ValueError(f"Producer {name} must be a nonempty string or None")
@@ -471,7 +473,40 @@ class ProteomeEntry:
             return next(iter(sources)) if len(sources) == 1 else "mixed"
         return {"annotated": "reference_cds", "extra_orf": "nc_orf", "viral": "viral"}[self.kind]
 
-    def fasta_header(self):
+    def fasta_token(self):
+        """Readable, source-qualified first FASTA token, stable offline."""
+        producer = self.producer
+        if producer is not None:
+            names = producer.gene_names or producer.gene_ids
+            method, tool, sample, native = (producer.method, producer.tool,
+                                            producer.sample_id, producer.native_id)
+            orf_kind = producer.orf_kind
+        else:
+            names = tuple(gene for gene in (self.gene_name or self.gene_id,) if gene)
+            if self.derivation is not None:
+                names = tuple(dict.fromkeys(gene for gene in
+                                            self.derivation.parent_gene_ids if gene)) or names
+            method = {"annotated": "annotation", "extra_orf": "catalogue",
+                      "viral": "reference", "derived": "derivation"}[self.kind]
+            tool = self.source.split(":", 1)[0]
+            sample = None if self.derivation is None else self.derivation.sample_id
+            native = self.accession
+            orf_kind = self.orf_type
+        if orf_kind is None:
+            orf_kind = "CDS" if self.protein_source == "reference_cds" else "unknown"
+        fields = [
+            ("origin", self.protein_source), ("orf", orf_kind), ("method", method),
+            ("tool", tool), ("gene", ",".join(names) if names else "unknown"),
+            ("aa", len(self.sequence)), ("taxon", self.taxon_id), ("source", self.source),
+            ("sample", sample), ("run", None if producer is None else producer.run_id),
+            ("id", native), ("key", hashlib.sha256(self.accession.encode()).hexdigest()[:16]),
+        ]
+        if len(names) > 1:
+            fields.insert(5, ("gene_count", len(names)))
+        return "|".join(f"{name}={quote(str(value), safe='')}" for name, value in fields
+                        if value is not None)
+
+    def fasta_header(self, *, token=None):
         first = self._first
         fields = dict(kind=self.kind, protein_source=self.protein_source, taxon=self.taxon_id,
                       source=self.source, gene=self.gene_id,
@@ -501,7 +536,7 @@ class ProteomeEntry:
                       equivalent=",".join(self.equivalent_ids) or None,
                       transcripts=len(self.occurrences) if len(self.occurrences) > 1 else None)
         described = " ".join(f"{k}={str(v).replace(' ', '_')}" for k, v in fields.items() if v is not None)
-        return f">{self.accession} {described}"
+        return f">{self.fasta_token() if token is None else token} {described}"
 
     def to_dict(self):
         return dict(accession=self.accession, sequence=self.sequence, kind=self.kind,
@@ -513,7 +548,9 @@ class ProteomeEntry:
                     **({"viral_gene": self.viral_gene} if self.viral_gene is not None else {}),
                     **({"viral_product": self.viral_product} if self.viral_product is not None else {}),
                     **({"derivation": asdict(self.derivation)} if self.derivation is not None else {}),
-                    **({"producer": asdict(self.producer)} if self.producer is not None else {}))
+                    **({"producer": {name: value for name, value in asdict(self.producer).items()
+                                      if name != "orf_kind" or value is not None}}
+                       if self.producer is not None else {}))
 
     @classmethod
     def from_dict(cls, record):
@@ -1517,16 +1554,37 @@ class Proteome:
         proteome.__dict__["_identity"] = snapshot["identity"]
         return proteome
 
-    def write_fasta(self, path_or_handle, *, width=60):
-        """Write every entry as FASTA with a descriptive header."""
-        if hasattr(path_or_handle, "write"):
-            return self._write(path_or_handle, width)
-        with open(path_or_handle, "w") as handle:
-            return self._write(handle, width)
+    def fasta_index(self, *, deduplicate=False):
+        """Map every exported first token to its complete source entry set."""
+        if type(deduplicate) is not bool:
+            raise ValueError("deduplicate must be True or False")
+        groups = (self.by_sequence().values() if deduplicate else
+                  ((entry,) for entry in self.entries))
+        index = {}
+        for group in groups:
+            token = group[0].fasta_token()
+            if deduplicate and len(group) > 1:
+                members = [entry.accession for entry in group]
+                token += f"|records={len(group)}|group={_sha256(members)[:16]}"
+            if token in index:
+                raise ValueError(f"Colliding FASTA first token: {token}")
+            index[token] = tuple(group)
+        return index
 
-    def _write(self, handle, width):
-        for entry in self.entries:
-            handle.write(entry.fasta_header() + "\n")
+    def write_fasta(self, path_or_handle, *, width=60, deduplicate=False):
+        """Write one record per source entry, or opt into exact-sequence grouping."""
+        if type(width) is not int or width < 1:
+            raise ValueError("FASTA width must be a positive integer")
+        index = self.fasta_index(deduplicate=deduplicate)
+        if hasattr(path_or_handle, "write"):
+            return self._write(path_or_handle, width, index)
+        with open(path_or_handle, "w") as handle:
+            return self._write(handle, width, index)
+
+    def _write(self, handle, width, index):
+        for token, group in index.items():
+            entry = group[0]
+            handle.write(entry.fasta_header(token=token) + "\n")
             for i in range(0, len(entry.sequence), width):
                 handle.write(entry.sequence[i : i + width] + "\n")
 
