@@ -429,6 +429,48 @@ Reference transcript coordinates and reference protein measurements are not
 copied onto the altered sequence. Viral parents are not supported for derived
 proteins. The snapshot retains the complete derivation record.
 
+## Proteins supplied by other tools
+
+An adapter for an RNA assembly or DNA prediction can submit its amino-acid
+sequence without naming an included parent protein. It supplies source claims
+as `ProducerInfo`; these do not create genomic `Occurrence` mappings:
+
+```python
+from orfdata import ProducerInfo, ProteomeEntry
+
+reference = transcriptome.proteome()
+rna_product = ProteomeEntry.from_producer(
+    "MPEPTIDE", taxon_id=9606,
+    producer=ProducerInfo(
+        origin="nc_orf", method="rna_assembly", tool="isovar",
+        tool_version="2.0", native_id="ASM42", sample_id="sample-A",
+        gene_names=("GENE1",), reference=reference.reference,
+        start_complete=False, stop_complete=None,
+    ),
+)
+joint = reference.with_entries([rna_product])
+joint.save("joint.proteome.json.gz")
+```
+
+`origin` describes the source protein or ORF category; `method` and `tool`
+describe how the supplied sequence was produced. The entry keeps provider,
+exporter, sample/run, native record, gene/transcript/ORF IDs, source hash and
+known reference when supplied. Its `accession` qualifies the native ID by
+producer and sample, so two samples can reuse the same native ID. Equal amino
+acid sequences stay distinct entries. Readding the same record is idempotent;
+changing content under the same identity raises.
+
+Build a standalone producer collection with
+`Proteome.from_entries(entries, reference=reference.reference)`, then use
+`reference.merge(producer_collection)`. If a producer does not know its exact
+reference, the caller must explicitly choose
+`compatibility="allow_unknown"` when adding it to a known host reference.
+A standalone collection with mixed or unknown references uses
+`Proteome.from_entries(entries, compatibility="mixed")`; merging it into a
+host reference also requires an explicit compatibility choice. Known wrong
+species or reference declarations always fail. These collection operations
+preserve source entries through offline save/load.
+
 ## Save and reload
 
 ```python
@@ -437,8 +479,8 @@ same = Proteome.load("human-e115.proteome.json.gz")  # Offline: no genome or cat
 assert same.identity == identity
 ```
 
-A new save uses snapshot schema v2 for derivation metadata; `load` also reads
-existing v1 snapshots.
+A new save uses snapshot schema v3 for producer entries and explicit reference
+policy; `load` also reads existing v1 and v2 snapshots.
 
 A snapshot holds every entry with its occurrences and evidence, the layers with
 their selections and catalogue identities, and the excluded ORFs. `identity` is
