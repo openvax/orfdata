@@ -1264,12 +1264,28 @@ coding references:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">viral_panel_coverage</span>
 
 <span class="n">coverage</span> <span class="o">=</span> <span class="n">viral_panel_coverage</span><span class="p">()</span>
-<span class="n">available</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">coverage</span> <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"source_cds_bundled"</span><span class="p">]</span>
-<span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">coverage</span> <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"not_bundled"</span><span class="p">]</span>
+<span class="n">available</span> <span class="o">=</span> <span class="n">viral_panel_coverage</span><span class="p">(</span><span class="n">available</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">missing</span> <span class="o">=</span> <span class="n">viral_panel_coverage</span><span class="p">(</span><span class="n">available</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">coverage</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">available</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span>  <span class="c1"># 200 1 199</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">available</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">abbreviation</span><span class="p">,</span> <span class="n">available</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bundled_reference_id</span><span class="p">)</span>
 <span class="c1"># HPV16 GRCh38.d1.vd1:HPV16</span>
 </code></pre></div>
+<p>Use <code>viral_panel_coverage(available=True)</code> for bundled references,
+<code>available=False</code> for rows still missing from ORFdata, <code>virus="HPV18"</code> for one
+exact GDC abbreviation, or <code>search="NC_001357"</code> to search labels, names and
+source accessions. The equivalent CLI works offline:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>viral<span class="w"> </span>coverage<span class="w"> </span>--available
+orfdata<span class="w"> </span>viral<span class="w"> </span>coverage<span class="w"> </span>--missing<span class="w"> </span>--virus<span class="w"> </span>HPV18
+orfdata<span class="w"> </span>viral<span class="w"> </span>coverage<span class="w"> </span>--format<span class="w"> </span>json
+orfdata<span class="w"> </span>viral<span class="w"> </span>coverage<span class="w"> </span>--format<span class="w"> </span>tsv<span class="w"> </span>&gt;<span class="w"> </span>gdc-viral-coverage.tsv
+</code></pre></div>
+<p>To download the <strong>published inventory metadata</strong> into the OpenVax DataCache
+and verify its pinned SHA256 and byte size, install <code>orfdata[data]</code> and run:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>viral<span class="w"> </span>inventory<span class="w"> </span>download
+</code></pre></div>
+<p>The Python equivalent is <code>download_viral_inventory(cache_root=...)</code>. Repeated
+calls reuse a verified cache entry. This download is optional; the coverage
+ledger is bundled and needs no network access.</p>
 <p>Each row preserves the GDC inventory's names, abbreviations, source accession
 fields and PaVE notes as published. Those accession fields may lack version
 numbers; a versioned, sequence-qualified coding reference is reported only
