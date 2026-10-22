@@ -471,6 +471,55 @@ host reference also requires an explicit compatibility choice. Known wrong
 species or reference declarations always fail. These collection operations
 preserve source entries through offline save/load.
 
+### Producer records and evidence
+
+Protein entries carry amino acids. A producer can also attach versioned records
+for translations, evidence, events and outcomes that have no sequence. ORFdata
+stores these records in the snapshot without importing the producing package or
+interpreting its namespaced `payload`:
+
+```python
+from orfdata import ProducerLink, ProducerRecord
+
+translation = ProducerRecord(
+    namespace="isovar", schema_version="export.v2", kind="translation",
+    native_id="T1", sample_id="sample-A", payload={"cdna_id": "C1"},
+)
+evidence = ProducerRecord(
+    namespace="isovar", schema_version="export.v2", kind="evidence",
+    native_id="reads-1", sample_id="sample-A", support="rna_sequence",
+    scope={"sample": "sample-A", "read_set": "R1"},
+    payload={"read_count": 7},
+)
+unresolved = ProducerRecord(
+    namespace="isovar", schema_version="export.v2", kind="event",
+    native_id="E2", sample_id="sample-A", status="capped",
+    complete=False, limits={"max_hypotheses": 4},
+)
+joint = joint.with_records(
+    [translation, evidence, unresolved],
+    links=[
+        ProducerLink(translation.key, rna_product.accession, "entry", "translates_to"),
+        ProducerLink(evidence.key, translation.key, "record", "supports_translation"),
+    ],
+)
+```
+
+The evidence record says it supports an RNA sequence. Its link to a translation
+does not claim that the protein was observed. A producer reporting a protein
+observation should use a separate evidence record with an explicit support
+type and observation scope. Two translations may link to one protein entry,
+and one evidence record may link to several translations; merging the same
+record again does not add its read count again.
+
+An event may have status `zero_product`, `unknown`, `filtered`, `incomplete` or
+`capped` without an entry link. `complete` and `limits` retain the producer's
+search boundary. These status strings and the versioned payload belong to the
+producer; ORFdata retains unknown namespaces and versions exactly. Each record
+keeps its native ID separately from its qualified `key`. Links must resolve
+to records or entries in the same proteome. Saving and loading preserve all
+records and links, and changing either changes the proteome identity.
+
 ## Save and reload
 
 ```python
@@ -479,8 +528,8 @@ same = Proteome.load("human-e115.proteome.json.gz")  # Offline: no genome or cat
 assert same.identity == identity
 ```
 
-A new save uses snapshot schema v3 for producer entries and explicit reference
-policy; `load` also reads existing v1 and v2 snapshots.
+A new save uses snapshot schema v4 for the producer graph; `load` also reads
+existing v1, v2 and v3 snapshots.
 
 A snapshot holds every entry with its occurrences and evidence, the layers with
 their selections and catalogue identities, and the excluded ORFs. `identity` is
