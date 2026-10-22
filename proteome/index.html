@@ -495,6 +495,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Proteins supplied by other tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#producer-records-and-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Producer records and evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1537,6 +1554,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Proteins supplied by other tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#producer-records-and-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Producer records and evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2124,13 +2158,56 @@ A standalone collection with mixed or unknown references uses
 host reference also requires an explicit compatibility choice. Known wrong
 species or reference declarations always fail. These collection operations
 preserve source entries through offline save/load.</p>
+<h3 id="producer-records-and-evidence">Producer records and evidence<a class="headerlink" href="#producer-records-and-evidence" title="Permanent link">&para;</a></h3>
+<p>Protein entries carry amino acids. A producer can also attach versioned records
+for translations, evidence, events and outcomes that have no sequence. ORFdata
+stores these records in the snapshot without importing the producing package or
+interpreting its namespaced <code>payload</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProducerLink</span><span class="p">,</span> <span class="n">ProducerRecord</span>
+
+<span class="n">translation</span> <span class="o">=</span> <span class="n">ProducerRecord</span><span class="p">(</span>
+    <span class="n">namespace</span><span class="o">=</span><span class="s2">"isovar"</span><span class="p">,</span> <span class="n">schema_version</span><span class="o">=</span><span class="s2">"export.v2"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"translation"</span><span class="p">,</span>
+    <span class="n">native_id</span><span class="o">=</span><span class="s2">"T1"</span><span class="p">,</span> <span class="n">sample_id</span><span class="o">=</span><span class="s2">"sample-A"</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="p">{</span><span class="s2">"cdna_id"</span><span class="p">:</span> <span class="s2">"C1"</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">evidence</span> <span class="o">=</span> <span class="n">ProducerRecord</span><span class="p">(</span>
+    <span class="n">namespace</span><span class="o">=</span><span class="s2">"isovar"</span><span class="p">,</span> <span class="n">schema_version</span><span class="o">=</span><span class="s2">"export.v2"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"evidence"</span><span class="p">,</span>
+    <span class="n">native_id</span><span class="o">=</span><span class="s2">"reads-1"</span><span class="p">,</span> <span class="n">sample_id</span><span class="o">=</span><span class="s2">"sample-A"</span><span class="p">,</span> <span class="n">support</span><span class="o">=</span><span class="s2">"rna_sequence"</span><span class="p">,</span>
+    <span class="n">scope</span><span class="o">=</span><span class="p">{</span><span class="s2">"sample"</span><span class="p">:</span> <span class="s2">"sample-A"</span><span class="p">,</span> <span class="s2">"read_set"</span><span class="p">:</span> <span class="s2">"R1"</span><span class="p">},</span>
+    <span class="n">payload</span><span class="o">=</span><span class="p">{</span><span class="s2">"read_count"</span><span class="p">:</span> <span class="mi">7</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">unresolved</span> <span class="o">=</span> <span class="n">ProducerRecord</span><span class="p">(</span>
+    <span class="n">namespace</span><span class="o">=</span><span class="s2">"isovar"</span><span class="p">,</span> <span class="n">schema_version</span><span class="o">=</span><span class="s2">"export.v2"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"event"</span><span class="p">,</span>
+    <span class="n">native_id</span><span class="o">=</span><span class="s2">"E2"</span><span class="p">,</span> <span class="n">sample_id</span><span class="o">=</span><span class="s2">"sample-A"</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">"capped"</span><span class="p">,</span>
+    <span class="n">complete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">{</span><span class="s2">"max_hypotheses"</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">joint</span> <span class="o">=</span> <span class="n">joint</span><span class="o">.</span><span class="n">with_records</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">translation</span><span class="p">,</span> <span class="n">evidence</span><span class="p">,</span> <span class="n">unresolved</span><span class="p">],</span>
+    <span class="n">links</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">ProducerLink</span><span class="p">(</span><span class="n">translation</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">rna_product</span><span class="o">.</span><span class="n">accession</span><span class="p">,</span> <span class="s2">"entry"</span><span class="p">,</span> <span class="s2">"translates_to"</span><span class="p">),</span>
+        <span class="n">ProducerLink</span><span class="p">(</span><span class="n">evidence</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">translation</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="s2">"record"</span><span class="p">,</span> <span class="s2">"supports_translation"</span><span class="p">),</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>The evidence record says it supports an RNA sequence. Its link to a translation
+does not claim that the protein was observed. A producer reporting a protein
+observation should use a separate evidence record with an explicit support
+type and observation scope. Two translations may link to one protein entry,
+and one evidence record may link to several translations; merging the same
+record again does not add its read count again.</p>
+<p>An event may have status <code>zero_product</code>, <code>unknown</code>, <code>filtered</code>, <code>incomplete</code> or
+<code>capped</code> without an entry link. <code>complete</code> and <code>limits</code> retain the producer's
+search boundary. These status strings and the versioned payload belong to the
+producer; ORFdata retains unknown namespaces and versions exactly. Each record
+keeps its native ID separately from its qualified <code>key</code>. Links must resolve
+to records or entries in the same proteome. Saving and loading preserve all
+records and links, and changing either changes the proteome identity.</p>
 <h2 id="save-and-reload">Save and reload<a class="headerlink" href="#save-and-reload" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">identity</span> <span class="o">=</span> <span class="n">proteome</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>
 <span class="n">same</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"human-e115.proteome.json.gz"</span><span class="p">)</span>  <span class="c1"># Offline: no genome or catalogue needed.</span>
 <span class="k">assert</span> <span class="n">same</span><span class="o">.</span><span class="n">identity</span> <span class="o">==</span> <span class="n">identity</span>
 </code></pre></div>
-<p>A new save uses snapshot schema v3 for producer entries and explicit reference
-policy; <code>load</code> also reads existing v1 and v2 snapshots.</p>
+<p>A new save uses snapshot schema v4 for the producer graph; <code>load</code> also reads
+existing v1, v2 and v3 snapshots.</p>
 <p>A snapshot holds every entry with its occurrences and evidence, the layers with
 their selections and catalogue identities, and the excluded ORFs. <code>identity</code> is
 the SHA-256 of that content, so it changes when any sequence, occurrence,
