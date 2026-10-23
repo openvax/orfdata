@@ -16,10 +16,26 @@ evidence.
 Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl,data,build-data]'
+python -m pip install 'orfdata[pyensembl,build-data]'
 pyensembl install --release 115 --species human
 # For the ncORF evidence presets and "all":
 orfdata setup --species human --catalogs all
+```
+
+List every bundled, downloadable or buildable resource and what is installed:
+
+```sh
+orfdata download list
+orfdata download status
+```
+
+Viral download support and its Biopython/DataCache dependencies are included in
+the regular installation. `orfdata setup --species human` also installs
+`gdc-viruses`, the default 200-reference GDC viral screen for human
+transcriptome analysis. To acquire only those source references:
+
+```sh
+orfdata download viral --species human
 ```
 
 ## Example
@@ -127,10 +143,14 @@ packaged bases and coding paths. The functional loaders remain available.
 When annotating an existing alignment, `viral_orfs(reference_dna,
 contig="HPV16")` checks its actual reference sequence before applying the same
 models.
-The first [coding reference](https://openvax.github.io/orfdata/viral/) contains
-the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC placements;
-the host association is distinct from the virus's own taxon. Broader
-imports remain in [the viral roadmap](https://github.com/openvax/orfdata/issues/91).
+The curated [coding reference](https://openvax.github.io/orfdata/viral/)
+contains the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC
+placements; the host association is distinct from the virus's own taxon. The
+separate `gdc-viruses` source bundle contains all 200 GDC source genomes and
+their annotated CDS/protein FASTAs for human analysis. It does not assert a
+human source host for every virus; source-host metadata remains separate.
+Promoting further source records into the curated
+`ViralReference` API remains in the [viral roadmap](https://github.com/openvax/orfdata/issues/91).
 
 ## Measurement datasets
 
@@ -162,6 +182,7 @@ The [documentation](https://openvax.github.io/orfdata/) covers:
 
 | Task | Guide |
 | --- | --- |
+| Discover, inspect and download data | [Discover and download data](https://openvax.github.io/orfdata/downloads/) |
 | Build a proteome: evidence levels, exclusions, contigs, viral proteins | [Build a reference proteome](https://openvax.github.io/orfdata/proteome/) |
 | ORF classes, evidence definitions, Varcode and Isovar integration | [ORFs and evidence](https://openvax.github.io/orfdata/reference/) |
 | Species and reference identity, mitochondrial genetic codes | [Species, references and genetic codes](https://openvax.github.io/orfdata/species/) |

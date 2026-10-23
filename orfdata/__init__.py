@@ -19,6 +19,7 @@ from .catalog_manifest import CatalogManifest
 from .catalogs import CatalogRegistry, build_catalog
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
+from .downloads import Downloadable, DownloadStatus, downloadable_data, list_downloads
 from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .genomes import PinnedGenome, install_genome, load_genome, pinned_genomes
@@ -84,7 +85,25 @@ from .viral import (
     viral_reference_sequence,
     viral_references,
 )
-from .viral_coverage import ViralPanelEntry, download_viral_inventory, viral_panel_coverage
+from .viral_coverage import (
+    ViralContext,
+    ViralPanelEntry,
+    download_viral_inventory,
+    viral_contexts,
+    viral_panel_coverage,
+)
+from .viral_panel import (
+    ViralReferenceBundle,
+    ViralReferenceIndex,
+    download_viral_references,
+    index_viral_references,
+    viral_reference_bundle,
+)
+from .viral_subsets import (
+    normalize_viral_subsets,
+    viral_subset_abbreviations,
+    viral_subsets,
+)
 
 __all__ = [
     "ViralProduct",
@@ -94,8 +113,18 @@ __all__ = [
     "viral_reference_sequence",
     "viral_references",
     "ViralPanelEntry",
+    "ViralContext",
     "download_viral_inventory",
+    "viral_contexts",
     "viral_panel_coverage",
+    "viral_subsets",
+    "normalize_viral_subsets",
+    "viral_subset_abbreviations",
+    "ViralReferenceBundle",
+    "ViralReferenceIndex",
+    "download_viral_references",
+    "index_viral_references",
+    "viral_reference_bundle",
     "__version__",
     "Proteome",
     "ProteomeEntry",
@@ -139,6 +168,10 @@ __all__ = [
     "QuantitativeDataset",
     "DatasetRegistry",
     "build_dataset",
+    "Downloadable",
+    "DownloadStatus",
+    "downloadable_data",
+    "list_downloads",
     "DatasetManifest",
     "SourceAsset",
     "Sample",

@@ -1,8 +1,10 @@
-# Viral coding references
+# Viral coding references for human analysis
 
 ## GDC panel coverage
 
-The GDC reference is named `GRCh38.d1.vd1`. Its [published viral
+`gdc-viruses` is ORFdata's default 200-reference GDC viral collection for
+human transcriptome analysis. Its published source inventory is named
+`GRCh38.d1.vd1`. The [published viral
 inventory](https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt)
 contains 200 rows: 189 HPV entries and 11 other viral entries. The published
 file name spells `GRCh83`; ORFdata retains that exact source URL and checksum.
@@ -28,20 +30,20 @@ source accessions. The equivalent CLI works offline:
 ```sh
 orfdata viral coverage --available
 orfdata viral coverage --missing --virus HPV18
-orfdata viral coverage --format json
+orfdata viral coverage --json
 orfdata viral coverage --format tsv > gdc-viral-coverage.tsv
 ```
 
 To download the **published inventory metadata** into the OpenVax DataCache
-and verify its pinned SHA256 and byte size, install `orfdata[data]` and run:
+for audit purposes, run:
 
 ```sh
 orfdata viral inventory download
 ```
 
 The Python equivalent is `download_viral_inventory(cache_root=...)`. Repeated
-calls reuse a verified cache entry. This download is optional; the coverage
-ledger is bundled and needs no network access.
+calls reuse a verified cache entry. This metadata download is optional; the
+coverage ledger is bundled and needs no network access.
 
 Each row preserves the GDC inventory's names, abbreviations, source accession
 fields and PaVE notes as published. Those accession fields may lack version
@@ -51,6 +53,137 @@ available; it does not claim that all reported ORFs or full transcripts are
 covered. `not_bundled` describes ORFdata coverage, not the availability of
 annotations elsewhere. The ledger contains metadata only and does not make
 unavailable entries selectable through `viral_references()` or `viral="all"`.
+
+ORFdata also records NCBI ESummary metadata for the 200 GenBank accession
+leads in
+[`gdc-grch38-d1-vd1-genbank-summaries.tsv`](https://github.com/openvax/orfdata/blob/main/orfdata/data/viral/gdc-grch38-d1-vd1-genbank-summaries.tsv):
+current accession versions, titles, sequence lengths, taxon IDs and record
+dates. This bundled metadata lookup matched all 200 inventory accessions; it
+does not itself contain sequence payloads or CDS annotations.
+
+## Download source genomes, coding sequences and proteins
+
+To install all 200 GenBank source records for annotation, run:
+
+```sh
+orfdata download viral --species human
+```
+
+The downloader and its Biopython/DataCache dependencies are part of a regular
+`pip install orfdata`. `orfdata setup --species human` installs this default
+human collection alongside the human catalogues and chains. The command above
+installs only this checked bundle under `ORFDATA_CACHE` (or the normal OpenVax
+cache), rather than asking for an export directory. Use `--cache-root
+DIRECTORY` to select another cache and `--force` to refresh or repair the
+installed files. `orfdata viral download` remains a compatibility alias.
+
+Here `--species human` is the target analysis species. The current collection
+is for human transcriptome analysis; a future collection may target another
+species. It does not assert that every source record declared a human host.
+The default collection is `gdc-viruses`; pass that value with `--collection`
+when an explicit configuration is useful. It names the 200-reference GDC viral
+screen, whose published source inventory is `GRCh38.d1.vd1`. The older
+`gdc-grch38-d1-vd1` spelling remains an alias. The collection's
+`cancer-transcriptome-screening` context (with the convenient alias `cancer`)
+is descriptive, nonexclusive metadata. It does not classify each virus as
+cancer-causing. Future collections can carry several context tags and share
+exact accession/version records. This is the only viral download collection
+currently published; unsupported species or collections fail with the
+available choice.
+
+## Cancer subsets
+
+Three named subsets cover the intended cancer selections:
+
+```sh
+orfdata viral subsets
+orfdata download viral --subset cancer-integrated-driver  # 15 references
+orfdata download viral --subset cancer-causing            # 20 references
+orfdata download viral --subset cancer-associated         # 37 references
+```
+
+`cancer-causing` is the 20-reference [IARC Group 1](https://monographs.iarc.who.int/agents-classified-by-the-iarc/)
+selection. `cancer-associated` contains it, then adds HPV68 (Group 2A), CMV,
+HIV-2, and 14 Group 2B HPV references. `cancer-integrated-driver` selects the
+12 Group 1 HPV types plus HBV, HTLV-1 and MCV because host-genome integration
+and a direct driving role are established in relevant tumour settings.
+
+The remaining 163 GDC references are 162 HPV references outside those IARC
+tiers plus SV40. Their exclusion from `cancer-associated` is not a finding that
+they lack a cancer connection. Group 3 means IARC cannot classify an agent's
+carcinogenicity in humans; it does not mean the agent is safe or noncarcinogenic.
+
+The unfiltered download remains the whole 200-reference GDC screen. Contexts
+remain available for future overlapping analysis categories, such as
+autoimmune or respiratory, without changing source-reference identity.
+
+The bundle contains `genomes.fasta`, `coding_sequences.fasta`,
+`proteins.fasta`, `cds.tsv`, `manifest.tsv`, individual gzipped GenBank records,
+and `SHA256SUMS`. The version-pinned accession summary selects the exact NCBI
+records. Each genome FASTA record starts with `viral:<accession.version>`. The
+coding-sequence and protein FASTAs contain one paired entry per source CDS
+feature and use the same FASTA identifier, including for joined or
+reverse-strand CDS features. The identifier starts with the exact
+accession/version rather than the collection, so importing the same record
+through another collection or context retains its sequence and product
+identity.
+
+PyEnsembl calls these protein FASTAs rather than proteome FASTAs. Its transcript
+FASTA contains spliced cDNA transcripts, including UTRs. The GDC source records
+have 1,678 CDS features but only 39 explicit `mRNA` features across five of the
+200 records. ORFdata therefore calls the nucleotide export
+`coding_sequences.fasta`; calling it a transcriptome would imply transcript
+models that the sources do not provide.
+
+The Python API returns the generated paths and record counts:
+
+```python
+from orfdata import (
+    download_viral_references,
+    index_viral_references,
+    viral_reference_bundle,
+)
+
+bundle = viral_reference_bundle(
+    download_if_missing=True,
+    species="human",
+)
+print(bundle.genome_fasta)
+print(bundle.coding_sequence_fasta, bundle.protein_fasta)
+print(bundle.genome_count, bundle.protein_count)  # 200, 1678 for the pinned records
+print(bundle.collection, bundle.contexts)
+
+# Later, reopen the verified cached files without a network request.
+bundle = viral_reference_bundle(species="human")
+
+# The explicit downloader is equivalent to download_if_missing=True.
+bundle = download_viral_references(species="human")
+
+# A named subset index reuses the source bundle and can fetch it on demand.
+cancer_index = index_viral_references(
+    subsets=["cancer-causing"],
+    species="human",
+    download_if_missing=True,
+)
+print(cancer_index.protein_fasta)
+```
+
+Discover this collection alongside every catalogue, quantitative dataset,
+pinned genome and chain file, without downloading anything:
+
+```sh
+orfdata download list
+orfdata download list --kind viral --species human
+orfdata download status
+orfdata download list --missing
+```
+
+Use `--json` for machine-readable output and `--verify` to hash installed files.
+The Python equivalent is `list_downloads()`.
+
+This is a source-record download for alignment and annotation workflows. It
+does not change the curated, sequence-qualified references exposed through
+`viral_references()` or selected by `Proteome.build(..., viral=...)`.
 
 The [viral panel roadmap](https://github.com/openvax/orfdata/issues/91) tracks
 the remaining imports. GDC panel membership and a documented host association

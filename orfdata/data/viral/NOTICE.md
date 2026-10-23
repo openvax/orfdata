@@ -15,6 +15,39 @@ python tools/build_gdc_viral_coverage.py GRCh83.d1.vd1_virus_decoy.txt \
 This inventory supplies names and source accession leads, not qualified coding
 annotations. Only the released HPV16 GDC placement is marked as bundled.
 
+## GenBank record summaries
+
+`gdc-grch38-d1-vd1-genbank-summaries.tsv` records NCBI ESummary metadata for
+all 200 GenBank accessions in the inventory, checked 2026-10-22. It contains
+the resolved accession.version, title, sequence length, taxon ID and record
+dates. The lookup matched each inventory accession; it did not download or
+store nucleotide sequences or CDS annotations. NCBI E-utilities:
+https://www.ncbi.nlm.nih.gov/books/NBK25501/ .
+
+Summary manifest SHA256:
+`5d6c7cbc3f77ba5236acc2e94bc49cf78e3ff486c12535d2b51e80f3ab875498`.
+
+## On-demand GenBank source-record bundle
+
+`download_viral_references()` and
+`orfdata download viral --species human` use the
+version-pinned accessions in the summary manifest to retrieve all 200 GenBank
+records from NCBI EFetch. The bundle is installed in the ORFdata cache and
+includes genome, source-CDS nucleotide and protein FASTAs, manifest and feature tables,
+individual compressed GenBank records, and a SHA256 manifest. These are source
+records for alignment and annotation workflows; downloading them does not make
+the entries bundled, curated coding references in ORFdata.
+
+`human` is the target analysis species. It is not a claim that every source
+record declared a human host. `gdc-viruses` is the public collection identity
+for the 200-reference GDC viral screen; `GRCh38.d1.vd1` is the source inventory
+name and `gdc-grch38-d1-vd1` remains a compatible alias. The
+`cancer-transcriptome-screening` context is its current analysis context. The named
+`cancer-causing` and `cancer-associated` subsets select IARC Group 1 and IARC
+Groups 1, 2A and 2B reference sets, respectively. GDC membership is not a
+claim that each virus causes cancer, and contexts do not determine cache
+identity. `orfdata viral download` remains a compatibility alias.
+
 ## HPV16 coding reference
 
 Source: NCBI RefSeq **NC_001526.4**, complete GenBank record:

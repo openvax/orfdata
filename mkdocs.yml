@@ -19,6 +19,7 @@ extra_css:
   - stylesheets/docs.css
 nav:
   - Home: index.md
+  - Discover and download data: downloads.md
   - Proteomes:
       - Build a reference proteome: proteome.md
       - Viral coding references: viral.md
