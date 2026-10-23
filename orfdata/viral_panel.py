@@ -1,4 +1,4 @@
-"""Manage cached source records for ORFdata's GDC viral reference set."""
+"""Manage cached source records for ORFdata's human-targeted GDC virus set."""
 
 import csv
 import gzip
@@ -36,10 +36,15 @@ _BATCH_SIZE = 25
 _MAX_ATTEMPTS = 5
 VIRAL_TARGET_SPECIES = "homo_sapiens"
 VIRAL_TARGET_TAXON_ID = 9606
-VIRAL_COLLECTION = "gdc-grch38-d1-vd1"
+VIRAL_COLLECTION = "gdc-viruses"
+# Keep the source-derived cache directory so downloads made before the public
+# collection name changed remain verified and reusable.
+VIRAL_CACHE_COLLECTION = "gdc-grch38-d1-vd1"
 VIRAL_CONTEXTS = ("cancer-transcriptome-screening",)
 _COLLECTION_ALIASES = {
     "gdc": VIRAL_COLLECTION,
+    "gdc-viral": VIRAL_COLLECTION,
+    "gdc-viruses": VIRAL_COLLECTION,
     "gdc-grch38-d1-vd1": VIRAL_COLLECTION,
     "grch38.d1.vd1": VIRAL_COLLECTION,
 }
@@ -47,7 +52,7 @@ _COLLECTION_ALIASES = {
 
 @dataclass(frozen=True)
 class ViralReferenceBundle:
-    """Paths and record counts for the installed viral source-reference bundle."""
+    """Paths and record counts for an installed, target-species viral source bundle."""
 
     target_species: str
     target_taxon_id: int
@@ -76,7 +81,7 @@ class ViralReferenceBundle:
 
 @dataclass(frozen=True)
 class ViralReferenceIndex:
-    """Cached FASTAs for a context or named-subset selection."""
+    """Cached FASTAs for a target-species context or named-subset selection."""
 
     target_species: str
     target_taxon_id: int
@@ -115,7 +120,7 @@ class _GenBankSummary:
 
 
 def _selection(species, collection):
-    """Normalize the one currently published viral collection's selectors."""
+    """Normalize selectors for the one currently published human-targeted collection."""
     taxon_id = species if type(species) is int else species_taxon(species)
     if taxon_id != VIRAL_TARGET_TAXON_ID:
         raise ValueError(
@@ -125,7 +130,8 @@ def _selection(species, collection):
     normalized = str(collection).strip().lower().replace("_", "-")
     if normalized not in _COLLECTION_ALIASES:
         raise ValueError(
-            f"Unknown viral collection {collection!r}; available: {VIRAL_COLLECTION} ({PANEL})."
+            f"Unknown viral collection {collection!r}; available: {VIRAL_COLLECTION} "
+            f"(human target; GDC source inventory {PANEL})."
         )
     return canonical_species(VIRAL_TARGET_SPECIES), _COLLECTION_ALIASES[normalized]
 
@@ -437,7 +443,7 @@ def _write_bundle(path, entries, summaries, *, timeout):
         f"This bundle contains 200 genomes and {total_cds} paired coding and protein sequences. "
         "Genome FASTA IDs are `viral:<accession.version>`; paired CDS/protein IDs add "
         "the source CDS ordinal and labels. Collection and context provenance do not alter IDs.\n\n"
-        "The collection is admitted for human analysis. That target does not assert a source host; "
+        "The `gdc-viruses` collection is for human analysis. That target does not assert a source host; "
         "`source_host_taxon_ids` is empty when the source inventory does not establish one.\n\n"
         "This is a source-record download, not an ORFdata curated viral-reference release. "
         "It does not alter `viral_references()` or `Proteome.build(..., viral=...)`.\n\n"
@@ -451,7 +457,9 @@ def _write_bundle(path, entries, summaries, *, timeout):
 def _bundle_path(cache_root, species, collection):
     from .datasets import get_data_dir
 
-    return (get_data_dir(cache_root) / "viral" / "references" / species / collection /
+    cache_collection = (VIRAL_CACHE_COLLECTION
+                        if collection == VIRAL_COLLECTION else collection)
+    return (get_data_dir(cache_root) / "viral" / "references" / species / cache_collection /
             BUNDLE_VERSION)
 
 
@@ -463,9 +471,11 @@ def viral_reference_bundle(*, species="human", collection=VIRAL_COLLECTION,
     ``download_if_missing=True`` calls :func:`download_viral_references` when
     needed; otherwise this performs an offline, checksummed cache lookup.
     ``force=True`` explicitly refreshes or repairs the cache. ``species``
-    describes the target analysis species; ``collection`` selects a versioned reference
-    set. Analysis contexts are nonexclusive metadata and never determine cache
-    identity. Only the human GDC collection is currently published.
+    describes the target analysis species; ``collection`` selects a versioned
+    reference set. The current ``gdc-viruses`` collection is for human analysis
+    and is sourced from GDC's ``GRCh38.d1.vd1`` inventory. Future collections
+    may target other species. Analysis contexts are nonexclusive metadata and
+    never determine cache identity.
     """
     if type(download_if_missing) is not bool:
         raise ValueError("download_if_missing must be True or False")
@@ -488,11 +498,13 @@ def download_viral_references(*, species="human", collection=VIRAL_COLLECTION, c
                               force=False, timeout=120):
     """Install a viral genome and annotated-CDS collection for an analysis target.
 
-    The currently published selection is the 200-reference GDC
-    cancer-transcriptome-screening collection for a human analysis target.
-    Collection membership is not a per-virus cancer-causality classification,
-    and analysis contexts are not exclusive. To create a filtered derived
-    index, use :func:`index_viral_references`. The bundle is stored under
+    The currently published selection is ``gdc-viruses``, GDC's 200-reference
+    viral screen for human cancer-transcriptome analysis. It is sourced from
+    the ``GRCh38.d1.vd1`` inventory. Target species does not assert that every
+    source virus has a human host. Collection membership is not a per-virus
+    cancer-causality classification, and analysis contexts are not exclusive.
+    To create a filtered derived index, use :func:`index_viral_references`.
+    The bundle is stored under
     ``ORFDATA_CACHE`` (or the normal OpenVax cache); a verified cache is reused
     and ``force=True`` refreshes or repairs it.
 
@@ -650,12 +662,13 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
                            force=False, timeout=120):
     """Build reusable FASTAs for selected viral contexts and named subsets.
 
-    Context membership is an association and never changes a FASTA record's
-    accession-based identity. Repeated ``contexts`` select their union by
-    default or their intersection with ``context_match='all'``; excluded
-    contexts are then removed. The source GenBank bundle is cached once;
-    indexes reuse it rather than downloading the same reference for each
-    context.
+    The current collection targets human analysis; future collections may
+    target other species. Context membership is an association and never
+    changes a FASTA record's accession-based identity. Repeated ``contexts``
+    select their union by default or their intersection with
+    ``context_match='all'``; excluded contexts are then removed. The source
+    GenBank bundle is cached once; indexes reuse it rather than downloading the
+    same reference for each context.
     """
     contexts = normalize_viral_contexts(contexts)
     excluded_contexts = normalize_viral_contexts(exclude_contexts)

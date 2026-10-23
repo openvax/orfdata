@@ -1,8 +1,10 @@
-# Viral coding references
+# Viral coding references for human analysis
 
 ## GDC panel coverage
 
-The GDC reference is named `GRCh38.d1.vd1`. Its [published viral
+`gdc-viruses` is ORFdata's default 200-reference GDC viral collection for
+human transcriptome analysis. Its published source inventory is named
+`GRCh38.d1.vd1`. The [published viral
 inventory](https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt)
 contains 200 rows: 189 HPV entries and 11 other viral entries. The published
 file name spells `GRCh83`; ORFdata retains that exact source URL and checksum.
@@ -75,10 +77,13 @@ cache), rather than asking for an export directory. Use `--cache-root
 DIRECTORY` to select another cache and `--force` to refresh or repair the
 installed files. `orfdata viral download` remains a compatibility alias.
 
-Here `--species human` is the target analysis species. It does not assert that
-every source record declared a human host. The default collection is
-`gdc-grch38-d1-vd1`; pass that value with `--collection` when an explicit
-configuration is useful. The collection's
+Here `--species human` is the target analysis species. The current collection
+is for human transcriptome analysis; a future collection may target another
+species. It does not assert that every source record declared a human host.
+The default collection is `gdc-viruses`; pass that value with `--collection`
+when an explicit configuration is useful. It names the 200-reference GDC viral
+screen, whose published source inventory is `GRCh38.d1.vd1`. The older
+`gdc-grch38-d1-vd1` spelling remains an alias. The collection's
 `cancer-transcriptome-screening` context (with the convenient alias `cancer`)
 is descriptive, nonexclusive metadata. It does not classify each virus as
 cancer-causing. Future collections can carry several context tags and share
@@ -105,7 +110,8 @@ and a direct driving role are established in relevant tumour settings.
 
 The remaining 163 GDC references are 162 HPV references outside those IARC
 tiers plus SV40. Their exclusion from `cancer-associated` is not a finding that
-they lack a cancer connection.
+they lack a cancer connection. Group 3 means IARC cannot classify an agent's
+carcinogenicity in humans; it does not mean the agent is safe or noncarcinogenic.
 
 The unfiltered download remains the whole 200-reference GDC screen. Contexts
 remain available for future overlapping analysis categories, such as

@@ -100,12 +100,12 @@ def run(argv=None, prog="orfdata download"):
     _add_discovery(status, status=True)
 
     viral = commands.add_parser(
-        "viral", help="Download viral genomes and paired coding/protein FASTAs")
+        "viral", help="Download the current human-targeted viral collection and paired FASTAs")
     viral.add_argument("--species", default="human",
-                       help="Target analysis species (currently human)")
+                       help="Target analysis species (currently human; future collections may differ)")
     viral.add_argument(
-        "--collection", default="gdc-grch38-d1-vd1",
-        help="Reference collection (currently gdc-grch38-d1-vd1)")
+        "--collection", default="gdc-viruses",
+        help="Reference collection (default gdc-viruses: 200 GDC references for human analysis)")
     viral.add_argument("--context", action="append",
                        help="Build an index for this context; repeat for a union")
     viral.add_argument("--exclude-context", action="append",

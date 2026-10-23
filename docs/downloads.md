@@ -62,9 +62,9 @@ The published viral collection currently has these properties:
 
 | Property | Value | Meaning |
 | --- | --- | --- |
-| Species | `human` | Target analysis species, NCBI taxon 9606 |
-| Collection | `gdc-grch38-d1-vd1` | Stable identity of the 200-reference GDC set |
-| Contexts | `cancer-transcriptome-screening` (`cancer`) | GDC cancer-transcriptome screening collection |
+| Species | `human` | Current target analysis species, NCBI taxon 9606 |
+| Collection | `gdc-viruses` | Default 200-reference GDC viral screen for human analysis |
+| Contexts | `cancer-transcriptome-screening` (`cancer`) | GDC human cancer-transcriptome screening context |
 
 Run the default collection with:
 
@@ -72,13 +72,15 @@ Run the default collection with:
 orfdata download viral --species human
 ```
 
-`--collection gdc-grch38-d1-vd1` is available for explicit configuration and
-for scripts that will later choose among several collections. Context is
-metadata rather than a sequence identity or a mutually exclusive selector. CMV and EBV,
-for example, may be requested in both cancer and autoimmune workflows. A future
-collection may carry several context tags, and the same exact accession/version
-can belong to several collections without becoming several biological
-references.
+`--collection gdc-viruses` is the default and is available for explicit
+configuration in scripts that will later choose among several collections. The
+current collection is for human analysis. A future collection may target another
+species. Target species does not assert a human source host for every virus.
+Context is metadata rather than a sequence identity or a mutually exclusive
+selector. CMV and EBV, for example, may be requested in both cancer and
+autoimmune workflows. A future collection may carry several context tags, and
+the same exact accession/version can belong to several collections without
+becoming several biological references.
 
 Pass `--context` to materialize a derived FASTA index from the shared source
 bundle. Repeated contexts select their union; `--context-match all` selects
@@ -105,10 +107,10 @@ the analysis it supports; and a source-host taxon is populated only when the
 source establishes one. This keeps the same reference idempotent when it is
 obtained through several collections or exporter paths.
 
-The word *panel* remains in `viral_panel_coverage()` and the GDC coverage page
-because it describes the source inventory. The managed download API calls the
-versioned artifact a collection, which is the value used for lookup and cache
-identity.
+The published GDC source inventory is named `GRCh38.d1.vd1`; `gdc-viruses` is
+the ORFdata collection name for its 200 references for human analysis. The prior
+`gdc-grch38-d1-vd1` collection spelling remains an alias. The source-derived
+cache directory is retained so existing downloads remain reusable.
 
 Use the full GDC collection for broad screening. For its three cancer
 selections, list named subsets with `orfdata viral subsets`:
@@ -124,8 +126,9 @@ orfdata download viral --subset cancer-associated
 `cancer-integrated-driver` contains the 12 Group 1 HPV types, HBV, HTLV-1 and
 MCV. The remaining 163 GDC entries are 162 HPV references outside those IARC
 tiers plus SV40; their absence from the cancer-associated set does not establish
-that they are biologically irrelevant. Future respiratory and autoimmune
-contexts can overlap the GDC screening context.
+that they are biologically irrelevant. IARC Group 3 means an agent is not
+classifiable as to carcinogenicity in humans; it is not a safety finding. Future
+respiratory and autoimmune contexts can overlap the GDC screening context.
 
 ## Cache output
 

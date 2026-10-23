@@ -30,8 +30,9 @@ orfdata download status
 ```
 
 Viral download support and its Biopython/DataCache dependencies are included in
-the regular installation. `orfdata setup --species human` also installs the
-default human viral collection. To acquire only those source references:
+the regular installation. `orfdata setup --species human` also installs
+`gdc-viruses`, the default 200-reference GDC viral screen for human
+transcriptome analysis. To acquire only those source references:
 
 ```sh
 orfdata download viral --species human
@@ -145,8 +146,10 @@ models.
 The curated [coding reference](https://openvax.github.io/orfdata/viral/)
 contains the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC
 placements; the host association is distinct from the virus's own taxon. The
-separate GDC source bundle contains all 200 selected source genomes and their
-annotated CDS/protein FASTAs. Promoting further source records into the curated
+separate `gdc-viruses` source bundle contains all 200 GDC source genomes and
+their annotated CDS/protein FASTAs for human analysis. It does not assert a
+human source host for every virus; source-host metadata remains separate.
+Promoting further source records into the curated
 `ViralReference` API remains in the [viral roadmap](https://github.com/openvax/orfdata/issues/91).
 
 ## Measurement datasets

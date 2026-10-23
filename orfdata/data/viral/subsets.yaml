@@ -1,10 +1,10 @@
 schema: orfdata.viral_subsets.v1
 subsets:
   cancer-integrated-driver:
-    title: Cancer viruses that integrate and directly drive a tumour
+    title: Viruses that integrate and directly drive a human tumour
     description: >-
       Viruses with host-genome integration and a direct tumour-cell driving role
-      in a relevant cancer setting.
+      in a relevant human cancer setting.
     abbreviations:
       - HBV
       - HPV16
@@ -31,7 +31,7 @@ subsets:
       Integration and direct carcinogenicity are tumour-specific observations;
       this selection does not show that a particular tumour is virus-dependent.
   cancer-causing:
-    title: Cancer-causing viral agents
+    title: Viral agents classified as cancer-causing in humans
     description: >-
       GDC references for viral agents classified by IARC as carcinogenic to
       humans (Group 1).
@@ -62,7 +62,7 @@ subsets:
       This is an IARC evidence classification. It does not establish that a
       viral read in an individual tumour is causal or targetable.
   cancer-associated:
-    title: Cancer-associated viral agents
+    title: Viral agents with IARC human cancer evidence
     description: >-
       GDC references for viral agents classified by IARC in Groups 1, 2A or
       2B.

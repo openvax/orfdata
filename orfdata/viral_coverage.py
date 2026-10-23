@@ -1,4 +1,4 @@
-"""Offline metadata for the published GDC viral reference inventory."""
+"""Offline metadata for the published GDC viral inventory for human analysis."""
 
 import csv
 import hashlib
@@ -18,8 +18,8 @@ _HEADER = ("index", "name", "abbreviation", "refseq", "genbank", "pave_id",
            "pave_notes", "bundled_reference_id", "coding_models", "status")
 _CONTEXTS = {
     "cancer-transcriptome-screening": {
-        "title": "GDC cancer transcriptome screening references",
-        "description": "Membership in the GDC GRCh38.d1.vd1 viral screening inventory",
+        "title": "GDC human cancer transcriptome viral screen",
+        "description": "Membership in the GDC GRCh38.d1.vd1 viral screening inventory for human analysis",
         "source": INVENTORY_URL,
         "aliases": ("cancer", "cancer-screening", "gdc-cancer"),
     },
@@ -31,7 +31,7 @@ _CONTEXT_ALIASES = {
 }
 @dataclass(frozen=True)
 class ViralContext:
-    """One sourced, nonexclusive viral-reference selection context."""
+    """One sourced, nonexclusive target-species viral-reference selection context."""
 
     name: str
     title: str
@@ -43,7 +43,7 @@ class ViralContext:
 
 @dataclass(frozen=True)
 class ViralPanelEntry:
-    """One GDC inventory row and its current ORFdata coding-reference status.
+    """One human-targeted GDC inventory row and its ORFdata coding-reference status.
 
     Inventory accessions are reproduced as published and may omit versions.
     ``not_bundled`` means that ORFdata has not released a qualified coding
@@ -141,8 +141,9 @@ def normalize_viral_contexts(contexts, *, allow_unknown=False):
 
 def viral_panel_coverage(panel=PANEL, *, available=None, virus=None, search=None,
                          contexts=None, exclude_contexts=None, context_match="any"):
-    """Return all GDC viral inventory rows, including references not yet bundled.
+    """Return all current human-targeted GDC viral inventory rows.
 
+    Includes references whose source CDS records are not yet bundled in ORFdata.
     This is an inventory and coverage query, not a selection of protein
     sequences. The released coding references are available separately through
     ``viral_references()``.

@@ -1,15 +1,17 @@
 # Unreleased
 
-- Add the cached GDC `GRCh38.d1.vd1` source-reference bundle: 200 viral
+- Add the cached GDC `GRCh38.d1.vd1` source-reference bundle, publicly named
+  `gdc-viruses`: 200 viral
   genomes, 1,678 paired source-CDS nucleotide/protein sequences, GenBank records
   and provenance.
   `viral_reference_bundle(download_if_missing=True, species="human")`
   acquires it on demand. `orfdata download` now provides one discovery,
   status and acquisition hierarchy for viral data, catalogues, datasets,
   native search references, pinned genomes and chain files; the existing
-  resource-specific commands remain available. Viral contexts are nonexclusive
-  metadata; the stable collection name and source-manifest checksum identify the
-  cache entry. Biopython, DataCache and PyYAML are base dependencies so a
+  resource-specific commands remain available. `gdc-viruses` is the current
+  human-targeted collection name; its source panel and manifest checksum identify
+  the cached source records. Viral contexts are nonexclusive metadata. Biopython,
+  DataCache and PyYAML are base dependencies so a
   regular ORFdata install can perform the viral download. `orfdata setup
   --species human` installs the default collection. `index_viral_references()`
   creates reusable union or intersection FASTA indexes for nonexclusive

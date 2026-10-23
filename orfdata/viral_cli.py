@@ -1,4 +1,4 @@
-"""Inspect GDC viral inventory coverage and download viral source records."""
+"""Inspect GDC viral coverage and download human-targeted viral source records."""
 
 import argparse
 import csv
@@ -14,7 +14,7 @@ from .viral_subsets import viral_subsets
 def run(argv=None, prog="orfdata viral"):
     parser = argparse.ArgumentParser(prog=prog, description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    coverage = commands.add_parser("coverage", help="List all GDC panel rows and coding-reference status")
+    coverage = commands.add_parser("coverage", help="List all GDC human-screen rows and coding-reference status")
     selection = coverage.add_mutually_exclusive_group()
     selection.add_argument("--available", action="store_true", help="Show rows with bundled source CDSs")
     selection.add_argument("--missing", action="store_true", help="Show rows not yet bundled in ORFdata")
@@ -45,12 +45,12 @@ def run(argv=None, prog="orfdata viral"):
     download.add_argument("--timeout", type=float, default=60, help="Per-attempt timeout in seconds")
 
     download_references = commands.add_parser(
-        "download", help="Compatibility alias for 'orfdata download viral'")
+        "download", help="Compatibility alias for the human-targeted 'orfdata download viral'")
     download_references.add_argument("--species", default="human",
-                                     help="Target analysis species (currently human)")
+                                     help="Target analysis species (currently human; future collections may differ)")
     download_references.add_argument(
         "--collection", default=VIRAL_COLLECTION,
-        help="Reference collection (currently gdc-grch38-d1-vd1)")
+        help=f"Reference collection (default {VIRAL_COLLECTION}: 200 GDC references for human analysis)")
     download_references.add_argument("--context", action="append",
                                      help="Build an index for this context; repeat for a union")
     download_references.add_argument("--exclude-context", action="append",
