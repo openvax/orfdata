@@ -80,91 +80,36 @@ every source record declared a human host. The default collection is
 `gdc-grch38-d1-vd1`; pass that value with `--collection` when an explicit
 configuration is useful. The collection's
 `cancer-transcriptome-screening` context (with the convenient alias `cancer`)
-is descriptive, nonexclusive metadata.
-It does not classify each virus as cancer-causing. A user may request CMV or EBV
-for both cancer and autoimmune workflows, so a disease context is not a mutually
-exclusive download selector or part of cache identity. Future collections can
-carry several context tags and share exact accession/version records. This is
-the only viral download collection currently published; unsupported species or
-collections fail with the available choice.
+is descriptive, nonexclusive metadata. It does not classify each virus as
+cancer-causing. Future collections can carry several context tags and share
+exact accession/version records. This is the only viral download collection
+currently published; unsupported species or collections fail with the
+available choice.
 
-`cancer-causing` selects the 20 viral-agent references represented
-here that [IARC classifies as Group 1, carcinogenic to humans](https://monographs.iarc.who.int/agents-classified-by-the-iarc/).
-`cancer-associated` selects the 37 references classified by IARC in Groups 1,
-2A or 2B; it includes the Group 1 set, HPV68, CMV, HIV-2, and HPV types with
-weaker or conditional IARC classifications. These selectors describe evidence
-tiers, rather than declaring that the remaining GDC screening entries lack a
-cancer connection.
+## Cancer subsets
 
-## Tumour mechanism selectors
-
-Contexts describe why a collection may be useful. Mechanisms describe
-evidence-backed virus--tumour relationships. A named subset is a reproducible
-selection that either declares a cited set or composes mechanisms:
+Three named subsets cover the intended cancer selections:
 
 ```sh
 orfdata viral subsets
-# 12 Group 1 HPV types, HBV, HTLV-1 and MCV: 15 references
-orfdata download viral --subset integrated-direct-driver
+orfdata download viral --subset cancer-integrated-driver  # 15 references
+orfdata download viral --subset cancer-causing            # 20 references
+orfdata download viral --subset cancer-associated         # 37 references
 ```
 
-The equivalent advanced form is `--mechanism host-genome-integrating
---mechanism direct-tumor-cell-driver --mechanism-match all`.
-`--mechanism-match all` says how the selected biological properties are
-combined; a `--mechanism` value names one property. The named subset is the
-preferred CLI interface for this fixed selection.
+`cancer-causing` is the 20-reference [IARC Group 1](https://monographs.iarc.who.int/agents-classified-by-the-iarc/)
+selection. `cancer-associated` contains it, then adds HPV68 (Group 2A), CMV,
+HIV-2, and 14 Group 2B HPV references. `cancer-integrated-driver` selects the
+12 Group 1 HPV types plus HBV, HTLV-1 and MCV because host-genome integration
+and a direct driving role are established in relevant tumour settings.
 
-`host-genome-integrating` also includes HIV-1 and HIV-2, because retroviral
-integration is part of their lifecycle. They are removed by the
-`direct-tumor-cell-driver` intersection: HIV-associated cancer risk commonly
-involves immune dysfunction and other oncogenic viruses rather than HIV as a
-driver in the tumour cell. EBV and KSHV are direct drivers in relevant tumours
-but normally persist as episomes, so the same intersection excludes them.
+The remaining 163 GDC references are 162 HPV references outside those IARC
+tiers plus SV40. Their exclusion from `cancer-associated` is not a finding that
+they lack a cancer connection.
 
-`viral-oncogene-dependence-evidence` is deliberately narrower: it currently
-contains HPV16, HPV18, HTLV-1 and MCV, for which direct experimental evidence
-supports continued viral-oncogene expression in named virus-positive tumour
-settings. `orfdata viral mechanisms --json` includes those settings and their
-source URLs as plain dictionaries loaded from package YAML. The friendly named
-selector is:
-
-```sh
-orfdata download viral --subset tumor-cell-oncogene-dependence-evidence
-```
-
-It is not a claim that every tumour carrying the virus is dependent, nor a
-prediction that antiviral treatment will eradicate the cancer. The exact
-tumour type, viral integration, viral expression and clonal distribution must
-be resolved in the sample. The mechanism table links the supporting primary
-studies for HPV integration and E6/E7 dependence, HBV integration, HTLV-1
-proviral integration, and MCV integration and T-antigen dependence.
-
-HPV16 and HPV18 appear in that narrow evidence selector because the cited
-primary study tested those types. They are not the complete cancer-causing HPV
-set. Use the named 12-type selector when the intent is carcinogenic HPV
-coverage:
-
-```sh
-orfdata download viral --subset cancer-causing-hpv
-```
-
-List registered contexts with `orfdata viral contexts`. Supplying one or more
-contexts creates a derived index from the shared collection: repeated
-`--context` values select a union and `--context-match all` selects an
-intersection. The index has its own checked FASTAs but reuses the same cached
-source records, so a reference shared by cancer and autoimmune contexts keeps
-one accession-based identity.
-
-```sh
-orfdata download viral --context cancer  # all 200 GDC screening references
-orfdata download viral --context cancer-associated  # IARC Groups 1, 2A and 2B
-orfdata download viral --context cancer-causing  # `iarc-group-1` is an alias
-# Excludes the Group 1 subset from the GDC screen; it does not assert the rest are safe.
-orfdata download viral --exclude-context cancer-causing
-# Once another listed context is published, select its union or intersection:
-orfdata download viral --context cancer-transcriptome-screening --context <another-listed-context>
-orfdata download viral --context cancer-transcriptome-screening --context <another-listed-context> --context-match all
-```
+The unfiltered download remains the whole 200-reference GDC screen. Contexts
+remain available for future overlapping analysis categories, such as
+autoimmune or respiratory, without changing source-reference identity.
 
 The bundle contains `genomes.fasta`, `coding_sequences.fasta`,
 `proteins.fasta`, `cds.tsv`, `manifest.tsv`, individual gzipped GenBank records,
@@ -208,9 +153,9 @@ bundle = viral_reference_bundle(species="human")
 # The explicit downloader is equivalent to download_if_missing=True.
 bundle = download_viral_references(species="human")
 
-# A context index reuses the source bundle and can fetch it on demand.
+# A named subset index reuses the source bundle and can fetch it on demand.
 cancer_index = index_viral_references(
-    contexts=["cancer-causing"],
+    subsets=["cancer-causing"],
     species="human",
     download_if_missing=True,
 )

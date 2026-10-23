@@ -20,17 +20,12 @@ from urllib.request import Request, urlopen
 
 from .reference import canonical_species, species_taxon
 from .viral_coverage import PANEL, normalize_viral_contexts, viral_panel_coverage
-from .viral_mechanisms import (
-    normalize_viral_mechanisms,
-    normalize_viral_subsets,
-    viral_mechanism_abbreviations,
-    viral_subset_abbreviations,
-)
+from .viral_subsets import normalize_viral_subsets, viral_subset_abbreviations
 
 NCBI_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 SUMMARY_RESOURCE = "data/viral/gdc-grch38-d1-vd1-genbank-summaries.tsv"
 SUMMARY_SHA256 = "5d6c7cbc3f77ba5236acc2e94bc49cf78e3ff486c12535d2b51e80f3ab875498"
-BUNDLE_SCHEMA_VERSION = "2"
+BUNDLE_SCHEMA_VERSION = "3"
 BUNDLE_VERSION = f"v{BUNDLE_SCHEMA_VERSION}-{SUMMARY_SHA256}"
 SUMMARY_HEADER = (
     "index", "abbreviation", "genbank_accession", "accession_version", "title", "length_nt",
@@ -42,9 +37,7 @@ _MAX_ATTEMPTS = 5
 VIRAL_TARGET_SPECIES = "homo_sapiens"
 VIRAL_TARGET_TAXON_ID = 9606
 VIRAL_COLLECTION = "gdc-grch38-d1-vd1"
-VIRAL_CONTEXTS = (
-    "cancer-transcriptome-screening", "cancer-associated", "cancer-causing",
-)
+VIRAL_CONTEXTS = ("cancer-transcriptome-screening",)
 _COLLECTION_ALIASES = {
     "gdc": VIRAL_COLLECTION,
     "gdc-grch38-d1-vd1": VIRAL_COLLECTION,
@@ -83,7 +76,7 @@ class ViralReferenceBundle:
 
 @dataclass(frozen=True)
 class ViralReferenceIndex:
-    """Cached FASTAs for a context and mechanism selection."""
+    """Cached FASTAs for a context or named-subset selection."""
 
     target_species: str
     target_taxon_id: int
@@ -91,8 +84,6 @@ class ViralReferenceIndex:
     contexts: tuple[str, ...]
     excluded_contexts: tuple[str, ...]
     context_match: str
-    mechanisms: tuple[str, ...]
-    mechanism_match: str
     subsets: tuple[str, ...]
     path: Path
     source_bundle: Path
@@ -579,17 +570,15 @@ def _copy_selected_tsv(source, destination, accessions):
 
 
 def _index_path(cache_root, species, collection, contexts, excluded_contexts,
-                context_match, mechanisms, mechanism_match, subsets, accessions):
+                context_match, subsets, accessions):
     from .datasets import get_data_dir
 
     identity = json.dumps({
-        "schema": "orfdata.viral_reference_index.v3",
+        "schema": "orfdata.viral_reference_index.v4",
         "bundle_version": BUNDLE_VERSION,
         "contexts": contexts,
         "excluded_contexts": excluded_contexts,
         "context_match": context_match,
-        "mechanisms": mechanisms,
-        "mechanism_match": mechanism_match,
         "subsets": subsets,
         "accessions": accessions,
     }, sort_keys=True, separators=(",", ":"))
@@ -598,14 +587,13 @@ def _index_path(cache_root, species, collection, contexts, excluded_contexts,
             BUNDLE_VERSION / digest)
 
 
-def _index_result(path, *, bundle, contexts, excluded_contexts, context_match,
-                  mechanisms, mechanism_match, subsets):
+def _index_result(path, *, bundle, contexts, excluded_contexts, context_match, subsets):
     try:
         metadata = json.loads((path / "index.json").read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"Invalid viral reference index metadata: {path}") from error
     expected = {
-        "schema": "orfdata.viral_reference_index.v3",
+        "schema": "orfdata.viral_reference_index.v4",
         "bundle_version": BUNDLE_VERSION,
         "target_species": bundle.target_species,
         "target_taxon_id": bundle.target_taxon_id,
@@ -613,8 +601,6 @@ def _index_result(path, *, bundle, contexts, excluded_contexts, context_match,
         "contexts": list(contexts),
         "excluded_contexts": list(excluded_contexts),
         "context_match": context_match,
-        "mechanisms": list(mechanisms),
-        "mechanism_match": mechanism_match,
         "subsets": list(subsets),
     }
     if any(metadata.get(key) != value for key, value in expected.items()):
@@ -626,8 +612,6 @@ def _index_result(path, *, bundle, contexts, excluded_contexts, context_match,
         contexts=contexts,
         excluded_contexts=excluded_contexts,
         context_match=context_match,
-        mechanisms=mechanisms,
-        mechanism_match=mechanism_match,
         subsets=subsets,
         path=path,
         source_bundle=bundle.path,
@@ -642,12 +626,10 @@ def _index_result(path, *, bundle, contexts, excluded_contexts, context_match,
     )
 
 
-def _verified_existing_index(path, *, bundle, contexts, excluded_contexts, context_match,
-                             mechanisms, mechanism_match, subsets):
+def _verified_existing_index(path, *, bundle, contexts, excluded_contexts, context_match, subsets):
     result = _index_result(
         path, bundle=bundle, contexts=contexts, excluded_contexts=excluded_contexts,
-        context_match=context_match, mechanisms=mechanisms, mechanism_match=mechanism_match,
-        subsets=subsets)
+        context_match=context_match, subsets=subsets)
     required = (result.genome_fasta, result.coding_sequence_fasta, result.protein_fasta,
                 result.manifest, result.cds_table, path / "SHA256SUMS")
     if any(not item.is_file() for item in required):
@@ -662,11 +644,11 @@ def _verified_existing_index(path, *, bundle, contexts, excluded_contexts, conte
     return result
 
 
-def index_viral_references(*, contexts=None, exclude_contexts=None, context_match="any",
-                           mechanisms=None, mechanism_match="any", subsets=None, species="human",
+def index_viral_references(*, contexts=None, exclude_contexts=None, context_match="any", subsets=None,
+                           species="human",
                            collection=VIRAL_COLLECTION, download_if_missing=False, cache_root=None,
                            force=False, timeout=120):
-    """Build reusable FASTAs for selected viral contexts and mechanisms.
+    """Build reusable FASTAs for selected viral contexts and named subsets.
 
     Context membership is an association and never changes a FASTA record's
     accession-based identity. Repeated ``contexts`` select their union by
@@ -677,25 +659,17 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
     """
     contexts = normalize_viral_contexts(contexts)
     excluded_contexts = normalize_viral_contexts(exclude_contexts)
-    mechanisms = normalize_viral_mechanisms(mechanisms)
     subsets = normalize_viral_subsets(subsets)
-    if not contexts and not mechanisms and not subsets:
-        raise ValueError("At least one viral context, mechanism or subset is required")
+    if not contexts and not subsets:
+        raise ValueError("At least one viral context or subset is required")
     if context_match not in ("any", "all"):
         raise ValueError("context_match must be 'any' or 'all'")
-    if mechanism_match not in ("any", "all"):
-        raise ValueError("mechanism_match must be 'any' or 'all'")
     bundle = viral_reference_bundle(
         species=species, collection=collection, download_if_missing=download_if_missing,
         cache_root=cache_root, timeout=timeout)
     selected_entries = viral_panel_coverage(
         contexts=contexts or None, exclude_contexts=excluded_contexts or None,
         context_match=context_match)
-    if mechanisms:
-        selected_abbreviations = set(
-            viral_mechanism_abbreviations(mechanisms, match=mechanism_match))
-        selected_entries = tuple(entry for entry in selected_entries
-                                 if entry.abbreviation in selected_abbreviations)
     if subsets:
         selected_abbreviations = set(viral_subset_abbreviations(subsets))
         selected_entries = tuple(entry for entry in selected_entries
@@ -706,16 +680,15 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
                 for entry, summary in zip(all_entries, summaries, strict=True)}
     accessions = tuple(versions[entry.index] for entry in selected_entries)
     if not accessions:
-        raise ValueError("No viral references match the selected contexts, mechanisms and subsets")
+        raise ValueError("No viral references match the selected contexts and subsets")
     selected = set(accessions)
     output = _index_path(
         cache_root, bundle.target_species, bundle.collection, contexts, excluded_contexts,
-        context_match, mechanisms, mechanism_match, subsets, accessions)
+        context_match, subsets, accessions)
     if output.is_dir() and not force:
         return _verified_existing_index(
             output, bundle=bundle, contexts=contexts, excluded_contexts=excluded_contexts,
-            context_match=context_match, mechanisms=mechanisms, mechanism_match=mechanism_match,
-            subsets=subsets)
+            context_match=context_match, subsets=subsets)
     if output.exists() and not output.is_dir():
         raise ValueError(f"Viral reference index path must be a directory: {output}")
 
@@ -735,7 +708,7 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
                 or protein_count != cds_count):
             raise ValueError("Viral context index counts disagree")
         metadata = {
-            "schema": "orfdata.viral_reference_index.v3",
+            "schema": "orfdata.viral_reference_index.v4",
             "bundle_version": BUNDLE_VERSION,
             "target_species": bundle.target_species,
             "target_taxon_id": bundle.target_taxon_id,
@@ -743,8 +716,6 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
             "contexts": list(contexts),
             "excluded_contexts": list(excluded_contexts),
             "context_match": context_match,
-            "mechanisms": list(mechanisms),
-            "mechanism_match": mechanism_match,
             "subsets": list(subsets),
             "accession_versions": list(accessions),
             "genome_count": genome_count,
@@ -757,18 +728,16 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
             "# ORFdata viral reference index\n\n"
             f"Contexts ({context_match}): {', '.join(contexts) or 'all'}\n\n"
             f"Excluded contexts: {', '.join(excluded_contexts) or 'none'}\n\n"
-            f"Mechanisms ({mechanism_match}): {', '.join(mechanisms) or 'none'}\n\n"
             f"Named subsets: {', '.join(subsets) or 'none'}\n\n"
             "The paired coding/protein FASTAs use accession-based identifiers. "
-            "Context, mechanism and collection membership are evidence associations and do not alter "
+            "Context, subset and collection membership are evidence associations and do not alter "
             "identity.\n",
             encoding="utf-8",
         )
         _write_checksums(staging)
         _verified_existing_index(
             staging, bundle=bundle, contexts=contexts, excluded_contexts=excluded_contexts,
-            context_match=context_match, mechanisms=mechanisms, mechanism_match=mechanism_match,
-            subsets=subsets)
+            context_match=context_match, subsets=subsets)
         if output.exists():
             shutil.rmtree(output)
         staging.replace(output)
@@ -777,5 +746,4 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
         raise
     return _verified_existing_index(
         output, bundle=bundle, contexts=contexts, excluded_contexts=excluded_contexts,
-        context_match=context_match, mechanisms=mechanisms, mechanism_match=mechanism_match,
-        subsets=subsets)
+        context_match=context_match, subsets=subsets)

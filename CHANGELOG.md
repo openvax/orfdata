@@ -15,20 +15,13 @@
   creates reusable union or intersection FASTA indexes for nonexclusive
   contexts without giving an accession/version a context-specific identity.
   `human` is an analysis target; source-host taxon IDs remain empty when the
-  supplied source inventory does not establish them. The initially published
-  contexts are the 200-reference GDC cancer-transcriptome screen (also
-  selectable as `cancer`), its 37-reference `cancer-associated` IARC Groups
-  1, 2A and 2B subset, and the 20-reference `cancer-causing` IARC Group 1
-  subset. Being outside one tier does not classify a reference as
+  supplied source inventory does not establish them. The published context is
+  the 200-reference GDC cancer-transcriptome screen (also selectable as
+  `cancer`). The package YAML registry exposes three named, plain-dictionary
+  selectors: `cancer-integrated-driver` (15 references), `cancer-causing`
+  (20 IARC Group 1 references), and `cancer-associated` (37 IARC Group 1, 2A
+  and 2B references). Being outside one tier does not classify a reference as
   non-carcinogenic.
-  Tumour-mechanism selectors are separate from contexts: they expose
-  host-genome integration, direct tumour-cell driving and narrower experimental
-  viral-oncogene-dependence evidence. This registry is package YAML and its
-  public API returns plain dictionaries. The selectors are scoped to the stated
-  evidence and do not predict response to virus-directed therapy. Named subsets
-  such as `integrated-direct-driver`, the cited `cancer-causing-hpv` set, and
-  `tumor-cell-oncogene-dependence-evidence` provide reproducible download
-  choices.
 
 - Resolve PyEnsembl 2.31 reference strains using `species_taxon_id`, while
   preserving registered organism identities (including domestic dog), explicit

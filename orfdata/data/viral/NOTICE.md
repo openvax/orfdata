@@ -40,12 +40,11 @@ the entries bundled, curated coding references in ORFdata.
 
 `human` is the target analysis species. It is not a claim that every source
 record declared a human host. `gdc-grch38-d1-vd1` is the collection identity;
-`cancer-transcriptome-screening`, `cancer-associated`, and `cancer-causing`
-are nonexclusive contexts recorded for it. The latter selects viral agents that
-IARC classifies as Group 1 carcinogenic to humans; `cancer-associated` adds
-IARC Groups 2A and 2B. GDC membership is not a claim that each virus causes
-cancer, and contexts do not determine cache identity. `orfdata viral download`
-remains a compatibility alias.
+`cancer-transcriptome-screening` is its current analysis context. The named
+`cancer-causing` and `cancer-associated` subsets select IARC Group 1 and IARC
+Groups 1, 2A and 2B reference sets, respectively. GDC membership is not a
+claim that each virus causes cancer, and contexts do not determine cache
+identity. `orfdata viral download` remains a compatibility alias.
 
 ## HPV16 coding reference
 

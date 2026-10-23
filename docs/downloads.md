@@ -64,7 +64,7 @@ The published viral collection currently has these properties:
 | --- | --- | --- |
 | Species | `human` | Target analysis species, NCBI taxon 9606 |
 | Collection | `gdc-grch38-d1-vd1` | Stable identity of the 200-reference GDC set |
-| Contexts | `cancer-transcriptome-screening` (`cancer`), `cancer-associated`, `cancer-causing` | Full screen plus IARC evidence tiers |
+| Contexts | `cancer-transcriptome-screening` (`cancer`) | GDC cancer-transcriptome screening collection |
 
 Run the default collection with:
 
@@ -89,10 +89,6 @@ reference.
 ```sh
 orfdata viral contexts
 orfdata download viral --context cancer  # all 200 GDC screening references
-orfdata download viral --context cancer-associated  # 37 IARC Group 1, 2A or 2B references
-orfdata download viral --context cancer-causing  # `iarc-group-1` is an alias
-# The other 180 GDC screening references are not described as non-carcinogenic:
-orfdata download viral --exclude-context cancer-causing
 # Once another listed context is published, select its union or intersection:
 orfdata download viral --context cancer-transcriptome-screening --context <another-listed-context>
 orfdata download viral --context cancer-transcriptome-screening --context <another-listed-context> --context-match all
@@ -114,36 +110,22 @@ because it describes the source inventory. The managed download API calls the
 versioned artifact a collection, which is the value used for lookup and cache
 identity.
 
-Use `cancer` for the full 200-reference GDC screen. Use `cancer-associated`
-for the 37 references in IARC Groups 1, 2A or 2B, and `cancer-causing` for
-the 20 [Group 1 references](https://monographs.iarc.who.int/agents-classified-by-the-iarc/).
-These selections represent evidence tiers: references outside one tier are not
-evidence of no cancer association. Use `--exclude-context` only when that
-operational selection is what a workflow needs. Respiratory and autoimmune
-contexts can be added from their own versioned, scoped authorities and can
-overlap this one.
-
-Mechanism selectors are separate from contexts because they describe
-virus--tumour biology, not a collection's intended analysis use. Named subsets
-provide reusable cited sets or selections composed from mechanisms. List them
-with `orfdata viral subsets`. For a conservative set with evidence of both
-host-genome integration and direct tumour-cell driving, use:
+Use the full GDC collection for broad screening. For its three cancer
+selections, list named subsets with `orfdata viral subsets`:
 
 ```sh
-orfdata download viral --subset integrated-direct-driver
+orfdata download viral --subset cancer-integrated-driver
+orfdata download viral --subset cancer-causing
+orfdata download viral --subset cancer-associated
 ```
 
-This derived index contains 15 references: the 12 IARC Group 1 HPV types,
-HBV, HTLV-1 and MCV. It must not be read as a treatment-response prediction;
-the relevant tumour, integration event, viral expression and clonal state need
-sample-level evidence.
-
-For the narrower evidence set where continued viral-oncogene expression has
-been tested in named tumour settings, use:
-
-```sh
-orfdata download viral --subset tumor-cell-oncogene-dependence-evidence
-```
+`cancer-causing` is the 20-reference IARC Group 1 selection.
+`cancer-associated` is its 37-reference Group 1, 2A and 2B superset.
+`cancer-integrated-driver` contains the 12 Group 1 HPV types, HBV, HTLV-1 and
+MCV. The remaining 163 GDC entries are 162 HPV references outside those IARC
+tiers plus SV40; their absence from the cancer-associated set does not establish
+that they are biologically irrelevant. Future respiratory and autoimmune
+contexts can overlap the GDC screening context.
 
 ## Cache output
 
@@ -180,13 +162,13 @@ requested:
 from orfdata import index_viral_references
 
 cancer_index = index_viral_references(
-    contexts=["cancer-causing"],
+    subsets=["cancer-causing"],
     species="human",
     download_if_missing=True,
 )
 
 integrated_drivers = index_viral_references(
-    subsets=["integrated-direct-driver"],
+    subsets=["cancer-integrated-driver"],
     download_if_missing=True,
 )
 ```

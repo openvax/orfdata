@@ -92,20 +92,17 @@ from .viral_coverage import (
     viral_contexts,
     viral_panel_coverage,
 )
-from .viral_mechanisms import (
-    normalize_viral_mechanisms,
-    normalize_viral_subsets,
-    viral_mechanism_abbreviations,
-    viral_mechanisms,
-    viral_subset_abbreviations,
-    viral_subsets,
-)
 from .viral_panel import (
     ViralReferenceBundle,
     ViralReferenceIndex,
     download_viral_references,
     index_viral_references,
     viral_reference_bundle,
+)
+from .viral_subsets import (
+    normalize_viral_subsets,
+    viral_subset_abbreviations,
+    viral_subsets,
 )
 
 __all__ = [
@@ -120,9 +117,6 @@ __all__ = [
     "download_viral_inventory",
     "viral_contexts",
     "viral_panel_coverage",
-    "viral_mechanisms",
-    "normalize_viral_mechanisms",
-    "viral_mechanism_abbreviations",
     "viral_subsets",
     "normalize_viral_subsets",
     "viral_subset_abbreviations",
