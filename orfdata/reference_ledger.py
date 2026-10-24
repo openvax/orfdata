@@ -136,7 +136,11 @@ def entries_from_rows(rows, name):
 
 
 def read_ledger(table):
-    """Read a packaged ledger, keyed by entry abbreviation."""
+    """Read a packaged ledger, keyed by entry abbreviation.
+
+    The table's bytes are read and checked once and cached there; what this
+    builds on top of them is a fresh mapping each caller owns.
+    """
     return entries_from_rows(table.read(), table.name)
 
 
