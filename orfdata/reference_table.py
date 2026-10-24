@@ -50,12 +50,18 @@ class PackagedTable:
                 "columns": list(self.columns)}
 
 
+def packaged_bytes(resource, sha256):
+    """One packaged file's bytes, read only when they are the bytes that were pinned."""
+    raw = files("orfdata").joinpath(resource).read_bytes()
+    if hashlib.sha256(raw).hexdigest() != sha256:
+        raise ValueError(f"Packaged data checksum mismatch: {resource}")
+    return raw
+
+
 @lru_cache(maxsize=16)
 def _packaged(table):
-    raw = files("orfdata").joinpath(table.resource).read_bytes()
-    if hashlib.sha256(raw).hexdigest() != table.sha256:
-        raise ValueError(f"Packaged reference table checksum mismatch: {table.resource}")
-    return parse_table(raw, schema=table.schema, columns=table.columns, name=table.name)
+    return parse_table(packaged_bytes(table.resource, table.sha256), schema=table.schema,
+                       columns=table.columns, name=table.name)
 
 
 def parse_table(raw, *, schema, columns, name="reference table"):

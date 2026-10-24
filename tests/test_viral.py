@@ -200,7 +200,9 @@ def test_corrupt_packaged_catalogue_fails_before_returning_models(monkeypatch):
 
     module._catalog.cache_clear()
     try:
-        monkeypatch.setattr(module, "files", lambda name: CorruptResource())
+        # Every packaged file is read through one checked reader, so that is
+        # the seam a corrupt one has to be served through.
+        monkeypatch.setattr("orfdata.reference_table.files", lambda name: CorruptResource())
         with pytest.raises(ValueError, match="checksum mismatch"):
             viral_references()
     finally:
