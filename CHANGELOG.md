@@ -1,29 +1,215 @@
-# Unreleased
+# 0.36.0
 
-- Add the cached GDC `GRCh38.d1.vd1` source-reference bundle, publicly named
-  `gdc-viruses`: 200 viral
-  genomes, 1,678 paired source-CDS nucleotide/protein sequences, GenBank records
-  and provenance.
-  `viral_reference_bundle(download_if_missing=True, species="human")`
-  acquires it on demand. `orfdata download` now provides one discovery,
-  status and acquisition hierarchy for viral data, catalogues, datasets,
-  native search references, pinned genomes and chain files; the existing
-  resource-specific commands remain available. `gdc-viruses` is the current
-  human-targeted collection name; its source panel and manifest checksum identify
-  the cached source records. Viral contexts are nonexclusive metadata. Biopython,
-  DataCache and PyYAML are base dependencies so a
-  regular ORFdata install can perform the viral download. `orfdata setup
-  --species human` installs the default collection. `index_viral_references()`
-  creates reusable union or intersection FASTA indexes for nonexclusive
-  contexts without giving an accession/version a context-specific identity.
-  `human` is an analysis target; source-host taxon IDs remain empty when the
+- One way to carry a reference database, whatever its source or species.
+  Every packaged table ORFdata ships — a collection's inventory and one ledger
+  per source — is now a `PackagedTable`: a tab-separated file with a named
+  schema and pinned SHA-256, read and written in one place
+  (`orfdata.reference_table`) instead of once per file. A collection declares
+  the tables it reads rather than naming resources and checksums in module
+  constants, so a second panel, species or source is a registry entry and not
+  another loader.
+- One ledger format for every source. `orfdata.reference_ledger.v2` records,
+  per entry and per source, the identifier that source resolved it to, the
+  molecule's length, MD5 and SHA-256, how many coding features it annotates,
+  its NCBI taxon and its own description. The GenBank side of the GDC
+  collection, which used to be a separate summary table in its own format, is
+  now `gdc-grch38-d1-vd1-genbank.tsv`, and the alternate reference ledger is
+  `gdc-grch38-d1-vd1-pave.tsv`; `collection.ledger(source)` reads either.
+  `tools/build_reference_ledger.py --source NAME` builds any of them from one
+  pass over the inventory, replacing the alternate-only builder.
+- Check every downloaded record against the ledger for its source, not only
+  the alternate ones. A primary record whose length, checksums or coding
+  feature count no longer match what the packaged ledger pins now fails the
+  download loudly instead of being written. The GenBank ledger's checksum is
+  also the collection's cache identity, so a re-checked source invalidates
+  caches by itself.
+- Tell a source that does not publish a record from one that cannot be read.
+  `SourceUnavailable` is raised for a refusal the server states, so a ledger
+  records `unavailable` and `inconsistent` from what happened rather than from
+  matching an error message.
+- Read a GenBank record's `DEFINITION` and its `source` feature's taxon, so a
+  source record carries its own title and NCBI taxon and no second lookup is
+  needed to describe it. The parsed-record class is `GenBankRecord`, which no
+  longer collides with the cross-source `SourceRecord`.
+- Read an IUPAC ambiguity codon as the residue it determines. A codon carrying
+  an ambiguity code translates to a residue whenever every base it stands for
+  gives the same one — `ATY` is isoleucine either way — and only to `X` when
+  they genuinely differ, which is how sequence databases publish them. This
+  corrects the two rows the reference ledger had recorded as `inconsistent`:
+  HPV171 and HPV172 each carry exactly one `Y` in their published genome, in
+  an `ATY` and a `TGY` codon that cannot change the protein, so PaVE's
+  coordinates do reproduce its published proteins after all. The alternate
+  source is now `published` for 187 of the 189 papillomavirus rows, the other
+  two being types it does not publish at all.
+- Record how each coding sequence begins. `transcripts.tsv` carries
+  `start_codon`, the three bases read first, and `initiation`, one of `atg`,
+  `alternative` (another initiation codon of the same genetic code),
+  `declared` (the source names the initiator with `transl_except`),
+  `non_canonical`, `partial` or `unknown`; `viral_reference_summary()` counts
+  them and names the non-canonical ones. Across the GDC collection that is
+  `atg` 1,686, `partial` 66, `alternative` 3, `non_canonical` 2 and
+  `declared` 1 — the last CMV's `UL30A`, an `ACG` start with
+  `/transl_except=(pos:complement(38131..38133),aa:Met)` and ribosome-profiling
+  evidence, which ORFdata previously dropped. The two non-canonical ones are
+  HPV63 and HPV65, whose submitters note that the protein conflicts with the
+  conceptual translation. The residue a start yields stays in the proteome,
+  where the source publishes it.
+- Record translational recoding the source claims. A valueless GenBank
+  qualifier is no longer discarded, so `ribosomal_slippage` reaches a new
+  `recoding` column and the summary's `recoded_transcripts`. Two transcripts
+  carry it: HTLV-1's `gag-pro` and `gag-pro-pol`, written as joins that read
+  the slippage base twice. Their sequences and proteins are correct and
+  varcode reads them per product, but a variant at the reused base is reported
+  as an exon loss, because a GTF exon is a genomic interval and effect
+  predictors assume exons do not overlap.
+- Survey how completely a collection is annotated. `viral_annotation_survey()`
+  and `orfdata viral completeness` report, per genome, its coding transcripts,
+  how many are complete, how many carry no gene name, how many are spliced,
+  and — where a collection names an alternate source publishing the identical
+  molecule — how many more coding features that source publishes, read from
+  the packaged ledger without a network request. No gene list is built in, so
+  the survey is true of any collection, species and source.
+- `--alternate-annotations` (`prefer_alternate_annotation=True`) takes the
+  alternate source's coding features wherever it publishes the identical
+  molecule and annotates at least as much of it, in place of each submission's
+  own. The genome FASTA is byte-identical either way: this changes only how
+  the same bases are read. Over the GDC collection it is the difference
+  between 1,758 and 1,993 coding transcripts, between 40 and 194 genomes with
+  a spliced model, between 49 and 3 with a transcript whose reading frame does
+  not close, and between 216 and 14 papillomavirus coding features with no
+  gene name at all — at the cost of replacing each submission's naming with
+  one source's. The remaining gaps are the two papillomavirus types PaVE does
+  not publish, and the herpes, hepatitis, retrovirus and polyomavirus rows,
+  which have no alternate source. The default still changes nothing it does
+  not have to.
+
+- Add the cached GDC `GRCh38.d1.vd1` source-reference collection, named
+  `gdc-viruses`, as three layers that are named the same way everywhere:
+  `genome` (200 viral genomic DNA records, the molecules a DNA reference such
+  as GRCh38.d1.vd1 carries as extra contigs), `transcriptome` (one spliced
+  coding transcript per source CDS feature, with `annotation.gtf` placing it on
+  the genome) and `proteome` (the source translation of each transcript).
+  `viral_reference_bundle(download_if_missing=True, species="human")` acquires
+  it; `bundle.layers`, `bundle.layer("transcriptome")` and
+  `viral_reference_summary()` describe it, and `orfdata viral summary`
+  prints that summary. Each cached GenBank record is stored exactly as NCBI
+  sent it, so `SHA256SUMS` attests to the source record itself.
+- The GTF, transcript FASTA and protein FASTA of a collection share
+  identifiers, so `viral_genome(bundle_or_index)` opens it as a PyEnsembl
+  genome and varcode, isovar, topiary and vaxrank can give a variant on a viral
+  contig a coding consequence, including under a non-standard genetic code the
+  source record declares (`transl_table`). A frameshifted CDS, or one the
+  source marks as running past the record, carries no start or stop codon rows;
+  `transcripts.tsv` records that as `annotation_complete` and `partial`
+  (`5_prime`, `3_prime` or `both`), which covers 69 of the 1,758 transcripts:
+  EBV's repeat-region genes, HIV-1's `pol`, which is translated as a Gag-Pol
+  frameshift fusion, and the E4 and E5 ORFs of papillomavirus rows still on
+  their inventory accession, which carry no start codon of their own because
+  they are expressed from spliced transcripts.
+- Carry the molecule the reference a collection follows was actually built
+  from. A reference inventory can name an entry at two sources whose sequences
+  differ, and GDC's decoy FASTA carries the PaVE reference rather than the
+  GenBank accession beside it: PaVE's `HPV16REF` reproduces the GDC HPV16 DNA
+  MD5 this repository already pinned (`f2463721818c29998ef5ab917e6df74a`)
+  exactly, while `K02718.1` is a different sequence two bases shorter with the
+  sparser 1985 annotation. 24 of the 189 papillomavirus rows differ this way,
+  among them HPV16, HPV18, HPV56 and HPV59 — four IARC Group 1 agents — and
+  the inventory's own `PaVE Notes` column marks 18 of them `Revised`.
+  HPV16 now carries 7,906 bases and ten complete coding transcripts, including
+  the spliced E1^E4, E8^E2 and E6\* and an 83-residue E5, where the GenBank
+  accession gave eight with E4 and E5 5'-partial and no spliced models.
+- Sources are a named, published thing rather than a special case.
+  `reference_sources()` lists them — `genbank` and `pave` today — and a
+  `ReferenceSource` returns a `SourceRecord` carrying the molecule, its coding
+  features and the source's own document. A collection stores every document
+  under `records/`, named for the entry, the source and the identifier, so
+  `SHA256SUMS` attests to whichever source served it, and `genome_source` and
+  `annotation_source` say where each genome and transcript came from.
+- Collections are a registry rather than constants. `viral_collections()` and
+  `viral_collection(name)` describe what a collection is for — its target
+  species and taxon, inventory, contexts, primary source and alternate — and
+  every entry point takes a collection name, so a second species or source set
+  is a registry entry rather than a code path. `install_species` reads the
+  collections a species has from the same registry.
+- Ledgers are general: `orfdata.reference_ledger` reads and writes a packaged,
+  checksummed record of what each entry looks like at a collection's alternate
+  source, with states `published`, `unavailable` and `inconsistent` — the last
+  for an alternate whose own annotation does not reproduce its published
+  proteins, which no longer applies to any of the 189 rows. A fetched alternate is verified
+  against the pinned length and both checksums before anything is written.
+  `--inventory-molecules` keeps each row on the accession its inventory names
+  first, and `--no-annotation-fill` keeps strictly to each entry's own record;
+  either way the choice, and any source that could not be had, is recorded and
+  reported by `orfdata viral summary`.
+- Fill the annotation gap in three GDC rows whose GenBank submissions carry no
+  CDS feature at all — HPV2, HPV8 and HPV51, the last an IARC Group 1 agent in
+  the `cancer-causing` subset — from the Papillomavirus Episteme reference the
+  GDC inventory already names for every papillomavirus row. PaVE publishes the
+  identical sequence for all three, so the 26 transcripts and proteins it adds
+  (including spliced E1^E4 and E8^E2 models) need no coordinate transfer. The
+  fill applies only where the source record annotates nothing, only on an exact
+  sequence match, and only when a feature's coordinates reproduce the protein
+  PaVE publishes for it; `annotation_source` records it on every transcript and
+  genome, and `--no-annotation-fill` (`fill_annotation_gaps=False`) keeps
+  strictly to the source records. The fill adds to those records rather than
+  standing in for them, so a PaVE that is unreachable or no longer publishing
+  the same sequence leaves one genome without transcripts, with its reason
+  reported, instead of discarding a download of 200 source records.
+- Read GenBank flat files with `orfdata.genbank` instead of Biopython, adding
+  no dependency in its place: the subset NCBI EFetch emits is small, and the
+  parsers available either lose what the file says — biotite keeps a feature's
+  locations in a `frozenset`, so the order of a spliced CDS is gone — or are
+  too little used to put under a published package. The reader keeps a
+  location's structure and its `<`/`>` partial markers, and is checked against
+  an independent parser (`gb-io`, a development dependency) on all 200 records
+  and 1,678 CDS features with no difference. Where the two disagree, ORFdata
+  keeps the more faithful reading: `gb-io` reads `order(...)` as a join and
+  cannot parse the `complement(order(>104408,...))` on an EBV gene at all. Translation uses ORFdata's own genetic codes, so nothing
+  silently falls back to the standard code. Viral support now needs nothing
+  beyond the base install; only the data is downloaded.
+- Join a CDS that a circular genome's origin splits into two partial halves.
+  HBV's polymerase is written as `2307..>3215` and `<1..1623` in `X04615.1`,
+  and reads as one 2,532-base gene of 843 amino acids. The halves are joined
+  only when the result proves it — whole codons, a start codon, a terminal
+  stop, no stop in between, and the two published translations meeting end to
+  end — and the joined transcript records `genbank:origin_join` as its
+  `annotation_source` and keeps both halves' own descriptions, which name the
+  ranges `(AA 1-303)` and `(AA 304-843)` of the one protein. A CDS whose record
+  describes its product only in a note, as HBV's does, now keeps that note as
+  its product rather than nothing.
+- `Proteome.write_annotation(directory)` and `orfdata proteome --annotation
+  DIRECTORY` write the same three files for noncanonical ORFs, and
+  `orfdata --format gtf` writes the ORF models alone. The ncORF GTF writes no
+  `gene` rows, so it can be concatenated with the assembly's own annotation.
+  See the new [Downstream tools](https://openvax.github.io/orfdata/downstream/)
+  page.
+- `orfdata download` provides one discovery, status and acquisition hierarchy
+  for viral collections, catalogues, datasets, native search references, pinned
+  genomes and chain files; the existing resource-specific commands remain
+  available. An unknown kind, species or context is an error rather than an
+  empty listing.
+- `index_viral_references()` creates reusable union or intersection selections
+  for nonexclusive contexts and named subsets without giving an
+  accession/version a context-specific identity. It rebuilds a damaged index
+  from the local bundle instead of failing, and excluding a context without
+  naming one now starts from every context.
+- The package YAML registry exposes three named selectors:
+  `cancer-integrated-driver` (15 references), `cancer-causing` (20 IARC Group 1
+  references) and `cancer-associated` (37 IARC Group 1, 2A and 2B references).
+  Every abbreviation is checked against the GDC inventory when the registry
+  loads, so a misspelled one is an error instead of a silently smaller subset,
+  and the listed count is what the subset resolves to. Being outside one tier
+  does not classify a reference as non-carcinogenic.
+- `orfdata setup --species human` installs the default viral collection;
+  `--collections none` (or `collections="none"`) sets up catalogues and chains
+  alone, and a collection whose optional dependency is missing is reported as
+  skipped rather than failing the setup. DataCache, PyYAML and gb-io are base
+  dependencies, so a regular install can download viral references.
+- `human` is an analysis target; source-host taxon IDs remain empty when the
   supplied source inventory does not establish them. The published context is
   the 200-reference GDC cancer-transcriptome screen (also selectable as
-  `cancer`). The package YAML registry exposes three named, plain-dictionary
-  selectors: `cancer-integrated-driver` (15 references), `cancer-causing`
-  (20 IARC Group 1 references), and `cancer-associated` (37 IARC Group 1, 2A
-  and 2B references). Being outside one tier does not classify a reference as
-  non-carcinogenic.
+  `cancer`), and contexts are nonexclusive metadata that never determine cache
+  identity.
 
 - Resolve PyEnsembl 2.31 reference strains using `species_taxon_id`, while
   preserving registered organism identities (including domestic dog), explicit

@@ -56,7 +56,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
                "catalogues with 'orfdata catalogs --help'; lift a catalogue to another assembly with "
                "'orfdata lift --help' and 'orfdata chains --help'; annotations PyEnsembl lacks, such as "
                "T2T-CHM13, with 'orfdata genomes --help'; discover and acquire data with "
-               "'orfdata download --help'; viral inventory coverage with 'orfdata viral --help'.")
+               "'orfdata download --help'; viral coverage, subsets and installed layers with "
+               "'orfdata viral --help'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
@@ -67,7 +68,8 @@ def _setup(argv, prog):
 
     parser = argparse.ArgumentParser(
         prog=prog, description="Install a species' ORF catalogues, chains and default reference collections, so its "
-                               "proteomes work offline on every assembly the chains reach.")
+                               "proteomes work offline on every assembly the chains reach. Human setup downloads "
+                               "the GDC viral collection too; '--collections none' skips it.")
     parser.add_argument("--species", required=True, help="e.g. human or mouse")
     parser.add_argument("--accept-terms", action="store_true",
                         help="Accept usage terms of restricted chain files, such as UCSC's non-commercial ones")
@@ -75,13 +77,17 @@ def _setup(argv, prog):
     parser.add_argument("--catalogs", metavar="NAMES", type=_catalog_names,
                         help="'all' to add the species' optional catalogues, such as human's Ribo-seq ones, or "
                              "comma-separated catalogue names; the species' default set by default")
+    parser.add_argument("--collections", metavar="NAMES", type=_catalog_names,
+                        help="'none' to skip the species' reference collections, such as human's GDC viral "
+                             "collection, 'all', or comma-separated names; the default set by default")
     parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--timeout", type=float, default=60,
                         help="Seconds a download may stall before it is retried, then fails (default 60)")
     args = parser.parse_args(argv)
     try:
         result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
-                                 cache_root=args.cache_root, timeout=args.timeout, catalogs=args.catalogs)
+                                 cache_root=args.cache_root, timeout=args.timeout, catalogs=args.catalogs,
+                                 collections=args.collections)
     except InstallError as error:  # What did install is still reported.
         json.dump(error.result, sys.stdout, indent=2)
         sys.stdout.write("\n")
@@ -128,7 +134,7 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument(
         "--genome-build", help="Required for genomic queries; selects or must match the catalogue's assembly"
     )
-    parser.add_argument("--format", choices=("json", "tsv", "fasta"), default="json")
+    parser.add_argument("--format", choices=("json", "tsv", "fasta", "gtf"), default="json")
 
 
 def _evidence_name(*extra):
@@ -275,6 +281,12 @@ def _query(args, parser, catalog_loader):
             output["initiation_annotations"] = initiation_annotations
         json.dump(output, sys.stdout, indent=2)
         sys.stdout.write("\n")
+    elif args.format == "gtf":
+        from .gtf import orf_gtf_lines
+
+        # One transcript per ORF on its host gene: concatenate with the assembly's
+        # reference GTF to annotate variants in ncORFs with PyEnsembl-based tools.
+        sys.stdout.writelines(orf_gtf_lines(records))
     elif args.format == "fasta":
         for r in records:
             reference = "" if r.reference_context is None else " reference=" + r.reference_context.key

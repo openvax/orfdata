@@ -29,14 +29,23 @@ orfdata download list
 orfdata download status
 ```
 
-Viral download support and its Biopython/DataCache dependencies are included in
-the regular installation. `orfdata setup --species human` also installs
-`gdc-viruses`, the default 200-reference GDC viral screen for human
-transcriptome analysis. To acquire only those source references:
+`orfdata setup --species human` also installs `gdc-viruses`, the default
+200-reference GDC viral screen for human transcriptome analysis;
+`--collections none` skips it. Viral support is part of the base install, and
+only the data is downloaded. To acquire only the viral references:
 
 ```sh
 orfdata download viral --species human
+orfdata viral summary
 ```
+
+Each viral collection keeps three layers apart — the viral genomes, one coding
+transcript per source CDS feature with a GTF placing it on them, and the
+proteins those transcripts encode. Because the three share identifiers, the set
+opens as a PyEnsembl genome, so varcode, isovar, topiary and vaxrank can
+annotate variants on viral contigs. `orfdata proteome --annotation DIR` writes
+the same three files for noncanonical ORFs. See
+[Downstream tools](https://openvax.github.io/orfdata/downstream/).
 
 ## Example
 
@@ -183,6 +192,7 @@ The [documentation](https://openvax.github.io/orfdata/) covers:
 | Task | Guide |
 | --- | --- |
 | Discover, inspect and download data | [Discover and download data](https://openvax.github.io/orfdata/downloads/) |
+| Use ORFs and viral references with varcode, isovar, topiary and vaxrank | [Downstream tools](https://openvax.github.io/orfdata/downstream/) |
 | Build a proteome: evidence levels, exclusions, contigs, viral proteins | [Build a reference proteome](https://openvax.github.io/orfdata/proteome/) |
 | ORF classes, evidence definitions, Varcode and Isovar integration | [ORFs and evidence](https://openvax.github.io/orfdata/reference/) |
 | Species and reference identity, mitochondrial genetic codes | [Species, references and genetic codes](https://openvax.github.io/orfdata/species/) |

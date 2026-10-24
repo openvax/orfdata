@@ -46,6 +46,9 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--cache-root", help="Cache directory holding catalogues, chains, pinned genomes and cached builds, instead of "
                                              "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", help="FASTA path; standard output by default")
+    parser.add_argument("--annotation", metavar="DIRECTORY",
+                        help="Also write the ncORF models there as annotation.gtf with matching "
+                             "transcripts.fasta and proteins.fasta, for PyEnsembl-based tools")
     args = parser.parse_args(argv)
     try:
         sources = []
@@ -73,6 +76,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
             genome, reference_cds=not args.no_reference_cds, isoforms=args.isoforms,
             nc_orf_sources=sources, viral=args.viral or (), cache=args.cache, cache_root=args.cache_root)
         proteome.write_fasta(args.output or sys.stdout)
+        annotation = proteome.write_annotation(args.annotation) if args.annotation else None
         if args.snapshot:
             proteome.save(args.snapshot)
     except (TypeError, ValueError, OSError, ImportError) as error:
@@ -80,6 +84,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
     summary = proteome.summary()
     summary["excluded_orfs"] = [dict(orf_id=e.orf_id, transcript_id=e.transcript_id, reason=e.reason)
                                 for e in proteome.excluded]
+    if annotation is not None:
+        summary["annotation"] = annotation
     json.dump(summary, sys.stderr, indent=2)
     sys.stderr.write("\n")
 

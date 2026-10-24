@@ -10,7 +10,7 @@ class InstallError(ValueError):
 
 
 def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=60,
-                    catalogs=None):
+                    catalogs=None, collections=None):
     """Install a species' registered catalogues, chains and default reference collections.
 
     Afterwards ``load_catalog``, ``extra_orfs`` and ``Proteome.build`` work
@@ -35,9 +35,11 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
 
     from .catalog import _catalog_choices, _installed, _plan, _selected, _species
     from .catalogs import CatalogRegistry
+    from .downloads import default_collections
     from .liftover import _chain_registry, download_chain, pinned_chains
 
     species = _species(species)
+    collections = _selected_collections(default_collections(species), collections, species)
     if registry is not None and cache_root is not None:
         raise ValueError("Pass a registry or a cache_root, not both; the registry has its own cache root")
     registry = CatalogRegistry(cache_root=cache_root) if registry is None else registry
@@ -84,7 +86,7 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
                 result["catalogs"][label] = "repaired" if state == "damaged" else verb
             except Exception as error:  # Reported with the rest, after everything else is tried.
                 result["catalogs"][label] = f"failed: {error}"
-                failed.append(label)
+                failed.append((label, str(error)))
     for chain in chains:
         if chain.restricted and accept_terms is not True:
             result["chains"][chain.name] = (f"skipped: {chain.provider}'s terms need accept_terms=True "
@@ -100,38 +102,55 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
             result["chains"][chain.name] = "downloaded" if state == "missing" else "repaired"
         except Exception as error:
             result["chains"][chain.name] = f"failed: {error}"
-            failed.append(chain.name)
-    if species == "homo_sapiens":
-        from .viral_panel import VIRAL_COLLECTION, download_viral_references, viral_reference_bundle
-
-        result["viral"] = {}
-        try:
-            viral_timeout = 120 if timeout is None else timeout
-            try:
-                viral_reference_bundle(
-                    species=species, collection=VIRAL_COLLECTION, cache_root=root)
-                present = True
-            except (FileNotFoundError, ValueError):
-                present = False
-            if present and not force:
-                result["viral"][VIRAL_COLLECTION] = "already installed"
-            else:
-                download_viral_references(
-                    species=species, collection=VIRAL_COLLECTION, cache_root=root,
-                    force=force or not present, timeout=viral_timeout)
-                result["viral"][VIRAL_COLLECTION] = "repaired" if present else "downloaded"
-        except Exception as error:
-            result["viral"][VIRAL_COLLECTION] = f"failed: {error}"
-            failed.append(VIRAL_COLLECTION)
+            failed.append((chain.name, str(error)))
+    if collections:
+        result["collections"] = _install_collections(
+            collections, species, force=force, cache_root=root, timeout=timeout, failed=failed)
     if failed:
-        messages = []
-        for item in failed:
-            state = (result["catalogs"].get(item) or result["chains"].get(item)
-                     or result.get("viral", {}).get(item))
-            messages.append(f"{item}: {state[8:]}")
-        raise InstallError(f"Could not install {', '.join(failed)} for {species}: "
-                           + "; ".join(messages), result)
+        raise InstallError(
+            f"Could not install {', '.join(name for name, _ in failed)} for {species}: "
+            + "; ".join(f"{name}: {message}" for name, message in failed), result)
     return result
+
+
+def _install_collections(names, species, *, force, cache_root, timeout, failed):
+    """Install each reference collection, reporting what every one needed."""
+    from .downloads import collection_state, install_collection
+
+    installed = {}
+    for name in names:
+        try:
+            state = collection_state(name, species=species, cache_root=cache_root)
+            if state == "available" and not force:
+                installed[name] = "already installed"
+                continue
+            install_collection(name, species=species, force=True, cache_root=cache_root,
+                               timeout=timeout)
+            installed[name] = {"missing": "downloaded",
+                               "available": "reinstalled"}.get(state, "repaired")
+        except ImportError as error:  # An optional dependency is a skip, as restricted terms are.
+            installed[name] = f"skipped: {error}"
+        except Exception as error:  # Reported with the rest, after everything else is tried.
+            installed[name] = f"failed: {error}"
+            failed.append((name, str(error)))
+    return installed
+
+
+def _selected_collections(available, chosen, species):
+    """``collections``, as ``catalogs`` works: the default set, "all", "none", or names."""
+    if chosen is None:
+        return tuple(available)
+    names = [chosen] if isinstance(chosen, str) else list(chosen)
+    if "all" in names:
+        return tuple(available)
+    if not names or names == ["none"]:
+        return ()
+    unknown = [name for name in names if name not in available]
+    if unknown:
+        raise ValueError(
+            f"orfdata has no reference collection {', '.join(map(repr, unknown))} for {species}; "
+            f"it has {', '.join(available) or 'none'}")
+    return tuple(dict.fromkeys(names))
 
 
 def _shared_sources(manifests, staging, options):

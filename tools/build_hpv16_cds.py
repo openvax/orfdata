@@ -1,6 +1,5 @@
 """Rebuild the small HPV16 CDS catalogue from its versioned RefSeq GenBank record.
 
-Requires Biopython only for building, not for loading the released catalogue.
 The GDC placement is an exact circular rotation, verified against the DNA MD5
 of the pinned GDC reference, not an alignment-based annotation transfer.
 """
@@ -8,11 +7,11 @@ of the pinned GDC reference, not an alignment-based annotation transfer.
 import argparse
 import gzip
 import hashlib
-import io
 import json
 from pathlib import Path
 
-from Bio import SeqIO
+from orfdata.genbank import parse as parse_record
+from orfdata.viral_annotation import exon_blocks, extract, translate
 
 ACCESSION = "NC_001526.4"
 NATIVE_MD5 = "08d2b3849496d12cc45fd4df713d5c2f"
@@ -25,34 +24,37 @@ HOST_SOURCE = ("PaVE HPV16REF /host=Human (Homo sapiens), checked 2026-10-16: "
 TAXONOMY_SOURCE = "https://ictv.global/report/chapter/papillomaviridae/taxonomy/papillomaviridae"
 
 
-def build(genbank):
-    record = SeqIO.read(io.StringIO(genbank.decode()), "genbank")
-    native = str(record.seq).upper()
+def build(source):
+    record = parse_record(source.decode("utf-8"))
+    native = record.sequence
     gdc = native[-ROTATION:] + native[:-ROTATION]
-    if record.id != ACCESSION or hashlib.md5(native.encode()).hexdigest() != NATIVE_MD5:
+    if record.accession_version != ACCESSION or hashlib.md5(native.encode()).hexdigest() != NATIVE_MD5:
         raise ValueError("The source is not the pinned NC_001526.4 DNA")
     if hashlib.md5(gdc.encode()).hexdigest() != GDC_MD5:
         raise ValueError("The circular rotation does not match the GDC DNA")
     definitions = []
     native_blocks, gdc_blocks = {}, {}
     for feature in record.features:
-        if feature.type != "CDS":
+        if feature.kind != "CDS":
             continue
-        q = feature.qualifiers
-        if feature.location.strand != 1 or int(q.get("codon_start", [1])[0]) != 1:
+        q = {}
+        for key, value in feature.qualifiers:
+            q.setdefault(key, []).append(value)
+        exons = exon_blocks(feature.location)
+        if any(strand != "+" for _, _, strand in exons) or int(q.get("codon_start", [1])[0]) != 1:
             raise ValueError("This source builder requires complete plus-strand CDSs")
         protein_id = q["protein_id"][0]
-        blocks = [[int(part.start) + 1, int(part.end)] for part in feature.location.parts]
+        blocks = [[start, end] for start, end, _ in exons]
         moved = [[(a - 1 + ROTATION) % len(native) + 1,
                   (b - 1 + ROTATION) % len(native) + 1] for a, b in blocks]
         if any(a > b for a, b in moved):
             raise ValueError("A rotated coding block crosses the origin; qualify it explicitly")
-        coding = feature.extract(record.seq)
+        coding = extract(native, exons)
         protein = q["translation"][0]
         table = int(q.get("transl_table", [1])[0])
-        if str(coding.translate(table=table, cds=True)) != protein:
+        if translate(coding, table=table) != protein or len(coding) != 3 * (len(protein) + 1):
             raise ValueError(f"Source translation mismatch: {protein_id}")
-        definitions.append(dict(protein_id=protein_id, gene=q.get("gene", [None])[0],
+        definitions.append(dict(protein_id=protein_id, gene=(q.get("gene") or [None])[0],
                                 product=q["product"][0], protein_sequence=protein,
                                 translation_table=table, strand="+", phase=0,
                                 start_complete=True, stop_complete=True))
@@ -60,7 +62,7 @@ def build(genbank):
         gdc_blocks[protein_id] = moved
     if len(definitions) != 9:
         raise ValueError("Expected the nine annotated CDSs in this source version")
-    source = dict(accession=ACCESSION, url=SOURCE, sha256=hashlib.sha256(genbank).hexdigest())
+    provenance = dict(accession=ACCESSION, url=SOURCE, sha256=hashlib.sha256(source).hexdigest())
     references = []
     for name, sequence, blocks, offset in (
             (ACCESSION, native, native_blocks, 0),
@@ -68,11 +70,11 @@ def build(genbank):
         references.append(dict(id=name, taxon_id=333760, species="human_papillomavirus_16",
             length=len(sequence), sequence_md5=hashlib.md5(sequence.encode()).hexdigest(),
             sequence_sha256=hashlib.sha256(sequence.encode()).hexdigest(),
-            source=source, native_to_reference_rotation=offset, coding_blocks=blocks,
+            source=provenance, native_to_reference_rotation=offset, coding_blocks=blocks,
             reference_sequence=sequence, host_taxon_ids=[9606], host_source=HOST_SOURCE,
             virus=dict(group="HPV", type="HPV16", ictv_species="Alphapapillomavirus 9",
                        taxonomy_source=TAXONOMY_SOURCE)))
-    return dict(schema="orfdata.viral_cds.v2", source=source,
+    return dict(schema="orfdata.viral_cds.v2", source=provenance,
                 scope="Nine source-annotated HPV16 CDSs; not all HPV ORFs or complete transcript models",
                 references=references, cds=definitions)
 

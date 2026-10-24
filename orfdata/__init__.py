@@ -19,10 +19,11 @@ from .catalog_manifest import CatalogManifest
 from .catalogs import CatalogRegistry, build_catalog
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
-from .downloads import Downloadable, DownloadStatus, downloadable_data, list_downloads
+from .downloads import DownloadStatus, default_collections, list_downloads
 from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .genomes import PinnedGenome, install_genome, load_genome, pinned_genomes
+from .gtf import orf_gtf_lines
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
 from .install import install_species
 from .liftover import (
@@ -71,8 +72,11 @@ from .proteome import (
     annotated_orfs,
     extra_orfs,
 )
+from .record_sources import ReferenceSource, SourceRecord, reference_source, reference_sources
 from .reference import ReferenceContext, ScopedTarget
+from .reference_ledger import LedgerAnchor, LedgerEntry
 from .reference_mapping import MappedMeasurement, ReferenceMapping
+from .reference_table import PackagedTable
 from .rna import IRES, ProteinProduct, RNAFeature, SourceRNA, products_from_uniprot, rfam_ires
 from .search_reference import SearchMembership, SearchReference, SearchReferenceSpec, SearchSequence
 from .sequence import GeneticCode, genetic_code
@@ -93,12 +97,19 @@ from .viral_coverage import (
     viral_panel_coverage,
 )
 from .viral_panel import (
+    VIRAL_LAYERS,
     ViralReferenceBundle,
     ViralReferenceIndex,
+    ViralReferenceSet,
+    ViralSequenceLayer,
     download_viral_references,
     index_viral_references,
+    viral_annotation_survey,
+    viral_genome,
     viral_reference_bundle,
+    viral_reference_summary,
 )
+from .viral_registry import ViralCollection, viral_collection, viral_collections
 from .viral_subsets import (
     normalize_viral_subsets,
     viral_subset_abbreviations,
@@ -122,9 +133,15 @@ __all__ = [
     "viral_subset_abbreviations",
     "ViralReferenceBundle",
     "ViralReferenceIndex",
+    "ViralReferenceSet",
+    "ViralSequenceLayer",
+    "VIRAL_LAYERS",
     "download_viral_references",
     "index_viral_references",
+    "viral_genome",
     "viral_reference_bundle",
+    "viral_annotation_survey",
+    "viral_reference_summary",
     "__version__",
     "Proteome",
     "ProteomeEntry",
@@ -133,6 +150,17 @@ __all__ = [
     "Occurrence",
     "extra_orfs",
     "annotated_orfs",
+    "orf_gtf_lines",
+    "ReferenceSource",
+    "SourceRecord",
+    "LedgerEntry",
+    "LedgerAnchor",
+    "PackagedTable",
+    "reference_source",
+    "reference_sources",
+    "ViralCollection",
+    "viral_collection",
+    "viral_collections",
     "ExtraORFs",
     "BindingFailure",
     "DerivedProtein",
@@ -168,9 +196,8 @@ __all__ = [
     "QuantitativeDataset",
     "DatasetRegistry",
     "build_dataset",
-    "Downloadable",
     "DownloadStatus",
-    "downloadable_data",
+    "default_collections",
     "list_downloads",
     "DatasetManifest",
     "SourceAsset",

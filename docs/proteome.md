@@ -591,6 +591,29 @@ for how versions and references are checked.
 `for_transcript(transcript, include_annotated=True)` adds the annotated CDSs
 on that transcript, and `overlapping(...)` finds ORFs at a genomic interval.
 
+## An annotation for the ncORFs
+
+`write_annotation` writes the proteome's ncORFs as a GTF with the matching
+transcript and protein FASTAs, so PyEnsembl-based tools can place a variant
+inside an ncORF and translate it:
+
+```python
+written = combined.write_annotation("ncorfs")
+print(written["annotation_gtf"], written["transcript_count"])
+```
+
+```sh
+orfdata proteome --species human --release 115 --nc-orf-sources ms \
+  --output proteins.fasta --annotation ncorfs/
+```
+
+One coding transcript per ncORF is placed on its host gene, named by the
+catalogue's `orf_id`, with the ORF's spliced coding sequence and its
+translation. Reference CDS entries are left out, because the reference
+annotation already describes them, and viral entries are too, because they are
+not placed on this genome. [Downstream tools](downstream.md) shows how to read
+the result, alone or concatenated with the assembly's own annotation.
+
 ## FASTA headers
 
 `write_fasta` writes 60-column sequences and, by default, one FASTA record per

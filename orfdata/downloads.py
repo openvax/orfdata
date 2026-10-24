@@ -34,58 +34,82 @@ class DownloadStatus:
         return dict(asdict(self), installed=self.installed)
 
 
-# The earlier development name remains importable while DownloadStatus is the
-# canonical public name.
-Downloadable = DownloadStatus
+def default_collections(species):
+    """The reference collections ``install_species`` installs for one species.
+
+    A collection is a versioned, downloadable reference set that is not an ORF
+    catalogue. Which ones a species has is read from the registry, so adding a
+    collection for another species adds it here too.
+    """
+    from .viral_registry import viral_collections
+
+    chosen = canonical_species(species)
+    return tuple(collection.name for collection in viral_collections()
+                 if canonical_species(collection.target_species) == chosen)
+
+
+def collection_state(name, *, species, cache_root=None, verify_files=True):
+    """Local state of one reference collection: ``available``, ``missing``, ``corrupt`` or ``inaccessible``.
+
+    ``verify_files=False`` checks only that the expected files are present,
+    without hashing them.
+    """
+    from .viral_panel import _bundle_path, _existing_bundle, viral_reference_bundle
+    from .viral_registry import viral_collection
+
+    collection = viral_collection(name, species=species)
+    path = _bundle_path(cache_root, canonical_species(species), collection)
+    if not path.is_dir():
+        return "missing"
+    try:
+        if verify_files:
+            viral_reference_bundle(species=species, collection=name, cache_root=cache_root)
+        else:
+            _existing_bundle(path, species=canonical_species(species), collection=collection)
+    except FileNotFoundError:
+        return "missing"
+    except OSError:
+        return "inaccessible"
+    except ValueError:
+        return "corrupt"
+    return "available"
+
+
+def install_collection(name, *, species, force=False, cache_root=None, timeout=120):
+    """Download one reference collection, as ``orfdata download viral`` does."""
+    from .viral_panel import download_viral_references
+    from .viral_registry import viral_collection
+
+    collection = viral_collection(name, species=species)
+    return download_viral_references(species=species, collection=collection.name,
+                                     cache_root=cache_root, force=force, timeout=timeout)
 
 
 def _viral(cache_root, verify_files):
-    from .viral_coverage import PANEL
-    from .viral_panel import (
-        BUNDLE_VERSION,
-        VIRAL_COLLECTION,
-        VIRAL_CONTEXTS,
-        VIRAL_TARGET_SPECIES,
-        VIRAL_TARGET_TAXON_ID,
-        _bundle_path,
-        _existing_bundle,
-        viral_reference_bundle,
-    )
+    """Every published viral collection, whichever species it targets."""
+    from .viral_panel import _bundle_path, bundle_version
+    from .viral_registry import viral_collections
 
-    path = _bundle_path(cache_root, VIRAL_TARGET_SPECIES, VIRAL_COLLECTION)
-    if not path.is_dir():
-        status = "missing"
-    else:
-        try:
-            if verify_files:
-                viral_reference_bundle(
-                    species=VIRAL_TARGET_SPECIES, collection=VIRAL_COLLECTION,
-                    cache_root=cache_root)
-            else:
-                _existing_bundle(
-                    path, species=VIRAL_TARGET_SPECIES, collection=VIRAL_COLLECTION)
-        except FileNotFoundError:
-            status = "missing"
-        except OSError:
-            status = "inaccessible"
-        except ValueError:
-            status = "corrupt"
-        else:
-            status = "available"
-    return (DownloadStatus(
-        kind="viral",
-        name=VIRAL_COLLECTION,
-        version=BUNDLE_VERSION,
-        title=f"GDC {PANEL} viral genomes and paired coding/protein sequences",
-        species=(VIRAL_TARGET_SPECIES,),
-        taxon_ids=(VIRAL_TARGET_TAXON_ID,),
-        contexts=VIRAL_CONTEXTS,
-        status=status,
-        path=str(path),
-        origin="download" if status == "available" else None,
-        acquire="download",
-        command="orfdata download viral --species human",
-    ),)
+    rows = []
+    for collection in viral_collections():
+        species = canonical_species(collection.target_species)
+        status = collection_state(collection.name, species=species, cache_root=cache_root,
+                                  verify_files=verify_files)
+        rows.append(DownloadStatus(
+            kind="viral",
+            name=collection.name,
+            version=bundle_version(collection),
+            title=f"{collection.title}: genome, transcriptome and proteome layers",
+            species=(species,),
+            taxon_ids=(collection.target_taxon_id,),
+            contexts=collection.contexts,
+            status=status,
+            path=str(_bundle_path(cache_root, species, collection)),
+            origin="download" if status == "available" else None,
+            acquire="download",
+            command=f"orfdata download viral --collection {collection.name}",
+        ))
+    return tuple(rows)
 
 
 def _catalogs(cache_root, verify_files):
@@ -252,7 +276,8 @@ def list_downloads(*, kind=None, species=None, contexts=None, context_match="any
     else:
         from .viral_coverage import normalize_viral_contexts
 
-        selected_contexts = normalize_viral_contexts(contexts, allow_unknown=True)
+        # A misspelled context is an error here too, not an empty listing.
+        selected_contexts = normalize_viral_contexts(contexts)
     if context_match not in ("any", "all"):
         raise ValueError("context_match must be 'any' or 'all'")
     selected_species = None
@@ -281,8 +306,3 @@ def list_downloads(*, kind=None, species=None, contexts=None, context_match="any
     if installed is not None:
         rows = [row for row in rows if row.installed is installed]
     return tuple(sorted(rows, key=lambda row: (row.kind, row.name, row.version or "")))
-
-
-def downloadable_data(**kwargs):
-    """Compatibility alias for :func:`list_downloads`."""
-    return list_downloads(**kwargs)

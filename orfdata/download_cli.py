@@ -1,9 +1,8 @@
 """Discover and acquire ORFdata resources through one command."""
 
 import argparse
-import json
-import sys
 
+from .cli_output import print_fields, print_json, print_table
 from .downloads import list_downloads
 
 
@@ -33,24 +32,17 @@ def _add_json(parser):
 
 def _show(rows, json_output):
     if json_output:
-        json.dump([row.to_dict() for row in rows], sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        print_json([row.to_dict() for row in rows])
         return
     headings = ("KIND", "NAME", "VERSION", "SPECIES", "CONTEXTS", "STATUS", "ACQUIRE", "COMMAND")
     values = []
     for row in rows:
         version = row.version or "-"
         if len(version) > 16:
-            version = version[:12] + "…"
-        values.append((row.kind, row.name, version, ",".join(row.species) or "-",
-                       ",".join(row.contexts) or "-", row.status,
-                       row.acquire or "-", row.command or "-"))
-    widths = [len(heading) for heading in headings]
-    for value in values:
-        widths = [max(width, len(field)) for width, field in zip(widths, value, strict=True)]
-    print("  ".join(f"{heading:<{width}}" for heading, width in zip(headings, widths, strict=True)))
-    for value in values:
-        print("  ".join(f"{field:<{width}}" for field, width in zip(value, widths, strict=True)))
+            version = version[:12] + "\u2026"
+        values.append((row.kind, row.name, version, ",".join(row.species),
+                       ",".join(row.contexts), row.status, row.acquire, row.command))
+    print_table(headings, values, empty="No matching resources")
     installed = [row for row in rows if row.installed and row.path]
     if installed:
         print("\nInstalled paths")
@@ -60,12 +52,9 @@ def _show(rows, json_output):
 
 def _show_result(result, json_output):
     if json_output:
-        print(json.dumps(result, indent=2, sort_keys=True, default=str))
-        return
-    for key, value in result.items():
-        if isinstance(value, (dict, list, tuple)):
-            value = json.dumps(value, sort_keys=True, default=str)
-        print(f"{key}: {value}")
+        print_json(result)
+    else:
+        print_fields(result)
 
 
 def _add_discovery(parser, *, status=False):
@@ -114,6 +103,19 @@ def run(argv=None, prog="orfdata download"):
                        help="Match any selected context (default) or require all")
     viral.add_argument("--subset", action="append",
                        help="Build an index for this named viral subset; repeat for a union")
+    viral.add_argument("--inventory-molecules", dest="prefer_reference_molecule",
+                       action="store_false",
+                       help="Carry the molecule each inventory row names first, even where the "
+                            "reference the collection follows was built from the other one")
+    viral.add_argument("--no-annotation-fill", dest="annotate_from_alternate",
+                       action="store_false",
+                       help="Keep strictly to each entry's own record, leaving one whose source "
+                            "annotates nothing without transcripts")
+    viral.add_argument("--alternate-annotations", dest="prefer_alternate_annotation",
+                       action="store_true",
+                       help="Take the alternate source's coding features wherever it publishes "
+                            "the same molecule and annotates at least as much of it, for "
+                            "uniform gene models in place of each submission's own")
     _add_cache(viral)
     _add_force_timeout(viral, timeout=120)
     _add_json(viral)
@@ -177,12 +179,13 @@ def run(argv=None, prog="orfdata download"):
 
             bundle = download_viral_references(
                 species=args.species, collection=args.collection, cache_root=args.cache_root,
-                force=args.force, timeout=args.timeout)
+                force=args.force, timeout=args.timeout,
+                prefer_reference_molecule=args.prefer_reference_molecule,
+                annotate_from_alternate=args.annotate_from_alternate,
+                prefer_alternate_annotation=args.prefer_alternate_annotation)
             if args.context or args.exclude_context or args.subset:
-                contexts = args.context or (["cancer-transcriptome-screening"]
-                                            if args.exclude_context else None)
                 indexed = index_viral_references(
-                    contexts=contexts, exclude_contexts=args.exclude_context,
+                    contexts=args.context, exclude_contexts=args.exclude_context,
                     context_match=args.context_match, subsets=args.subset,
                     species=args.species, collection=args.collection,
                     cache_root=args.cache_root, force=args.force, timeout=args.timeout)

@@ -1588,6 +1588,53 @@ class Proteome:
             for i in range(0, len(entry.sequence), width):
                 handle.write(entry.sequence[i : i + width] + "\n")
 
+    def write_annotation(self, directory):
+        """Write this proteome's ncORFs as a GTF with matching transcript and protein FASTAs.
+
+        The three files describe exactly what this proteome adds to the
+        reference annotation: ``annotation.gtf`` places one coding transcript
+        per ncORF on its host gene, ``transcripts.fasta`` holds each ORF's
+        spliced coding sequence, and ``proteins.fasta`` its translation. The
+        identifiers match, so PyEnsembl reads the three together and varcode,
+        isovar, topiary and vaxrank can give a variant inside an ncORF a coding
+        consequence. Concatenate the GTF with the assembly's own annotation to
+        keep the reference transcripts as well.
+
+        Reference CDS entries are left out, since the reference annotation
+        already has them, and viral entries are too: they are not placed on
+        this genome. Returns the written paths and counts.
+        """
+        from pathlib import Path
+
+        from .fasta import write_fasta
+        from .gtf import orf_gtf_lines
+
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        entries = [e for e in self.entries if e.kind == "extra_orf" and e.orf is not None]
+        paths = {name: directory / f"{name}" for name in
+                 ("annotation.gtf", "transcripts.fasta", "proteins.fasta")}
+        (paths["annotation.gtf"]).write_text(
+            f"#!genome-build {self.reference.genome_build if self.reference else 'unknown'}\n"
+            f"#!annotation-source orfdata noncanonical ORFs\n"
+            + "".join(orf_gtf_lines(entry.orf.record for entry in entries)), encoding="utf-8")
+        with paths["transcripts.fasta"].open("w") as transcripts, \
+             paths["proteins.fasta"].open("w") as proteins:
+            for entry in entries:
+                description = (f"gene={entry.orf.record.gene_name or ''} "
+                               f"orf_biotype={entry.orf_type or ''} "
+                               f"host_transcript={entry.source_transcript_id or ''}").rstrip()
+                write_fasta(transcripts, entry.accession, entry.orf.coding_sequence,
+                            description=description)
+                write_fasta(proteins, f"{entry.accession}.p", entry.sequence,
+                            description=description)
+        return {"annotation_gtf": str(paths["annotation.gtf"]),
+                "transcript_fasta": str(paths["transcripts.fasta"]),
+                "protein_fasta": str(paths["proteins.fasta"]),
+                "transcript_count": len(entries),
+                "protein_count": len(entries),
+                "omitted_entries": len(self.entries) - len(entries)}
+
 
 def _nc_orf_inputs(reference, sources, cache_root):
     """Resolve one source selection to a catalogue and an optional evidence rule."""
