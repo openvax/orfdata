@@ -296,4 +296,3 @@ def read_document(path):
     if path.name.endswith(".json.gz"):
         return json.loads(raw)
     return raw.decode("utf-8")
-
