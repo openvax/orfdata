@@ -297,4 +297,3 @@ def read_document(path):
         return json.loads(raw)
     return raw.decode("utf-8")
 
-
