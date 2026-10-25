@@ -1,8 +1,8 @@
 # 0.36.0
 
 - Public names now say what their values are. `ProteinSequence` is one protein
-  sequence with provenance, `VirusProteins` is a set of proteins from one
-  virus or FASTA, and `list_data()` returns `DataStatus` values for bundled,
+  sequence with provenance, `ProteinSet` is a named set of protein sequences
+  from any source, and `list_data()` returns `DataStatus` values for bundled,
   downloadable and buildable data. Fetcher and viral-cache implementation
   classes are no longer exported from the package root. A `Proteome` exposes
   `.proteins`, `from_proteins()` and `with_proteins()`; producer links target a
@@ -10,6 +10,22 @@
   Downloaded and selected viral files share the `ViralReferenceFiles` return
   type and the literal verbs `open_viral_references()` and
   `select_viral_references()` replace “bundle” and “index” in the public API.
+- `ProteinSet` is not virus-specific. `with_protein_set()` adds an explicitly
+  selected donor, transgene or other component while retaining its source
+  taxon, exact reference, checksum, role and sourced target assertion.
+  `with_viral()` accepts the same type plus a sourced host association; curated
+  `ViralReference` objects continue to provide that association themselves.
+- Producer identity no longer includes the wrapper that exported it. Direct
+  and wrapped imports of the same source protein or evidence record merge once
+  and retain every path in `exporters`; distinct samples and conflicting
+  biological content remain distinct or fail. Supplied proteins may keep an
+  unknown source taxon, which remains `None` in snapshots and `unknown` in
+  FASTA and requires `compatibility="allow_unknown"` before admission to a
+  known host. FASTA headers now include producer version, provider, export
+  paths, exact reference, source checksum and explicit true/false/unknown
+  boundary states with injection-safe escaping. Exact-sequence deduplication
+  writes a neutral group header and keeps every contributing protein in the
+  FASTA index instead of borrowing one producer's metadata.
 - Viral collection selection is one API everywhere. `viral_collection()` now
   accepts a collection object, name, alias, panel name, or a species with one
   registered collection; the download/open functions derive the target species

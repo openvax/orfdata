@@ -6,7 +6,16 @@ from dataclasses import replace
 
 import pytest
 
-from orfdata import DerivedProtein, ProducerInfo, ProteinSequence, Proteome, ReferenceContext
+from orfdata import (
+    DerivedProtein,
+    ProducerInfo,
+    ProducerLink,
+    ProducerRecord,
+    ProteinSequence,
+    Proteome,
+    ReferenceContext,
+)
+from orfdata.proteome import _sha256
 
 
 @pytest.fixture
@@ -131,3 +140,126 @@ def test_external_viral_origin_keeps_the_host_boundary(reference):
     mouse = ReferenceContext(10090, "mouse", "GRCm39", "Ensembl", "115")
     with pytest.raises(ValueError, match="recorded host"):
         Proteome.from_proteins([entry], reference=mouse)
+
+
+def test_export_paths_merge_without_splitting_source_identity(reference, tmp_path):
+    def exported(exporter, *, sequence="MPEPTIDE", sample="tumor-1", read_set="bam-1"):
+        protein = ProteinSequence.from_producer(
+            sequence,
+            taxon_id=9606,
+            producer=ProducerInfo(
+                origin="nc_orf",
+                method="rna_assembly",
+                tool="isovar",
+                native_id="hypothesis-1",
+                sample_id=sample,
+                reference=reference,
+                exporter=exporter,
+            ),
+        )
+        evidence = ProducerRecord(
+            namespace="isovar",
+            schema_version="isovar.protein_hypotheses.v2",
+            kind="evidence",
+            native_id="read-set-1",
+            sample_id=sample,
+            exporter=exporter,
+            support="rna_sequence",
+            scope={"read_set": read_set},
+        )
+        return Proteome.from_proteins(
+            protein, reference=reference, records=(evidence,)
+        )
+
+    direct = exported("isovar")
+    wrapped = exported("vaxrank")
+    assert direct.proteins[0].accession == wrapped.proteins[0].accession
+    assert direct.records[0].key == wrapped.records[0].key
+    joint = direct.merge(wrapped)
+    assert len(joint.proteins) == len(joint.records) == 1
+    assert joint.proteins[0].producer.exporters == ("isovar", "vaxrank")
+    assert joint.proteins[0].producer.exporter is None
+    assert joint.records[0].exporters == ("isovar", "vaxrank")
+    assert joint.records[0].exporter is None
+    assert joint.merge(direct, wrapped).identity == joint.identity
+    path = tmp_path / "wrapped.json.gz"
+    joint.save(path)
+    loaded = Proteome.load(path)
+    assert loaded.identity == joint.identity
+    assert loaded.proteins[0].producer.exporters == ("isovar", "vaxrank")
+    assert loaded.records[0].exporters == ("isovar", "vaxrank")
+    assert loaded.fasta_index() == joint.fasta_index()
+
+    assert len(direct.merge(exported("vaxrank", sample="tumor-2")).proteins) == 2
+    with pytest.raises(ValueError, match="Conflicting protein identity"):
+        direct.merge(exported("vaxrank", sequence="MCHANGED"))
+    with pytest.raises(ValueError, match="Conflicting producer record identity"):
+        direct.merge(exported("vaxrank", read_set="bam-2"))
+
+
+def test_unknown_source_taxon_survives_and_requires_explicit_admission(reference, tmp_path):
+    unknown = produced(taxon_id=None, origin="unknown", method="caller_supplied",
+                       tool="lens", native_id="row-1", sample_id=None)
+    standalone = Proteome.from_proteins(unknown, compatibility="mixed")
+    assert standalone.proteins[0].taxon_id is None
+    assert "|taxon=unknown|" in standalone.proteins[0].fasta_token()
+    path = tmp_path / "unknown-taxon.json.gz"
+    standalone.save(path)
+    reloaded = Proteome.load(path)
+    assert reloaded.proteins[0].taxon_id is None
+    assert reloaded.reference is None
+
+    with pytest.raises(ValueError, match="explicit compatibility"):
+        Proteome(reference, ()).merge(standalone)
+    admitted = Proteome(reference, ()).merge(standalone, compatibility="allow_unknown")
+    assert admitted.reference_policy == "allow_unknown"
+    assert admitted.proteins[0].taxon_id is None
+    assert admitted._content()["reference_policy"] == "allow_unknown"
+
+    dog = produced(taxon_id=9615, origin="unknown", method="caller_supplied",
+                   tool="lens", native_id="dog-row", sample_id=None)
+    dog_only = Proteome.from_proteins(dog, compatibility="mixed")
+    with pytest.raises(ValueError, match="another species"):
+        Proteome(reference, ()).merge(dog_only, compatibility="allow_unknown")
+
+
+def test_v4_exporter_specific_snapshot_is_normalized(reference, tmp_path):
+    entry = produced(reference=reference, exporter="vaxrank")
+    record = ProducerRecord(
+        "isovar", "v2", "translation", "T1",
+        exporter="vaxrank", sample_id="tumor-1",
+    )
+    collection = Proteome.from_proteins(
+        entry,
+        reference=reference,
+        records=(record,),
+        links=(ProducerLink(record.key, entry.accession, "protein", "translates_to"),),
+    )
+    path = tmp_path / "legacy-v4.json.gz"
+    collection.save(path)
+    snapshot = json.loads(gzip.decompress(path.read_bytes()))
+    content = snapshot["content"]
+    old_accession = entry.accession.replace("|sample=", "|exporter=vaxrank|sample=")
+    content["entries"][0]["accession"] = old_accession
+    producer = content["entries"][0]["producer"]
+    producer.pop("exporters")
+    producer["exporter"] = "vaxrank"
+    old_record_key = record.key.replace("|sample=", "|exporter=vaxrank|sample=")
+    saved_record = content["producer_graph"]["records"][0]
+    saved_record.pop("exporters")
+    saved_record["exporter"] = "vaxrank"
+    saved_link = content["producer_graph"]["links"][0]
+    saved_link.update(source=old_record_key, target=old_accession, target_kind="entry")
+    snapshot.update(schema="orfdata.proteome.v4", identity=_sha256(content))
+    path.write_bytes(gzip.compress(json.dumps(snapshot).encode(), mtime=0))
+
+    loaded = Proteome.load(path)
+    assert loaded.proteins[0].accession == entry.accession
+    assert loaded.proteins[0].producer.exporters == ("vaxrank",)
+    assert loaded.records[0].key == record.key
+    assert loaded.records[0].exporters == ("vaxrank",)
+    assert loaded.links == (ProducerLink(record.key, entry.accession,
+                                         "protein", "translates_to"),)
+    current = tmp_path / "current.json.gz"
+    loaded.save(current)
+    assert Proteome.load(current).identity == loaded.identity

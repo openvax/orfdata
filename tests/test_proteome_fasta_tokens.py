@@ -80,7 +80,12 @@ def test_exact_dedup_is_opt_in_and_indexes_every_source(tmp_path):
     index = proteome.fasta_index(deduplicate=True)
     assert {tuple(entry.accession for entry in group) for group in index.values()} == {
         (first.accession, second.accession), (partial.accession,)}
-    assert any("|records=2|group=" in token for token in tokens)
+    grouped_token = next(token for token in tokens if token.startswith("records=2|"))
+    assert set(_fields(grouped_token)) == {"records", "aa", "key"}
+    grouped_header = next(line for line in grouped.getvalue().splitlines()
+                          if line.startswith(">records=2|"))
+    assert "accessions=" in grouped_header and "protein_sources=nc_orf" in grouped_header
+    assert " sample=" not in grouped_header and " producer=" not in grouped_header
     assert "\nPEP\n" in grouped.getvalue()
     path = tmp_path / "joint.json.gz"
     proteome.save(path)
@@ -100,3 +105,50 @@ def test_v3_external_entry_snapshot_keeps_its_original_identity(tmp_path):
     path.write_bytes(gzip.compress(json.dumps(snapshot).encode(), mtime=0))
     loaded = Proteome.load(path)
     assert loaded.identity == collection.identity
+
+
+def test_producer_metadata_is_safe_and_complete_in_fasta(tmp_path):
+    reference = ReferenceContext(9606, "human", "GRCh38", "Ensembl", "115")
+    entry = ProteinSequence.from_producer(
+        "MAA",
+        taxon_id=9606,
+        producer=ProducerInfo(
+            "nc_orf",
+            "dna_prediction",
+            "varcode",
+            "ORF1:chr1:10A>T",
+            tool_version="10.19.0",
+            provider="catalogue release|1\n>injected",
+            exporter="varcode",
+            sample_id="tumor 1",
+            orf_kind="uORF",
+            reference=reference,
+            start_complete=False,
+            stop_complete=None,
+            source_sha256="a" * 64,
+        ),
+    )
+    header = entry.fasta_header()
+    token, description = header[1:].split(maxsplit=1)
+    fields = _fields(token)
+    assert fields["version"] == "10.19.0"
+    assert fields["provider"] == "catalogue release|1\n>injected"
+    assert fields["exporters"] == "varcode"
+    assert fields["reference"] == reference.key
+    assert fields["orf"] == "uORF"
+    assert fields["start"] == "false" and fields["stop"] == "unknown"
+    assert "provider=catalogue%20release%7C1%0A%3Einjected" in description
+    assert f"producer_reference={reference.key}" in description
+    assert "start_complete=false" in description and "stop_complete=unknown" in description
+    assert "producer_source_sha256=" + "a" * 64 in description
+
+    output = io.StringIO()
+    Proteome.from_proteins(entry, reference=reference).write_fasta(output)
+    assert output.getvalue().count("\n>") == 0
+    assert output.getvalue().count(">") == 1
+    path = tmp_path / "metadata.json.gz"
+    Proteome.from_proteins(entry, reference=reference).save(path)
+    restored = Proteome.load(path).proteins[0]
+    assert restored.producer.start_complete is False
+    assert restored.producer.stop_complete is None
+    assert restored.fasta_header() == header

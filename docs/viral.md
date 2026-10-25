@@ -595,8 +595,9 @@ type; ICTV places it in the species *Alphapapillomavirus 9*. Each reference also
 retains the association and taxonomy source URLs. Host associations can cover
 several host taxa as new references are curated; an unlisted host is unknown,
 not proof that infection is impossible. NCBI Virus's isolation-host metadata is
-not an exhaustive host-range list. `ref.host_taxon_ids` and `ref.host_source` have the
-same meaning as in [VirusProteins](proteome.md#viral-proteomes).
+not an exhaustive host-range list. `ref.host_taxon_ids` and `ref.host_source`
+have the same meaning as the arguments used when adding an external
+[ProteinSet](proteome.md#viral-proteomes) with `with_viral`.
 
 When annotating an existing BAM, continue to bind against its **actual** full
 alignment-reference DNA:

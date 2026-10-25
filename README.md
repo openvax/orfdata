@@ -133,6 +133,13 @@ amino acids, parent protein accession, sample, change IDs and source before
 `combined.with_derived_proteins(...)` adds them. These sequences are not
 inferred from variants or included in the reference proteome by default.
 
+For a named, checksummed sequence input with no genomic placement, use the
+general `ProteinSet`. `with_protein_set(...)` records a donor, transgene or
+other selected component; `with_viral(...)` uses the same input plus a sourced
+host association. ncORF sources with transcript coordinates and evidence stay
+as `ORFCatalog` records and produce the same `ProteinSequence` output when
+bound to a reference.
+
 ```sh
 orfdata proteome --species human --release 115 --nc-orf-sources all --viral all --output human-all-proteins.fasta
 ```
