@@ -5,7 +5,7 @@ import pytest
 from orfdata import normalize_viral_subsets, viral_panel_coverage, viral_subset_abbreviations
 from orfdata.viral_subsets import _check_abbreviations, viral_subsets
 
-PANEL = {entry.abbreviation for entry in viral_panel_coverage()}
+PANEL = set(viral_panel_coverage()["abbreviation"])
 
 
 def test_every_published_subset_resolves_to_real_inventory_rows():

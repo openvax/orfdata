@@ -5,12 +5,10 @@ published and what is installed.
 """
 
 import argparse
-import csv
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
-from .cli_output import print_json, print_table
+from .cli_output import print_json, print_table, records
 from .viral_coverage import PANEL, download_viral_inventory, viral_contexts, viral_panel_coverage
 from .viral_panel import viral_annotation_survey, viral_reference_summary
 from .viral_subsets import viral_subsets
@@ -79,11 +77,12 @@ def run(argv=None, prog="orfdata viral"):
     if args.command == "contexts":
         rows = viral_contexts()
         if args.json:
-            print_json([asdict(row) for row in rows])
+            print_json(records(rows))
         else:
             print_table(("CONTEXT", "ALIASES", "REFERENCES", "DESCRIPTION"),
-                        [(row.name, ",".join(row.aliases), row.references, row.description)
-                         for row in rows])
+                        [(row.name, ",".join(row.aliases), row.references,
+                          row.description)
+                         for row in rows.itertuples(index=False)])
         return
     if args.command == "subsets":
         rows = viral_subsets()
@@ -218,19 +217,16 @@ def _show_coverage(args, parser):
         parser.error(str(error))
     if args.format == "json":
         print_json(dict(panel=PANEL, total=len(all_rows),
-                        available=sum(row.available for row in all_rows), shown=len(rows),
-                        entries=[dict(asdict(row), available=row.available) for row in rows]))
+                        available=int(all_rows["available"].sum()), shown=len(rows),
+                        entries=records(rows)))
     elif args.format == "tsv":
-        writer = csv.writer(sys.stdout, delimiter="\t", lineterminator="\n")
-        writer.writerow(("abbreviation", "name", "status", "coding_models", "refseq",
-                         "genbank", "pave_id", "bundled_reference_id"))
-        for row in rows:
-            writer.writerow((row.abbreviation, row.name, row.status, row.coding_models,
-                             row.refseq, row.genbank, row.pave_id, row.bundled_reference_id))
+        rows[["abbreviation", "name", "status", "coding_models", "refseq",
+              "genbank", "pave_id", "bundled_reference_id"]].to_csv(
+            sys.stdout, sep="\t", index=False, na_rep="", lineterminator="\n")
     else:
-        print(f"{PANEL}: {sum(row.available for row in all_rows)}/{len(all_rows)} "
+        print(f"{PANEL}: {int(all_rows['available'].sum())}/{len(all_rows)} "
               f"with bundled source CDSs; showing {len(rows)}")
         print_table(("VIRUS", "STATUS", "CDSS", "GDC REFERENCE / SOURCE"),
                     [(row.abbreviation, "available" if row.available else "not bundled",
                       row.coding_models, row.bundled_reference_id or row.refseq or row.genbank)
-                     for row in rows], empty="No matching references")
+                     for row in rows.itertuples(index=False)], empty="No matching references")

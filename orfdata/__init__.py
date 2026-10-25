@@ -74,7 +74,6 @@ from .proteome import (
 )
 from .record_sources import ReferenceSource, SourceRecord, reference_source, reference_sources
 from .reference import ReferenceContext, ScopedTarget
-from .reference_ledger import LedgerAnchor, LedgerEntry
 from .reference_mapping import MappedMeasurement, ReferenceMapping
 from .reference_table import PackagedTable
 from .rna import IRES, ProteinProduct, RNAFeature, SourceRNA, products_from_uniprot, rfam_ires
@@ -90,8 +89,6 @@ from .viral import (
     viral_references,
 )
 from .viral_coverage import (
-    ViralContext,
-    ViralPanelEntry,
     download_viral_inventory,
     viral_contexts,
     viral_panel_coverage,
@@ -123,8 +120,6 @@ __all__ = [
     "viral_reference",
     "viral_reference_sequence",
     "viral_references",
-    "ViralPanelEntry",
-    "ViralContext",
     "download_viral_inventory",
     "viral_contexts",
     "viral_panel_coverage",
@@ -153,8 +148,6 @@ __all__ = [
     "orf_gtf_lines",
     "ReferenceSource",
     "SourceRecord",
-    "LedgerEntry",
-    "LedgerAnchor",
     "PackagedTable",
     "reference_source",
     "reference_sources",

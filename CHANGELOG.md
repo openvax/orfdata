@@ -1,5 +1,18 @@
 # 0.36.0
 
+- Reference tables are pandas data frames. `viral_panel_coverage()` and
+  `viral_contexts()` return a `DataFrame` instead of a tuple of dataclasses,
+  and `collection.ledger(source)` returns one keyed by entry abbreviation, so
+  an inventory or a ledger can be filtered, joined and aggregated with pandas
+  rather than through bespoke selectors. The packaged table's own header lines
+  travel on `frame.attrs`. `ViralPanelEntry`, `LedgerEntry` and `ViralContext`
+  are gone: a row of a table is a row of a table. `LedgerAnchor` is now
+  `Anchor`, and the per-row helpers it used to carry are plain functions —
+  `published(row)`, `same_molecule(row, sequence)` and
+  `verify_record(row, record)`. `ReferenceSource.ledger_entries` is now
+  `ReferenceSource.build_ledger` and also returns a frame. pandas 3 is a new
+  runtime dependency. On-disk formats and checksums are unchanged: the
+  packaged tables round-trip byte for byte through the new reader and writer.
 - One way to carry a reference database, whatever its source or species.
   Every packaged table ORFdata ships — a collection's inventory and one ledger
   per source — is now a `PackagedTable`: a tab-separated file with a named

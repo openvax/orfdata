@@ -43,19 +43,18 @@ def build(collection_name="gdc-viruses", source_name=None, *, timeout=60):
     def report(entry, error):
         print(f"  {entry.abbreviation}: {error}", file=sys.stderr)
 
-    entries = source.ledger_entries(viral_panel_coverage(), timeout=timeout, report=report)
-    built = {entry.abbreviation: entry for entry in entries}
+    ledger = source.build_ledger(viral_panel_coverage(), timeout=timeout, report=report)
     for anchor in collection.source_anchors(source.name):
-        anchor.check(built)
+        anchor.check(ledger)
     checked = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     notes = {f"anchor_{anchor.abbreviation.lower()}": anchor.sequence_md5
              for anchor in collection.source_anchors(source.name)}
-    content = write_ledger(entries, panel=collection.panel, source=source.name,
+    content = write_ledger(ledger, panel=collection.panel, source=source.name,
                            source_url=SOURCE_URLS.get(source.name, ""), checked=checked,
                            notes=notes)
     read_ledger_bytes(content, name=f"{collection.panel} {source.name} ledger")
-    published = sum(entry.state == PUBLISHED for entry in entries)
-    print(f"{source.name}: {published} of {len(entries)} entries published", file=sys.stderr)
+    serving = int((ledger["state"] == PUBLISHED).sum())
+    print(f"{source.name}: {serving} of {len(ledger)} entries published", file=sys.stderr)
     return content
 
 

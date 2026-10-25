@@ -6,18 +6,20 @@ are all the same kind of thing — a tab-separated table with a named schema,
 pinned by SHA-256 so a packaged file is read only when it is the file that was
 built — so they are read and written here once rather than once per table.
 
-A table carries its builder's own ``# key: value`` lines above the header:
-where the data came from, when it was checked, and whatever else belongs on
-the record. Another source, another panel or another species is a
-:class:`PackagedTable` on a registry entry, not another loader.
+A table reads as a :class:`pandas.DataFrame`, with the builder's own
+``# key: value`` lines above the header kept in ``frame.attrs``: where the
+data came from, when it was checked, and whatever else belongs on the record.
+Another source, another panel or another species is a :class:`PackagedTable`
+on a registry entry, not another loader.
 """
 
-import csv
 import hashlib
 import io
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib.resources import files
+
+import pandas as pd
 
 SCHEMA_KEY = "schema"
 
@@ -30,6 +32,9 @@ class PackagedTable:
     sha256: str
     schema: str
     columns: tuple[str, ...]
+    # Columns that hold whole numbers, read as nullable integers so a blank
+    # stays a blank instead of becoming a float or a string.
+    numeric: tuple[str, ...] = ()
 
     @property
     def name(self):
@@ -37,12 +42,12 @@ class PackagedTable:
         return self.resource.rsplit("/", 1)[-1]
 
     def read(self):
-        """Every row, as a dict keyed by column name."""
-        return _packaged(self)[1]
+        """This table, with its builder's header lines in ``attrs``.
 
-    def metadata(self):
-        """The builder's own header lines, as a mapping."""
-        return _packaged(self)[0]
+        The packaged bytes are read and checked once; every caller gets its
+        own frame to do as it likes with.
+        """
+        return _packaged(self).copy()
 
     def to_dict(self):
         """A JSON-ready description, as the other ORFdata status objects give."""
@@ -60,15 +65,15 @@ def packaged_bytes(resource, sha256):
 
 @lru_cache(maxsize=16)
 def _packaged(table):
-    return parse_table(packaged_bytes(table.resource, table.sha256), schema=table.schema,
-                       columns=table.columns, name=table.name)
+    return read_table(packaged_bytes(table.resource, table.sha256), schema=table.schema,
+                      columns=table.columns, numeric=table.numeric, name=table.name)
 
 
-def parse_table(raw, *, schema, columns, name="reference table"):
+def read_table(raw, *, schema, columns, numeric=(), name="reference table"):
     """Read a reference table's bytes, checking what it says it is before trusting it."""
-    lines = raw.decode("utf-8").splitlines()
+    text = raw.decode("utf-8")
     metadata = {}
-    for line in lines:
+    for line in text.splitlines():
         if not line.startswith("#"):
             break
         key, _, value = line[1:].partition(":")
@@ -76,17 +81,26 @@ def parse_table(raw, *, schema, columns, name="reference table"):
     if metadata.get(SCHEMA_KEY) != schema:
         raise ValueError(f"Unsupported {name} schema {metadata.get(SCHEMA_KEY)!r}; "
                          f"this ORFdata reads {schema!r}")
-    body = io.StringIO("\n".join(line for line in lines if not line.startswith("#")))
-    reader = csv.DictReader(body, delimiter="\t")
-    if tuple(reader.fieldnames or ()) != tuple(columns):
-        raise ValueError(f"Unsupported {name} columns: {reader.fieldnames}")
-    return metadata, tuple(reader)
+    body = "\n".join(line for line in text.splitlines() if not line.startswith("#"))
+    # Everything arrives as text, so a blank is a blank and nothing is guessed
+    # at; the declared numeric columns are then converted deliberately.
+    frame = pd.read_csv(io.StringIO(body), sep="\t", dtype="str", keep_default_na=False)
+    if tuple(frame.columns) != tuple(columns):
+        raise ValueError(f"Unsupported {name} columns: {list(frame.columns)}")
+    for column in numeric:
+        try:
+            frame[column] = pd.to_numeric(frame[column].replace("", None)).astype("Int64")
+        except (ValueError, TypeError) as error:
+            raise ValueError(f"Unreadable {name} column {column!r}: {error}") from error
+    frame.attrs.update(metadata)
+    return frame
 
 
-def write_table(rows, *, schema, columns, metadata=()):
+def write_table(frame, *, schema, columns=None, metadata=()):
     """Serialize a reference table, as its builder tool writes it."""
+    if columns is not None:
+        frame = frame[list(columns)]
     lines = [f"# {SCHEMA_KEY}: {schema}"]
     lines.extend(f"# {key}: {value}" for key, value in dict(metadata).items())
-    lines.append("\t".join(columns))
-    lines.extend("\t".join(str(row[column]) for column in columns) for row in rows)
-    return ("\n".join(lines) + "\n").encode("utf-8")
+    body = frame.to_csv(sep="\t", index=False, na_rep="", lineterminator="\n")
+    return ("\n".join(lines) + "\n" + body).encode("utf-8")

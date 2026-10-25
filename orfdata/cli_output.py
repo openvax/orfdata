@@ -8,6 +8,13 @@ across resource kinds.
 import json
 import sys
 
+import pandas as pd
+
+
+def records(frame):
+    """A data frame's rows as JSON-ready dicts, with its blanks as nulls."""
+    return json.loads(frame.to_json(orient="records"))
+
 
 def print_json(payload, stream=None):
     """Write one machine-readable JSON document."""
@@ -19,7 +26,7 @@ def print_json(payload, stream=None):
 def print_table(headings, rows, *, empty="No matching entries", stream=None):
     """Print left-aligned columns sized to their contents; empty fields show as ``-``."""
     stream = sys.stdout if stream is None else stream
-    values = [tuple("-" if field is None or field == "" else str(field) for field in row)
+    values = [tuple("-" if pd.isna(field) or field == "" else str(field) for field in row)
               for row in rows]
     if not values:
         print(empty, file=stream)

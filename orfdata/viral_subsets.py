@@ -40,7 +40,7 @@ def _registry():
         raise ValueError("Unsupported viral subset metadata")
     if not isinstance(data.get("subsets"), dict) or not isinstance(data.get("aliases"), dict):
         raise ValueError("Invalid viral subset metadata")
-    known = {entry.abbreviation for entry in viral_panel_coverage()}
+    known = set(viral_panel_coverage()["abbreviation"])
     for name, record in data["subsets"].items():
         required = {"title", "description", "abbreviations", "source_urls", "limitations"}
         if not isinstance(name, str) or not isinstance(record, dict) or required - set(record):

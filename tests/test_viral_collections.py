@@ -4,6 +4,7 @@ import csv
 import hashlib
 from dataclasses import replace
 
+import pandas as pd
 import pytest
 from conftest import _genbank, serve_records
 
@@ -17,7 +18,12 @@ from orfdata.record_sources import GENBANK_SOURCE, reference_source
 from orfdata.reference_ledger import ledger_table, write_ledger
 from orfdata.reference_table import PackagedTable, _packaged, write_table
 from orfdata.viral_coverage import _coverage
-from orfdata.viral_registry import INVENTORY_COLUMNS, INVENTORY_SCHEMA, ViralCollection
+from orfdata.viral_registry import (
+    INVENTORY_COLUMNS,
+    INVENTORY_NUMERIC,
+    INVENTORY_SCHEMA,
+    ViralCollection,
+)
 
 PANEL = "MTEST.v1"
 RECORDS = {
@@ -59,7 +65,8 @@ def mouse_collection(tmp_path, monkeypatch):
     _packaged.cache_clear()
 
     inventory = write_table(
-        [_inventory_row(1, "MTV1", "MTEST001.1"), _inventory_row(2, "MTV2", "MTEST002.1")],
+        pd.DataFrame([_inventory_row(1, "MTV1", "MTEST001.1"),
+                      _inventory_row(2, "MTV2", "MTEST002.1")]),
         schema=INVENTORY_SCHEMA, columns=INVENTORY_COLUMNS,
         metadata={"panel": PANEL, "source": "https://example.invalid/mouse-inventory"})
     (packaged / "mtest-inventory.tsv").write_bytes(inventory)
@@ -71,12 +78,12 @@ def mouse_collection(tmp_path, monkeypatch):
         contexts=(), primary_source=GENBANK_SOURCE, references=2,
         inventory=PackagedTable(resource="data/viral/mtest-inventory.tsv",
                                 sha256=hashlib.sha256(inventory).hexdigest(),
-                                schema=INVENTORY_SCHEMA, columns=INVENTORY_COLUMNS))
+                                schema=INVENTORY_SCHEMA, columns=INVENTORY_COLUMNS,
+                                numeric=INVENTORY_NUMERIC))
 
     serve_records(monkeypatch, RECORDS)
-    entries = _coverage(collection)
     ledger = write_ledger(
-        reference_source(GENBANK_SOURCE).ledger_entries(entries, timeout=1),
+        reference_source(GENBANK_SOURCE).build_ledger(_coverage(collection), timeout=1),
         panel=PANEL, source=GENBANK_SOURCE, source_url="https://example.invalid/efetch",
         checked="2026-01-01T00:00:00Z")
     (packaged / "mtest-genbank.tsv").write_bytes(ledger)
@@ -89,8 +96,9 @@ def mouse_collection(tmp_path, monkeypatch):
 
 def test_a_second_collection_downloads_without_a_single_new_code_path(mouse_collection, tmp_path):
     inventory = viral_panel_coverage(collection="mtest-viruses")
-    assert [entry.abbreviation for entry in inventory] == ["MTV1", "MTV2"]
-    assert viral_panel_coverage(PANEL) == inventory  # The panel name resolves to it too.
+    assert inventory["abbreviation"].to_list() == ["MTV1", "MTV2"]
+    # The panel name resolves to the same collection.
+    assert viral_panel_coverage(PANEL).equals(inventory)
 
     bundle = download_viral_references(species="mouse", collection="mtest-viruses",
                                        cache_root=str(tmp_path / "cache"))

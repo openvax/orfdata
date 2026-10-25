@@ -11,9 +11,13 @@ from orfdata.reference_ledger import (
     INCONSISTENT,
     PUBLISHED,
     UNAVAILABLE,
-    LedgerAnchor,
-    LedgerEntry,
+    Anchor,
+    ledger_from_rows,
+    ledger_row,
+    published,
     read_ledger_bytes,
+    same_molecule,
+    verify_record,
     write_ledger,
 )
 
@@ -22,13 +26,18 @@ from orfdata.reference_ledger import (
 GDC_HPV16_MD5 = "f2463721818c29998ef5ab917e6df74a"
 
 
-def _entry(sequence="ACGTACGT", **overrides):
-    digest = hashlib.md5(sequence.encode()).hexdigest()
-    fields = dict(index=1, abbreviation="TV1", source="pave", identifier="TV1REF",
-                  state=PUBLISHED, length=len(sequence), sequence_md5=digest,
-                  sequence_sha256=hashlib.sha256(sequence.encode()).hexdigest(),
-                  coding_features=2)
-    return LedgerEntry(**dict(fields, **overrides))
+def _row(sequence="ACGTACGT", **overrides):
+    return dict(index=1, abbreviation="TV1", source="pave", identifier="TV1REF",
+                state=PUBLISHED, length_nt=len(sequence),
+                sequence_md5=hashlib.md5(sequence.encode()).hexdigest(),
+                sequence_sha256=hashlib.sha256(sequence.encode()).hexdigest(),
+                coding_features=2, taxon_id=0, title="") | overrides
+
+
+def _one(sequence="ACGTACGT", **overrides):
+    """One ledger row, read back the way a packaged ledger hands it over."""
+    row = _row(sequence, **overrides)
+    return ledger_from_rows([row]).loc[row["abbreviation"]]
 
 
 def _record(sequence="ACGTACGT", features=2):
@@ -36,47 +45,51 @@ def _record(sequence="ACGTACGT", features=2):
                         coding_features=tuple(range(features)))
 
 
-def test_an_entry_recognises_its_own_molecule():
-    entry = _entry()
-    assert entry.published and entry.matches("ACGTACGT") and entry.matches("acgtacgt")
-    assert not entry.matches("ACGTACGA")
-    assert not _entry(state=UNAVAILABLE).matches("ACGTACGT")
-    assert not _entry(state=INCONSISTENT).published
+def test_a_row_recognises_its_own_molecule():
+    row = _one()
+    assert published(row) and same_molecule(row, "ACGTACGT") and same_molecule(row, "acgtacgt")
+    assert not same_molecule(row, "ACGTACGA")
+    assert not same_molecule(_one(state=UNAVAILABLE), "ACGTACGT")
+    assert not published(_one(state=INCONSISTENT)) and not published(None)
 
 
 def test_a_fetched_record_is_checked_against_what_the_ledger_pins():
-    entry = _entry()
-    assert entry.verify(_record()) is not None
+    row = _one()
+    assert verify_record(row, _record()) is not None
     with pytest.raises(ValueError, match="no longer serves the molecule"):
-        entry.verify(_record("ACGTACGA"))
+        verify_record(row, _record("ACGTACGA"))
     with pytest.raises(ValueError, match="no longer serves the molecule"):
-        entry.verify(_record("ACGT"))
+        verify_record(row, _record("ACGT"))
     with pytest.raises(ValueError, match="serves 3 coding features, not the 2"):
-        entry.verify(_record(features=3))
+        verify_record(row, _record(features=3))
+    with pytest.raises(ValueError, match="does not publish"):
+        verify_record(_one(state=UNAVAILABLE), _record())
 
 
 def test_a_ledger_round_trips_through_its_own_format():
     content = write_ledger(
-        [_entry(taxon_id=10001, title="Test virus 1"),
-         _entry(index=2, abbreviation="TV2", state=UNAVAILABLE, title="Test virus 2")],
+        ledger_from_rows([_row(taxon_id=10001, title="Test virus 1"),
+                          _row(index=2, abbreviation="TV2", state=UNAVAILABLE,
+                               title="Test virus 2")]),
         panel="TEST", source="pave", source_url="https://example.invalid",
         checked="2026-01-01T00:00:00Z")
     lines = content.decode().splitlines()
     assert lines[0] == "# schema: orfdata.reference_ledger.v2"
     assert lines[4] == "\t".join(COLUMNS)
 
-    entries = read_ledger_bytes(content)
-    assert set(entries) == {"TV1", "TV2"}
-    assert entries["TV1"].matches("ACGTACGT") and entries["TV1"].taxon_id == 10001
+    ledger = read_ledger_bytes(content)
+    assert set(ledger.index) == {"TV1", "TV2"}
+    assert same_molecule(ledger.loc["TV1"], "ACGTACGT")
+    assert ledger.at["TV1", "taxon_id"] == 10001
     # An entry the source does not publish pins nothing, whatever was measured.
-    assert not entries["TV2"].published
-    assert entries["TV2"].length == 0 and entries["TV2"].sequence_md5 == ""
-    assert entries["TV2"].title == "Test virus 2"
+    assert not published(ledger.loc["TV2"])
+    assert ledger["length_nt"].isna()["TV2"] and ledger.at["TV2", "sequence_md5"] == ""
+    assert ledger.at["TV2", "title"] == "Test virus 2"
 
 
 def test_an_unreadable_ledger_is_refused_rather_than_half_read():
-    content = write_ledger([_entry()], panel="TEST", source="pave", source_url="",
-                           checked="2026-01-01T00:00:00Z")
+    content = write_ledger(ledger_from_rows([_row()]), panel="TEST", source="pave",
+                           source_url="", checked="2026-01-01T00:00:00Z")
     with pytest.raises(ValueError, match="Unknown ledger state"):
         read_ledger_bytes(content.replace(b"\tpublished\t", b"\tmaybe\t"))
     doubled = content + content.decode().splitlines()[-1].encode() + b"\n"
@@ -85,13 +98,13 @@ def test_an_unreadable_ledger_is_refused_rather_than_half_read():
 
 
 def test_an_anchor_is_the_claim_a_ledger_rests_on():
-    anchor = LedgerAnchor(source="pave", abbreviation="TV1",
-                          sequence_md5=_entry().sequence_md5, note="the molecule in use")
-    assert anchor.check({"TV1": _entry()}) is not None
+    anchor = Anchor(source="pave", abbreviation="TV1",
+                    sequence_md5=_row()["sequence_md5"], note="the molecule in use")
+    assert anchor.check(ledger_from_rows([_row()])) is not None
     with pytest.raises(ValueError, match="no longer reproduces"):
-        anchor.check({"TV1": _entry("ACGTACGA")})
+        anchor.check(ledger_from_rows([_row("ACGTACGA")]))
     with pytest.raises(ValueError, match="no longer reproduces"):
-        anchor.check({})
+        anchor.check(ledger_from_rows([]))
 
 
 def test_the_published_collection_carries_a_ledger_for_each_of_its_sources():
@@ -100,19 +113,20 @@ def test_the_published_collection_carries_a_ledger_for_each_of_its_sources():
 
     primary = collection.ledger(collection.primary_source)
     inventory = viral_panel_coverage()
-    assert set(primary) == {entry.abbreviation for entry in inventory}
+    assert set(primary.index) == set(inventory["abbreviation"])
     # Every row's accession resolves to the version the ledger pins.
-    assert all(primary[entry.abbreviation].identifier.split(".")[0] == entry.genbank.split(".")[0]
-               for entry in inventory)
-    assert all(entry.taxon_id and entry.title for entry in primary.values())
+    named = inventory.set_index("abbreviation")["genbank"].str.split(".").str[0]
+    assert (primary["identifier"].str.split(".").str[0] == named).all()
+    assert (primary["taxon_id"] > 0).all() and (primary["title"] != "").all()
 
     alternate = collection.ledger()
-    named = {entry.abbreviation for entry in inventory if entry.pave_id}
-    assert set(alternate) == named and len(named) == 189
-    assert {entry.source for entry in alternate.values()} == {collection.alternate_source}
+    with_pave = set(inventory.loc[inventory["pave_id"] != "", "abbreviation"])
+    assert set(alternate.index) == with_pave and len(with_pave) == 189
+    assert set(alternate["source"]) == {collection.alternate_source}
     # The anchor for the whole ledger: GDC's HPV16 contig is the alternate's molecule.
-    assert alternate["HPV16"].sequence_md5 == GDC_HPV16_MD5
-    assert alternate["HPV16"].length == 7906 and alternate["HPV16"].coding_features == 10
+    assert alternate.at["HPV16", "sequence_md5"] == GDC_HPV16_MD5
+    assert alternate.at["HPV16", "length_nt"] == 7906
+    assert alternate.at["HPV16", "coding_features"] == 10
     for anchor in collection.anchors:
         anchor.check(collection.ledger(anchor.source))
     assert viral_collection("gdc-viruses") is collection
@@ -120,8 +134,9 @@ def test_the_published_collection_carries_a_ledger_for_each_of_its_sources():
 
 def test_entries_that_did_not_check_out_are_named_as_such():
     ledger = viral_collections()[0].ledger()
-    states = {entry.state for entry in ledger.values()}
-    assert states <= {PUBLISHED, UNAVAILABLE, INCONSISTENT}
+    assert set(ledger["state"]) <= {PUBLISHED, UNAVAILABLE, INCONSISTENT}
     # An alternate whose own annotation does not reproduce its proteins is not used.
-    assert all(not entry.published for entry in ledger.values()
-               if entry.state in (UNAVAILABLE, INCONSISTENT))
+    ruled_out = ledger[ledger["state"].isin([UNAVAILABLE, INCONSISTENT])]
+    assert not any(published(row) for _, row in ruled_out.iterrows())
+    # A source with nothing packaged reads as an empty ledger, not a missing one.
+    assert ledger_row(ledger, "NOT-IN-THE-PANEL") is None

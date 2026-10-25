@@ -18,12 +18,13 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from .record_sources import GENBANK_SOURCE, PAVE_SOURCE, reference_source
-from .reference_ledger import LedgerAnchor, ledger_table, read_ledger
+from .reference_ledger import Anchor, empty_ledger, ledger_table, read_ledger
 from .reference_table import PackagedTable
 
 INVENTORY_SCHEMA = "orfdata.viral_panel_coverage.v1"
 INVENTORY_COLUMNS = ("index", "name", "abbreviation", "refseq", "genbank", "pave_id",
                      "pave_notes", "bundled_reference_id", "coding_models", "status")
+INVENTORY_NUMERIC = ("index", "coding_models")
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,7 @@ class ViralCollection:
     ledgers: dict = field(default_factory=dict, repr=False, compare=False)
     alternate_source: Optional[str] = None
     alternate_note: str = ""
-    anchors: tuple[LedgerAnchor, ...] = ()
+    anchors: tuple[Anchor, ...] = ()
     aliases: tuple[str, ...] = field(default=(), repr=False)
 
     def source(self, name=None):
@@ -64,13 +65,14 @@ class ViralCollection:
         return tuple(name for name in (self.primary_source, self.alternate_source) if name)
 
     def ledger(self, source=None):
-        """What each entry looks like at one source; empty when none is packaged.
+        """What each entry looks like at one source, keyed by abbreviation.
 
         The alternate source is the default, because that is the comparison a
-        collection is usually asking for.
+        collection is usually asking for; a source with no packaged ledger
+        reads as an empty one.
         """
         table = self.ledgers.get(source or self.alternate_source or self.primary_source)
-        return read_ledger(table) if table is not None else {}
+        return read_ledger(table) if table is not None else empty_ledger()
 
     def to_dict(self):
         """A JSON-ready description, as the other ORFdata status objects give."""
@@ -107,6 +109,7 @@ GDC_VIRUSES = ViralCollection(
         sha256="0bfa5ffc184eafcdb615b00cbe79acdd6e5e4f22ff2f919a2c31d62eb4cc1492",
         schema=INVENTORY_SCHEMA,
         columns=INVENTORY_COLUMNS,
+        numeric=INVENTORY_NUMERIC,
     ),
     references=200,
     ledgers={
@@ -116,12 +119,14 @@ GDC_VIRUSES = ViralCollection(
                                  "ada474a021afdaf48b89ec417c3ceeb9d8812cf2a68e5fd4141c52b4d324cf9a"),
     },
     alternate_source=PAVE_SOURCE,
-    anchors=(LedgerAnchor(
-        source=PAVE_SOURCE, abbreviation="HPV16",
+    anchors=(Anchor(
+        source=PAVE_SOURCE,
+        abbreviation="HPV16",
         # Pinned in tools/build_hpv16_cds.py from GDC's published reference files.
         sequence_md5="f2463721818c29998ef5ab917e6df74a",
         note="the GDC decoy contig is the alternate source's molecule, which is why "
-             "this collection follows it"),),
+             "this collection follows it",
+    ),),
     alternate_note=(
         "GDC's decoy FASTA carries the PaVE reference where it differs from the GenBank "
         "accession beside it: PaVE's HPV16REF reproduces the GDC HPV16 DNA exactly, while "

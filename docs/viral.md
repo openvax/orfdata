@@ -14,13 +14,18 @@ coding references:
 ```python
 from orfdata import viral_panel_coverage
 
-coverage = viral_panel_coverage()
+coverage = viral_panel_coverage()            # one row per screened reference
 available = viral_panel_coverage(available=True)
 missing = viral_panel_coverage(available=False)
 print(len(coverage), len(available), len(missing))  # 200 1 199
-print(available[0].abbreviation, available[0].bundled_reference_id)
+print(available.iloc[0]["abbreviation"], available.iloc[0]["bundled_reference_id"])
 # HPV16 GRCh38.d1.vd1:HPV16
 ```
+
+An inventory is a `pandas.DataFrame`, so the arguments below are a convenience
+rather than the only way to narrow one — anything pandas does to a frame works
+here, and `coverage.attrs` carries the packaged table's own header: which panel
+it follows and where it came from.
 
 Use `viral_panel_coverage(available=True)` for bundled references,
 `available=False` for rows still missing from ORFdata, `virus="HPV18"` for one
@@ -68,8 +73,17 @@ NCBI taxon and its own description.
 The ledgers hold checksums and counts, not sequence. They are what makes the
 decisions below offline ones: which molecule a row should carry, whether a
 downloaded record is still the molecule that was pinned, and how much more a
-second source annotates. `collection.ledger(source)` reads either one, and
-`tools/build_reference_ledger.py --source NAME` rebuilds it.
+second source annotates. `collection.ledger(source)` reads either one as a
+frame keyed by entry abbreviation, and `tools/build_reference_ledger.py
+--source NAME` rebuilds it.
+
+```python
+from orfdata import viral_collection
+
+ledger = viral_collection("gdc-viruses").ledger("pave")
+print(ledger.at["HPV16", "sequence_md5"], int(ledger.at["HPV16", "coding_features"]))
+# f2463721818c29998ef5ab917e6df74a 10
+```
 
 ## Download viral genomes, coding transcripts and proteins
 

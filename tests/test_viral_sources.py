@@ -1,13 +1,12 @@
 """A collection carries the molecule its reference was built from, and says where each came from."""
 
-import hashlib
 import json
 
 import pytest
-from conftest import serve_alternate_ledger, serve_records, viral_documents
+from conftest import ledger_entry, serve_alternate_ledger, serve_records, viral_documents
 
 from orfdata import download_viral_references, viral_reference_summary
-from orfdata.reference_ledger import INCONSISTENT, PUBLISHED, UNAVAILABLE, LedgerEntry
+from orfdata.reference_ledger import INCONSISTENT, UNAVAILABLE
 
 # The fourth synthetic record annotates nothing; the first is a different molecule
 # from the alternate reference its inventory row names.
@@ -29,25 +28,16 @@ def _document(sequence, protein=PROTEIN, locations=((1, 21),), name="E6"):
     }
 
 
-def _ledger_entry(abbreviation, sequence, *, index=1, state=PUBLISHED, features=1):
-    return LedgerEntry(
-        index=index, abbreviation=abbreviation, source="pave", identifier=f"{abbreviation}REF",
-        state=state, length=len(sequence),
-        sequence_md5=hashlib.md5(sequence.encode()).hexdigest(),
-        sequence_sha256=hashlib.sha256(sequence.encode()).hexdigest(), coding_features=features)
-
-
 @pytest.fixture
 def collection(viral_panel, monkeypatch):
     """The synthetic panel, with an alternate reference named for two of its rows."""
-    published = {
+    published = [
         # TV4's record annotates nothing, and the alternate is the same molecule.
-        "TV4": _ledger_entry("TV4", UNANNOTATED, index=4),
+        ledger_entry("TV4", UNANNOTATED, index=4),
         # TV1's record is a different molecule from the alternate its row names.
-        "TV1": _ledger_entry("TV1", ALTERNATE, index=1),
-    }
-    serve_alternate_ledger(monkeypatch, published)
-    return published
+        ledger_entry("TV1", ALTERNATE, index=1),
+    ]
+    return serve_alternate_ledger(monkeypatch, published)
 
 
 def _rows(table):
@@ -133,8 +123,7 @@ def test_an_alternate_that_does_not_match_the_pinned_ledger_is_refused(collectio
 @pytest.mark.parametrize("state", [UNAVAILABLE, INCONSISTENT])
 def test_an_alternate_the_ledger_rules_out_is_never_fetched(state, viral_panel, tmp_path,
                                                             monkeypatch):
-    entries = {"TV1": _ledger_entry("TV1", ALTERNATE, state=state)}
-    serve_alternate_ledger(monkeypatch, entries)
+    serve_alternate_ledger(monkeypatch, [ledger_entry("TV1", ALTERNATE, state=state)])
     asked = serve_records(monkeypatch, _genbank(viral_panel))
     bundle = download_viral_references(species="human", cache_root=str(tmp_path))
     assert not any("pave" in url for url in asked)

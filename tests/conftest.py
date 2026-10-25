@@ -3,6 +3,7 @@
 import hashlib
 import json
 
+import pandas as pd
 import pytest
 
 from orfdata import (
@@ -16,7 +17,7 @@ from orfdata import (
 )
 from orfdata import viral_panel as viral_panel_module
 from orfdata.record_sources import GENBANK_SOURCE, reference_source
-from orfdata.viral_coverage import ViralPanelEntry
+from orfdata.reference_ledger import PUBLISHED, empty_ledger, ledger_from_rows
 
 VIRAL_CONTEXT = "cancer-transcriptome-screening"
 
@@ -91,18 +92,27 @@ def _payload(records):
     return "\n".join(records).encode("utf-8")
 
 
-def viral_coverage_filter(entries, *, contexts=None, exclude_contexts=None,
+def viral_coverage_filter(inventory, *, contexts=None, exclude_contexts=None,
                           context_match="any", **ignored):
-    """Select synthetic panel entries the way viral_panel_coverage does."""
-    selected = entries
+    """Select synthetic inventory rows the way viral_panel_coverage does."""
+    keep = pd.Series(True, index=inventory.index)
     if contexts:
         match = any if context_match == "any" else all
-        selected = tuple(entry for entry in selected
-                         if match(context in entry.contexts for context in contexts))
+        keep &= inventory["contexts"].map(
+            lambda held: match(context in held for context in contexts))
     if exclude_contexts:
-        selected = tuple(entry for entry in selected
-                         if not any(context in entry.contexts for context in exclude_contexts))
-    return selected
+        keep &= ~inventory["contexts"].map(
+            lambda held: any(context in held for context in exclude_contexts))
+    return inventory[keep]
+
+
+def ledger_entry(abbreviation, sequence, *, index=1, state=PUBLISHED, features=1, source="pave"):
+    """One synthetic ledger row, measured off a synthetic molecule."""
+    return {"index": index, "abbreviation": abbreviation, "source": source,
+            "identifier": f"{abbreviation}REF", "state": state, "length_nt": len(sequence),
+            "sequence_md5": hashlib.md5(sequence.encode()).hexdigest(),
+            "sequence_sha256": hashlib.sha256(sequence.encode()).hexdigest(),
+            "coding_features": features, "taxon_id": 0, "title": ""}
 
 
 def viral_documents():
@@ -139,35 +149,37 @@ def viral_documents():
 def viral_panel(monkeypatch):
     """The synthetic panel, served as a collection's primary source."""
     records = viral_documents()
-    entries = tuple(ViralPanelEntry(
-        index=index, name=f"Test virus {index}", abbreviation=abbreviation,
-        refseq=f"NC_00000{index}.1", genbank=accession, pave_id=None, pave_notes=None,
-        status="not_bundled", bundled_reference_id=None, coding_models=None,
-        contexts=(VIRAL_CONTEXT,) if index < 3 else (),
-    ) for index, (abbreviation, accession) in enumerate(
-        (("TV1", "VTEST001.1"), ("TV2", "VTEST002.1"), ("TV3", "VTEST003.1"),
-         ("TV4", "VTEST004.1")), 1))
+    inventory = pd.DataFrame([
+        {"index": index, "name": f"Test virus {index}", "abbreviation": abbreviation,
+         "refseq": f"NC_00000{index}.1", "genbank": accession, "pave_id": "", "pave_notes": "",
+         "bundled_reference_id": "", "coding_models": pd.NA, "status": "not_bundled",
+         "available": False, "contexts": (VIRAL_CONTEXT,) if index < 3 else ()}
+        for index, (abbreviation, accession) in enumerate(
+            (("TV1", "VTEST001.1"), ("TV2", "VTEST002.1"), ("TV3", "VTEST003.1"),
+             ("TV4", "VTEST004.1")), 1)])
+    inventory["coding_models"] = inventory["coding_models"].astype("Int64")
+
     def coverage(**options):
-        return viral_coverage_filter(entries, **options)
+        return viral_coverage_filter(inventory, **options)
 
     monkeypatch.setattr(viral_panel_module, "viral_panel_coverage", coverage)
     serve_records(monkeypatch, records)
     # The primary ledger is built from the served records the same way the
     # packaged one is, so a fixture pins what a real collection pins.
-    ledger = {row.abbreviation: row for row in
-              reference_source(GENBANK_SOURCE).ledger_entries(entries, timeout=1)}
+    ledger = reference_source(GENBANK_SOURCE).build_ledger(inventory, timeout=1)
     monkeypatch.setattr(viral_panel_module, "_primary_ledger",
-                        lambda collection, rows: tuple(ledger[row.abbreviation] for row in rows))
-    return entries
+                        lambda collection, rows: ledger.loc[rows["abbreviation"]])
+    return inventory
 
 
-def serve_alternate_ledger(monkeypatch, entries):
+def serve_alternate_ledger(monkeypatch, rows):
     """Answer for the alternate source's ledger, so the packaged one is never read."""
+    ledger = ledger_from_rows(rows)
     collection = viral_panel_module.GDC_VIRUSES
     monkeypatch.setattr(type(collection), "ledger",
-                        lambda self, source=None: dict(entries)
-                        if source in (None, self.alternate_source) else {})
-    return collection
+                        lambda self, source=None: ledger
+                        if source in (None, self.alternate_source) else empty_ledger())
+    return ledger
 
 
 def serve_records(monkeypatch, genbank=(), alternate=()):

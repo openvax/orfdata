@@ -31,6 +31,7 @@ from pathlib import Path
 from .fasta import write_fasta
 from .record_sources import REQUEST_INTERVAL
 from .reference import canonical_species
+from .reference_ledger import ledger_row, published, same_molecule, verify_record
 from .viral_annotation import (
     NON_CANONICAL_START,
     gtf_gene_line,
@@ -196,7 +197,7 @@ def _sha256(path):
     return digest.hexdigest()
 
 
-def _primary_ledger(collection, entries):
+def _primary_ledger(collection, inventory):
     """What the primary source publishes for each inventory row, in inventory order.
 
     The inventory names an entry; the ledger says which record at the source
@@ -205,19 +206,17 @@ def _primary_ledger(collection, entries):
     """
     source = collection.source()
     ledger = collection.ledger(collection.primary_source)
-    rows = []
-    for entry in entries:
-        row = ledger.get(entry.abbreviation)
+    for entry in inventory.itertuples(index=False):
+        row = ledger_row(ledger, entry.abbreviation)
         named = source.identifier(entry)
-        if row is None or not row.published:
+        if not published(row):
             raise ValueError(
                 f"The {source.name} ledger does not publish {entry.abbreviation}")
-        if row.index != entry.index or row.identifier.split(".")[0] != named.split(".")[0]:
+        if row["index"] != entry.index or row["identifier"].split(".")[0] != named.split(".")[0]:
             raise ValueError(
                 f"The {collection.panel} inventory names {named} for {entry.abbreviation}, "
-                f"but its {source.name} ledger resolves {row.identifier}")
-        rows.append(row)
-    return tuple(rows)
+                f"but its {source.name} ledger resolves {row['identifier']}")
+    return ledger.loc[inventory["abbreviation"]]
 
 
 def _write_checksums(path):
@@ -356,10 +355,10 @@ def _genome_row(entry, primary, molecule, transcripts, alternate):
         "abbreviation": entry.abbreviation,
         "name": entry.name,
         "genome_id": molecule.genome_id,
-        "accession_version": primary.identifier,
+        "accession_version": primary["identifier"],
         "source_genbank": entry.genbank,
         "source_refseq": entry.refseq,
-        "viral_taxon_id": primary.taxon_id,
+        "viral_taxon_id": primary["taxon_id"],
         # The target species is an analysis choice, not a claim about the source host.
         "source_host_taxon_ids": "",
         "length_nt": len(molecule.sequence),
@@ -371,8 +370,8 @@ def _genome_row(entry, primary, molecule, transcripts, alternate):
         # The other reference the inventory names for this row, and whether this
         # molecule is it; where they differ, the reference the collection follows
         # was built from the alternate.
-        "alternate_source": alternate.source if alternate else "",
-        "alternate_id": alternate.identifier if alternate else "",
+        "alternate_source": alternate["source"] if alternate is not None else "",
+        "alternate_id": alternate["identifier"] if alternate is not None else "",
         "alternate_sequence": molecule.alternate_state,
         "inventory_notes": entry.pave_notes or "",
     }
@@ -438,13 +437,13 @@ def _resolve_molecule(entry, record, ledger, *, collection, prefer_reference_mol
     A collection with no alternate source, or a row the alternate does not
     publish, keeps the primary record untouched.
     """
-    alternate = ledger.get(entry.abbreviation)
-    if alternate is None or not alternate.published:
+    alternate = ledger_row(ledger, entry.abbreviation)
+    if not published(alternate):
         state = "unavailable" if alternate is not None else ""
         return _Molecule(genome_id=record.identifier, sequence=record.sequence,
                          source=record.source, features=record.coding_features,
                          alternate_state=state, record=record)
-    if alternate.matches(record.sequence):
+    if same_molecule(alternate, record.sequence):
         return _Molecule(genome_id=record.identifier, sequence=record.sequence,
                          source=record.source, features=record.coding_features,
                          alternate_state="same", record=record)
@@ -453,8 +452,8 @@ def _resolve_molecule(entry, record, ledger, *, collection, prefer_reference_mol
                          source=record.source, features=record.coding_features,
                          alternate_state="differs", record=record)
     try:
-        fetched = alternate.verify(
-            collection.source(alternate.source).record(alternate.identifier, timeout=timeout))
+        fetched = verify_record(alternate, collection.source(alternate["source"]).record(
+            alternate["identifier"], timeout=timeout))
     except (RuntimeError, ValueError, OSError) as error:
         # Keep the row on its primary record rather than lose it, and say so.
         notes[entry.abbreviation] = str(error)
@@ -485,22 +484,23 @@ def _annotate_from_alternate(molecule, entry, ledger, *, collection, timeout, no
     models across the collection. Either way the sequence is untouched: this changes only how the
     same bases are read.
     """
-    alternate = ledger.get(entry.abbreviation)
-    if alternate is None or not alternate.published:
+    alternate = ledger_row(ledger, entry.abbreviation)
+    if not published(alternate):
         return molecule
     # Asking for the alternate's models means asking for them wherever it has
     # them: a row where both annotate the same number of features is exactly
     # the row where the two namings and splicings differ, which is the point.
     # Only an alternate that annotates strictly less is declined.
     if molecule.features and not (prefer_alternate
-                                  and alternate.coding_features >= len(molecule.features)
-                                  and alternate.matches(molecule.sequence)):
+                                  and alternate["coding_features"] >= len(molecule.features)
+                                  and same_molecule(alternate, molecule.sequence)):
         return molecule
     try:
-        fetched = collection.source(alternate.source).record(alternate.identifier, timeout=timeout)
+        fetched = collection.source(alternate["source"]).record(
+            alternate["identifier"], timeout=timeout)
         if fetched.sequence != molecule.sequence:
             raise ValueError(
-                f"{alternate.source} {alternate.identifier} is not the same sequence as the "
+                f"{alternate['source']} {alternate['identifier']} is not the same sequence as the "
                 f"source record, so its coordinates do not apply"
             )
     except (RuntimeError, ValueError, OSError) as error:
@@ -509,7 +509,7 @@ def _annotate_from_alternate(molecule, entry, ledger, *, collection, timeout, no
     return replace(molecule, features=fetched.coding_features)
 
 
-def _write_bundle(path, collection, entries, primaries, *, timeout,
+def _write_bundle(path, collection, inventory, primaries, *, timeout,
                   prefer_reference_molecule=True, annotate_from_alternate=True,
                   prefer_alternate_annotation=False):
     """Fetch every reference once and write the three layers, with their provenance."""
@@ -517,17 +517,19 @@ def _write_bundle(path, collection, entries, primaries, *, timeout,
     records_directory.mkdir()
     source = collection.source()
     ledger = collection.ledger()
-    pinned = {primary.identifier: primary for primary in primaries}
+    entries = list(inventory.itertuples(index=False))
+    primaries = [row for _, row in primaries.iterrows()]
+    pinned = {primary["identifier"]: primary for primary in primaries}
     downloaded, batch_size = {}, getattr(source, "batch_size", 1)
     for start_index in range(0, len(primaries), batch_size):
         batch = primaries[start_index:start_index + batch_size]
-        for record in source.records([item.identifier for item in batch], timeout=timeout):
+        for record in source.records([item["identifier"] for item in batch], timeout=timeout):
             if record.identifier not in pinned:
                 raise ValueError(f"{source.name} returned an unexpected record {record.identifier}")
             if record.identifier in downloaded:
                 raise ValueError(f"{source.name} returned {record.identifier} twice")
             # Every source is checked against its own ledger, primary or not.
-            downloaded[record.identifier] = pinned[record.identifier].verify(record)
+            downloaded[record.identifier] = verify_record(pinned[record.identifier], record)
         if start_index + batch_size < len(primaries):
             time.sleep(REQUEST_INTERVAL)  # Respect the source's unauthenticated request rate.
     if set(downloaded) != set(pinned):
@@ -539,7 +541,7 @@ def _write_bundle(path, collection, entries, primaries, *, timeout,
     molecules = {}
     for entry, primary in zip(entries, primaries, strict=True):
         molecule = _resolve_molecule(
-            entry, downloaded[primary.identifier], ledger, collection=collection,
+            entry, downloaded[primary["identifier"]], ledger, collection=collection,
             prefer_reference_molecule=prefer_reference_molecule, timeout=timeout, notes=notes)
         if annotate_from_alternate:
             molecule = _annotate_from_alternate(
@@ -562,7 +564,7 @@ def _write_bundle(path, collection, entries, primaries, *, timeout,
             molecule.record.write_document(records_directory, entry.abbreviation)
             write_fasta(genome_stream, genome_id, molecule.sequence,
                         description=f"abbreviation={safe_token(entry.abbreviation)} "
-                                    f"taxon={primary.taxon_id} molecule=genome "
+                                    f"taxon={primary['taxon_id']} molecule=genome "
                                     f"source={molecule.source}")
             placed = name_transcripts(genome_id, molecule.features,
                                       unique_protein_ids=unique_protein_ids)
@@ -582,7 +584,7 @@ def _write_bundle(path, collection, entries, primaries, *, timeout,
                 for transcript in members:
                     gtf_lines.extend(gtf_transcript_lines(transcript))
             genome_rows.append(_genome_row(entry, primary, molecule, placed,
-                                           ledger.get(entry.abbreviation)))
+                                           ledger_row(ledger, entry.abbreviation)))
 
     _write_table(path / _GENOME_TABLE, _GENOME_COLUMNS, genome_rows)
     _write_table(path / _TRANSCRIPT_TABLE, _TRANSCRIPT_COLUMNS, transcript_rows)
@@ -747,13 +749,13 @@ def download_viral_references(*, species="human", collection=VIRAL_COLLECTION, c
             if not force:
                 return existing
 
-    entries = viral_panel_coverage(collection=collection.name)
-    primaries = _primary_ledger(collection, entries)
+    inventory = viral_panel_coverage(collection=collection.name)
+    primaries = _primary_ledger(collection, inventory)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
     try:
-        _write_bundle(staging, collection, entries, primaries, timeout=timeout,
+        _write_bundle(staging, collection, inventory, primaries, timeout=timeout,
                       prefer_reference_molecule=prefer_reference_molecule,
                       annotate_from_alternate=annotate_from_alternate,
                       prefer_alternate_annotation=prefer_alternate_annotation)
@@ -862,13 +864,13 @@ def _verified_existing_index(path, *, bundle, contexts, excluded_contexts, conte
 
 def _selected_abbreviations(contexts, excluded_contexts, context_match, subsets):
     """The inventory entries a context and subset selection resolves to."""
-    entries = viral_panel_coverage(
+    inventory = viral_panel_coverage(
         contexts=contexts or None, exclude_contexts=excluded_contexts or None,
         context_match=context_match)
     if subsets:
-        selected = set(viral_subset_abbreviations(subsets))
-        entries = tuple(entry for entry in entries if entry.abbreviation in selected)
-    return tuple(entry.abbreviation for entry in entries)
+        selected = list(viral_subset_abbreviations(subsets))
+        inventory = inventory[inventory["abbreviation"].isin(selected)]
+    return tuple(inventory["abbreviation"])
 
 
 def _selected_genomes(installed, abbreviations):
@@ -1113,11 +1115,10 @@ def viral_annotation_survey(*, contexts=None, exclude_contexts=None, context_mat
     surveyed = []
     for genome in genomes:
         rows = transcripts.get(genome["abbreviation"], [])
-        alternate = ledger.get(genome["abbreviation"])
+        alternate = ledger_row(ledger, genome["abbreviation"])
         # Only an alternate publishing this very molecule can be compared: a
         # different molecule's feature count says nothing about this one.
-        comparable = alternate is not None and alternate.published and \
-            genome["alternate_sequence"] == "same"
+        comparable = published(alternate) and genome["alternate_sequence"] == "same"
         surveyed.append({
             "abbreviation": genome["abbreviation"],
             "genome_id": genome["genome_id"],
@@ -1135,8 +1136,9 @@ def viral_annotation_survey(*, contexts=None, exclude_contexts=None, context_mat
             "non_canonical_starts": sum(row["initiation"] == NON_CANONICAL_START for row in rows),
             "recoded": sum(bool(row["recoding"]) for row in rows),
             "alternate_source": genome["alternate_source"],
-            "alternate_features": alternate.coding_features if comparable else None,
-            "shortfall": max(alternate.coding_features - len(rows), 0) if comparable else None,
+            "alternate_features": int(alternate["coding_features"]) if comparable else None,
+            "shortfall": max(int(alternate["coding_features"]) - len(rows), 0)
+            if comparable else None,
         })
     return dict(summary, genomes=surveyed, totals={
         "genomes": len(surveyed),

@@ -1,12 +1,16 @@
 """How completely an installed collection is annotated, and what a second source would add."""
 
-import hashlib
 
 import pytest
-from conftest import VIRAL_CONTEXT, serve_alternate_ledger, serve_records, viral_documents
+from conftest import (
+    VIRAL_CONTEXT,
+    ledger_entry,
+    serve_alternate_ledger,
+    serve_records,
+    viral_documents,
+)
 
 from orfdata import download_viral_references, viral_annotation_survey
-from orfdata.reference_ledger import PUBLISHED, LedgerEntry
 
 UNANNOTATED = "ATG" + "GCT" * 5 + "TAA" + "ACGT" * 10
 FIRST = "ATG" + "GCT" * 8 + "TAA" + "ACGT" * 10
@@ -24,25 +28,16 @@ def _document(sequence, features):
     }
 
 
-def _entry(abbreviation, sequence, *, index, features):
-    return LedgerEntry(
-        index=index, abbreviation=abbreviation, source="pave", identifier=f"{abbreviation}REF",
-        state=PUBLISHED, length=len(sequence),
-        sequence_md5=hashlib.md5(sequence.encode()).hexdigest(),
-        sequence_sha256=hashlib.sha256(sequence.encode()).hexdigest(), coding_features=features)
-
-
 @pytest.fixture
 def collection(viral_panel, monkeypatch):
     """An alternate source that publishes the same molecules, annotated further."""
-    published = {
+    published = [
         # The same molecule as TV1's own record, but with a second, spliced model.
-        "TV1": _entry("TV1", FIRST, index=1, features=2),
+        ledger_entry("TV1", FIRST, index=1, features=2),
         # A molecule whose own record annotates nothing at all.
-        "TV4": _entry("TV4", UNANNOTATED, index=4, features=1),
-    }
-    serve_alternate_ledger(monkeypatch, published)
-    return published
+        ledger_entry("TV4", UNANNOTATED, index=4, features=1),
+    ]
+    return serve_alternate_ledger(monkeypatch, published)
 
 
 def _served():

@@ -19,7 +19,7 @@ Two sources are published:
 Adding a source means adding a :class:`ReferenceSource` with a name, the
 inventory column that names an entry at it, a way to fetch one record, and a
 way to read that record's coding features. Everything else — storing the
-record, writing a ledger of what the source publishes, checking a download
+record, building a ledger of what the source publishes, checking a download
 against it — is the same for every source. Nothing else in ORFdata needs to
 know which source a reference came from, only what the record says.
 """
@@ -31,7 +31,7 @@ import time
 from dataclasses import dataclass, field
 
 from .net import SourceUnavailable, fetch
-from .reference_ledger import INCONSISTENT, PUBLISHED, UNAVAILABLE, LedgerEntry
+from .reference_ledger import INCONSISTENT, PUBLISHED, UNAVAILABLE, ledger_from_rows
 from .viral_annotation import (
     agrees_with,
     coding_feature,
@@ -107,25 +107,25 @@ class ReferenceSource:
         """Records for several identifiers; sources that batch override this."""
         return tuple(self.record(identifier, timeout=timeout) for identifier in identifiers)
 
-    def ledger_entries(self, entries, *, timeout, report=None):
-        """What this source publishes for every inventory entry it names, in inventory order.
+    def build_ledger(self, inventory, *, timeout, report=None):
+        """What this source publishes for every inventory row it names, in inventory order.
 
         One pass over an inventory produces one source's whole ledger, whatever
         the source is: an identifier it does not publish and a record whose own
         annotation does not check out are both answers to record, not failures
         to stop for.
         """
-        named = tuple((entry, identifier) for entry in entries
-                      if (identifier := self.identifier(entry)))
+        named = [(entry, identifier) for entry in inventory.itertuples(index=False)
+                 if (identifier := self.identifier(entry))]
         rows = []
         for start in range(0, len(named), self.batch_size):
             batch = named[start:start + self.batch_size]
             found = self._attempt(tuple(identifier for _, identifier in batch), timeout=timeout)
-            rows.extend(_ledger_entry(entry, identifier, self.name, result, report)
+            rows.extend(_ledger_row(entry, identifier, self.name, result, report)
                         for (entry, identifier), result in zip(batch, found, strict=True))
             if start + self.batch_size < len(named):
                 time.sleep(REQUEST_INTERVAL)
-        return tuple(rows)
+        return ledger_from_rows(rows)
 
     def _attempt(self, identifiers, *, timeout):
         """Each identifier's record, or the error standing in its place.
@@ -142,21 +142,21 @@ class ReferenceSource:
                          for identifier in identifiers)
 
 
-def _ledger_entry(entry, identifier, source, result, report=None):
-    """One inventory entry as a ledger row, whether or not the source could serve it."""
+def _ledger_row(entry, identifier, source, result, report=None):
+    """One inventory row as a ledger row, whether or not the source could serve it."""
+    row = {"index": entry.index, "abbreviation": entry.abbreviation, "source": source,
+           "identifier": identifier, "title": ""}
     if isinstance(result, Exception):
         if report is not None:
             report(entry, result)
         # The source not publishing an identifier and the source publishing one
         # whose own annotation does not check out are different answers.
-        state = UNAVAILABLE if isinstance(result, SourceUnavailable) else INCONSISTENT
-        return LedgerEntry(entry.index, entry.abbreviation, source, identifier, state)
+        return {**row, "state": UNAVAILABLE if isinstance(result, SourceUnavailable)
+                else INCONSISTENT}
     digest, sha256 = result.checksums()
-    return LedgerEntry(
-        entry.index, entry.abbreviation, source, result.identifier, PUBLISHED,
-        length=result.length, sequence_md5=digest, sequence_sha256=sha256,
-        coding_features=len(result.coding_features), taxon_id=result.taxon_id,
-        title=result.title)
+    return {**row, "identifier": result.identifier, "state": PUBLISHED, "title": result.title,
+            "length_nt": result.length, "sequence_md5": digest, "sequence_sha256": sha256,
+            "coding_features": len(result.coding_features), "taxon_id": result.taxon_id}
 
 
 class GenBankSource(ReferenceSource):

@@ -11,6 +11,8 @@ import hashlib
 import io
 from pathlib import Path
 
+import pandas as pd
+
 from orfdata.reference_table import write_table
 from orfdata.viral_registry import GDC_VIRUSES, INVENTORY_COLUMNS, INVENTORY_SCHEMA
 
@@ -50,7 +52,7 @@ def build(raw):
                     bundled_reference_id=reference_id, coding_models=coding_models)
 
     return write_table(
-        (inventory_row(index, row) for index, row in enumerate(rows, 1)),
+        pd.DataFrame([inventory_row(index, row) for index, row in enumerate(rows, 1)]),
         schema=INVENTORY_SCHEMA, columns=INVENTORY_COLUMNS,
         metadata={"panel": PANEL, "source": SOURCE_URL, "source_sha256": SOURCE_SHA256})
 
