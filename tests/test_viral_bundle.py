@@ -1,4 +1,4 @@
-"""A viral bundle keeps genome, transcriptome and proteome layers separate and verifiable."""
+"""Viral reference files keep genome, transcriptome and proteome layers separate."""
 
 import gzip
 import json
@@ -9,11 +9,10 @@ from orfdata.gtf import transcript_blocks
 from orfdata.viral_annotation import split_genbank
 from orfdata.viral_panel import (
     VIRAL_LAYERS,
-    ViralReferenceBundle,
-    ViralReferenceIndex,
+    ViralReferenceFiles,
     download_viral_references,
-    index_viral_references,
-    viral_reference_bundle,
+    open_viral_references,
+    select_viral_references,
     viral_reference_summary,
 )
 
@@ -26,7 +25,7 @@ def _install(tmp_path):
 
 def test_bundle_separates_the_three_layers(viral_panel, tmp_path):
     bundle = _install(tmp_path)
-    assert isinstance(bundle, ViralReferenceBundle)
+    assert isinstance(bundle, ViralReferenceFiles)
     assert (bundle.genome_count, bundle.transcript_count, bundle.protein_count) == (4, 4, 4)
     assert [layer.name for layer in bundle.layers] == ["genome", "transcriptome", "proteome"]
     assert bundle.layer("genome").molecule == "dna"
@@ -123,29 +122,29 @@ def test_empty_trailing_table_values_stay_quoted(viral_panel, tmp_path):
 
 def test_reuse_is_offline_and_tampering_is_caught(viral_panel, tmp_path):
     bundle = _install(tmp_path)
-    reopened = viral_reference_bundle(species="human", cache_root=str(tmp_path))
+    reopened = open_viral_references(species="human", cache_root=str(tmp_path))
     assert reopened == bundle
 
     bundle.protein_fasta.write_text(bundle.protein_fasta.read_text() + ">EXTRA\nMM\n")
     with pytest.raises(ValueError, match="checksum mismatch"):
-        viral_reference_bundle(species="human", cache_root=str(tmp_path))
+        open_viral_references(species="human", cache_root=str(tmp_path))
     with pytest.raises(FileNotFoundError, match="rerun with force=True"):
         download_viral_references(species="human", cache_root=str(tmp_path))
 
 
 def test_missing_bundle_and_unknown_collection_explain_themselves(viral_panel, tmp_path):
     with pytest.raises(FileNotFoundError, match="are not installed"):
-        viral_reference_bundle(species="human", cache_root=str(tmp_path))
+        open_viral_references(species="human", cache_root=str(tmp_path))
     with pytest.raises(ValueError, match="Unknown viral collection"):
-        viral_reference_bundle(species="human", collection="gdc", cache_root=str(tmp_path))
+        open_viral_references(species="human", collection="gdc", cache_root=str(tmp_path))
     with pytest.raises(ValueError, match="is a different target"):
-        viral_reference_bundle(species="mouse", cache_root=str(tmp_path))
+        open_viral_references(species="mouse", cache_root=str(tmp_path))
 
 
 def test_index_selects_whole_genomes_with_their_transcripts(viral_panel, tmp_path):
     _install(tmp_path)
-    index = index_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
-    assert isinstance(index, ViralReferenceIndex)
+    index = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    assert isinstance(index, ViralReferenceFiles)
     assert (index.genome_count, index.transcript_count, index.protein_count) == (2, 3, 3)
     assert index.subsets == () and index.contexts == (CONTEXT,)
     genomes = {line.split()[0][1:] for line in index.genome_fasta.read_text().splitlines()
@@ -155,18 +154,18 @@ def test_index_selects_whole_genomes_with_their_transcripts(viral_panel, tmp_pat
             if not line.startswith("#")} == genomes
     assert not any(line.endswith("\t") for line in index.genome_table.read_text().splitlines())
 
-    assert index_viral_references(contexts=[CONTEXT], species="human",
+    assert select_viral_references(contexts=[CONTEXT], species="human",
                                   cache_root=str(tmp_path)).path == index.path
     with pytest.raises(ValueError, match="No viral references match"):
-        index_viral_references(contexts=[CONTEXT], exclude_contexts=[CONTEXT],
+        select_viral_references(contexts=[CONTEXT], exclude_contexts=[CONTEXT],
                                species="human", cache_root=str(tmp_path))
 
 
 def test_a_damaged_index_is_rebuilt_from_the_local_bundle(viral_panel, tmp_path):
     _install(tmp_path)
-    index = index_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    index = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
     index.protein_fasta.write_text("")
-    rebuilt = index_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    rebuilt = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
     assert rebuilt == index and rebuilt.protein_count == 3
     assert json.loads((rebuilt.path / "metadata.json").read_text())["genome_ids"] == [
         "VTEST001.1", "VTEST002.1"]

@@ -5,7 +5,7 @@ import hashlib
 import pytest
 
 from orfdata import viral_collection, viral_collections, viral_panel_coverage
-from orfdata.record_sources import SourceRecord
+from orfdata.record_sources import FetchedGenome
 from orfdata.reference_ledger import (
     COLUMNS,
     FRAME_COLUMNS,
@@ -15,7 +15,7 @@ from orfdata.reference_ledger import (
     NUMERIC,
     PUBLISHED,
     UNAVAILABLE,
-    Anchor,
+    ExpectedSequence,
     empty_ledger,
     ledger_from_rows,
     ledger_row,
@@ -46,8 +46,8 @@ def _one(sequence="ACGTACGT", **overrides):
 
 
 def _record(sequence="ACGTACGT", features=2):
-    return SourceRecord(source="pave", identifier="TV1REF", sequence=sequence,
-                        coding_features=tuple(range(features)))
+    return FetchedGenome(source="pave", identifier="TV1REF", sequence=sequence,
+                         coding_features=tuple(range(features)))
 
 
 def test_a_row_recognises_its_own_molecule():
@@ -69,6 +69,14 @@ def test_a_fetched_record_is_checked_against_what_the_ledger_pins():
         verify_record(row, _record(features=3))
     with pytest.raises(ValueError, match="does not publish"):
         verify_record(_one(state=UNAVAILABLE), _record())
+    with pytest.raises(ValueError, match="Expected pave TV1REF"):
+        verify_record(_one(), FetchedGenome(
+            source="genbank", identifier="TV1REF", sequence="ACGTACGT",
+            coding_features=tuple(range(2))))
+    with pytest.raises(ValueError, match="Expected pave TV1REF"):
+        verify_record(_one(), FetchedGenome(
+            source="pave", identifier="TV2REF", sequence="ACGTACGT",
+            coding_features=tuple(range(2))))
 
 
 def test_a_ledger_round_trips_through_its_own_format():
@@ -102,21 +110,28 @@ def test_an_unreadable_ledger_is_refused_rather_than_half_read():
         read_ledger_bytes(doubled)
 
 
-def test_an_anchor_is_the_claim_a_ledger_rests_on():
-    anchor = Anchor(source="pave", abbreviation="TV1",
-                    sequence_md5=_row()["sequence_md5"], note="the molecule in use")
-    assert anchor.check(ledger_from_rows([_row()])) is not None
+def test_an_expected_sequence_is_the_claim_a_ledger_rests_on():
+    expected = ExpectedSequence(source="pave", abbreviation="TV1",
+                                sequence_md5=_row()["sequence_md5"],
+                                note="the molecule in use")
+    assert expected.check(ledger_from_rows([_row()])) is not None
     with pytest.raises(ValueError, match="no longer reproduces"):
-        anchor.check(ledger_from_rows([_row("ACGTACGA")]))
+        expected.check(ledger_from_rows([_row("ACGTACGA")]))
     with pytest.raises(ValueError, match="no longer reproduces"):
-        anchor.check(ledger_from_rows([]))
+        expected.check(ledger_from_rows([]))
+    with pytest.raises(ValueError, match="no longer reproduces"):
+        expected.check(ledger_from_rows([_row(source="genbank")]))
+    assert expected.to_dict() == {
+        "source": "pave", "abbreviation": "TV1",
+        "sequence_md5": _row()["sequence_md5"], "note": "the molecule in use",
+    }
 
 
 def test_the_published_collection_carries_a_ledger_for_each_of_its_sources():
     collection, = viral_collections()
     assert collection.sources() == ("genbank", "pave")
 
-    primary = collection.ledger(collection.primary_source)
+    primary = collection.source_summary(collection.primary_source)
     inventory = viral_panel_coverage()
     assert set(primary.index) == set(inventory["abbreviation"])
     # Every row's accession resolves to the version the ledger pins.
@@ -124,16 +139,17 @@ def test_the_published_collection_carries_a_ledger_for_each_of_its_sources():
     assert (primary["identifier"].str.split(".").str[0] == named).all()
     assert (primary["taxon_id"] > 0).all() and (primary["title"] != "").all()
 
-    alternate = collection.ledger()
+    assert set(collection.source_summary()["source"]) == {collection.primary_source}
+    alternate = collection.source_summary(collection.alternate_source)
     with_pave = set(inventory.loc[inventory["pave_id"] != "", "abbreviation"])
     assert set(alternate.index) == with_pave and len(with_pave) == 189
     assert set(alternate["source"]) == {collection.alternate_source}
-    # The anchor for the whole ledger: GDC's HPV16 contig is the alternate's molecule.
+    # The expected sequence proves GDC's HPV16 contig is the alternate's molecule.
     assert alternate.at["HPV16", "sequence_md5"] == GDC_HPV16_MD5
     assert alternate.at["HPV16", "length_nt"] == 7906
     assert alternate.at["HPV16", "coding_features"] == 10
-    for anchor in collection.anchors:
-        anchor.check(collection.ledger(anchor.source))
+    for expected in collection.expected_sequences:
+        expected.check(collection.source_summary(expected.source))
     assert viral_collection("gdc-viruses") is collection
 
 
@@ -141,7 +157,7 @@ def test_every_ledger_carries_exactly_the_columns_it_documents():
     """Packaged, freshly built and empty ledgers are all the same frame."""
     collection, = viral_collections()
     built = ledger_from_rows([_row()])
-    for ledger in (collection.ledger("genbank"), collection.ledger("pave"),
+    for ledger in (collection.source_summary("genbank"), collection.source_summary("pave"),
                    built, empty_ledger(), read_ledger_bytes(write_ledger(
                        built, panel="TEST", source="pave", source_url="",
                        checked="2026-01-01T00:00:00Z"))):
@@ -149,7 +165,7 @@ def test_every_ledger_carries_exactly_the_columns_it_documents():
         assert tuple(ledger.columns) == FRAME_COLUMNS
     assert set(COLUMNS) == set(FRAME_COLUMNS) | {INDEX}
     # A row the source could not serve pins nothing in any measured column.
-    pave = collection.ledger("pave")
+    pave = collection.source_summary("pave")
     unserved = pave[pave["state"] != PUBLISHED]
     assert len(unserved) == 2
     for column in MEASURED:
@@ -158,7 +174,8 @@ def test_every_ledger_carries_exactly_the_columns_it_documents():
 
 
 def test_entries_that_did_not_check_out_are_named_as_such():
-    ledger = viral_collections()[0].ledger()
+    collection = viral_collections()[0]
+    ledger = collection.source_summary(collection.alternate_source)
     assert set(ledger["state"]) <= {PUBLISHED, UNAVAILABLE, INCONSISTENT}
     # An alternate whose own annotation does not reproduce its proteins is not used.
     ruled_out = ledger[ledger["state"].isin([UNAVAILABLE, INCONSISTENT])]

@@ -103,7 +103,7 @@ def test_proteome_writes_a_matching_annotation_for_its_nc_orfs(tmp_path):
     proteome = Proteome.build(genome, nc_orf_sources=make_catalog())
     written = proteome.write_annotation(tmp_path / "ncorfs")
     assert written["transcript_count"] == written["protein_count"] == 3
-    assert written["omitted_entries"] == sum(e.kind != "extra_orf" for e in proteome.entries)
+    assert written["omitted_entries"] == sum(e.kind != "extra_orf" for e in proteome.proteins)
 
     annotated = Genome(reference_name="GRCm39", annotation_name="orfdata-ncorfs",
                        annotation_version="1", gtf_path_or_url=written["annotation_gtf"],

@@ -28,7 +28,7 @@ from orfdata import (
     ReferenceTranscriptome,
     RiboSeq,
     TranscriptORF,
-    ViralProteome,
+    VirusProteins,
     annotated_orfs,
     extra_orfs,
     load_catalog,
@@ -153,7 +153,7 @@ def ensembl_style(tmp_path):
 
 
 def virus(hosts=(10090,)):
-    return ViralProteome("synthetic-virus", 999999, hosts, (("virus-protein", "MSTVK"),),
+    return VirusProteins("synthetic-virus", 999999, hosts, (("virus-protein", "MSTVK"),),
                          "synthetic fixture", "test-declared host range")
 
 
@@ -162,7 +162,7 @@ def test_annotated_proteome_matches_the_genome_annotation(genome):
     assert [(e.accession, e.sequence, e.kind, e.contig) for e in proteome] == [
         ("alt_protein.1", "MKP", "annotated", "JH584304.1"), ("coding_protein.1", "MKP", "annotated", "1"),
         ("mixed_protein.1", "MP", "annotated", "1")]
-    coding, mixed = proteome.entries[1], proteome.entries[2]
+    coding, mixed = proteome.proteins[1], proteome.proteins[2]
     assert (coding.transcript_id, coding.gene_id, coding.transcript_biotype, coding.orf_type, coding.taxon_id) == (
         "coding_rna.1", "coding_gene", "protein_coding", None, 10090)
     # Coordinates slice the transcript sequence; this CDS has no stop codon feature.
@@ -771,7 +771,7 @@ def test_viral_proteins_require_a_recorded_host(genome):
     with pytest.raises(ValueError, match="no recorded host matching mus_musculus"):
         base.with_viral(virus(hosts=(9606,)))
     proteome = base.with_viral(virus())
-    entry = proteome.entries[-1]
+    entry = proteome.proteins[-1]
     assert (entry.accession, entry.kind, entry.taxon_id, entry.source) == ("virus-protein", "viral", 999999, "viral:synthetic-virus")
     layer = dict(proteome.layers[-1])
     assert layer["host_taxon_ids"] == [10090] and layer["host_source"] == "test-declared host range"
@@ -783,7 +783,7 @@ def test_viral_proteins_require_a_recorded_host(genome):
 def test_viral_fasta_is_pinned_and_parsed(tmp_path):
     path = tmp_path / "virus.fa"
     path.write_text(">p1 description\nMSTV\nK*\n>p2\nmaa\n")
-    parsed = ViralProteome.from_fasta(path, name="v", taxon_id=1, host_taxon_ids={9606}, host_source="test")
+    parsed = VirusProteins.from_fasta(path, name="v", taxon_id=1, host_taxon_ids={9606}, host_source="test")
     assert parsed.proteins == (("p1", "MSTVK"), ("p2", "MAA")) and len(parsed.source_sha256) == 64
 
 
@@ -820,10 +820,10 @@ def test_reference_transcriptome_selects_host_protein_sources(genome, catalog):
     cds = transcriptome.proteome()
     assert cds.summary()["protein_sources"] == {"reference_cds": 3}
     assert cds.identity == Proteome.from_genome(genome).identity
-    assert "protein_source=reference_cds" in cds.entries[0].fasta_header()
+    assert "protein_source=reference_cds" in cds.proteins[0].fasta_header()
     viral_only = transcriptome.proteome(reference_cds=False, viral=[virus()])
     assert viral_only.summary()["protein_sources"] == {"viral": 1}
-    assert viral_only.entries[0].protein_source == "viral"
+    assert viral_only.proteins[0].protein_source == "viral"
     with pytest.raises(TypeError, match="must be a boolean"):
         Proteome.build(genome, reference_cds="reference_cds")
     with pytest.raises(ValueError, match="context differs"):
@@ -860,9 +860,9 @@ def test_supplied_derived_protein_keeps_parent_and_sample_provenance(genome, cat
     assert Proteome.load(snapshot).identity == sample.identity
     assert base.identity != sample.identity
     derived_only = sample.filter(lambda protein: protein.kind == "derived")
-    assert len(derived_only) == 1 and derived_only.entries[0].derivation == entry.derivation
+    assert len(derived_only) == 1 and derived_only.proteins[0].derivation == entry.derivation
     derived_only.save(snapshot)
-    assert Proteome.load(snapshot).entries[0].derivation == entry.derivation
+    assert Proteome.load(snapshot).proteins[0].derivation == entry.derivation
     with pytest.raises(ValueError, match="missing parents"):
         base.with_derived_proteins(replace(record, parent_accessions=("missing",)))
     with pytest.raises(ValueError, match="must choose a parent transcript"):
@@ -896,7 +896,7 @@ def test_v1_proteome_snapshot_remains_readable(genome, tmp_path):
 
 
 def test_multiple_synthetic_viral_sources_share_one_proteome(genome):
-    second = ViralProteome("synthetic-virus-two", 999998, {10090}, (("toy-protein-two", "MAA"),),
+    second = VirusProteins("synthetic-virus-two", 999998, {10090}, (("toy-protein-two", "MAA"),),
                            "synthetic fixture", "test-declared host range")
     combined = Proteome.from_genome(genome).with_viral([virus(), second])
     assert combined.summary()["kinds"] == {"annotated": 3, "viral": 2}
@@ -944,7 +944,7 @@ def test_bundled_virus_builds_into_one_proteome_without_manual_conversion(tmp_pa
         snapshot = tmp_path / "combined.json.gz"
         by_id.save(snapshot)
         assert Proteome.load(snapshot).by_accession()[product.protein_id].viral_product == product.product
-        assert ViralProteome.from_reference(ref).proteins == tuple(
+        assert VirusProteins.from_reference(ref).proteins == tuple(
             (orf.orf_id, orf.protein_sequence) for orf in ref.orfs)
         gdc = Proteome.build(human, viral="GRCh38.d1.vd1:HPV16", **options)
         assert gdc.identity != by_id.identity
@@ -1075,7 +1075,7 @@ def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, mo
     assert again.with_extra_orfs("ribosome", catalog=catalog).layers[-1]["added"] == 1  # Still bound to the genome.
     Proteome.build(genome, nc_orf_sources=MS(min_peptides=2), cache=True, cache_root=tmp_path)
     assert calls == [1]  # Another rule is another build.
-    assert len(Proteome.build(genome).entries) == 3
+    assert len(Proteome.build(genome).proteins) == 3
     monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: genome)
     path = tmp_path / "catalog.json"
     path.write_text(json.dumps(catalog.to_dict()))

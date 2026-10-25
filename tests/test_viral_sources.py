@@ -138,7 +138,7 @@ def _genbank(entries):
 
 
 def test_sources_are_a_published_registry():
-    from orfdata import reference_source, reference_sources
+    from orfdata.record_sources import reference_source, reference_sources
 
     sources = reference_sources()
     assert set(sources) == {"genbank", "pave"}
@@ -157,17 +157,26 @@ def test_collections_are_a_published_registry():
     assert collection.source().name == collection.primary_source
     assert collection.source(collection.alternate_source).name == "pave"
     assert viral_collection("GDC_VIRUSES") is collection  # Names normalize.
+    assert viral_collection(collection.panel) is collection
+    assert viral_collection(collection) is collection
+    assert viral_collection(species="human") is collection
+    assert viral_collections(species="human", source="pave") == (collection,)
+    assert viral_collections(species="mouse") == ()
+    with pytest.raises(ValueError, match="Unknown reference source"):
+        viral_collections(source="ensembl")
+    with pytest.raises(ValueError, match="not part of"):
+        collection.source_summary("ensembl")
     with pytest.raises(ValueError, match="Unknown viral collection"):
         viral_collection("gdc-bacteria")
     with pytest.raises(ValueError, match="is a different target"):
         viral_collection("gdc-viruses", species="mouse")
 
 
-def test_a_source_record_names_its_own_document():
-    from orfdata.record_sources import SourceRecord
+def test_a_fetched_genome_names_its_own_document():
+    from orfdata.record_sources import FetchedGenome
 
-    record = SourceRecord(source="pave", identifier="TV1REF", sequence="ACGT",
-                          coding_features=(), document=b"{}", suffix=".json")
+    record = FetchedGenome(source="pave", identifier="TV1REF", sequence="ACGT",
+                           coding_features=(), document=b"{}", suffix=".json")
     assert record.document_name("TV 1") == "TV_1__pave__TV1REF.json.gz"
     assert record.length == 4
     md5, sha256 = record.checksums()

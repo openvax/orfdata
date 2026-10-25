@@ -2,7 +2,7 @@
 # panel: GRCh38.d1.vd1
 # source: pave (https://pave.niaid.nih.gov/api/genome)
 # checked_utc: 2026-10-24T20:35:01Z
-# anchor_hpv16: f2463721818c29998ef5ab917e6df74a
+# expected_hpv16: f2463721818c29998ef5ab917e6df74a
 index	abbreviation	source	identifier	state	length_nt	sequence_md5	sequence_sha256	coding_features	taxon_id	title
 12	HPV16	pave	HPV16REF	published	7906	f2463721818c29998ef5ab917e6df74a	a9e63c3d3754c2b09942e16eac9f8c9092245b61647861e12397b7413b56e365	10		Human Papillomavirus 16 (HPV16), complete genome
 13	HPV18	pave	HPV18REF	published	7857	61e2cd0ee6952b469c8c51d7526b2067	0e601fdc943a6c5ff5344c7b3f77797d3e92ce33a1f4ab9209d4eb8738fc64ad	10		Human Papillomavirus 18 (HPV18), complete genome

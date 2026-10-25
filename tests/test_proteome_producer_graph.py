@@ -8,8 +8,8 @@ from orfdata import (
     ProducerInfo,
     ProducerLink,
     ProducerRecord,
+    ProteinSequence,
     Proteome,
-    ProteomeEntry,
     ReferenceContext,
 )
 
@@ -20,12 +20,12 @@ def reference():
 
 
 def test_offline_graph_has_alternative_translations_shared_evidence_and_outcomes(reference, tmp_path):
-    baseline = Proteome(reference, [ProteomeEntry("ENSP1", "MAA", "annotated", 9606,
+    baseline = Proteome(reference, [ProteinSequence("ENSP1", "MAA", "annotated", 9606,
                                                  "Ensembl:115")])
-    dna = ProteomeEntry.from_producer("MTA", taxon_id=9606, producer=ProducerInfo(
+    dna = ProteinSequence.from_producer("MTA", taxon_id=9606, producer=ProducerInfo(
         "reference_cds", "dna_prediction", "varcode", "V1", sample_id="sample-A",
         reference=reference))
-    rna = ProteomeEntry.from_producer("MTA", taxon_id=9606, producer=ProducerInfo(
+    rna = ProteinSequence.from_producer("MTA", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "ASM1", sample_id="sample-A",
         reference=reference, start_complete=False, stop_complete=None))
     version = "fixture.v1"
@@ -47,20 +47,20 @@ def test_offline_graph_has_alternative_translations_shared_evidence_and_outcomes
                             sample_id="sample-A", status="capped", complete=False,
                             limits={"max_hypotheses": 4}, payload={"remaining": "unknown"})
     links = (
-        ProducerLink(translation_a.key, rna.accession, "entry", "translates_to"),
-        ProducerLink(translation_b.key, rna.accession, "entry", "translates_to"),
+        ProducerLink(translation_a.key, rna.accession, "protein", "translates_to"),
+        ProducerLink(translation_b.key, rna.accession, "protein", "translates_to"),
         ProducerLink(evidence.key, translation_a.key, "record", "supports_translation"),
         ProducerLink(evidence.key, translation_b.key, "record", "supports_translation"),
-        ProducerLink(partial.key, rna.accession, "entry", "produces"),
+        ProducerLink(partial.key, rna.accession, "protein", "produces"),
     )
     records = (translation_a, translation_b, evidence, partial, zero, capped)
-    external = Proteome.from_entries((dna, rna), reference=reference,
+    external = Proteome.from_proteins((dna, rna), reference=reference,
                                      records=records, links=links)
     joint = baseline.merge(external)
     assert len(joint.by_sequence()["MTA"]) == 2
     assert sum(record.kind == "evidence" for record in joint.records) == 1
     assert len([link for link in joint.links if link.source == evidence.key]) == 2
-    assert not any(link.source in (zero.key, capped.key) and link.target_kind == "entry"
+    assert not any(link.source in (zero.key, capped.key) and link.target_kind == "protein"
                    for link in joint.links)
     assert joint.merge(external).identity == joint.identity
     path = tmp_path / "joint.json.gz"
@@ -73,29 +73,29 @@ def test_offline_graph_has_alternative_translations_shared_evidence_and_outcomes
     assert loaded.records[2].scope["read_set"] == "R1"
     changed_event = replace(capped, limits={"max_hypotheses": 5})
     changed_evidence = replace(evidence, scope={"sample": "sample-A", "read_set": "R2"})
-    assert joint.identity != baseline.merge(Proteome.from_entries(
+    assert joint.identity != baseline.merge(Proteome.from_proteins(
         (dna, rna), reference=reference,
         records=records[:-1] + (changed_event,), links=links)).identity
-    assert joint.identity != baseline.merge(Proteome.from_entries(
+    assert joint.identity != baseline.merge(Proteome.from_proteins(
         (dna, rna), reference=reference,
         records=(translation_a, translation_b, changed_evidence, partial, zero, capped),
         links=links)).identity
 
 
 def test_graph_rejects_conflicts_and_missing_links(reference):
-    entry = ProteomeEntry.from_producer("MAA", taxon_id=9606, producer=ProducerInfo(
+    entry = ProteinSequence.from_producer("MAA", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "P1", reference=reference))
     record = ProducerRecord("future.tool", "schema.9", "translation", "T1",
                             payload={"nested": {"unrecognized": [1, 2]}})
-    collection = Proteome.from_entries([entry], reference=reference, records=[record],
+    collection = Proteome.from_proteins([entry], reference=reference, records=[record],
                                        links=[ProducerLink(record.key, entry.accession,
-                                                           "entry", "translates_to")])
+                                                           "protein", "translates_to")])
     assert collection.records[0].payload["nested"]["unrecognized"] == (1, 2)
     assert collection.with_records([record], links=collection.links).identity == collection.identity
     with pytest.raises(ValueError, match="Conflicting producer record identity"):
         collection.with_records([replace(record, payload={"nested": {"unrecognized": [3]}})])
     with pytest.raises(ValueError, match="unknown target"):
-        collection.with_records(links=[ProducerLink(record.key, "missing", "entry", "produces")])
+        collection.with_records(links=[ProducerLink(record.key, "missing", "protein", "produces")])
     with pytest.raises(ValueError, match="explicit support"):
         ProducerRecord("isovar", "1", "evidence", "R1")
     with pytest.raises(ValueError, match="explicit outcome"):
@@ -103,12 +103,12 @@ def test_graph_rejects_conflicts_and_missing_links(reference):
 
 
 def test_filter_and_follow_on_entry_addition_keep_valid_graph(reference):
-    entry = ProteomeEntry.from_producer("MAA", taxon_id=9606, producer=ProducerInfo(
+    entry = ProteinSequence.from_producer("MAA", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "P1", reference=reference))
     record = ProducerRecord("isovar", "1", "translation", "T1")
-    collection = Proteome.from_entries([entry], reference=reference, records=[record],
+    collection = Proteome.from_proteins([entry], reference=reference, records=[record],
                                        links=[ProducerLink(record.key, entry.accession,
-                                                           "entry", "translates_to")])
-    assert collection.with_entries([]).links == collection.links
+                                                           "protein", "translates_to")])
+    assert collection.with_proteins([]).links == collection.links
     filtered = collection.filter(lambda _: False)
     assert filtered.records == (record,) and filtered.links == ()

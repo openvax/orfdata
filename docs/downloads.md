@@ -40,15 +40,15 @@ install`, and `orfdata chains download` remain available.
 The same inventory is available from Python:
 
 ```python
-from orfdata import list_downloads
+from orfdata import DataStatus, list_data
 
-all_resources = list_downloads()
-human_missing = list_downloads(species="human", installed=False)
-installed = list_downloads(installed=True)
-machine_record = all_resources[0].to_dict()
+all_resources: tuple[DataStatus, ...] = list_data()
+human_missing: tuple[DataStatus, ...] = list_data(species="human", installed=False)
+installed: tuple[DataStatus, ...] = list_data(installed=True)
+machine_record: dict[str, object] = all_resources[0].to_dict()
 ```
 
-Each `DownloadStatus` reports its kind, stable name and version, species,
+Each `DataStatus` reports its kind, stable name and version, species,
 nonexclusive analysis contexts, local status, acquisition method and equivalent
 command, and resolved cache path. Status values follow DataCache: `available`,
 `missing`, `corrupt`, or `inaccessible`. An unknown kind, species or context is
@@ -56,6 +56,29 @@ an error rather than an empty listing, so a typo never reads as "nothing is
 available".
 
 ## Viral collections and contexts
+
+The Python API uses the same collection object for discovery, inventory reads,
+source summaries, downloads and offline opens. The target species comes from the
+collection; pass `species` only when you want an explicit consistency check.
+
+```python
+from pandas import DataFrame
+
+from orfdata import ViralCollection, viral_collection, viral_collections
+
+human_collections: tuple[ViralCollection, ...] = viral_collections(species="human")
+collection: ViralCollection = viral_collection("gdc-viruses")
+assert viral_collection(collection.panel) is collection
+
+inventory: DataFrame = collection.inventory()
+genbank: DataFrame = collection.source_summary()       # primary source
+pave: DataFrame = collection.source_summary("pave")    # another declared source
+```
+
+Names, panel names and aliases resolve through `viral_collection()` everywhere.
+An unknown species, collection or source is an error rather than an empty
+result. A second species is another `ViralCollection` declaration with its own
+checked inventory and source summaries; download code does not branch on the species.
 
 The published viral collection currently has these properties:
 
@@ -86,8 +109,8 @@ autoimmune workflows. A future collection may carry several context tags, and
 the same exact accession/version can belong to several collections without
 becoming several biological references.
 
-Pass `--context` to materialize a derived FASTA index from the shared source
-bundle. Repeated contexts select their union; `--context-match all` selects
+Pass `--context` to materialize a derived FASTA set from the shared source
+collection. Repeated contexts select their union; `--context-match all` selects
 their intersection. It reuses source records already downloaded for the
 collection, so overlapping contexts do not create conflicting copies of a
 reference.
@@ -150,12 +173,12 @@ source annotated it, and which end, if either, that source marks as running
 past the record.
 
 ```python
-from orfdata import viral_reference_bundle
+from orfdata import open_viral_references
 
-bundle = viral_reference_bundle(species="human")
-for layer in bundle.layers:
+references = open_viral_references(species="human")
+for layer in references.layers:
     print(layer.name, layer.molecule, layer.records, layer.fasta)
-transcriptome = bundle.layer("transcriptome")
+transcriptome = references.layer("transcriptome")
 print(transcriptome.annotation)  # annotation.gtf
 ```
 
@@ -187,32 +210,32 @@ ORFdata follows the OpenVax split between explicit acquisition and offline
 lookup:
 
 ```python
-from orfdata import download_viral_references, viral_reference_bundle
+from orfdata import ViralReferenceFiles, download_viral_references, open_viral_references
 
-download_viral_references(species="human")
-bundle = viral_reference_bundle(species="human")
+download_viral_references(collection="gdc-viruses")
+references: ViralReferenceFiles = open_viral_references(collection="gdc-viruses")
 ```
 
 The convenience form is explicit and opt-in:
 
 ```python
-bundle = viral_reference_bundle(species="human", download_if_missing=True)
+references = open_viral_references(collection="gdc-viruses", download_if_missing=True)
 ```
 
-Context selection is a separate, type-stable API. It returns a
-`ViralReferenceIndex`; it uses the base bundle above and fetches it only when
-requested:
+Context selection is a separate, type-stable API. It returns paths and counts
+for a derived reference set; it uses the installed collection above and fetches it only
+when requested:
 
 ```python
-from orfdata import index_viral_references
+from orfdata import select_viral_references
 
-cancer_index = index_viral_references(
+cancer = select_viral_references(
     subsets=["cancer-causing"],
     species="human",
     download_if_missing=True,
 )
 
-integrated_drivers = index_viral_references(
+integrated_drivers = select_viral_references(
     subsets=["cancer-integrated-driver"],
     download_if_missing=True,
 )
@@ -227,8 +250,8 @@ Across ORFdata download APIs, repeated acquisition reuses a valid installation
 and `force=True` refreshes or repairs it, status objects provide `to_dict()`,
 human CLI output is the default, and `--json` provides machine-readable output.
 
-A derived index is local: `index_viral_references(force=True)` rebuilds it from
-the cached bundle without downloading, and a damaged index is rebuilt rather
+A derived selection is local: `select_viral_references(force=True)` rebuilds it from
+the cached collection without downloading, and a damaged selection is rebuilt rather
 than reported, since nothing in it is unrecoverable. Adding
-`download_if_missing=True` to that call lets it repair the source bundle too,
+`download_if_missing=True` to that call lets it repair the source collection too,
 which does download.

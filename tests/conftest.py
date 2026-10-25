@@ -18,6 +18,7 @@ from orfdata import (
 from orfdata import viral_panel as viral_panel_module
 from orfdata.record_sources import GENBANK_SOURCE, reference_source
 from orfdata.reference_ledger import PUBLISHED, empty_ledger, ledger_from_rows
+from orfdata.viral_registry import GDC_VIRUSES
 
 VIRAL_CONTEXT = "cancer-transcriptome-screening"
 
@@ -175,8 +176,8 @@ def viral_panel(monkeypatch):
 def serve_alternate_ledger(monkeypatch, rows):
     """Answer for the alternate source's ledger, so the packaged one is never read."""
     ledger = ledger_from_rows(rows)
-    collection = viral_panel_module.GDC_VIRUSES
-    monkeypatch.setattr(type(collection), "ledger",
+    collection = GDC_VIRUSES
+    monkeypatch.setattr(type(collection), "source_summary",
                         lambda self, source=None: ledger
                         if source in (None, self.alternate_source) else empty_ledger())
     return ledger

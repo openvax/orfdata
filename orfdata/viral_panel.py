@@ -24,14 +24,16 @@ import shutil
 import tempfile
 import time
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
+from os import PathLike
 from pathlib import Path
 
 from .fasta import write_fasta
 from .record_sources import REQUEST_INTERVAL
 from .reference import canonical_species
-from .reference_ledger import ledger_row, published, same_molecule, verify_record
+from .reference_ledger import empty_ledger, ledger_row, published, same_molecule, verify_record
 from .viral_annotation import (
     NON_CANONICAL_START,
     gtf_gene_line,
@@ -40,27 +42,19 @@ from .viral_annotation import (
     safe_token,
 )
 from .viral_coverage import normalize_viral_contexts, viral_panel_coverage
-from .viral_registry import GDC_VIRUSES, viral_collection
+from .viral_registry import ViralCollection, viral_collection
 from .viral_subsets import normalize_viral_subsets, viral_subset_abbreviations
 
 BUNDLE_SCHEMA_VERSION = "6"
 BUNDLE_SCHEMA = "orfdata.viral_reference_bundle.v6"
 INDEX_SCHEMA = "orfdata.viral_reference_index.v7"
 VIRAL_LAYERS = ("genome", "transcriptome", "proteome")
-# The one collection published today; every entry point takes a collection name,
-# so a second species or source set is a registry entry rather than a code path.
-VIRAL_COLLECTION = GDC_VIRUSES.name
-VIRAL_TARGET_SPECIES = GDC_VIRUSES.target_species
-VIRAL_TARGET_TAXON_ID = GDC_VIRUSES.target_taxon_id
-VIRAL_CONTEXTS = GDC_VIRUSES.contexts
 
 
 def bundle_version(collection):
     """A collection's cache identity: its schema and the records it was built from."""
-    return f"v{BUNDLE_SCHEMA_VERSION}-{collection.ledgers[collection.primary_source].sha256}"
+    return f"v{BUNDLE_SCHEMA_VERSION}-{collection.source_files[collection.primary_source].sha256}"
 
-
-BUNDLE_VERSION = bundle_version(GDC_VIRUSES)
 
 _GENOME_FASTA = "genomes.fasta"
 _TRANSCRIPT_FASTA = "transcripts.fasta"
@@ -88,8 +82,8 @@ _TRANSCRIPT_COLUMNS = (
 
 
 @dataclass(frozen=True)
-class ViralSequenceLayer:
-    """One molecular layer of a viral reference set, and the files holding it."""
+class SequenceFiles:
+    """Files and record count for one molecular layer."""
 
     name: str
     molecule: str
@@ -99,15 +93,15 @@ class ViralSequenceLayer:
     table: Path | None = None
     annotation: Path | None = None
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready description of this layer."""
         return {key: str(value) if isinstance(value, Path) else value
                 for key, value in asdict(self).items()}
 
 
 @dataclass(frozen=True)
-class ViralReferenceSet:
-    """Paths and record counts shared by downloaded bundles and derived indexes."""
+class ViralReferenceFiles:
+    """The genome, transcript and protein files opened for a viral collection."""
 
     target_species: str
     target_taxon_id: int
@@ -123,34 +117,34 @@ class ViralReferenceSet:
     transcript_count: int
     protein_count: int
 
-    def to_dict(self):
-        """Return a JSON-ready description of this reference set."""
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-ready description of these files."""
         result = {key: str(value) if isinstance(value, Path) else value
                   for key, value in asdict(self).items()}
         result["layers"] = [layer.to_dict() for layer in self.layers]
         return result
 
     @property
-    def layers(self):
+    def layers(self) -> tuple[SequenceFiles, ...]:
         """The genome, transcriptome and proteome layers, in that order."""
         return (
-            ViralSequenceLayer(
+            SequenceFiles(
                 name="genome", molecule="dna",
                 description="Viral genomic DNA, one record per source reference",
                 fasta=self.genome_fasta, records=self.genome_count, table=self.genome_table),
-            ViralSequenceLayer(
+            SequenceFiles(
                 name="transcriptome", molecule="rna",
                 description="One coding transcript per source-annotated CDS, spliced",
                 fasta=self.transcript_fasta, records=self.transcript_count,
                 table=self.transcript_table, annotation=self.annotation_gtf),
-            ViralSequenceLayer(
+            SequenceFiles(
                 name="proteome", molecule="protein",
                 description="Source translation of each coding transcript",
                 fasta=self.protein_fasta, records=self.protein_count,
                 table=self.transcript_table),
         )
 
-    def layer(self, name):
+    def layer(self, name: str) -> SequenceFiles:
         """One named layer: ``genome``, ``transcriptome`` or ``proteome``."""
         found = {layer.name: layer for layer in self.layers}
         if name not in found:
@@ -158,12 +152,12 @@ class ViralReferenceSet:
         return found[name]
 
     def pyensembl_genome(self, *, cache_root=None, rebuild=False):
-        """Open this reference set as a PyEnsembl genome; see :func:`viral_genome`."""
+        """Open these files as a PyEnsembl genome; see :func:`viral_genome`."""
         return viral_genome(self, cache_root=cache_root, rebuild=rebuild)
 
 
 @dataclass(frozen=True)
-class ViralReferenceBundle(ViralReferenceSet):
+class DownloadedViralReferences(ViralReferenceFiles):
     """A complete, downloaded viral source-reference collection for a target species."""
 
     contexts: tuple[str, ...]
@@ -173,14 +167,14 @@ class ViralReferenceBundle(ViralReferenceSet):
 
 
 @dataclass(frozen=True)
-class ViralReferenceIndex(ViralReferenceSet):
-    """A derived reference set for one target-species context or named-subset selection."""
+class SelectedViralReferences(ViralReferenceFiles):
+    """Files selected by target-species context or named subset."""
 
     contexts: tuple[str, ...]
     excluded_contexts: tuple[str, ...]
     context_match: str
     subsets: tuple[str, ...]
-    source_bundle: Path
+    source_collection: Path
 
 
 def _selection(species, collection):
@@ -205,7 +199,7 @@ def _primary_ledger(collection, inventory):
     keeps a collection from downloading a record its own inventory never named.
     """
     source = collection.source()
-    ledger = collection.ledger(collection.primary_source)
+    ledger = collection.source_summary(collection.primary_source)
     for entry in inventory.itertuples(index=False):
         row = ledger_row(ledger, entry.abbreviation)
         named = source.identifier(entry)
@@ -283,7 +277,7 @@ def _bundle_result(path, *, species, collection):
     metadata = _metadata(path, expected_schema=BUNDLE_SCHEMA)
     if metadata.get("bundle_version") != bundle_version(collection):
         raise ValueError(f"Invalid viral reference metadata in {path}: unexpected version")
-    return ViralReferenceBundle(
+    return DownloadedViralReferences(
         target_species=species,
         target_taxon_id=collection.target_taxon_id,
         collection=collection.name,
@@ -305,10 +299,10 @@ def _existing_bundle(path, *, species, collection):
                 result.annotation_gtf, result.genome_table, result.transcript_table,
                 path / _CHECKSUMS)
     if any(not file_path.is_file() for file_path in required):
-        raise ValueError(f"Incomplete viral bundle: {path}")
+        raise ValueError(f"Incomplete viral reference collection: {path}")
     if (not result.record_directory.is_dir()
             or len(tuple(result.record_directory.glob("*.gz"))) != result.genome_count):
-        raise ValueError(f"Incomplete viral bundle source records: {result.record_directory}")
+        raise ValueError(f"Incomplete viral source records: {result.record_directory}")
     return result
 
 
@@ -317,14 +311,14 @@ def _verify_checksums(path):
     try:
         sums = tuple(line.rstrip("\n").split("  ", 1) for line in sums_path.open())
     except OSError as error:
-        raise ValueError(f"Missing viral bundle checksums: {sums_path}") from error
+        raise ValueError(f"Missing viral reference checksums: {sums_path}") from error
     expected_files = {item.relative_to(path).as_posix() for item in path.rglob("*")
                       if item.is_file() and item.name != _CHECKSUMS}
     if (len(sums) != len(expected_files) or any(len(parts) != 2 for parts in sums)
             or {relative for _, relative in sums} != expected_files):
-        raise ValueError(f"Invalid viral bundle checksum manifest: {sums_path}")
+        raise ValueError(f"Invalid viral reference checksum manifest: {sums_path}")
     if any(_sha256(path / relative) != digest for digest, relative in sums):
-        raise ValueError(f"Viral bundle checksum mismatch: {path}")
+        raise ValueError(f"Viral reference checksum mismatch: {path}")
 
 
 def _verify_counts(result):
@@ -516,7 +510,8 @@ def _write_bundle(path, collection, inventory, primaries, *, timeout,
     records_directory = path / _RECORD_DIRECTORY
     records_directory.mkdir()
     source = collection.source()
-    ledger = collection.ledger()
+    ledger = (collection.source_summary(collection.alternate_source)
+              if collection.alternate_source else empty_ledger())
     entries = list(inventory.itertuples(index=False))
     primaries = [row for _, row in primaries.iterrows()]
     pinned = {primary["identifier"]: primary for primary in primaries}
@@ -659,15 +654,21 @@ def _bundle_readme(collection, genome_rows, transcript_rows, complete, retrieved
 def _bundle_path(cache_root, species, collection):
     from .datasets import get_data_dir
 
-    name = collection if isinstance(collection, str) else collection.name
-    version = BUNDLE_VERSION if isinstance(collection, str) else bundle_version(collection)
-    return get_data_dir(cache_root) / "viral" / "references" / species / name / version
+    collection = viral_collection(collection)
+    return (get_data_dir(cache_root) / "viral" / "references" / species /
+            collection.name / bundle_version(collection))
 
 
-def viral_reference_bundle(*, species="human", collection=VIRAL_COLLECTION,
-                           download_if_missing=False,
-                           cache_root=None, force=False, timeout=120):
-    """Open, or explicitly download and open, a viral source-reference bundle.
+def open_viral_references(
+    *,
+    species: str | int | None = None,
+    collection: ViralCollection | str | None = None,
+    download_if_missing: bool = False,
+    cache_root: str | PathLike[str] | None = None,
+    force: bool = False,
+    timeout: float | None = 120,
+) -> ViralReferenceFiles:
+    """Open, or explicitly download and open, a viral source-reference collection.
 
     ``download_if_missing=True`` calls :func:`download_viral_references` when
     needed; otherwise this performs an offline, checksummed cache lookup.
@@ -694,10 +695,17 @@ def viral_reference_bundle(*, species="human", collection=VIRAL_COLLECTION,
     return _verified_existing_bundle(path, species=species, collection=collection)
 
 
-def download_viral_references(*, species="human", collection=VIRAL_COLLECTION, cache_root=None,
-                              force=False, timeout=120, prefer_reference_molecule=True,
-                              annotate_from_alternate=True,
-                              prefer_alternate_annotation=False):
+def download_viral_references(
+    *,
+    species: str | int | None = None,
+    collection: ViralCollection | str | None = None,
+    cache_root: str | PathLike[str] | None = None,
+    force: bool = False,
+    timeout: float | None = 120,
+    prefer_reference_molecule: bool = True,
+    annotate_from_alternate: bool = True,
+    prefer_alternate_annotation: bool = False,
+) -> ViralReferenceFiles:
     """Install a viral genome, transcript and protein collection for an analysis target.
 
     :func:`viral_collections` lists what can be installed; the one published
@@ -705,7 +713,7 @@ def download_viral_references(*, species="human", collection=VIRAL_COLLECTION, c
     cancer-transcriptome analysis. Target species does not assert that every
     source virus has that host, collection membership is not a per-virus
     causality classification, and analysis contexts are not exclusive. To
-    create a filtered derived set, use :func:`index_viral_references`. The
+    create a filtered derived set, use :func:`select_viral_references`. The
     collection is stored under ``ORFDATA_CACHE`` (or the normal OpenVax cache);
     a verified cache is reused and ``force=True`` refreshes or repairs it. A
     request that stalls for ``timeout`` seconds is retried, then fails;
@@ -832,7 +840,7 @@ def _index_result(path, *, bundle, contexts, excluded_contexts, context_match, s
     }
     if any(metadata.get(key) != value for key, value in expected.items()):
         raise ValueError(f"Viral reference index identity mismatch: {path}")
-    return ViralReferenceIndex(
+    return SelectedViralReferences(
         target_species=bundle.target_species,
         target_taxon_id=bundle.target_taxon_id,
         collection=bundle.collection,
@@ -843,7 +851,7 @@ def _index_result(path, *, bundle, contexts, excluded_contexts, context_match, s
         excluded_contexts=excluded_contexts,
         context_match=context_match,
         subsets=subsets,
-        source_bundle=bundle.path,
+        source_collection=bundle.path,
         **_paths(path),
     )
 
@@ -888,11 +896,20 @@ def _selected_genomes(installed, abbreviations):
     return tuple(rows[name] for name in abbreviations)
 
 
-def index_viral_references(*, contexts=None, exclude_contexts=None, context_match="any", subsets=None,
-                           species="human",
-                           collection=VIRAL_COLLECTION, download_if_missing=False, cache_root=None,
-                           force=False, timeout=120):
-    """Build a reusable reference set for selected viral contexts and named subsets.
+def select_viral_references(
+    *,
+    contexts: Iterable[str] | None = None,
+    exclude_contexts: Iterable[str] | None = None,
+    context_match: str = "any",
+    subsets: Iterable[str] | None = None,
+    species: str | int | None = None,
+    collection: ViralCollection | str | None = None,
+    download_if_missing: bool = False,
+    cache_root: str | PathLike[str] | None = None,
+    force: bool = False,
+    timeout: float | None = 120,
+) -> ViralReferenceFiles:
+    """Select reusable reference files by viral context or named subset.
 
     The current collection targets human analysis; future collections may
     target other species. Context membership is an association and never
@@ -900,13 +917,13 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
     select their union by default or their intersection with
     ``context_match='all'``; excluded contexts are then removed. Excluding a
     context without naming one starts from every context. The source
-    GenBank bundle is cached once; indexes reuse it rather than downloading the
+    GenBank collection is cached once; selections reuse it rather than downloading the
     same reference for each context.
 
     The derived set carries the same genome, transcriptome and proteome layers
-    as the bundle, including its GTF. ``force=True`` rebuilds the index from
-    the bundle, and also repairs the bundle itself when ``download_if_missing``
-    allows the network; a damaged index is rebuilt either way, since it is
+    as the collection, including its GTF. ``force=True`` rebuilds the selection from
+    the collection, and also repairs the collection itself when ``download_if_missing``
+    allows the network; a damaged selection is rebuilt either way, since it is
     derived from local files.
     """
     contexts = normalize_viral_contexts(contexts)
@@ -916,7 +933,7 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
         raise ValueError("At least one viral context, subset or excluded context is required")
     if context_match not in ("any", "all"):
         raise ValueError("context_match must be 'any' or 'all'")
-    bundle = viral_reference_bundle(
+    bundle = open_viral_references(
         species=species, collection=collection, download_if_missing=download_if_missing,
         cache_root=cache_root, force=force and download_if_missing, timeout=timeout)
     abbreviations = _selected_abbreviations(contexts, excluded_contexts, context_match, subsets)
@@ -998,7 +1015,7 @@ def index_viral_references(*, contexts=None, exclude_contexts=None, context_matc
 
 
 def viral_reference_summary(*, contexts=None, exclude_contexts=None, context_match="any",
-                            subsets=None, species="human", collection=VIRAL_COLLECTION,
+                            subsets=None, species=None, collection=None,
                             cache_root=None):
     """Describe an installed collection, or one selection of it, without writing anything.
 
@@ -1008,7 +1025,7 @@ def viral_reference_summary(*, contexts=None, exclude_contexts=None, context_mat
     which source annotated them, and which selected genomes have no annotated
     CDS feature at all.
     A context or subset selection narrows the counts to the matching genomes;
-    it does not build a derived index, which :func:`index_viral_references`
+    it does not build a derived selection, which :func:`select_viral_references`
     does.
     """
     contexts = normalize_viral_contexts(contexts)
@@ -1016,7 +1033,7 @@ def viral_reference_summary(*, contexts=None, exclude_contexts=None, context_mat
     subsets = normalize_viral_subsets(subsets)
     if context_match not in ("any", "all"):
         raise ValueError("context_match must be 'any' or 'all'")
-    bundle = viral_reference_bundle(species=species, collection=collection, cache_root=cache_root)
+    bundle = open_viral_references(species=species, collection=collection, cache_root=cache_root)
     metadata = _metadata(bundle.path, expected_schema=BUNDLE_SCHEMA)
     genomes = _read_table(bundle.genome_table)
     transcripts = _read_table(bundle.transcript_table)
@@ -1076,7 +1093,7 @@ def viral_reference_summary(*, contexts=None, exclude_contexts=None, context_mat
 
 
 def viral_annotation_survey(*, contexts=None, exclude_contexts=None, context_match="any",
-                            subsets=None, species="human", collection=VIRAL_COLLECTION,
+                            subsets=None, species=None, collection=None,
                             cache_root=None):
     """Say, genome by genome, how complete an installed collection's annotation is.
 
@@ -1097,9 +1114,10 @@ def viral_annotation_survey(*, contexts=None, exclude_contexts=None, context_mat
     summary = viral_reference_summary(
         contexts=contexts, exclude_contexts=exclude_contexts, context_match=context_match,
         subsets=subsets, species=species, collection=collection, cache_root=cache_root)
-    bundle = viral_reference_bundle(species=species, collection=collection, cache_root=cache_root)
+    bundle = open_viral_references(species=species, collection=collection, cache_root=cache_root)
     chosen = viral_collection(bundle.collection)
-    ledger = chosen.ledger()
+    ledger = (chosen.source_summary(chosen.alternate_source)
+              if chosen.alternate_source else empty_ledger())
     genomes = _read_table(bundle.genome_table)
     if summary["selection"]["selected"]:
         wanted = {row["abbreviation"] for row in genomes} & set(_selected_abbreviations(
@@ -1154,8 +1172,13 @@ def viral_annotation_survey(*, contexts=None, exclude_contexts=None, context_mat
     })
 
 
-def viral_genome(reference_set, *, cache_root=None, rebuild=False):
-    """Open a bundle or index as a PyEnsembl genome of viral coding transcripts.
+def viral_genome(
+    reference_set: ViralReferenceFiles,
+    *,
+    cache_root: str | PathLike[str] | None = None,
+    rebuild: bool = False,
+):
+    """Open viral reference files as a PyEnsembl genome of coding transcripts.
 
     The GTF, transcript FASTA and protein FASTA of the set are indexed into a
     PyEnsembl database kept beside the cache, never inside the checksummed
@@ -1164,8 +1187,8 @@ def viral_genome(reference_set, *, cache_root=None, rebuild=False):
     contig gets its coding effect from the source CDS annotation, including a
     non-standard genetic code declared by the source record.
     """
-    if not isinstance(reference_set, ViralReferenceSet):
-        raise TypeError("viral_genome needs a ViralReferenceBundle or ViralReferenceIndex")
+    if not isinstance(reference_set, ViralReferenceFiles):
+        raise TypeError("viral_genome needs ViralReferenceFiles")
     try:
         from pyensembl import Genome
     except ImportError as error:

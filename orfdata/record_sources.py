@@ -51,8 +51,8 @@ REQUEST_INTERVAL = 0.34
 
 
 @dataclass(frozen=True)
-class SourceRecord:
-    """One reference molecule as a source publishes it, with that source's own document."""
+class FetchedGenome:
+    """One fetched genome, its coding features, and the source document verbatim."""
 
     source: str
     identifier: str
@@ -91,6 +91,7 @@ class ReferenceSource:
 
     name = ""
     description = ""
+    url = ""
     # Which inventory column names an entry at this source.
     inventory_field = ""
     batch_size = 1
@@ -164,6 +165,7 @@ class GenBankSource(ReferenceSource):
 
     name = GENBANK_SOURCE
     description = "NCBI GenBank nucleotide records"
+    url = NCBI_EFETCH_URL
     inventory_field = "genbank"
     batch_size = 25
 
@@ -172,7 +174,7 @@ class GenBankSource(ReferenceSource):
 
     def records(self, identifiers, *, timeout):
         identifiers = tuple(identifiers)
-        payload = fetch(NCBI_EFETCH_URL, timeout=timeout, description="NCBI EFetch", params={
+        payload = fetch(self.url, timeout=timeout, description="NCBI EFetch", params={
             "db": "nuccore",
             "id": ",".join(identifiers),
             "rettype": "gbwithparts",
@@ -183,7 +185,7 @@ class GenBankSource(ReferenceSource):
         parsed = parse_genbank(payload)
         if len(parsed) != len(identifiers):
             raise ValueError(f"NCBI returned {len(parsed)} records for {len(identifiers)} accessions")
-        return tuple(SourceRecord(
+        return tuple(FetchedGenome(
             source=self.name,
             identifier=record.accession_version,
             sequence=record.sequence,
@@ -205,13 +207,14 @@ class PaVESource(ReferenceSource):
 
     name = PAVE_SOURCE
     description = "Papillomavirus Episteme (PaVE) reference genomes"
+    url = f"{PAVE_API_URL}/genome"
     inventory_field = "pave_id"
 
     def record(self, identifier, *, timeout):
-        document = fetch(f"{PAVE_API_URL}/genome/{identifier}", timeout=timeout,
+        document = fetch(f"{self.url}/{identifier}", timeout=timeout,
                          description=f"PaVE genome {identifier}")
         sequence, features, title = self._read(document, identifier)
-        return SourceRecord(
+        return FetchedGenome(
             source=self.name,
             identifier=identifier,
             sequence=sequence,

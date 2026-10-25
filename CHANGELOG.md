@@ -1,54 +1,77 @@
 # 0.36.0
 
+- Public names now say what their values are. `ProteinSequence` is one protein
+  sequence with provenance, `VirusProteins` is a set of proteins from one
+  virus or FASTA, and `list_data()` returns `DataStatus` values for bundled,
+  downloadable and buildable data. Fetcher and viral-cache implementation
+  classes are no longer exported from the package root. A `Proteome` exposes
+  `.proteins`, `from_proteins()` and `with_proteins()`; producer links target a
+  `protein` or `record`, so the public API no longer calls proteins “entries.”
+  Downloaded and selected viral files share the `ViralReferenceFiles` return
+  type and the literal verbs `open_viral_references()` and
+  `select_viral_references()` replace “bundle” and “index” in the public API.
+- Viral collection selection is one API everywhere. `viral_collection()` now
+  accepts a collection object, name, alias, panel name, or a species with one
+  registered collection; the download/open functions derive the target species
+  from it instead of defaulting independently to human. `viral_collections()`
+  can filter by species or source without reading or downloading data. A
+  collection's `source()` and `source_summary()` both default to its declared primary
+  source, and an undeclared source is an error rather than an empty answer.
+- The checked-TSV descriptor, expected-sequence check and fetched-genome value
+  are internal implementation types rather than package-root API. Users work
+  with collections, ORF catalogues, quantitative datasets and proteomes; file
+  layout and verification do not add another public vocabulary.
 - Reference tables are pandas data frames. `viral_panel_coverage()` and
   `viral_contexts()` return a `DataFrame` instead of a tuple of dataclasses,
-  and `collection.ledger(source)` returns one keyed by entry abbreviation, so
-  an inventory or a ledger can be filtered, joined and aggregated with pandas
+  and `collection.source_summary(source)` returns one keyed by entry abbreviation, so
+  an inventory or a source summary can be filtered, joined and aggregated with pandas
   rather than through bespoke selectors. The packaged table's own header lines
   travel on `frame.attrs`. `ViralPanelEntry`, `LedgerEntry` and `ViralContext`
-  are gone: a row of a table is a row of a table. `LedgerAnchor` is now
-  `Anchor`, and the per-row helpers it used to carry are plain functions —
+  are gone: a row of a frame is a row of a frame. A source summary's required
+  sequence is checked internally, and the per-row helpers are plain functions —
   `published(row)`, `same_molecule(row, sequence)` and
-  `verify_record(row, record)`. `ReferenceSource.ledger_entries` is now
-  `ReferenceSource.build_ledger` and also returns a frame. pandas 3 is a new
+  `verify_record(row, record)`. Source-summary construction also returns a frame. pandas 3 is a new
   runtime dependency. On-disk formats and checksums are unchanged: the
   packaged tables round-trip byte for byte through the new reader and writer.
-- One way to carry a reference database, whatever its source or species.
-  Every packaged table ORFdata ships — a collection's inventory and one ledger
-  per source — is now a `PackagedTable`: a tab-separated file with a named
+- One way to carry checked metadata, whatever its source or species.
+  Every TSV ORFdata ships — a collection's inventory and one source summary
+  per source — is read through the same internal `CheckedTSV`: a tab-separated file with a named
   schema and pinned SHA-256, read and written in one place
   (`orfdata.reference_table`) instead of once per file. A collection declares
   the tables it reads rather than naming resources and checksums in module
   constants, so a second panel, species or source is a registry entry and not
   another loader.
-- One ledger format for every source. `orfdata.reference_ledger.v2` records,
+- One source-summary format for every source. The existing on-disk
+  `orfdata.reference_ledger.v2` schema records,
   per entry and per source, the identifier that source resolved it to, the
   molecule's length, MD5 and SHA-256, how many coding features it annotates,
   its NCBI taxon and its own description. The GenBank side of the GDC
   collection, which used to be a separate summary table in its own format, is
-  now `gdc-grch38-d1-vd1-genbank.tsv`, and the alternate reference ledger is
-  `gdc-grch38-d1-vd1-pave.tsv`; `collection.ledger(source)` reads either.
+  now `gdc-grch38-d1-vd1-genbank.tsv`, and the alternate source summary is
+  `gdc-grch38-d1-vd1-pave.tsv`; `collection.source_summary(source)` reads either.
   `tools/build_reference_ledger.py --source NAME` builds any of them from one
   pass over the inventory, replacing the alternate-only builder.
-- Check every downloaded record against the ledger for its source, not only
+- Check every downloaded record against the pinned summary for its source, not only
   the alternate ones. A primary record whose length, checksums or coding
-  feature count no longer match what the packaged ledger pins now fails the
-  download loudly instead of being written. The GenBank ledger's checksum is
-  also the collection's cache identity, so a re-checked source invalidates
-  caches by itself.
+  feature count no longer match what the packaged summary pins now fails the
+  download loudly instead of being written. The record's source and identifier
+  must match the summary too, and an expected sequence must occur in the summary for the
+  source it names; identical bytes from the wrong source cannot satisfy either
+  check. The GenBank summary's checksum is also the collection's cache identity,
+  so a re-checked source invalidates caches by itself.
 - Tell a source that does not publish a record from one that cannot be read.
-  `SourceUnavailable` is raised for a refusal the server states, so a ledger
+  `SourceUnavailable` is raised for a refusal the server states, so a source summary
   records `unavailable` and `inconsistent` from what happened rather than from
   matching an error message.
 - Read a GenBank record's `DEFINITION` and its `source` feature's taxon, so a
-  source record carries its own title and NCBI taxon and no second lookup is
-  needed to describe it. The parsed-record class is `GenBankRecord`, which no
-  longer collides with the cross-source `SourceRecord`.
+  fetched genome carries its own title and NCBI taxon and no second lookup is
+  needed to describe it. The parsed document remains a `GenBankRecord`; the
+  fetchers share the same internal genome value.
 - Read an IUPAC ambiguity codon as the residue it determines. A codon carrying
   an ambiguity code translates to a residue whenever every base it stands for
   gives the same one — `ATY` is isoleucine either way — and only to `X` when
   they genuinely differ, which is how sequence databases publish them. This
-  corrects the two rows the reference ledger had recorded as `inconsistent`:
+  corrects the two source-summary rows previously recorded as `inconsistent`:
   HPV171 and HPV172 each carry exactly one `Y` in their published genome, in
   an `ATY` and a `TGY` codon that cannot change the protein, so PaVE's
   coordinates do reproduce its published proteins after all. The alternate
@@ -80,7 +103,7 @@
   how many are complete, how many carry no gene name, how many are spliced,
   and — where a collection names an alternate source publishing the identical
   molecule — how many more coding features that source publishes, read from
-  the packaged ledger without a network request. No gene list is built in, so
+  the packaged source summary without a network request. No gene list is built in, so
   the survey is true of any collection, species and source.
 - `--alternate-annotations` (`prefer_alternate_annotation=True`) takes the
   alternate source's coding features wherever it publishes the identical
@@ -102,7 +125,7 @@
   as GRCh38.d1.vd1 carries as extra contigs), `transcriptome` (one spliced
   coding transcript per source CDS feature, with `annotation.gtf` placing it on
   the genome) and `proteome` (the source translation of each transcript).
-  `viral_reference_bundle(download_if_missing=True, species="human")` acquires
+  `open_viral_references(download_if_missing=True, species="human")` acquires
   it; `bundle.layers`, `bundle.layer("transcriptome")` and
   `viral_reference_summary()` describe it, and `orfdata viral summary`
   prints that summary. Each cached GenBank record is stored exactly as NCBI
@@ -131,10 +154,9 @@
   HPV16 now carries 7,906 bases and ten complete coding transcripts, including
   the spliced E1^E4, E8^E2 and E6\* and an 83-residue E5, where the GenBank
   accession gave eight with E4 and E5 5'-partial and no spliced models.
-- Sources are a named, published thing rather than a special case.
-  `reference_sources()` lists them — `genbank` and `pave` today — and a
-  `ReferenceSource` returns a `SourceRecord` carrying the molecule, its coding
-  features and the source's own document. A collection stores every document
+- Sources are a named, published thing rather than a special case. The internal
+  source registry knows `genbank` and `pave` today, and each fetch returns the
+  molecule, its coding features and the source's own document. A collection stores every document
   under `records/`, named for the entry, the source and the identifier, so
   `SHA256SUMS` attests to whichever source served it, and `genome_source` and
   `annotation_source` say where each genome and transcript came from.
@@ -144,8 +166,8 @@
   every entry point takes a collection name, so a second species or source set
   is a registry entry rather than a code path. `install_species` reads the
   collections a species has from the same registry.
-- Ledgers are general: `orfdata.reference_ledger` reads and writes a packaged,
-  checksummed record of what each entry looks like at a collection's alternate
+- Source summaries are general: the internal reader handles a packaged,
+  checksummed record of what each entry looks like at any collection source
   source, with states `published`, `unavailable` and `inconsistent` — the last
   for an alternate whose own annotation does not reproduce its published
   proteins, which no longer applies to any of the 189 rows. A fetched alternate is verified
@@ -201,7 +223,7 @@
   genomes and chain files; the existing resource-specific commands remain
   available. An unknown kind, species or context is an error rather than an
   empty listing.
-- `index_viral_references()` creates reusable union or intersection selections
+- `select_viral_references()` creates reusable union or intersection selections
   for nonexclusive contexts and named subsets without giving an
   accession/version a context-specific identity. It rebuilds a damaged index
   from the local bundle instead of failing, and excluding a context without

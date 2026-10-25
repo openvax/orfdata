@@ -5,7 +5,7 @@ import io
 import json
 from urllib.parse import unquote
 
-from orfdata import ProducerInfo, Proteome, ProteomeEntry, ReferenceContext
+from orfdata import ProducerInfo, ProteinSequence, Proteome, ReferenceContext
 
 
 def _tokens(text):
@@ -20,20 +20,20 @@ def _fields(token):
 
 def test_readable_tokens_resolve_after_offline_load_and_preserve_sources(tmp_path):
     reference = ReferenceContext(9606, "human", "GRCh38", "Ensembl", "115")
-    cds = ProteomeEntry("ENSP1.1", "MPEPTIDE", "annotated", 9606, "ensembl:115")
-    nc = ProteomeEntry("ORF1", "MPEP", "extra_orf", 9606, "catalogue:fixture",
+    cds = ProteinSequence("ENSP1.1", "MPEPTIDE", "annotated", 9606, "ensembl:115")
+    nc = ProteinSequence("ORF1", "MPEP", "extra_orf", 9606, "catalogue:fixture",
                        orf_type="uORF")
-    varcode = ProteomeEntry.from_producer("MVAR", taxon_id=9606, producer=ProducerInfo(
+    varcode = ProteinSequence.from_producer("MVAR", taxon_id=9606, producer=ProducerInfo(
         "reference_cds", "dna_prediction", "varcode", "V 1|x", reference=reference,
         sample_id="tumor A", gene_names=("GENE|A",)))
-    products = tuple(ProteomeEntry.from_producer(
+    products = tuple(ProteinSequence.from_producer(
         "MPEP", taxon_id=9606, producer=ProducerInfo(
             "nc_orf", "rna_assembly", "isovar", "ASM1", reference=reference,
             sample_id=sample, gene_names=("GENE 1", "GENE|2"), orf_kind="uORF",
             start_complete=False, stop_complete=None)) for sample in ("A", "B"))
-    missing = ProteomeEntry.from_producer("M", taxon_id=9606, producer=ProducerInfo(
+    missing = ProteinSequence.from_producer("M", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "no gene", reference=reference))
-    proteome = Proteome(reference, (cds, nc)).with_entries((varcode, *products, missing))
+    proteome = Proteome(reference, (cds, nc)).with_proteins((varcode, *products, missing))
     path = tmp_path / "joint.proteome.json.gz"
     proteome.save(path)
     loaded = Proteome.load(path)
@@ -62,14 +62,14 @@ def test_readable_tokens_resolve_after_offline_load_and_preserve_sources(tmp_pat
 
 def test_exact_dedup_is_opt_in_and_indexes_every_source(tmp_path):
     reference = ReferenceContext(9606, "human", "GRCh38", "Ensembl", "115")
-    first = ProteomeEntry.from_producer("MPEP", taxon_id=9606, producer=ProducerInfo(
+    first = ProteinSequence.from_producer("MPEP", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "P1", reference=reference, sample_id="A"))
-    second = ProteomeEntry.from_producer("MPEP", taxon_id=9606, producer=ProducerInfo(
+    second = ProteinSequence.from_producer("MPEP", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "P1", reference=reference, sample_id="B"))
-    partial = ProteomeEntry.from_producer("PEP", taxon_id=9606, producer=ProducerInfo(
+    partial = ProteinSequence.from_producer("PEP", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "P2", reference=reference,
         start_complete=False))
-    proteome = Proteome.from_entries((first, second, partial), reference=reference)
+    proteome = Proteome.from_proteins((first, second, partial), reference=reference)
     normal = io.StringIO()
     proteome.write_fasta(normal)
     assert len(_tokens(normal.getvalue())) == 3
@@ -89,9 +89,9 @@ def test_exact_dedup_is_opt_in_and_indexes_every_source(tmp_path):
 
 def test_v3_external_entry_snapshot_keeps_its_original_identity(tmp_path):
     reference = ReferenceContext(9606, "human", "GRCh38", "Ensembl", "115")
-    entry = ProteomeEntry.from_producer("MAA", taxon_id=9606, producer=ProducerInfo(
+    entry = ProteinSequence.from_producer("MAA", taxon_id=9606, producer=ProducerInfo(
         "nc_orf", "rna_assembly", "isovar", "P1", reference=reference))
-    collection = Proteome.from_entries([entry], reference=reference)
+    collection = Proteome.from_proteins([entry], reference=reference)
     path = tmp_path / "v3.json.gz"
     collection.save(path)
     snapshot = json.loads(gzip.decompress(path.read_bytes()))

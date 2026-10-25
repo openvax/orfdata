@@ -3,7 +3,7 @@
 import argparse
 
 from .cli_output import print_fields, print_json, print_table
-from .downloads import list_downloads
+from .downloads import list_data
 
 
 def _source_paths(items, label):
@@ -168,14 +168,14 @@ def run(argv=None, prog="orfdata download"):
     args = parser.parse_args(argv)
     try:
         if args.command in ("list", "status"):
-            rows = list_downloads(
+            rows = list_data(
                 kind=args.kind, species=args.species, contexts=args.context,
                 context_match=args.context_match, installed=args.installed,
                 cache_root=args.cache_root, verify_files=args.verify)
             _show(rows, args.json)
             return
         if args.command == "viral":
-            from .viral_panel import download_viral_references, index_viral_references
+            from .viral_panel import download_viral_references, select_viral_references
 
             bundle = download_viral_references(
                 species=args.species, collection=args.collection, cache_root=args.cache_root,
@@ -184,12 +184,12 @@ def run(argv=None, prog="orfdata download"):
                 annotate_from_alternate=args.annotate_from_alternate,
                 prefer_alternate_annotation=args.prefer_alternate_annotation)
             if args.context or args.exclude_context or args.subset:
-                indexed = index_viral_references(
+                indexed = select_viral_references(
                     contexts=args.context, exclude_contexts=args.exclude_context,
                     context_match=args.context_match, subsets=args.subset,
                     species=args.species, collection=args.collection,
                     cache_root=args.cache_root, force=args.force, timeout=args.timeout)
-                output = dict(indexed.to_dict(), kind="viral-index", status="available")
+                output = dict(indexed.to_dict(), kind="viral-selection", status="available")
             else:
                 output = dict(bundle.to_dict(), kind="viral", status="available")
         elif args.command == "catalog":

@@ -59,35 +59,35 @@ covered. `not_bundled` describes ORFdata coverage, not the availability of
 annotations elsewhere. The inventory contains metadata only and does not make
 unavailable entries selectable through `viral_references()` or `viral="all"`.
 
-Beside the inventory, ORFdata packages one **source ledger** per source the
+Beside the inventory, ORFdata packages one **source summary** per source the
 collection draws on, all in the same format: what that source publishes for
 every entry in the inventory, with the identifier it resolved to, the
 molecule's length and checksums, how many coding features it annotates, its
 NCBI taxon and its own description.
 
-| ledger | rows | records |
+| source summary | rows | records |
 | --- | --- | --- |
 | [`gdc-grch38-d1-vd1-genbank.tsv`](https://github.com/openvax/orfdata/blob/main/orfdata/data/viral/gdc-grch38-d1-vd1-genbank.tsv) | 200 | the versioned NCBI record behind each inventory accession |
 | [`gdc-grch38-d1-vd1-pave.tsv`](https://github.com/openvax/orfdata/blob/main/orfdata/data/viral/gdc-grch38-d1-vd1-pave.tsv) | 189 | the PaVE reference the inventory names for each papillomavirus row |
 
-The ledgers hold checksums and counts, not sequence. They are what makes the
+The summaries hold checksums and counts, not sequence. They are what makes the
 decisions below offline ones: which molecule a row should carry, whether a
 downloaded record is still the molecule that was pinned, and how much more a
-second source annotates. `collection.ledger(source)` reads either one as a
+second source annotates. `collection.source_summary(source)` reads either one as a
 frame keyed by entry abbreviation, and `tools/build_reference_ledger.py
 --source NAME` rebuilds it.
 
 ```python
 from orfdata import viral_collection
 
-ledger = viral_collection("gdc-viruses").ledger("pave")
-print(ledger.at["HPV16", "sequence_md5"], int(ledger.at["HPV16", "coding_features"]))
+summary = viral_collection("gdc-viruses").source_summary("pave")
+print(summary.at["HPV16", "sequence_md5"], int(summary.at["HPV16", "coding_features"]))
 # f2463721818c29998ef5ab917e6df74a 10
 ```
 
-### What is in each table
+### What each frame contains
 
-Every table ORFdata hands back is a data frame with a fixed, documented column
+Every data frame ORFdata hands back has a fixed, documented column
 set. `orfdata.viral_coverage.COVERAGE_COLUMNS`,
 `orfdata.viral_coverage.CONTEXT_COLUMNS` and
 `orfdata.reference_ledger.FRAME_COLUMNS` are those sets as code, and a test
@@ -110,7 +110,7 @@ holds each frame to them.
 | `available` | bool | whether `bundled_reference_id` is set |
 | `contexts` | object | tuple of context names this row belongs to |
 
-`collection.ledger(source)` — one row per entry the source names, indexed by
+`collection.source_summary(source)` — one row per entry the source names, indexed by
 `abbreviation`:
 
 | column | dtype | meaning |
@@ -146,7 +146,7 @@ orfdata download viral --species human
 Viral support is part of a regular `pip install orfdata`; only the data is
 downloaded. `orfdata setup --species human` installs this default human collection
 alongside the human catalogues and chains, and `--collections none` skips it.
-The command above installs only this checked bundle under `ORFDATA_CACHE` (or
+The command above installs only this checked collection under `ORFDATA_CACHE` (or
 the normal OpenVax cache), rather than asking for an export directory. Use
 `--cache-root DIRECTORY` to select another cache and `--force` to refresh or
 repair the installed files.
@@ -186,7 +186,7 @@ behind the alternate source: 155 genomes, 235 coding features
 initiation: alternative 3, atg 1686, declared 1, non_canonical 2, partial 66
 ```
 
-`behind the alternate source` is read from the packaged ledger, which records
+`behind the alternate source` is read from the packaged source summary, which records
 how many coding features the alternate publishes for each entry, so the
 comparison needs no network request — and it is only counted where the
 alternate publishes the identical molecule, so it is always a difference of
@@ -260,7 +260,7 @@ The unfiltered download remains the whole 200-reference GDC screen. Contexts
 remain available for future overlapping analysis categories, such as
 autoimmune or respiratory, without changing source-reference identity.
 
-The bundle keeps three layers, and names them the same way everywhere:
+The installed references keep three layers, named the same way everywhere:
 
 | Layer | Molecule | Files |
 | --- | --- | --- |
@@ -354,7 +354,7 @@ HPV56 and HPV59 — four IARC Group 1 agents. The inventory's own `PaVE Notes`
 column marks 18 of them `Revised`. For the other 163 the two are the same
 molecule and the question does not arise.
 
-The alternate source's ledger records what each entry looks like there, so the
+The alternate source's summary records what each entry looks like there, so the
 choice is made offline and the fetched molecule is verified against pinned
 checksums before anything is written. Each genome
 records `genome_source`, `alternate_source`, `alternate_id` and
@@ -375,7 +375,7 @@ molecule, so this is also what makes their coordinates land.
 `--inventory-molecules` keeps every row on the accession its inventory names
 first; the summary then names the genomes that are not the alternate
 reference. An alternate that is unreachable, or no longer the molecule the
-ledger pins, leaves the row on its own record with the reason recorded rather
+source summary pins, leaves the row on its own record with the reason recorded rather
 than discarding the download.
 
 ### Whose annotation each molecule carries
@@ -458,7 +458,7 @@ opens as a PyEnsembl genome — see [Downstream tools](downstream.md):
 ```python
 from orfdata import viral_genome
 
-genome = viral_genome(bundle)
+genome = viral_genome(references)
 print(genome.transcript_by_id("AY446894.2_cds1").protein_sequence)
 ```
 
@@ -466,36 +466,37 @@ The Python API returns the generated paths and record counts:
 
 ```python
 from orfdata import (
+    ViralReferenceFiles,
     download_viral_references,
-    index_viral_references,
-    viral_reference_bundle,
+    open_viral_references,
+    select_viral_references,
 )
 
-bundle = viral_reference_bundle(
+references: ViralReferenceFiles = open_viral_references(
     download_if_missing=True,
     species="human",
 )
-print(bundle.genome_fasta)
-print(bundle.transcript_fasta, bundle.protein_fasta, bundle.annotation_gtf)
-print(bundle.genome_count, bundle.protein_count)  # 200, 1678 for the pinned records
-print(bundle.collection, bundle.contexts)
+print(references.genome_fasta)
+print(references.transcript_fasta, references.protein_fasta, references.annotation_gtf)
+print(references.genome_count, references.protein_count)  # 200, 1678 for the pinned records
+print(references.collection, references.contexts)
 
-for layer in bundle.layers:  # genome, transcriptome, proteome
+for layer in references.layers:  # genome, transcriptome, proteome
     print(layer.name, layer.molecule, layer.records, layer.fasta)
 
 # Later, reopen the verified cached files without a network request.
-bundle = viral_reference_bundle(species="human")
+references = open_viral_references(species="human")
 
 # The explicit downloader is equivalent to download_if_missing=True.
-bundle = download_viral_references(species="human")
+references = download_viral_references(species="human")
 
-# A named subset index reuses the source bundle and can fetch it on demand.
-cancer_index = index_viral_references(
+# A named subset reuses the installed collection and can fetch it on demand.
+cancer = select_viral_references(
     subsets=["cancer-causing"],
     species="human",
     download_if_missing=True,
 )
-print(cancer_index.protein_fasta)
+print(cancer.protein_fasta)
 ```
 
 Summarize what is installed, or what a selection of it holds, without writing
@@ -525,7 +526,7 @@ orfdata download list --missing
 ```
 
 Use `--json` for machine-readable output and `--verify` to hash installed files.
-The Python equivalent is `list_downloads()`.
+The Python equivalent is `list_data()`.
 
 This is a source-record download for alignment and annotation workflows. It
 does not change the curated, sequence-qualified references exposed through
@@ -595,7 +596,7 @@ retains the association and taxonomy source URLs. Host associations can cover
 several host taxa as new references are curated; an unlisted host is unknown,
 not proof that infection is impossible. NCBI Virus's isolation-host metadata is
 not an exhaustive host-range list. `ref.host_taxon_ids` and `ref.host_source` have the
-same meaning as in [ViralProteome](proteome.md#viral-proteomes).
+same meaning as in [VirusProteins](proteome.md#viral-proteomes).
 
 When annotating an existing BAM, continue to bind against its **actual** full
 alignment-reference DNA:

@@ -29,11 +29,6 @@ from orfdata.reference_ledger import PUBLISHED, read_ledger_bytes, write_ledger
 from orfdata.viral_coverage import viral_panel_coverage
 from orfdata.viral_registry import viral_collection
 
-SOURCE_URLS = {
-    "genbank": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
-    "pave": "https://pave.niaid.nih.gov/api/genome",
-}
-
 
 def build(collection_name="gdc-viruses", source_name=None, *, timeout=60):
     """Fetch every record one source publishes for an inventory, with its checksums."""
@@ -43,14 +38,16 @@ def build(collection_name="gdc-viruses", source_name=None, *, timeout=60):
     def report(entry, error):
         print(f"  {entry.abbreviation}: {error}", file=sys.stderr)
 
-    ledger = source.build_ledger(viral_panel_coverage(), timeout=timeout, report=report)
-    for anchor in collection.source_anchors(source.name):
-        anchor.check(ledger)
+    ledger = source.build_ledger(
+        viral_panel_coverage(collection=collection), timeout=timeout, report=report
+    )
+    for expected in collection.expected_for(source.name):
+        expected.check(ledger)
     checked = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-    notes = {f"anchor_{anchor.abbreviation.lower()}": anchor.sequence_md5
-             for anchor in collection.source_anchors(source.name)}
+    notes = {f"expected_{expected.abbreviation.lower()}": expected.sequence_md5
+             for expected in collection.expected_for(source.name)}
     content = write_ledger(ledger, panel=collection.panel, source=source.name,
-                           source_url=SOURCE_URLS.get(source.name, ""), checked=checked,
+                           source_url=source.url, checked=checked,
                            notes=notes)
     read_ledger_bytes(content, name=f"{collection.panel} {source.name} ledger")
     serving = int((ledger["state"] == PUBLISHED).sum())

@@ -96,17 +96,17 @@ def test_summary_without_an_installed_collection_says_how_to_get_one(tmp_path, c
     assert "orfdata download viral" in capsys.readouterr().err
 
 
-def test_download_viral_builds_the_bundle_then_a_derived_index(viral_panel, tmp_path, capsys):
+def test_download_viral_builds_the_collection_then_a_selection(viral_panel, tmp_path, capsys):
     run(["download", "viral", "--cache-root", str(tmp_path), "--json"])
-    bundle = json.loads(capsys.readouterr().out)
-    assert bundle["kind"] == "viral" and bundle["genome_count"] == 4
-    assert [layer["name"] for layer in bundle["layers"]] == [
+    collection = json.loads(capsys.readouterr().out)
+    assert collection["kind"] == "viral" and collection["genome_count"] == 4
+    assert [layer["name"] for layer in collection["layers"]] == [
         "genome", "transcriptome", "proteome"]
 
     run(["download", "viral", "--cache-root", str(tmp_path), "--context", "cancer", "--json"])
-    index = json.loads(capsys.readouterr().out)
-    assert index["kind"] == "viral-index" and index["genome_count"] == 2
-    assert index["source_bundle"] == bundle["path"]
+    selection = json.loads(capsys.readouterr().out)
+    assert selection["kind"] == "viral-selection" and selection["genome_count"] == 2
+    assert selection["source_collection"] == collection["path"]
 
     # Excluding a context without naming one starts from every context.
     run(["download", "viral", "--cache-root", str(tmp_path), "--exclude-context",

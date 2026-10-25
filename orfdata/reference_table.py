@@ -9,7 +9,7 @@ built — so they are read and written here once rather than once per table.
 A table reads as a :class:`pandas.DataFrame`, with the builder's own
 ``# key: value`` lines above the header kept in ``frame.attrs``: where the
 data came from, when it was checked, and whatever else belongs on the record.
-Another source, another panel or another species is a :class:`PackagedTable`
+Another source, another panel or another species is a :class:`CheckedTSV`
 on a registry entry, not another loader.
 """
 
@@ -25,8 +25,8 @@ SCHEMA_KEY = "schema"
 
 
 @dataclass(frozen=True)
-class PackagedTable:
-    """A checksummed table packaged with ORFdata, named by its schema and columns."""
+class CheckedTSV:
+    """One checksummed TSV file shipped inside ORFdata."""
 
     #: Path of the file inside the ``orfdata`` package.
     resource: str
@@ -59,7 +59,7 @@ class PackagedTable:
     def to_dict(self):
         """A JSON-ready description, as the other ORFdata status objects give."""
         return {"resource": self.resource, "sha256": self.sha256, "schema": self.schema,
-                "columns": list(self.columns)}
+                "columns": list(self.columns), "numeric": list(self.numeric)}
 
 
 def packaged_bytes(resource, sha256):

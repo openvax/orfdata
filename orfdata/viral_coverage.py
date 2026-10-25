@@ -47,9 +47,7 @@ import pandas as pd
 from .viral_registry import (
     GDC_VIRUSES,
     INVENTORY_COLUMNS,
-    ViralCollection,
     viral_collection,
-    viral_collections,
 )
 
 PANEL = GDC_VIRUSES.panel
@@ -79,24 +77,28 @@ _CONTEXT_ALIASES = {
 
 def _collection_for(panel=None, collection=None):
     """The collection a panel name or a collection name refers to."""
-    if collection is not None:
-        return collection if isinstance(collection, ViralCollection) else viral_collection(
-            collection)
-    if panel is None:
-        return GDC_VIRUSES
-    for candidate in viral_collections():
-        if panel in (candidate.panel, candidate.name):
-            return candidate
-    raise ValueError(f"Unknown viral panel {panel!r}; available: "
-                     f"{', '.join(sorted(item.panel for item in viral_collections()))}")
+    if panel is not None and collection is not None:
+        by_panel = viral_collection(panel)
+        by_name = viral_collection(collection)
+        if by_panel is not by_name:
+            raise ValueError(
+                f"Viral panel {panel!r} and collection {by_name.name!r} disagree"
+            )
+        return by_name
+    try:
+        return viral_collection(collection if collection is not None else panel)
+    except ValueError as error:
+        if panel is not None and collection is None:
+            raise ValueError(str(error).replace("viral collection", "viral panel")) from None
+        raise
 
 
 @lru_cache(maxsize=4)
 def _coverage(collection=GDC_VIRUSES):
     """A collection's inventory rows, from its packaged, checksummed table."""
-    frame = collection.inventory.read()
+    frame = collection.inventory()
     if frame.attrs.get("panel") != collection.panel:
-        raise ValueError(f"{collection.inventory.name} is not the {collection.panel} inventory")
+        raise ValueError(f"{collection.inventory_file.name} is not the {collection.panel} inventory")
     if (len(frame) != collection.references
             or frame["index"].to_list() != list(range(1, collection.references + 1))):
         raise ValueError(f"Incomplete {collection.panel} inventory")

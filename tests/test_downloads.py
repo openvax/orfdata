@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from orfdata import list_downloads
+from orfdata import list_data
 from orfdata.cli import run
 from orfdata.downloads import collection_state, default_collections
 from orfdata.install import _selected_collections
@@ -13,22 +13,22 @@ KINDS = {"viral", "catalog", "dataset", "reference", "genome", "chain"}
 
 
 def test_every_kind_is_listed_with_an_acquisition_command():
-    rows = list_downloads()
+    rows = list_data()
     assert {row.kind for row in rows} == KINDS
     # A bundled resource needs no command; everything acquirable names one.
     assert all(row.command for row in rows if row.acquire is not None)
     assert all(row.acquire is not None or row.installed for row in rows)
     assert all(row.status in ("available", "missing", "corrupt", "inaccessible") for row in rows)
-    assert [row.name for row in list_downloads(kind="viral")] == ["gdc-viruses"]
-    assert list_downloads(kind="all") == rows
+    assert [row.name for row in list_data(kind="viral")] == ["gdc-viruses"]
+    assert list_data(kind="all") == rows
 
 
 def test_filters_select_without_acquiring_anything():
-    human = list_downloads(species="human")
+    human = list_data(species="human")
     assert human and all("homo_sapiens" in row.species for row in human)
-    assert all(row.installed is False for row in list_downloads(installed=False))
-    assert all(row.installed for row in list_downloads(installed=True))
-    cancer = list_downloads(contexts=["cancer"])
+    assert all(row.installed is False for row in list_data(installed=False))
+    assert all(row.installed for row in list_data(installed=True))
+    cancer = list_data(contexts=["cancer"])
     assert [row.kind for row in cancer] == ["viral"]
     assert cancer[0].to_dict()["installed"] is cancer[0].installed
 
@@ -36,19 +36,20 @@ def test_filters_select_without_acquiring_anything():
 def test_unknown_selectors_are_errors_not_empty_listings():
     # A typo must not read as "nothing is available".
     with pytest.raises(ValueError, match="Unknown viral context"):
-        list_downloads(contexts=["cancer-transcriptom"])
+        list_data(contexts=["cancer-transcriptom"])
     with pytest.raises(ValueError, match="Unknown data kind"):
-        list_downloads(kind="virus")
+        list_data(kind="virus")
     with pytest.raises(ValueError, match="Unknown species alias"):
-        list_downloads(species="unicorn")
+        list_data(species="unicorn")
     with pytest.raises(ValueError, match="context_match"):
-        list_downloads(contexts=["cancer"], context_match="either")
+        list_data(contexts=["cancer"], context_match="either")
 
 
 def test_collections_are_declared_per_species(tmp_path):
     assert default_collections("human") == ("gdc-viruses",)
     assert default_collections("mouse") == ()
     assert collection_state("gdc-viruses", species="human", cache_root=str(tmp_path)) == "missing"
+    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "missing"
     with pytest.raises(ValueError, match="Unknown viral collection"):
         collection_state("gdc-rna", species="human", cache_root=str(tmp_path))
 

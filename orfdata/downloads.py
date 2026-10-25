@@ -1,13 +1,15 @@
 """Discover ORFdata resources and their local installation state."""
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
+from os import PathLike
 from typing import Optional
 
 from .reference import canonical_species, species_taxon
 
 
 @dataclass(frozen=True)
-class DownloadStatus:
+class DataStatus:
     """Identity, availability and acquisition route for one ORFdata resource."""
 
     kind: str
@@ -25,16 +27,16 @@ class DownloadStatus:
     restricted: bool = False
 
     @property
-    def installed(self):
+    def installed(self) -> bool:
         """Whether the resource is usable from local files."""
         return self.status == "available"
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation, as other OpenVax status objects do."""
         return dict(asdict(self), installed=self.installed)
 
 
-def default_collections(species):
+def default_collections(species: str | int) -> tuple[str, ...]:
     """The reference collections ``install_species`` installs for one species.
 
     A collection is a versioned, downloadable reference set that is not an ORF
@@ -43,29 +45,34 @@ def default_collections(species):
     """
     from .viral_registry import viral_collections
 
-    chosen = canonical_species(species)
-    return tuple(collection.name for collection in viral_collections()
-                 if canonical_species(collection.target_species) == chosen)
+    return tuple(collection.name for collection in viral_collections(species=species))
 
 
-def collection_state(name, *, species, cache_root=None, verify_files=True):
+def collection_state(
+    name: str,
+    *,
+    species: str | int | None = None,
+    cache_root: str | PathLike[str] | None = None,
+    verify_files: bool = True,
+) -> str:
     """Local state of one reference collection: ``available``, ``missing``, ``corrupt`` or ``inaccessible``.
 
     ``verify_files=False`` checks only that the expected files are present,
     without hashing them.
     """
-    from .viral_panel import _bundle_path, _existing_bundle, viral_reference_bundle
+    from .viral_panel import _bundle_path, _existing_bundle, open_viral_references
     from .viral_registry import viral_collection
 
     collection = viral_collection(name, species=species)
-    path = _bundle_path(cache_root, canonical_species(species), collection)
+    chosen_species = canonical_species(collection.target_species)
+    path = _bundle_path(cache_root, chosen_species, collection)
     if not path.is_dir():
         return "missing"
     try:
         if verify_files:
-            viral_reference_bundle(species=species, collection=name, cache_root=cache_root)
+            open_viral_references(collection=collection, cache_root=cache_root)
         else:
-            _existing_bundle(path, species=canonical_species(species), collection=collection)
+            _existing_bundle(path, species=chosen_species, collection=collection)
     except FileNotFoundError:
         return "missing"
     except OSError:
@@ -75,13 +82,20 @@ def collection_state(name, *, species, cache_root=None, verify_files=True):
     return "available"
 
 
-def install_collection(name, *, species, force=False, cache_root=None, timeout=120):
+def install_collection(
+    name: str,
+    *,
+    species: str | int | None = None,
+    force: bool = False,
+    cache_root: str | PathLike[str] | None = None,
+    timeout: float = 120,
+):
     """Download one reference collection, as ``orfdata download viral`` does."""
     from .viral_panel import download_viral_references
     from .viral_registry import viral_collection
 
     collection = viral_collection(name, species=species)
-    return download_viral_references(species=species, collection=collection.name,
+    return download_viral_references(collection=collection,
                                      cache_root=cache_root, force=force, timeout=timeout)
 
 
@@ -95,7 +109,7 @@ def _viral(cache_root, verify_files):
         species = canonical_species(collection.target_species)
         status = collection_state(collection.name, species=species, cache_root=cache_root,
                                   verify_files=verify_files)
-        rows.append(DownloadStatus(
+        rows.append(DataStatus(
             kind="viral",
             name=collection.name,
             version=bundle_version(collection),
@@ -128,7 +142,7 @@ def _catalogs(cache_root, verify_files):
         command = None
         if item.acquire is not None:
             command = f"orfdata download catalog {item.name} --version {item.version}"
-        rows.append(DownloadStatus(
+        rows.append(DataStatus(
             kind="catalog",
             name=item.name,
             version=item.version,
@@ -158,7 +172,7 @@ def _datasets(cache_root, verify_files):
                                 for reference in manifest.references}))
         taxa = tuple(sorted({reference.taxon_id for reference in manifest.references}))
         acquire = "download" if published else "build"
-        rows.append(DownloadStatus(
+        rows.append(DataStatus(
             kind="dataset",
             name=name,
             version=version,
@@ -185,7 +199,7 @@ def _references(cache_root, verify_files):
             inspection = registry.inspect_reference(
                 manifest.dataset_id, manifest.version, reference=spec.reference.key,
                 asset_id=spec.source.asset_id, verify_files=verify_files)
-            rows.append(DownloadStatus(
+            rows.append(DataStatus(
                 kind="reference",
                 name=f"{manifest.dataset_id}:{spec.source.asset_id}",
                 version=manifest.version,
@@ -210,7 +224,7 @@ def _genomes(cache_root, verify_files):
     for genome in pinned_genomes():
         inspection = _registry(genome, cache_root).inspect(
             genome.name, "1", verify_files=verify_files)
-        rows.append(DownloadStatus(
+        rows.append(DataStatus(
             kind="genome",
             name=genome.name,
             version=genome.annotation_version,
@@ -235,7 +249,7 @@ def _chains(cache_root, verify_files):
         inspection = _chain_registry(chain, cache_root).inspect(
             chain.name, "1", verify_files=verify_files)
         accept = " --accept-terms" if chain.restricted else ""
-        rows.append(DownloadStatus(
+        rows.append(DataStatus(
             kind="chain",
             name=chain.name,
             version="1",
@@ -254,8 +268,16 @@ def _chains(cache_root, verify_files):
     return tuple(rows)
 
 
-def list_downloads(*, kind=None, species=None, contexts=None, context_match="any",
-                   installed=None, cache_root=None, verify_files=False):
+def list_data(
+    *,
+    kind: str | None = None,
+    species: str | int | None = None,
+    contexts: Iterable[str] | None = None,
+    context_match: str = "any",
+    installed: bool | None = None,
+    cache_root: str | PathLike[str] | None = None,
+    verify_files: bool = False,
+) -> tuple[DataStatus, ...]:
     """List known data resources and local state without acquiring anything.
 
     ``kind`` may be ``viral``, ``catalog``, ``dataset``, ``reference``,

@@ -34,12 +34,12 @@ orfdata viral summary --subset cancer-causing
 ```python
 from varcode import Variant
 
-from orfdata import index_viral_references, viral_genome
+from orfdata import select_viral_references, viral_genome
 
-index = index_viral_references(
+references = select_viral_references(
     subsets=["cancer-causing"], species="human", download_if_missing=True
 )
-genome = viral_genome(index)  # A PyEnsembl genome over the viral contigs.
+genome = viral_genome(references)  # A PyEnsembl genome over the viral contigs.
 
 variant = Variant(contig="AY446894.2", start=1500, ref="C", alt="T", genome=genome)
 print(variant.effects().top_priority_effect().short_description)

@@ -14,8 +14,8 @@ whether a downloaded record is the molecule the collection expects, and what a
 second source would add. A row the source could not serve records why, and
 pins nothing.
 
-Ledgers are packaged, checksummed :class:`~orfdata.reference_table.PackagedTable`
-data, built by ``tools/build_reference_ledger.py``.
+These source summaries are checked :class:`~orfdata.reference_table.CheckedTSV` data shipped
+inside ORFdata and built by ``tools/build_reference_ledger.py``.
 
 A ledger reads as a data frame indexed by ``abbreviation`` (:data:`INDEX`)
 whose columns are :data:`FRAME_COLUMNS`:
@@ -48,7 +48,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .reference_table import PackagedTable, read_table, write_table
+from .reference_table import CheckedTSV, read_table, write_table
 
 SCHEMA = "orfdata.reference_ledger.v2"
 COLUMNS = ("index", "abbreviation", "source", "identifier", "state", "length_nt",
@@ -67,17 +67,17 @@ STATES = (PUBLISHED, UNAVAILABLE, INCONSISTENT)
 
 
 def ledger_table(resource, sha256):
-    """The packaged table one ledger is read from."""
-    return PackagedTable(resource=resource, sha256=sha256, schema=SCHEMA, columns=COLUMNS,
-                         numeric=NUMERIC)
+    """The checked TSV file one ledger is read from."""
+    return CheckedTSV(resource=resource, sha256=sha256, schema=SCHEMA, columns=COLUMNS,
+                      numeric=NUMERIC)
 
 
 @dataclass(frozen=True)
-class Anchor:
-    """One molecule a ledger must reproduce for the claim resting on it to hold.
+class ExpectedSequence:
+    """One sequence a rebuilt ledger must still contain.
 
     A ledger is only worth pinning if the source it describes is the source the
-    reference was really built from. An anchor names the one entry that settles
+    reference was really built from. This names the one entry that settles
     that, so rebuilding the ledger re-checks the claim instead of quietly
     recording a different answer.
     """
@@ -87,9 +87,19 @@ class Anchor:
     sequence_md5: str
     note: str = ""
 
+    def to_dict(self):
+        """Return the four parts of this claim as plain data."""
+        return {
+            "source": self.source,
+            "abbreviation": self.abbreviation,
+            "sequence_md5": self.sequence_md5,
+            "note": self.note,
+        }
+
     def check(self, ledger):
         """Raise unless a freshly built ledger still reproduces this molecule."""
         if (self.abbreviation not in ledger.index
+                or ledger.at[self.abbreviation, "source"] != self.source
                 or ledger.at[self.abbreviation, "sequence_md5"] != self.sequence_md5):
             raise ValueError(
                 f"{self.source} {self.abbreviation} no longer reproduces "
@@ -118,6 +128,11 @@ def verify_record(row, record):
     """Check a freshly fetched record against what a ledger row pins."""
     if row["state"] != PUBLISHED:
         raise ValueError(f"{row['source']} does not publish {record.identifier}")
+    if record.source != row["source"] or record.identifier != row["identifier"]:
+        raise ValueError(
+            f"Expected {row['source']} {row['identifier']}, got "
+            f"{record.source} {record.identifier}"
+        )
     if (record.length != row["length_nt"] or record.checksums() != (row["sequence_md5"],
                                                                     row["sequence_sha256"])):
         raise ValueError(
