@@ -6,8 +6,9 @@ translations of the reference CDSs, catalogue ncORFs bound to the transcripts,
 and optionally viral proteins associated with the host. All three sources have
 annotations; `reference_cds` identifies the proteins induced by the reference
 annotation's CDS features. Each method returns a new proteome. `proteome.layers` records
-every addition with its role (`host`, `viral` or `filter`), source, selection
-and counts, and each entry lists every transcript that encodes it.
+every addition with its role (`host`, `viral`, `component`, `external`,
+`derived` or `filter`), source, selection
+and counts, and each protein lists every transcript that encodes it.
 
 ```python
 from pyensembl import EnsemblRelease
@@ -48,7 +49,7 @@ selectors; `proteome()` and `Proteome.build()` have only `nc_orf_sources`.
 transcript with a reference CDS protein sequence. For Ensembl this matches the annotation's protein FASTA: Ensembl 115
 has 245,535 human proteins with 160,811 distinct sequences. They include
 nonsense-mediated-decay and immunoglobulin/T-cell receptor segment translations,
-and 11,540 proteins on patch, haplotype and unplaced contigs. Each entry
+and 11,540 proteins on patch, haplotype and unplaced contigs. Each protein
 records its accession, gene, transcript, contig and transcript biotype, so you
 can restrict them explicitly:
 
@@ -204,7 +205,7 @@ translated.
 
 ## Every transcript, and excluded ORFs
 
-Each extra ORF is one entry, whatever the number of transcripts encoding it.
+Each extra ORF produces one protein, whatever the number of transcripts encoding it.
 `entry.occurrences` lists them, the transcript the source names first. Each
 `Occurrence` has the transcript and gene, `start` and `end` slicing the
 transcript sequence, the genomic `coding_blocks` and `on_source_transcript`.
@@ -300,7 +301,7 @@ combined.save("human-all-proteins.proteome.json.gz")
 evidence filter. ORFs that do not bind to this genome are reported in
 `combined.excluded`. Reference CDS and viral proteins are unaffected.
 
-`proteins_by_id` maps each unique protein accession to a `ProteomeEntry` with
+`proteins_by_id` maps each unique protein accession to a `ProteinSequence` with
 its sequence, `protein_source`, taxon and source. `by_sequence()` groups entries with
 identical amino-acid sequences while retaining their separate identities.
 `viral="all"` chooses the native RefSeq placement when bundled references
@@ -313,31 +314,82 @@ that virus. A virus without a recorded association to the host is rejected.
 Requesting `viral="all"` for a host with no bundled viral references raises
 instead of silently returning a host-only proteome.
 
-`ViralProteome` is the input adapter for a protein FASTA supplied outside the
-bundled references. It holds that virus's NCBI taxon, recorded host taxa and
-host-range source, so the same host check applies:
+`ProteinSet` represents named protein sequences supplied outside the bundled
+references. It has no virus or host behavior of its own. When the sequences
+are viral, pass the host association to `with_viral` so the same host check
+applies:
 
 ```python
-from orfdata import ViralProteome
+from orfdata import ProteinSet
 
 # Template: substitute your FASTA, the virus taxon and your host-range source.
-hpv16 = ViralProteome.from_fasta(
-    "hpv16-proteins.fasta", name="HPV16", taxon_id=333760,
-    host_taxon_ids={9606}, host_source="Host range source and date",
+hpv16: ProteinSet = ProteinSet.from_fasta(
+    "hpv16-proteins.fasta",
+    name="HPV16",
+    taxon_id=333760,
+    source="Source database and release",
 )
-with_virus = proteome.with_viral(hpv16)
+with_virus: Proteome = proteome.with_viral(
+    hpv16,
+    host_taxon_ids={9606},
+    host_source="Host range source and date",
+)
 ```
 
 `viral=[first, second]` accepts several specific inputs. The tests exercise
 this with two synthetic viruses; HPV16 is the only released biological viral
 reference at present.
 
-All three protein kinds use the same `ProteomeEntry` and appear in the same
-`Proteome`. The distinct `ViralProteome` type describes an external input,
-not a second output collection. Viral entries keep the virus's taxon and a
+All protein kinds use the same `ProteinSequence` and appear in the same
+`Proteome`. `ProteinSet` is an input, not a second output collection. Viral
+proteins keep the virus's taxon and a
 source label such as `viral:HPV16@NC_001526.4`; their layer records the source
 accession, checksum and host-range source. `proteome.host()` returns the host's
 own proteins without viral entries, for example as a self reference.
+
+The same input type handles a selected donor, transgene or custom component.
+That is a separate operation because a component's source reference and the
+proteome it is selected for are different facts:
+
+```python
+from orfdata import ProteinSet, Proteome, ReferenceContext
+
+human: ReferenceContext = ReferenceContext(
+    9606, "human", "GRCh38", "Ensembl", "115"
+)
+mouse_reference: ReferenceContext = ReferenceContext(
+    10090, "mouse", "GRCm39", "Ensembl", "115"
+)
+mouse: Proteome = Proteome(mouse_reference, ())
+insert: ProteinSet = ProteinSet.from_fasta(
+    "selected-human-insert.fasta",
+    name="selected-human-insert",
+    reference=human,
+    source="Construct manifest 7",
+)
+chimera: Proteome = mouse.with_protein_set(
+    insert,
+    role="donor",
+    target_taxon_ids={10090},
+    target_source="Mouse line manifest 3",
+)
+```
+
+This adds only the listed sequences, not the human proteome. The component
+layer retains the human source reference and the separate mouse-target
+assertion. No genomic placement, expression or sample membership is inferred.
+If the `ProteinSet.reference` exactly matches the proteome reference, the
+target assertion is unnecessary. Readding the same set is idempotent; changed
+content under the same name is rejected.
+
+`ProteinSet` is deliberately sequence-only. It is suitable when the source has
+accessions, amino acids and provenance but no coordinate model. An ncORF source
+that has a transcript, coding path, initiation context or evidence belongs in
+an `ORFCatalog`/`ORFRecord` instead. Binding those ORF records to a reference
+produces the same `ProteinSequence` output in the same `Proteome`; the richer
+ORF facts are not flattened into a `ProteinSet`. Conversely, importing a bare
+ncORF protein FASTA as a `ProteinSet` does not invent a canonical ORF,
+alternative start, transcript placement or evidence.
 
 ### ncORFs with or without an installed transcriptome
 
@@ -417,7 +469,7 @@ sample_proteome = combined.with_derived_proteins(altered)
 sample_proteome.write_fasta("sample-A-proteins.fasta")
 ```
 
-The parent must already be in the proteome. A derived entry has `kind="derived"`
+The parent must already be in the proteome. A derived protein has `kind="derived"`
 and `protein_source` inherited from its host parent (`mixed` for parents from
 different sources); `entry.derivation` stores
 the parent, its gene/transcript identifiers, sample, changes and optional
@@ -436,11 +488,11 @@ sequence without naming an included parent protein. It supplies source claims
 as `ProducerInfo`; these do not create genomic `Occurrence` mappings:
 
 ```python
-from orfdata import ProducerInfo, ProteomeEntry
+from orfdata import ProducerInfo, ProteinSequence
 
 reference = transcriptome.proteome()
-rna_product = ProteomeEntry.from_producer(
-    "MPEPTIDE", taxon_id=9606,
+rna_product: ProteinSequence = ProteinSequence.from_producer(
+    "MPEPTIDE",
     producer=ProducerInfo(
         origin="nc_orf", method="rna_assembly", tool="isovar",
         tool_version="2.0", native_id="ASM42", sample_id="sample-A",
@@ -448,32 +500,46 @@ rna_product = ProteomeEntry.from_producer(
         start_complete=False, stop_complete=None,
     ),
 )
-joint = reference.with_entries([rna_product])
+joint = reference.with_proteins([rna_product])
 joint.save("joint.proteome.json.gz")
 ```
 
 `origin` describes the source protein or ORF category; `method` and `tool`
-describe how the supplied sequence was produced. The entry keeps provider,
-exporter, sample/run, native record, gene/transcript/ORF IDs, source hash and
+describe how the supplied sequence was produced. The protein keeps provider,
+export paths, sample/run, native record, gene/transcript/ORF IDs, source hash and
 known reference when supplied. Its `accession` qualifies the native ID by
 producer and sample, so two samples can reuse the same native ID. Equal amino
 acid sequences stay distinct entries. Readding the same record is idempotent;
 changing content under the same identity raises.
 
+The wrapper that serialized a producer record is provenance, not part of its
+source identity. Supply `exporters=("isovar",)` or
+`exporters=("vaxrank",)`. Merging direct and wrapped copies produces one
+protein and one source record with
+`exporters == ("isovar", "vaxrank")`. The singular `exporter=` constructor
+argument remains readable for snapshots and callers from 0.35, but new code
+should use `exporters`.
+
 Build a standalone producer collection with
-`Proteome.from_entries(entries, reference=reference.reference)`, then use
+`Proteome.from_proteins(proteins, reference=reference.reference)`, then use
 `reference.merge(producer_collection)`. If a producer does not know its exact
 reference, the caller must explicitly choose
 `compatibility="allow_unknown"` when adding it to a known host reference.
 A standalone collection with mixed or unknown references uses
-`Proteome.from_entries(entries, compatibility="mixed")`; merging it into a
+`Proteome.from_proteins(proteins, compatibility="mixed")`; merging it into a
 host reference also requires an explicit compatibility choice. Known wrong
 species or reference declarations always fail. These collection operations
 preserve source entries through offline save/load.
 
+An externally supplied fragment may use `taxon_id=None` when its source did
+not state a taxon. Its snapshot keeps `None` and its FASTA token says
+`taxon=unknown`. Adding it to a known host requires
+`compatibility="allow_unknown"`; that policy is stored separately and does not
+rewrite the source taxon. A known conflicting taxon still fails.
+
 ### Producer records and evidence
 
-Protein entries carry amino acids. A producer can also attach versioned records
+`ProteinSequence` carries amino acids. A producer can also attach versioned records
 for translations, evidence, events and outcomes that have no sequence. ORFdata
 stores these records in the snapshot without importing the producing package or
 interpreting its namespaced `payload`:
@@ -499,7 +565,7 @@ unresolved = ProducerRecord(
 joint = joint.with_records(
     [translation, evidence, unresolved],
     links=[
-        ProducerLink(translation.key, rna_product.accession, "entry", "translates_to"),
+        ProducerLink(translation.key, rna_product.accession, "protein", "translates_to"),
         ProducerLink(evidence.key, translation.key, "record", "supports_translation"),
     ],
 )
@@ -508,16 +574,16 @@ joint = joint.with_records(
 The evidence record says it supports an RNA sequence. Its link to a translation
 does not claim that the protein was observed. A producer reporting a protein
 observation should use a separate evidence record with an explicit support
-type and observation scope. Two translations may link to one protein entry,
+type and observation scope. Two translations may link to one protein,
 and one evidence record may link to several translations; merging the same
 record again does not add its read count again.
 
 An event may have status `zero_product`, `unknown`, `filtered`, `incomplete` or
-`capped` without an entry link. `complete` and `limits` retain the producer's
+`capped` without a protein link. `complete` and `limits` retain the producer's
 search boundary. These status strings and the versioned payload belong to the
 producer; ORFdata retains unknown namespaces and versions exactly. Each record
 keeps its native ID separately from its qualified `key`. Links must resolve
-to records or entries in the same proteome. Saving and loading preserve all
+to records or proteins in the same proteome. Saving and loading preserve all
 records and links, and changing either changes the proteome identity.
 
 ## Save and reload
@@ -528,10 +594,11 @@ same = Proteome.load("human-e115.proteome.json.gz")  # Offline: no genome or cat
 assert same.identity == identity
 ```
 
-A new save uses snapshot schema v4 for the producer graph; `load` also reads
-existing v1, v2 and v3 snapshots.
+A new save uses snapshot schema v5. `load` also reads existing v1–v4
+snapshots. Loading v4 producer data normalizes exporter-specific protein and
+record keys to the shared source identity and retains the export path.
 
-A snapshot holds every entry with its occurrences and evidence, the layers with
+A snapshot holds every protein with its occurrences and evidence, the layers with
 their selections and catalogue identities, and the excluded ORFs. `identity` is
 the SHA-256 of that content, so it changes when any sequence, occurrence,
 selection, catalogue or exclusion changes, but not with file compression or
@@ -549,7 +616,10 @@ to reference CDS proteins, then add only the requested ncORFs and viruses.
 The equivalent incremental methods are `from_genome(isoforms=...)`,
 `with_nc_orfs(nc_orf_sources)` and `with_viral(viral)`.
 `viral=` accepts `"all"`/`True`, a virus type, exact bundled reference ID,
-`ViralReference`, external `ViralProteome`, or a sequence of specific inputs.
+`ViralReference`, or a sequence of those specific inputs. `with_viral` also
+accepts an external `ProteinSet` when it is accompanied by
+`host_taxon_ids=` and `host_source=`; bundled references already carry those
+facts.
 With `cache=True` it keeps the result in the OpenVax DataCache root
 (`ORFDATA_CACHE`, `OPENVAX_DATA_CACHE`, or `cache_root=`). `cache_root=` is
 also where the species' registered catalogue is looked for, with or without
@@ -567,7 +637,7 @@ first build, including saving, and about 7 s for later builds. Loading the
 optional datasets adds time and memory before the cache lookup. A cached snapshot is checked
 by its DataCache checksum, so it skips the re-serialization `load` does. Local
 annotation files of a custom genome are fingerprinted by size and SHA-256, so
-genomes that share names never share an entry. Entries of a cached or loaded
+genomes that share names never share a protein. Proteins of a cached or loaded
 proteome don't carry `orf`; use `extra_orfs(genome)` for ORF objects. Each cached build sits next
 to a `recipe.json` recording its key and identity. Nothing is downloaded.
 `reference_cds=False` omits reference CDS proteins; `nc_orf_sources=()` is the
@@ -591,10 +661,33 @@ for how versions and references are checked.
 `for_transcript(transcript, include_annotated=True)` adds the annotated CDSs
 on that transcript, and `overlapping(...)` finds ORFs at a genomic interval.
 
+## An annotation for the ncORFs
+
+`write_annotation` writes the proteome's ncORFs as a GTF with the matching
+transcript and protein FASTAs, so PyEnsembl-based tools can place a variant
+inside an ncORF and translate it:
+
+```python
+written = combined.write_annotation("ncorfs")
+print(written["annotation_gtf"], written["transcript_count"])
+```
+
+```sh
+orfdata proteome --species human --release 115 --nc-orf-sources ms \
+  --output proteins.fasta --annotation ncorfs/
+```
+
+One coding transcript per ncORF is placed on its host gene, named by the
+catalogue's `orf_id`, with the ORF's spliced coding sequence and its
+translation. Reference CDS entries are left out, because the reference
+annotation already describes them, and viral entries are too, because they are
+not placed on this genome. [Downstream tools](downstream.md) shows how to read
+the result, alone or concatenated with the assembly's own annotation.
+
 ## FASTA headers
 
 `write_fasta` writes 60-column sequences and, by default, one FASTA record per
-source entry. The first whitespace-delimited token has the same policy for
+source protein. The first whitespace-delimited token has the same policy for
 reference CDS, ncORF, viral and supplied proteins:
 
 ```text
@@ -603,7 +696,9 @@ reference CDS, ncORF, viral and supplied proteins:
 
 The `key` suffix is a 16-character digest of the source-qualified accession;
 it disambiguates records without replacing the readable origin, ORF kind,
-method, tool, gene, amino-acid length, source, sample and native ID. Optional
+method, tool, gene, amino-acid length, source, sample and native ID. Producer
+tokens also carry available tool version, provider, export paths and exact
+reference, plus `start` and `stop` as `true`, `false` or `unknown`. Optional
 `run` and `gene_count` fields appear when needed. `gene=unknown` means no gene
 was supplied. Multiple gene names appear as a comma-separated value with
 `gene_count`; punctuation and whitespace inside values are percent-escaped
@@ -613,18 +708,25 @@ producer did not state an ORF category. Supplied products may set
 
 The complete source-qualified accession and original native ID stay in the
 snapshot. After `Proteome.load`, `proteome.fasta_index()` maps every FASTA
-first token to a tuple containing its source entry. A token collision raises
+first token to a tuple containing its source protein. A token collision raises
 before writing. `write_fasta(..., deduplicate=True)` groups *exactly equal*
-amino-acid sequences; its token adds a source count and group key, and
-`fasta_index(deduplicate=True)` maps it to every contributing entry. This
+amino-acid sequences; its neutral token gives the record count, length and a
+group key without borrowing one producer's metadata, and
+`fasta_index(deduplicate=True)` maps it to every contributing protein. This
 option never groups a partial sequence with a longer sequence that contains
-it. Keep the snapshot beside the FASTA to recover all producer records,
-evidence and no-sequence outcomes.
+it. Its description lists every source accession and the distinct protein
+sources and taxa. Keep the snapshot beside the FASTA to recover all producer
+records, evidence and no-sequence outcomes.
 
 Additional `key=value` fields follow the first token in the description.
-`protein_source` uses `reference_cds`, `nc_orf` or `viral`. The older `kind`
-field remains in FASTA and snapshots for compatibility; `annotated` there
-means a reference CDS protein and `extra_orf` means a catalogue ncORF.
+All values are percent-escaped, so whitespace, `|`, `=` and newlines in source
+metadata cannot add fields or FASTA records. Producer descriptions include
+tool version, provider, export paths, native ID, exact reference, source
+checksum and explicit start/stop completeness.
+`protein_source` uses `reference_cds`, `nc_orf`, `protein_set`, `viral` or the
+producer's declared origin. The older `kind` field remains in FASTA and
+snapshots for compatibility; `annotated` there means a reference CDS protein
+and `extra_orf` means a catalogue ncORF.
 For extra ORFs, the native accession is the source ORF ID, `transcript` is its host
 transcript in this genome, and `gene`, `gene_name` and `transcript_biotype`
 describe that transcript in this genome. `orf_type` is the source's ORF

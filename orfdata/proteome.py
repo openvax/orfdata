@@ -14,7 +14,8 @@ import json
 import re
 from bisect import bisect_left, bisect_right
 from collections import Counter
-from dataclasses import asdict, dataclass, field
+from collections.abc import Iterable, Iterator
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import Mapping, Optional
@@ -27,7 +28,7 @@ from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_asse
 from .reference import ReferenceContext
 from .viral import ViralProduct, ViralReference, viral_reference, viral_references
 
-SNAPSHOT_SCHEMA = "orfdata.proteome.v4"
+SNAPSHOT_SCHEMA = "orfdata.proteome.v5"
 _SNAPSHOT = "proteome.json.gz"
 # PyEnsembl's convention: only ENS IDs carry a ".N" version; other dots are part of the ID.
 _ENSEMBL_VERSIONED = re.compile(r"(ENS.*)\.(0|[1-9][0-9]*)")
@@ -41,6 +42,16 @@ def _evidence_labels(evidence):
     if evidence.has_evidence("ms") and not set(labels) - {"ribosome"}:
         labels.append("ms")
     return tuple(labels)
+
+
+def _known(value):
+    """Spell a three-state boolean without collapsing false into unknown."""
+    return "unknown" if value is None else str(value).lower()
+
+
+def _fasta_description_value(value):
+    """Escape one FASTA description value so it cannot add fields or records."""
+    return quote(str(value), safe=".,:@+-_")
 
 
 @dataclass(frozen=True)
@@ -184,7 +195,7 @@ class ProducerInfo:
     native_id: str
     tool_version: Optional[str] = None
     provider: Optional[str] = None
-    exporter: Optional[str] = None
+    exporter: Optional[str] = field(default=None, repr=False, compare=False)
     sample_id: Optional[str] = None
     run_id: Optional[str] = None
     gene_ids: tuple = ()
@@ -198,6 +209,7 @@ class ProducerInfo:
     host_taxon_ids: tuple = ()
     host_source: Optional[str] = None
     orf_kind: Optional[str] = None
+    exporters: tuple[str, ...] = ()
 
     def __post_init__(self):
         for name in ("origin", "method", "tool", "native_id"):
@@ -217,6 +229,14 @@ class ProducerInfo:
             if any(not isinstance(item, str) or not item.strip() for item in value):
                 raise ValueError(f"Producer {name} must contain nonempty strings")
             object.__setattr__(self, name, value)
+        if isinstance(self.exporters, str):
+            raise TypeError("Producer exporters must be a collection of names")
+        exporters = tuple(sorted(set((*self.exporters,
+                                      *((self.exporter,) if self.exporter is not None else ())))))
+        if any(not isinstance(value, str) or not value.strip() for value in exporters):
+            raise ValueError("Producer exporters must contain nonempty strings")
+        object.__setattr__(self, "exporters", exporters)
+        object.__setattr__(self, "exporter", exporters[0] if len(exporters) == 1 else None)
         if self.reference is not None and not isinstance(self.reference, ReferenceContext):
             raise TypeError("Producer reference must be a ReferenceContext or None")
         for name in ("start_complete", "stop_complete"):
@@ -240,7 +260,7 @@ def _producer_accession(info, taxon_id):
     """A reversible, source-qualified ID; producer-native IDs remain separate."""
     components = dict(taxon=taxon_id, origin=info.origin, method=info.method,
                       tool=info.tool, version=info.tool_version, provider=info.provider,
-                      exporter=info.exporter, sample=info.sample_id, run=info.run_id,
+                      sample=info.sample_id, run=info.run_id,
                       native=info.native_id, reference=None if info.reference is None else info.reference.key,
                       source_sha256=info.source_sha256)
     return "producer|" + "|".join(f"{name}={quote(str(value), safe='')}"
@@ -249,7 +269,7 @@ def _producer_accession(info, taxon_id):
 
 def _record_key(record):
     fields = dict(namespace=record.namespace, provider=record.provider,
-                  exporter=record.exporter, sample=record.sample_id, run=record.run_id,
+                  sample=record.sample_id, run=record.run_id,
                   kind=record.kind, native=record.native_id)
     return "record|" + "|".join(f"{name}={quote(value, safe='')}"
                                   for name, value in fields.items() if value is not None)
@@ -293,7 +313,7 @@ class ProducerRecord:
     kind: str
     native_id: str
     provider: Optional[str] = None
-    exporter: Optional[str] = None
+    exporter: Optional[str] = field(default=None, repr=False, compare=False)
     sample_id: Optional[str] = None
     run_id: Optional[str] = None
     status: Optional[str] = None
@@ -302,6 +322,7 @@ class ProducerRecord:
     complete: Optional[bool] = None
     limits: Mapping = field(default_factory=dict)
     payload: Mapping = field(default_factory=dict)
+    exporters: tuple[str, ...] = ()
 
     def __post_init__(self):
         for name in ("namespace", "schema_version", "kind", "native_id"):
@@ -312,6 +333,14 @@ class ProducerRecord:
             value = getattr(self, name)
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise ValueError(f"Producer record {name} must be a nonempty string or None")
+        if isinstance(self.exporters, str):
+            raise TypeError("Producer record exporters must be a collection of names")
+        exporters = tuple(sorted(set((*self.exporters,
+                                      *((self.exporter,) if self.exporter is not None else ())))))
+        if any(not isinstance(value, str) or not value.strip() for value in exporters):
+            raise ValueError("Producer record exporters must contain nonempty strings")
+        object.__setattr__(self, "exporters", exporters)
+        object.__setattr__(self, "exporter", exporters[0] if len(exporters) == 1 else None)
         if self.complete is not None and type(self.complete) is not bool:
             raise ValueError("Producer record complete must be True, False, or None")
         if self.kind == "evidence" and self.support is None:
@@ -332,16 +361,17 @@ class ProducerRecord:
 
     def to_dict(self):
         result = {name: getattr(self, name) for name in
-                  ("namespace", "schema_version", "kind", "native_id", "provider", "exporter",
+                  ("namespace", "schema_version", "kind", "native_id", "provider",
                    "sample_id", "run_id", "status", "support", "complete")}
-        result.update(scope=_thaw_json(self.scope), limits=_thaw_json(self.limits),
+        result.update(exporters=list(self.exporters), scope=_thaw_json(self.scope),
+                      limits=_thaw_json(self.limits),
                       payload=_thaw_json(self.payload))
         return result
 
 
 @dataclass(frozen=True)
 class ProducerLink:
-    """A typed relationship from a producer record to a record or protein entry."""
+    """A typed relationship from a producer record to a record or protein."""
 
     source: str
     target: str
@@ -353,8 +383,8 @@ class ProducerLink:
         if any(not isinstance(getattr(self, name), str) or not getattr(self, name).strip()
                for name in ("source", "target", "relation")):
             raise ValueError("Producer links need source, target and relation IDs")
-        if self.target_kind not in ("entry", "record"):
-            raise ValueError("Producer link target_kind must be 'entry' or 'record'")
+        if self.target_kind not in ("protein", "record"):
+            raise ValueError("Producer link target_kind must be 'protein' or 'record'")
         if not isinstance(self.payload, Mapping):
             raise TypeError("Producer link payload must be a JSON object")
         object.__setattr__(self, "payload", _freeze_json(dict(self.payload)))
@@ -365,11 +395,11 @@ class ProducerLink:
 
 
 @dataclass(frozen=True)
-class ProteomeEntry:
+class ProteinSequence:
     """One protein: its sequence, identity, source and every transcript encoding it.
 
-    ``kind`` is ``"annotated"``, ``"extra_orf"``, ``"viral"``, ``"derived"`` or
-    ``"external"``. ``accession``
+    ``kind`` is ``"annotated"``, ``"extra_orf"``, ``"protein_set"``, ``"viral"``,
+    ``"derived"`` or ``"external"``. ``accession``
     is the versioned protein ID, the source ORF ID or the viral protein ID.
     ``occurrences`` lists every transcript of this genome encoding the protein,
     the source's own transcript first; viral proteins have none. ``gene_id``,
@@ -389,7 +419,7 @@ class ProteomeEntry:
     accession: str
     sequence: str
     kind: str
-    taxon_id: int
+    taxon_id: Optional[int]
     source: str
     orf_type: Optional[str] = None
     evidence: tuple = ()
@@ -405,10 +435,12 @@ class ProteomeEntry:
     producer: Optional[ProducerInfo] = None
 
     def __post_init__(self):
+        if self.taxon_id is not None and (type(self.taxon_id) is not int or self.taxon_id < 1):
+            raise ValueError("Protein taxon_id must be a positive NCBI taxon ID or None")
         if (self.kind == "derived") != (self.derivation is not None):
-            raise ValueError("Only derived protein entries have derivation metadata")
+            raise ValueError("Only derived proteins have derivation metadata")
         if (self.kind == "external") != (self.producer is not None):
-            raise ValueError("Only external protein entries have producer metadata")
+            raise ValueError("Only external proteins have producer metadata")
         if self.derivation is not None and self.accession in self.derivation.parent_accessions:
             raise ValueError("A derived protein cannot name itself as a parent")
         if self.producer is not None:
@@ -424,12 +456,20 @@ class ProteomeEntry:
                 raise ValueError("Producer reference and protein taxon disagree")
 
     @classmethod
-    def from_producer(cls, sequence, *, taxon_id, producer):
-        """Accept supplied amino acids without requiring a parent or mapping."""
+    def from_producer(
+        cls, sequence: str, *, producer: ProducerInfo, taxon_id: int | None = None
+    ) -> "ProteinSequence":
+        """Accept supplied amino acids without requiring a parent or mapping.
+
+        An exact producer reference supplies its taxon when ``taxon_id`` is
+        omitted. With neither, the source taxon remains unknown.
+        """
         if not isinstance(producer, ProducerInfo):
             raise TypeError("producer must be ProducerInfo")
-        if type(taxon_id) is not int or taxon_id < 1:
-            raise ValueError("External protein taxon_id must be a positive NCBI taxon ID")
+        if taxon_id is None and producer.reference is not None:
+            taxon_id = producer.reference.taxon_id
+        if taxon_id is not None and (type(taxon_id) is not int or taxon_id < 1):
+            raise ValueError("External protein taxon_id must be a positive NCBI taxon ID or None")
         return cls(_producer_accession(producer, taxon_id), sequence, "external", taxon_id,
                    f"producer:{producer.tool}", producer=producer)
 
@@ -471,7 +511,8 @@ class ProteomeEntry:
         if self.kind == "derived":
             sources = set(self.derivation.parent_sources)
             return next(iter(sources)) if len(sources) == 1 else "mixed"
-        return {"annotated": "reference_cds", "extra_orf": "nc_orf", "viral": "viral"}[self.kind]
+        return {"annotated": "reference_cds", "extra_orf": "nc_orf",
+                "protein_set": "protein_set", "viral": "viral"}[self.kind]
 
     def fasta_token(self):
         """Readable, source-qualified first FASTA token, stable offline."""
@@ -481,26 +522,39 @@ class ProteomeEntry:
             method, tool, sample, native = (producer.method, producer.tool,
                                             producer.sample_id, producer.native_id)
             orf_kind = producer.orf_kind
+            producer_fields = [
+                ("version", producer.tool_version),
+                ("provider", producer.provider),
+                ("exporters", ",".join(producer.exporters) or None),
+                ("reference", None if producer.reference is None else producer.reference.key),
+                ("start", _known(producer.start_complete)),
+                ("stop", _known(producer.stop_complete)),
+            ]
         else:
             names = tuple(gene for gene in (self.gene_name or self.gene_id,) if gene)
             if self.derivation is not None:
                 names = tuple(dict.fromkeys(gene for gene in
                                             self.derivation.parent_gene_ids if gene)) or names
             method = {"annotated": "annotation", "extra_orf": "catalogue",
-                      "viral": "reference", "derived": "derivation"}[self.kind]
+                      "protein_set": "import", "viral": "reference",
+                      "derived": "derivation"}[self.kind]
             tool = self.source.split(":", 1)[0]
             sample = None if self.derivation is None else self.derivation.sample_id
             native = self.accession
             orf_kind = self.orf_type
+            producer_fields = []
         if orf_kind is None:
             orf_kind = "CDS" if self.protein_source == "reference_cds" else "unknown"
         fields = [
             ("origin", self.protein_source), ("orf", orf_kind), ("method", method),
             ("tool", tool), ("gene", ",".join(names) if names else "unknown"),
-            ("aa", len(self.sequence)), ("taxon", self.taxon_id), ("source", self.source),
+            ("aa", len(self.sequence)),
+            ("taxon", self.taxon_id if self.taxon_id is not None else "unknown"),
+            ("source", self.source),
             ("sample", sample), ("run", None if producer is None else producer.run_id),
             ("id", native), ("key", hashlib.sha256(self.accession.encode()).hexdigest()[:16]),
         ]
+        fields[4:4] = producer_fields
         if len(names) > 1:
             fields.insert(5, ("gene_count", len(names)))
         return "|".join(f"{name}={quote(str(value), safe='')}" for name, value in fields
@@ -515,8 +569,20 @@ class ProteomeEntry:
                       product=self.viral_product,
                       sample=None if self.derivation is None else self.derivation.sample_id,
                       producer=None if self.producer is None else self.producer.tool,
+                      tool_version=None if self.producer is None else self.producer.tool_version,
+                      provider=None if self.producer is None else self.producer.provider,
+                      exporters=None if self.producer is None or not self.producer.exporters else
+                      ",".join(self.producer.exporters),
                       method=None if self.producer is None else self.producer.method,
                       native_id=None if self.producer is None else self.producer.native_id,
+                      producer_reference=None if self.producer is None or
+                      self.producer.reference is None else self.producer.reference.key,
+                      start_complete=None if self.producer is None else
+                      _known(self.producer.start_complete),
+                      stop_complete=None if self.producer is None else
+                      _known(self.producer.stop_complete),
+                      producer_source_sha256=None if self.producer is None else
+                      self.producer.source_sha256,
                       producer_sample=None if self.producer is None else self.producer.sample_id,
                       producer_genes=None if self.producer is None or
                       len(self.producer.gene_names) < 2 else ",".join(self.producer.gene_names),
@@ -535,7 +601,8 @@ class ProteomeEntry:
                       if first is not None and not first.on_source_transcript else None,
                       equivalent=",".join(self.equivalent_ids) or None,
                       transcripts=len(self.occurrences) if len(self.occurrences) > 1 else None)
-        described = " ".join(f"{k}={str(v).replace(' ', '_')}" for k, v in fields.items() if v is not None)
+        described = " ".join(f"{key}={_fasta_description_value(value)}"
+                             for key, value in fields.items() if value is not None)
         return f">{self.fasta_token() if token is None else token} {described}"
 
     def to_dict(self):
@@ -549,7 +616,8 @@ class ProteomeEntry:
                     **({"viral_product": self.viral_product} if self.viral_product is not None else {}),
                     **({"derivation": asdict(self.derivation)} if self.derivation is not None else {}),
                     **({"producer": {name: value for name, value in asdict(self.producer).items()
-                                      if name != "orf_kind" or value is not None}}
+                                      if name != "exporter"
+                                      and (name != "orf_kind" or value is not None)}}
                        if self.producer is not None else {}))
 
     @classmethod
@@ -568,6 +636,7 @@ class ProteomeEntry:
                 source_sha256=derivation.get("source_sha256"))
         if record.get("producer") is not None:
             producer = dict(record["producer"])
+            producer["exporters"] = tuple(producer.get("exporters", ()))
             if producer.get("reference") is not None:
                 producer["reference"] = ReferenceContext(**producer["reference"])
             record["producer"] = ProducerInfo(**producer)
@@ -576,6 +645,33 @@ class ProteomeEntry:
             Occurrence(*values[:blocks], tuple(map(tuple, values[blocks])), *values[blocks + 1 :])
             for values in record.get("occurrences", ()))
         return cls(**record)
+
+
+def _merge_protein(first, second):
+    """Combine exporter paths for one source protein, rejecting biological conflicts."""
+    if first.accession != second.accession:
+        raise ValueError("Cannot merge proteins with different accessions")
+    if first.producer is None or second.producer is None:
+        if first.to_dict() != second.to_dict():
+            raise ValueError(f"Conflicting protein identity: {first.accession}")
+        return first
+    first_base = replace(first, producer=replace(first.producer, exporter=None, exporters=()))
+    second_base = replace(second, producer=replace(second.producer, exporter=None, exporters=()))
+    if first_base.to_dict() != second_base.to_dict():
+        raise ValueError(f"Conflicting protein identity: {first.accession}")
+    exporters = tuple(sorted(set(first.producer.exporters + second.producer.exporters)))
+    return replace(first, producer=replace(first.producer, exporter=None, exporters=exporters))
+
+
+def _merge_producer_record(first, second):
+    """Combine exporter paths for one source record, rejecting content conflicts."""
+    if first.key != second.key:
+        raise ValueError("Cannot merge producer records with different keys")
+    if (replace(first, exporter=None, exporters=()).to_dict()
+            != replace(second, exporter=None, exporters=()).to_dict()):
+        raise ValueError(f"Conflicting producer record identity: {first.key}")
+    exporters = tuple(sorted(set(first.exporters + second.exporters)))
+    return replace(first, exporter=None, exporters=exporters)
 
 
 @dataclass(frozen=True)
@@ -757,48 +853,53 @@ def annotated_orfs(transcript, *, context=None):
 
 
 @dataclass(frozen=True)
-class ViralProteome:
-    """Input proteins for one virus, usable only with its recorded host species.
+class ProteinSet:
+    """Named protein sequences from one source, without inferred placement or use.
 
-    ``host_taxon_ids`` are NCBI species taxa, and ``host_source`` says where
-    that host range comes from. Adding the proteins to a proteome for any other
-    species fails; no host is inferred from orthology or a virus name.
-    ``products`` optionally supplies source gene and product labels.
+    An exact ``reference`` supplies its taxon when ``taxon_id`` is omitted.
     """
 
     name: str
-    taxon_id: int
-    host_taxon_ids: frozenset
-    proteins: tuple
+    proteins: tuple[tuple[str, str], ...]
     source: str
-    host_source: str
+    taxon_id: Optional[int] = None
+    reference: Optional[ReferenceContext] = None
     source_sha256: Optional[str] = None
-    products: tuple = ()
 
     def __post_init__(self):
-        object.__setattr__(self, "host_taxon_ids", frozenset(self.host_taxon_ids))
         object.__setattr__(self, "proteins", tuple(tuple(p) for p in self.proteins))
-        object.__setattr__(self, "products", tuple(self.products))
-        if type(self.taxon_id) is not int or self.taxon_id < 1:
-            raise ValueError("A viral proteome requires a positive NCBI taxon_id")
-        if not self.host_taxon_ids or any(type(t) is not int or t < 1 for t in self.host_taxon_ids):
-            raise ValueError("A viral proteome requires explicit NCBI host taxon IDs")
-        if not all(isinstance(x, str) and x.strip() for x in (self.name, self.source, self.host_source)):
-            raise ValueError("A viral proteome requires a name, source and host-range source")
+        if not all(isinstance(value, str) and value.strip() for value in (self.name, self.source)):
+            raise ValueError("A protein set requires a name and source")
+        if self.taxon_id is not None and (type(self.taxon_id) is not int or self.taxon_id < 1):
+            raise ValueError("Protein set taxon_id must be a positive NCBI taxon ID or None")
+        if self.reference is not None and not isinstance(self.reference, ReferenceContext):
+            raise TypeError("Protein set reference must be a ReferenceContext or None")
+        if self.reference is not None and self.taxon_id is None:
+            object.__setattr__(self, "taxon_id", self.reference.taxon_id)
+        if self.reference is not None and self.reference.taxon_id != self.taxon_id:
+            raise ValueError("Protein set reference and taxon disagree")
+        if self.source_sha256 is not None and re.fullmatch(r"[0-9a-f]{64}", self.source_sha256) is None:
+            raise ValueError("Protein set source_sha256 must be a lowercase SHA-256")
         if not self.proteins:
-            raise ValueError("A viral proteome requires proteins")
+            raise ValueError("A protein set requires proteins")
         for accession, sequence in self.proteins:
-            if not accession or not sequence or not sequence.isalpha() or not sequence.isupper():
-                raise ValueError(f"Invalid viral protein record: {accession!r}")
+            if (not isinstance(accession, str) or not accession or re.search(r"\s", accession)
+                    or not isinstance(sequence, str)
+                    or re.fullmatch(r"[A-Z*]+", sequence) is None):
+                raise ValueError(f"Invalid protein record: {accession!r}")
         if len({a for a, _ in self.proteins}) != len(self.proteins):
-            raise ValueError("Duplicate viral protein accessions")
-        product_ids = [p.protein_id for p in self.products if isinstance(p, ViralProduct)]
-        if (len(product_ids) != len(self.products) or len(set(product_ids)) != len(product_ids)
-                or not set(product_ids) <= {a for a, _ in self.proteins}):
-            raise ValueError("Viral products must uniquely annotate proteins in this input")
+            raise ValueError("Duplicate protein accessions")
 
     @classmethod
-    def from_fasta(cls, path, *, name, taxon_id, host_taxon_ids, host_source, source=None):
+    def from_fasta(
+        cls,
+        path: str | Path,
+        *,
+        name: str,
+        taxon_id: int | None = None,
+        reference: ReferenceContext | None = None,
+        source: str | None = None,
+    ) -> "ProteinSet":
         """Read a protein FASTA; a terminal stop character is removed."""
         raw = Path(path).read_bytes()
         text = (gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw).decode("ascii")
@@ -810,27 +911,49 @@ class ViralProteome:
                 accession, chunks = (line[1:].split() or [None])[0], []
             elif line.strip():
                 chunks.append(line.strip())
-        return cls(name, taxon_id, host_taxon_ids, tuple(proteins), source or Path(path).name,
-                   host_source, hashlib.sha256(raw).hexdigest())
+        return cls(name=name, proteins=tuple(proteins), source=source or Path(path).name,
+                   taxon_id=taxon_id, reference=reference,
+                   source_sha256=hashlib.sha256(raw).hexdigest())
 
-    @classmethod
-    def from_reference(cls, reference):
-        """Use a bundled viral coding reference without copying its metadata by hand."""
-        if not isinstance(reference, ViralReference):
-            raise TypeError("Expected a ViralReference")
-        return cls(name=f"{reference.virus_type}@{reference.id}", taxon_id=reference.taxon_id,
-                   host_taxon_ids=reference.host_taxon_ids,
-                   proteins=tuple((orf.orf_id, orf.protein_sequence) for orf in reference.orfs),
-                   source=reference.source_accession, host_source=reference.host_source,
-                   source_sha256=reference.source_sha256, products=reference.products)
+    def to_dict(self) -> dict[str, object]:
+        """Return the set's source identity and sequences as plain data."""
+        return {
+            "name": self.name,
+            "proteins": [list(protein) for protein in self.proteins],
+            "source": self.source,
+            "taxon_id": self.taxon_id,
+            "reference": None if self.reference is None else self.reference.to_dict(),
+            "source_sha256": self.source_sha256,
+        }
+
+
+@dataclass(frozen=True)
+class _ViralInput:
+    proteins: ProteinSet
+    host_taxon_ids: frozenset[int]
+    host_source: str
+    products: tuple[ViralProduct, ...] = ()
+
+
+def _viral_reference_input(reference: ViralReference) -> _ViralInput:
+    if not isinstance(reference, ViralReference):
+        raise TypeError("Expected a ViralReference")
+    proteins = ProteinSet(
+        name=f"{reference.virus_type}@{reference.id}",
+        proteins=tuple((orf.orf_id, orf.protein_sequence) for orf in reference.orfs),
+        source=reference.source_accession,
+        taxon_id=reference.taxon_id,
+        source_sha256=reference.source_sha256,
+    )
+    return _ViralInput(proteins, frozenset(reference.host_taxon_ids),
+                       reference.host_source, reference.products)
 
 
 def _canonical_viral_references(references):
     """Collapse coordinate placements of the same proteins, preferring a native source ID."""
     chosen = {}
     for reference in references:
-        candidate = ViralProteome.from_reference(reference)
-        signature = tuple(sorted(candidate.proteins))
+        signature = tuple(sorted(_viral_reference_input(reference).proteins.proteins))
         current = chosen.get(reference.taxon_id)
         if current is not None and current[1] != signature:
             raise ValueError(f"Bundled references for viral taxon {reference.taxon_id} have different proteins; "
@@ -842,7 +965,7 @@ def _canonical_viral_references(references):
     return tuple(chosen[taxon_id][0] for taxon_id in sorted(chosen))
 
 
-def _viral_inputs(selection, host_taxon_id):
+def _viral_inputs(selection, host_taxon_id, *, host_taxon_ids=None, host_source=None):
     """Resolve caller selections to one validated protein input per viral source."""
     if selection is None or selection is False:
         return ()
@@ -851,24 +974,35 @@ def _viral_inputs(selection, host_taxon_id):
         if not references:
             raise ValueError(f"No bundled viral references for host taxon {host_taxon_id}")
         selection = _canonical_viral_references(references)
-    elif isinstance(selection, (ViralProteome, ViralReference, str)):
+    elif isinstance(selection, (ProteinSet, ViralReference, str)):
         selection = (selection,)
     else:
         try:
             selection = tuple(selection)
         except TypeError as error:
             raise TypeError("viral must be a reference ID, virus type, ViralReference, "
-                            "ViralProteome, 'all', or a sequence of them") from error
+                            "ProteinSet, 'all', or a sequence of them") from error
     if "all" in selection:
         if len(selection) != 1:
             raise ValueError("Choose viral='all' or specific viruses, not both")
         return _viral_inputs("all", host_taxon_id)
+    supplied_hosts = None
+    if host_taxon_ids is not None or host_source is not None:
+        if host_taxon_ids is None or not isinstance(host_source, str) or not host_source.strip():
+            raise ValueError("External viral proteins require host_taxon_ids and host_source")
+        if isinstance(host_taxon_ids, (str, int)):
+            raise TypeError("host_taxon_ids must be a collection of positive NCBI taxon IDs")
+        supplied_hosts = frozenset(host_taxon_ids)
+        if not supplied_hosts or any(type(taxon) is not int or taxon < 1 for taxon in supplied_hosts):
+            raise ValueError("host_taxon_ids must contain positive NCBI taxon IDs")
     resolved = []
     for item in selection:
-        if isinstance(item, ViralProteome):
-            resolved.append(item)
+        if isinstance(item, ProteinSet):
+            if supplied_hosts is None:
+                raise ValueError("A ProteinSet passed to with_viral requires sourced host taxa")
+            resolved.append(_ViralInput(item, supplied_hosts, host_source))
         elif isinstance(item, ViralReference):
-            resolved.append(ViralProteome.from_reference(item))
+            resolved.append(_viral_reference_input(item))
         elif isinstance(item, str):
             try:
                 reference = viral_reference(item)
@@ -882,10 +1016,12 @@ def _viral_inputs(selection, host_taxon_id):
                     raise ValueError(f"Virus type {item!r} matches multiple viral taxa; "
                                      "choose an exact reference ID")
                 reference = canonical[0]
-            resolved.append(ViralProteome.from_reference(reference))
+            resolved.append(_viral_reference_input(reference))
         else:
             raise TypeError("viral entries must be reference IDs, virus types, ViralReference "
-                            "or ViralProteome objects")
+                            "or ProteinSet objects")
+    if supplied_hosts is not None and any(not isinstance(item, ProteinSet) for item in selection):
+        raise ValueError("host_taxon_ids and host_source apply only to ProteinSet inputs")
     return tuple(resolved)
 
 
@@ -937,13 +1073,14 @@ class Proteome:
     and add layers with :meth:`with_nc_orfs`, :meth:`with_viral` and
     :meth:`with_derived_proteins`.
     Each method returns a new proteome. ``layers`` records
-    every addition with its role (``"host"``, ``"viral"``, ``"derived"`` or ``"filter"``),
+    every addition with its role (``"host"``, ``"viral"``, ``"component"``,
+    ``"external"``, ``"derived"`` or ``"filter"``),
     source and selection; ``excluded`` lists selected ORFs found on no
     transcript. :meth:`save` writes a checksummed snapshot that :meth:`load`
     reads back offline, and ``identity`` changes whenever the content does.
     """
 
-    def __init__(self, reference, entries, layers=(), excluded=(), genome=None,
+    def __init__(self, reference, proteins: Iterable[ProteinSequence], layers=(), excluded=(), genome=None,
                  reference_policy="strict", records=(), links=()):
         if reference is not None and not isinstance(reference, ReferenceContext):
             raise TypeError("A proteome reference must be a ReferenceContext or None")
@@ -953,29 +1090,49 @@ class Proteome:
             raise ValueError("A scoped proteome requires 'strict' or 'allow_unknown' reference policy")
         self.reference = reference
         self.reference_policy = reference_policy
-        self.entries = tuple(entries)
+        self.proteins: tuple[ProteinSequence, ...] = tuple(proteins)
         self.layers = tuple(MappingProxyType(_json(dict(layer))) for layer in layers)
         self.excluded = tuple(excluded)
         self.genome = genome
         self.records = tuple(records)
         self.links = tuple(links)
-        accessions = Counter(e.accession for e in self.entries)
+        accessions = Counter(e.accession for e in self.proteins)
         duplicated = sorted(a for a, n in accessions.items() if n > 1)
         if duplicated:
             raise ValueError("Duplicate proteome accessions: " + ", ".join(duplicated[:5]))
-        hosts = {layer["source"]: layer.get("host_taxon_ids", ()) for layer in self.layers
-                 if layer["role"] == "viral"}
+        viral_layers = [layer for layer in self.layers if layer["role"] == "viral"]
+        hosts = {layer["source"]: layer.get("host_taxon_ids", ()) for layer in viral_layers}
+        if len(hosts) != len(viral_layers):
+            raise ValueError("Duplicate viral protein source")
+        component_layers = [layer for layer in self.layers if layer["role"] == "component"]
+        components = {layer["source"]: layer for layer in component_layers}
+        if len(components) != len(component_layers):
+            raise ValueError("Duplicate protein set source")
         preceding = {}
-        for entry in self.entries:
+        for entry in self.proteins:
             if entry.kind == "viral":
                 if reference is None or reference.taxon_id not in hosts.get(entry.source, ()):
                     raise ValueError(f"Viral protein {entry.accession} has no host layer for this species")
+            elif entry.kind == "protein_set":
+                component = components.get(entry.source)
+                if component is None:
+                    raise ValueError(f"Protein {entry.accession} has no component layer")
+                if (reference is not None
+                        and component.get("source_reference") != reference.key
+                        and reference.taxon_id not in component.get("target_taxon_ids", ())):
+                    raise ValueError(
+                        f"Protein set {component['name']} is not admitted for this species"
+                    )
             elif entry.kind == "external":
                 source = entry.producer
                 if reference is not None:
                     if source.origin == "viral":
                         if reference.taxon_id not in source.host_taxon_ids:
                             raise ValueError(f"Viral producer protein {entry.accession} has no recorded host")
+                    elif entry.taxon_id is None:
+                        if reference_policy != "allow_unknown":
+                            raise ValueError("External protein has unknown source taxon; "
+                                             "use compatibility='allow_unknown' explicitly")
                     elif entry.taxon_id != reference.taxon_id:
                         raise ValueError(f"External protein {entry.accession} is from another species")
                     if source.reference is None and reference_policy != "allow_unknown":
@@ -1017,65 +1174,160 @@ class Proteome:
         for link in self.links:
             if link.source not in record_keys:
                 raise ValueError(f"Producer link has unknown source: {link.source}")
-            targets = accessions if link.target_kind == "entry" else record_keys
+            targets = accessions if link.target_kind == "protein" else record_keys
             if link.target not in targets:
                 raise ValueError(f"Producer link has unknown target: {link.target}")
 
     @classmethod
-    def from_entries(cls, entries, *, reference=None, compatibility="strict",
-                     records=(), links=()):
-        """Make a collection from external entries, with an explicit reference policy.
+    def from_proteins(
+        cls,
+        proteins: ProteinSequence | Iterable[ProteinSequence],
+        *,
+        reference: ReferenceContext | None = None,
+        compatibility: str = "strict",
+        records: Iterable[ProducerRecord] = (),
+        links: Iterable[ProducerLink] = (),
+    ) -> "Proteome":
+        """Make a proteome from external proteins, with an explicit reference policy.
 
         Use ``compatibility='mixed'`` for a standalone collection whose
         reference is unknown or mixed. With a host reference,
-        ``compatibility='allow_unknown'`` explicitly admits producer entries
+        ``compatibility='allow_unknown'`` explicitly admits producer proteins
         lacking an exact source reference; known conflicting references fail.
         """
-        result = cls(reference, (), reference_policy=compatibility).with_entries(entries)
+        result = cls(reference, (), reference_policy=compatibility).with_proteins(proteins)
         return result.with_records(records, links=links)
 
-    def with_entries(self, entries, *, compatibility=None):
-        """Add producer entries without inventing parents or genomic occurrences."""
-        entries = (entries,) if isinstance(entries, ProteomeEntry) else tuple(entries)
-        if any(not isinstance(entry, ProteomeEntry) or entry.kind != "external" for entry in entries):
-            raise TypeError("with_entries requires external ProteomeEntry records")
+    def with_proteins(
+        self,
+        proteins: ProteinSequence | Iterable[ProteinSequence],
+        *,
+        compatibility: str | None = None,
+    ) -> "Proteome":
+        """Add producer proteins without inventing parents or genomic occurrences."""
+        proteins = (proteins,) if isinstance(proteins, ProteinSequence) else tuple(proteins)
+        if any(not isinstance(protein, ProteinSequence) or protein.kind != "external"
+               for protein in proteins):
+            raise TypeError("with_proteins requires external ProteinSequence records")
         policy = self.reference_policy if compatibility is None else compatibility
-        seen = self.by_accession()
+        combined = list(self.proteins)
+        positions = {protein.accession: i for i, protein in enumerate(combined)}
         added = []
-        for entry in entries:
-            current = seen.get(entry.accession)
-            if current is not None:
-                if current.to_dict() != entry.to_dict():
-                    raise ValueError(f"Conflicting proteome entry identity: {entry.accession}")
+        changed = policy != self.reference_policy
+        for protein in proteins:
+            position = positions.get(protein.accession)
+            if position is not None:
+                merged = _merge_protein(combined[position], protein)
+                if merged != combined[position]:
+                    combined[position] = merged
+                    changed = True
                 continue
-            seen[entry.accession] = entry
-            added.append(entry)
-        if not added:
+            positions[protein.accession] = len(combined)
+            combined.append(protein)
+            added.append(protein)
+        if not added and not changed:
             return self
-        layer = dict(kind="external", role="external", source="producer",
-                     producers=sorted({entry.producer.tool for entry in added}), added=len(added),
-                     reference=None if self.reference is None else self.reference.key)
-        return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
+        layers = self.layers
+        if added:
+            layer = dict(kind="external", role="external", source="producer",
+                         producers=sorted({entry.producer.tool for entry in added}), added=len(added),
+                         reference=None if self.reference is None else self.reference.key)
+            layers += (layer,)
+        return Proteome(self.reference, combined, layers,
                         self.excluded, self.genome, reference_policy=policy,
                         records=self.records, links=self.links)
 
+    def with_protein_set(
+        self,
+        proteins: ProteinSet,
+        *,
+        role: str,
+        target_taxon_ids: Iterable[int] | None = None,
+        target_source: str | None = None,
+    ) -> "Proteome":
+        """Add an explicitly selected protein set without inventing genomic placement.
+
+        A set on this proteome's exact reference needs no extra assertion. A
+        set with another or unknown reference requires ``target_taxon_ids`` and
+        ``target_source`` to say why it belongs in this target proteome. The
+        source taxon and reference remain unchanged.
+        """
+        if not isinstance(proteins, ProteinSet):
+            raise TypeError("with_protein_set requires a ProteinSet")
+        if not isinstance(role, str) or not role.strip():
+            raise ValueError("A protein set role must be a nonempty string")
+        if isinstance(target_taxon_ids, (str, int)):
+            raise TypeError("target_taxon_ids must be a collection of positive NCBI taxon IDs")
+        targets = frozenset(() if target_taxon_ids is None else target_taxon_ids)
+        if any(type(taxon) is not int or taxon < 1 for taxon in targets):
+            raise ValueError("target_taxon_ids must contain positive NCBI taxon IDs")
+        if target_source is not None and (not isinstance(target_source, str) or not target_source.strip()):
+            raise ValueError("target_source must be a nonempty string or None")
+        if bool(targets) != (target_source is not None):
+            raise ValueError("target_taxon_ids and target_source must be supplied together")
+
+        if self.reference is not None:
+            same_reference = (proteins.reference is not None
+                              and proteins.reference.key == self.reference.key)
+            if (targets or not same_reference) and self.reference.taxon_id not in targets:
+                raise ValueError(
+                    f"Protein set {proteins.name!r} needs an explicit target assertion for "
+                    f"{self.reference.species} (taxon {self.reference.taxon_id})"
+                )
+
+        source = proteins.name
+        added = tuple(ProteinSequence(accession, sequence, "protein_set", proteins.taxon_id, source)
+                      for accession, sequence in proteins.proteins)
+        layer = dict(
+            kind="protein_set", role="component", component_role=role, name=proteins.name,
+            source=source, taxon_id=proteins.taxon_id,
+            source_reference=None if proteins.reference is None else proteins.reference.key,
+            target_taxon_ids=sorted(targets), target_source=target_source,
+            provenance=proteins.source, source_sha256=proteins.source_sha256,
+            added=len(added),
+        )
+        existing_layers = [item for item in self.layers
+                           if item.get("role") == "component" and item.get("source") == source]
+        if existing_layers:
+            if len(existing_layers) != 1 or dict(existing_layers[0]) != layer:
+                raise ValueError(f"Conflicting protein set: {proteins.name}")
+            existing = self.by_accession()
+            if any(entry.accession not in existing
+                   or existing[entry.accession].to_dict() != entry.to_dict() for entry in added):
+                raise ValueError(f"Conflicting protein set: {proteins.name}")
+            return self
+        collisions = [entry.accession for entry in added
+                      if entry.accession in self.by_accession()]
+        if collisions:
+            raise ValueError("Protein set accessions already exist: " + ", ".join(collisions[:5]))
+        return Proteome(
+            self.reference, self.proteins + added, self.layers + (layer,),
+            self.excluded, self.genome, reference_policy=self.reference_policy,
+            records=self.records, links=self.links,
+        )
+
     def with_records(self, records=(), *, links=()):
-        """Add portable producer records and relationships to existing entries."""
+        """Add portable producer records and relationships to existing proteins."""
         records = (records,) if isinstance(records, ProducerRecord) else tuple(records)
         links = (links,) if isinstance(links, ProducerLink) else tuple(links)
         if any(not isinstance(record, ProducerRecord) for record in records):
             raise TypeError("with_records requires ProducerRecord objects")
         if any(not isinstance(link, ProducerLink) for link in links):
             raise TypeError("with_records requires ProducerLink objects")
-        known = {record.key: record for record in self.records}
+        combined = list(self.records)
+        positions = {record.key: i for i, record in enumerate(combined)}
         added = []
+        changed = False
         for record in records:
-            previous = known.get(record.key)
-            if previous is not None:
-                if previous.to_dict() != record.to_dict():
-                    raise ValueError(f"Conflicting producer record identity: {record.key}")
+            position = positions.get(record.key)
+            if position is not None:
+                merged = _merge_producer_record(combined[position], record)
+                if merged != combined[position]:
+                    combined[position] = merged
+                    changed = True
                 continue
-            known[record.key] = record
+            positions[record.key] = len(combined)
+            combined.append(record)
             added.append(record)
         seen_links = {json.dumps(link.to_dict(), sort_keys=True) for link in self.links}
         added_links = []
@@ -1084,11 +1336,11 @@ class Proteome:
             if key not in seen_links:
                 added_links.append(link)
                 seen_links.add(key)
-        if not added and not added_links:
+        if not added and not added_links and not changed:
             return self
-        return Proteome(self.reference, self.entries, self.layers, self.excluded, self.genome,
+        return Proteome(self.reference, self.proteins, self.layers, self.excluded, self.genome,
                         reference_policy=self.reference_policy,
-                        records=self.records + tuple(added), links=self.links + tuple(added_links))
+                        records=combined, links=self.links + tuple(added_links))
 
     def merge(self, *others, compatibility=None):
         """Compose compatible proteomes; equal source records are idempotent."""
@@ -1106,15 +1358,14 @@ class Proteome:
                       "mixed" if reference is None else
                       "allow_unknown" if "allow_unknown" in (result.reference_policy,
                                                             other.reference_policy) else "strict")
-            seen = {entry.accession: entry for entry in result.entries}
-            entries = list(result.entries)
-            for entry in other.entries:
-                current = seen.get(entry.accession)
-                if current is not None:
-                    if current.to_dict() != entry.to_dict():
-                        raise ValueError(f"Conflicting proteome entry identity: {entry.accession}")
+            entries = list(result.proteins)
+            positions = {entry.accession: i for i, entry in enumerate(entries)}
+            for entry in other.proteins:
+                position = positions.get(entry.accession)
+                if position is not None:
+                    entries[position] = _merge_protein(entries[position], entry)
                     continue
-                seen[entry.accession] = entry
+                positions[entry.accession] = len(entries)
                 entries.append(entry)
             layers = list(result.layers)
             layer_keys = {_sha256(dict(layer)) for layer in layers}
@@ -1127,15 +1378,16 @@ class Proteome:
             for failure in other.excluded:
                 if failure not in excluded:
                     excluded.append(failure)
-            records = {record.key: record for record in result.records}
             ordered_records = list(result.records)
+            record_positions = {record.key: i for i, record in enumerate(ordered_records)}
             for record in other.records:
-                previous = records.get(record.key)
-                if previous is not None:
-                    if previous.to_dict() != record.to_dict():
-                        raise ValueError(f"Conflicting producer record identity: {record.key}")
+                position = record_positions.get(record.key)
+                if position is not None:
+                    ordered_records[position] = _merge_producer_record(
+                        ordered_records[position], record
+                    )
                     continue
-                records[record.key] = record
+                record_positions[record.key] = len(ordered_records)
                 ordered_records.append(record)
             links = list(result.links)
             link_keys = {json.dumps(link.to_dict(), sort_keys=True) for link in links}
@@ -1179,7 +1431,7 @@ class Proteome:
                 structure.versioned_id, structure.gene_id, structure.gene_name, structure.biotype,
                 structure.contig, structure.strand, offset, None if offset is None else offset + length,
                 structure.cds_blocks if offset is not None else (), True)
-            entries.append(ProteomeEntry(
+            entries.append(ProteinSequence(
                 accession=accession, sequence=sequence, kind="annotated", taxon_id=reference.taxon_id,
                 source=source, occurrences=(occurrence,), source_transcript_id=structure.versioned_id))
         available = len(entries)
@@ -1261,7 +1513,7 @@ class Proteome:
             if include_nc_orfs:
                 proteome = proteome.with_extra_orfs(rule, catalog=catalog)
             for virus in viral:
-                proteome = proteome.with_viral(virus)
+                proteome = proteome._with_viral_proteins(virus)
             if derived:
                 proteome = proteome.with_derived_proteins(derived)
             built.append(proteome)
@@ -1284,7 +1536,7 @@ class Proteome:
         if built:
             return built[0]
         loaded = cls.load(path, _verified=True)
-        proteome = cls(loaded.reference, loaded.entries, loaded.layers, loaded.excluded, genome,
+        proteome = cls(loaded.reference, loaded.proteins, loaded.layers, loaded.excluded, genome,
                        reference_policy=loaded.reference_policy,
                        records=loaded.records, links=loaded.links)
         proteome.__dict__["_identity"] = loaded.identity
@@ -1322,7 +1574,7 @@ class Proteome:
         assembly are used, ``catalogs`` choosing among them as in
         :func:`load_catalog`; a species without one raises.
 
-        Each ORF becomes one entry listing every transcript that carries its
+        Each ORF becomes one protein listing every transcript that carries its
         exact spliced coding path. An ORF whose source transcript is gone or
         changed is still added when another transcript carries it, with
         ``source_binding`` saying why; ORFs found on no transcript are excluded.
@@ -1337,12 +1589,12 @@ class Proteome:
         for orf in found:
             grouped.setdefault(orf.orf_id, []).append(orf)
         source = found.catalog.source
-        annotated = {e.sequence for e in self.entries if e.kind == "annotated"}
+        annotated = {e.sequence for e in self.proteins if e.kind == "annotated"}
         added = []
         for orf_id, orfs in grouped.items():
             orfs.sort(key=lambda o: (not o.on_source_transcript, _versioned(o.transcript)))
             first = orfs[0]
-            added.append(ProteomeEntry(
+            added.append(ProteinSequence(
                 accession=orf_id, sequence=first.protein_sequence, kind="extra_orf",
                 taxon_id=first.model.taxon_id, source=source, orf_type=first.model.orf_type,
                 evidence=_evidence_labels(first.evidence),
@@ -1362,34 +1614,59 @@ class Proteome:
         selection = found.catalog._metadata.get("proteome_selection")
         if selection is not None:
             layer["selection"] = selection
-        return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
+        return Proteome(self.reference, self.proteins + tuple(added), self.layers + (layer,),
                         self.excluded + found.excluded + found.unlifted, self.genome,
                         reference_policy=self.reference_policy, records=self.records, links=self.links)
 
-    def with_viral(self, viral):
-        """Add a bundled virus by reference ID/type/object, or a FASTA-derived ViralProteome."""
-        inputs = _viral_inputs(viral, self.reference.taxon_id)
+    def with_viral(
+        self,
+        viral: ProteinSet | ViralReference | str | Iterable[ProteinSet | ViralReference | str],
+        *,
+        host_taxon_ids: Iterable[int] | None = None,
+        host_source: str | None = None,
+    ) -> "Proteome":
+        """Add curated viral proteins, or a ProteinSet with sourced host taxa."""
+        inputs = _viral_inputs(
+            viral, self.reference.taxon_id,
+            host_taxon_ids=host_taxon_ids, host_source=host_source,
+        )
         proteome = self
         for source in inputs:
             proteome = proteome._with_viral_proteins(source)
         return proteome
 
-    def _with_viral_proteins(self, viral):
+    def _with_viral_proteins(self, viral: _ViralInput) -> "Proteome":
+        proteins = viral.proteins
         if self.reference.taxon_id not in viral.host_taxon_ids:
             raise ValueError(
-                f"{viral.name} (taxon {viral.taxon_id}) has no recorded host matching "
+                f"{proteins.name} (taxon {proteins.taxon_id}) has no recorded host matching "
                 f"{self.reference.species} (taxon {self.reference.taxon_id})"
             )
-        source = f"viral:{viral.name}"
+        source = f"viral:{proteins.name}"
         products = {product.protein_id: product for product in viral.products}
-        added = tuple(ProteomeEntry(accession, sequence, "viral", viral.taxon_id, source,
+        added = tuple(ProteinSequence(accession, sequence, "viral", proteins.taxon_id, source,
                                    viral_gene=products[accession].gene if accession in products else None,
                                    viral_product=products[accession].product if accession in products else None)
-                      for accession, sequence in viral.proteins)
-        layer = dict(kind="viral", role="viral", source=source, taxon_id=viral.taxon_id,
+                      for accession, sequence in proteins.proteins)
+        layer = dict(kind="viral", role="viral", source=source, taxon_id=proteins.taxon_id,
                      host_taxon_ids=sorted(viral.host_taxon_ids), host_source=viral.host_source,
-                     provenance=viral.source, source_sha256=viral.source_sha256, added=len(added))
-        return Proteome(self.reference, self.entries + added, self.layers + (layer,),
+                     provenance=proteins.source, source_sha256=proteins.source_sha256,
+                     added=len(added))
+        existing_layers = [item for item in self.layers
+                           if item.get("role") == "viral" and item.get("source") == source]
+        if existing_layers:
+            if len(existing_layers) != 1 or dict(existing_layers[0]) != layer:
+                raise ValueError(f"Conflicting viral protein set: {proteins.name}")
+            existing = self.by_accession()
+            if any(entry.accession not in existing
+                   or existing[entry.accession].to_dict() != entry.to_dict() for entry in added):
+                raise ValueError(f"Conflicting viral protein set: {proteins.name}")
+            return self
+        collisions = [entry.accession for entry in added
+                      if entry.accession in self.by_accession()]
+        if collisions:
+            raise ValueError("Viral protein accessions already exist: " + ", ".join(collisions[:5]))
+        return Proteome(self.reference, self.proteins + added, self.layers + (layer,),
                         self.excluded, self.genome, reference_policy=self.reference_policy,
                         records=self.records, links=self.links)
 
@@ -1437,23 +1714,23 @@ class Proteome:
                 parent_transcript_ids=tuple(o.transcript_id if o is not None else None
                                             for o in selected_occurrences),
                 source_sha256=item.source_sha256)
-            added.append(ProteomeEntry(item.accession, item.sequence, "derived", self.reference.taxon_id,
+            added.append(ProteinSequence(item.accession, item.sequence, "derived", self.reference.taxon_id,
                                        f"derived:{item.source}", derivation=derivation))
         layer = dict(kind="derived", role="derived", reference=self.reference.key,
                      source="derived", sources=sorted({item.source for item in proteins}),
                      samples=sorted({item.sample_id for item in proteins}), added=len(added))
-        return Proteome(self.reference, self.entries + tuple(added), self.layers + (layer,),
+        return Proteome(self.reference, self.proteins + tuple(added), self.layers + (layer,),
                         self.excluded, self.genome, reference_policy=self.reference_policy,
                         records=self.records, links=self.links)
 
     def filter(self, predicate, *, description=None):
-        """Keep entries for which ``predicate(entry)`` is true; layers are retained."""
-        kept = tuple(e for e in self.entries if predicate(e))
+        """Keep proteins for which ``predicate(protein)`` is true; layers are retained."""
+        kept = tuple(e for e in self.proteins if predicate(e))
         layer = dict(kind="filter", role="filter", description=description,
-                     removed=len(self.entries) - len(kept), added=0)
+                     removed=len(self.proteins) - len(kept), added=0)
         retained = {entry.accession for entry in kept}
         links = tuple(link for link in self.links
-                      if link.target_kind != "entry" or link.target in retained)
+                      if link.target_kind != "protein" or link.target in retained)
         return Proteome(self.reference, kept, self.layers + (layer,), self.excluded, self.genome,
                         reference_policy=self.reference_policy, records=self.records, links=links)
 
@@ -1461,32 +1738,32 @@ class Proteome:
         """The host's own proteins: annotated and extra ORFs, without viral layers."""
         return self.filter(lambda e: e.protein_source != "viral", description="host proteins")
 
-    def by_sequence(self):
-        """Entries grouped by identical protein sequence, in first-seen order."""
+    def by_sequence(self) -> dict[str, tuple[ProteinSequence, ...]]:
+        """Proteins grouped by identical sequence, in first-seen order."""
         groups = {}
-        for entry in self.entries:
+        for entry in self.proteins:
             groups.setdefault(entry.sequence, []).append(entry)
         return {sequence: tuple(entries) for sequence, entries in groups.items()}
 
-    def by_accession(self):
-        """Every protein entry keyed by its unique accession."""
-        return {entry.accession: entry for entry in self.entries}
+    def by_accession(self) -> dict[str, ProteinSequence]:
+        """Every protein keyed by its unique accession."""
+        return {entry.accession: entry for entry in self.proteins}
 
-    def __iter__(self):
-        return iter(self.entries)
+    def __iter__(self) -> Iterator[ProteinSequence]:
+        return iter(self.proteins)
 
     def __len__(self):
-        return len(self.entries)
+        return len(self.proteins)
 
     def summary(self):
         """Counts by kind and layer, without sequences."""
         return dict(
             reference=None if self.reference is None else self.reference.to_dict(),
-            reference_policy=self.reference_policy, identity=self.identity, entries=len(self.entries),
-            distinct_sequences=len({e.sequence for e in self.entries}),
-            kinds=dict(Counter(e.kind for e in self.entries)),
-            protein_sources=dict(Counter(e.protein_source for e in self.entries)),
-            derived=sum(e.derivation is not None for e in self.entries),
+            reference_policy=self.reference_policy, identity=self.identity, proteins=len(self.proteins),
+            distinct_sequences=len({e.sequence for e in self.proteins}),
+            kinds=dict(Counter(e.kind for e in self.proteins)),
+            protein_sources=dict(Counter(e.protein_source for e in self.proteins)),
+            derived=sum(e.derivation is not None for e in self.proteins),
             producer_records=len(self.records), producer_links=len(self.links),
             layers=[dict(layer) for layer in self.layers], excluded=len(self.excluded),
         )
@@ -1495,7 +1772,7 @@ class Proteome:
         content = dict(
             reference=None if self.reference is None else self.reference.to_dict(),
             layers=[dict(layer) for layer in self.layers],
-            entries=[e.to_dict() for e in self.entries],
+            entries=[e.to_dict() for e in self.proteins],
             excluded=[asdict(e) for e in self.excluded],
         )
         if self.reference_policy != "strict":
@@ -1530,28 +1807,86 @@ class Proteome:
         """Read a snapshot offline; corrupted or inconsistent content raises.
 
         Entries do not carry ``orf``; use :func:`extra_orfs` for ORF objects.
+        Older snapshots are normalized to the current source identities when
+        loaded, so a legacy exporter-specific identity may change.
         """
         raw = Path(path).read_bytes()
         snapshot = json.loads(gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw)
-        if snapshot.get("schema") not in ("orfdata.proteome.v1", "orfdata.proteome.v2",
-                                          "orfdata.proteome.v3", SNAPSHOT_SCHEMA):
-            raise ValueError(f"Unsupported proteome snapshot schema: {snapshot.get('schema')!r}")
+        schema = snapshot.get("schema")
+        if schema not in ("orfdata.proteome.v1", "orfdata.proteome.v2",
+                          "orfdata.proteome.v3", "orfdata.proteome.v4", SNAPSHOT_SCHEMA):
+            raise ValueError(f"Unsupported proteome snapshot schema: {schema!r}")
         content = snapshot["content"]
         if _sha256(content) != snapshot.get("identity"):
             raise ValueError("Proteome snapshot content does not match its identity")
         reference = None if content["reference"] is None else ReferenceContext(**content["reference"])
         graph = content.get("producer_graph", {})
+        entries = list(content["entries"])
+        records = list(graph.get("records", ()))
+        links = list(graph.get("links", ()))
+        if schema != SNAPSHOT_SCHEMA:
+            accession_map = {}
+            normalized_entries = []
+            for original in entries:
+                entry = dict(original)
+                if entry.get("producer") is not None:
+                    producer = dict(entry["producer"])
+                    producer_reference = producer.get("reference")
+                    if producer_reference is not None:
+                        producer["reference"] = ReferenceContext(**producer_reference)
+                    accession = _producer_accession(
+                        ProducerInfo(**producer), entry.get("taxon_id")
+                    )
+                    accession_map[entry["accession"]] = accession
+                    entry["accession"] = accession
+                normalized_entries.append(entry)
+            entries = normalized_entries
+
+            record_map = {}
+            normalized_records = []
+            for original in records:
+                old_fields = dict(
+                    namespace=original.get("namespace"), provider=original.get("provider"),
+                    exporter=original.get("exporter"), sample=original.get("sample_id"),
+                    run=original.get("run_id"), kind=original.get("kind"),
+                    native=original.get("native_id"),
+                )
+                old_key = "record|" + "|".join(
+                    f"{name}={quote(str(value), safe='')}"
+                    for name, value in old_fields.items() if value is not None
+                )
+                record = ProducerRecord(**original)
+                record_map[old_key] = record.key
+                normalized_records.append(record)
+            records = normalized_records
+
+            normalized_links = []
+            for original in links:
+                link = dict(original)
+                link["source"] = record_map.get(link["source"], link["source"])
+                if link["target_kind"] == "entry":
+                    link["target_kind"] = "protein"
+                if link["target_kind"] == "protein":
+                    link["target"] = accession_map.get(link["target"], link["target"])
+                else:
+                    link["target"] = record_map.get(link["target"], link["target"])
+                normalized_links.append(link)
+            links = normalized_links
         proteome = cls(reference,
-                       (ProteomeEntry.from_dict(e) for e in content["entries"]),
+                       (ProteinSequence.from_dict(e) for e in entries),
                        content["layers"], (BindingFailure(**e) for e in content["excluded"]),
                        reference_policy=content.get("reference_policy", "strict"),
-                       records=(ProducerRecord(**record) for record in graph.get("records", ())),
-                       links=(ProducerLink(**link) for link in graph.get("links", ())))
+                       records=(record if isinstance(record, ProducerRecord)
+                                else ProducerRecord(**record) for record in records),
+                       links=(ProducerLink(**link) for link in links))
         # A snapshot from the cache was written by save() and checksummed by DataCache; any other
         # file must also re-serialize to its identity, so non-canonical content is rejected.
-        if not _verified and _sha256(proteome._content()) != snapshot["identity"]:
+        canonical_identity = _sha256(proteome._content())
+        if (schema == SNAPSHOT_SCHEMA and not _verified
+                and canonical_identity != snapshot["identity"]):
             raise ValueError("Proteome snapshot does not round-trip to its identity")
-        proteome.__dict__["_identity"] = snapshot["identity"]
+        proteome.__dict__["_identity"] = (snapshot["identity"] if schema == SNAPSHOT_SCHEMA
+                                          else canonical_identity)
         return proteome
 
     def fasta_index(self, *, deduplicate=False):
@@ -1559,13 +1894,15 @@ class Proteome:
         if type(deduplicate) is not bool:
             raise ValueError("deduplicate must be True or False")
         groups = (self.by_sequence().values() if deduplicate else
-                  ((entry,) for entry in self.entries))
+                  ((entry,) for entry in self.proteins))
         index = {}
         for group in groups:
-            token = group[0].fasta_token()
             if deduplicate and len(group) > 1:
-                members = [entry.accession for entry in group]
-                token += f"|records={len(group)}|group={_sha256(members)[:16]}"
+                members = sorted(entry.accession for entry in group)
+                token = (f"records={len(group)}|aa={len(group[0].sequence)}|"
+                         f"key={_sha256(members)[:16]}")
+            else:
+                token = group[0].fasta_token()
             if token in index:
                 raise ValueError(f"Colliding FASTA first token: {token}")
             index[token] = tuple(group)
@@ -1584,9 +1921,70 @@ class Proteome:
     def _write(self, handle, width, index):
         for token, group in index.items():
             entry = group[0]
-            handle.write(entry.fasta_header(token=token) + "\n")
+            if len(group) == 1:
+                header = entry.fasta_header(token=token)
+            else:
+                fields = {
+                    "records": len(group),
+                    "protein_sources": ",".join(sorted({item.protein_source for item in group})),
+                    "taxa": ",".join(sorted({"unknown" if item.taxon_id is None
+                                               else str(item.taxon_id) for item in group})),
+                    "accessions": ",".join(sorted(item.accession for item in group)),
+                }
+                description = " ".join(
+                    f"{name}={_fasta_description_value(value)}" for name, value in fields.items()
+                )
+                header = f">{token} {description}"
+            handle.write(header + "\n")
             for i in range(0, len(entry.sequence), width):
                 handle.write(entry.sequence[i : i + width] + "\n")
+
+    def write_annotation(self, directory):
+        """Write this proteome's ncORFs as a GTF with matching transcript and protein FASTAs.
+
+        The three files describe exactly what this proteome adds to the
+        reference annotation: ``annotation.gtf`` places one coding transcript
+        per ncORF on its host gene, ``transcripts.fasta`` holds each ORF's
+        spliced coding sequence, and ``proteins.fasta`` its translation. The
+        identifiers match, so PyEnsembl reads the three together and varcode,
+        isovar, topiary and vaxrank can give a variant inside an ncORF a coding
+        consequence. Concatenate the GTF with the assembly's own annotation to
+        keep the reference transcripts as well.
+
+        Reference CDS entries are left out, since the reference annotation
+        already has them, and viral entries are too: they are not placed on
+        this genome. Returns the written paths and counts.
+        """
+        from pathlib import Path
+
+        from .fasta import write_fasta
+        from .gtf import orf_gtf_lines
+
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        entries = [e for e in self.proteins if e.kind == "extra_orf" and e.orf is not None]
+        paths = {name: directory / f"{name}" for name in
+                 ("annotation.gtf", "transcripts.fasta", "proteins.fasta")}
+        (paths["annotation.gtf"]).write_text(
+            f"#!genome-build {self.reference.genome_build if self.reference else 'unknown'}\n"
+            f"#!annotation-source orfdata noncanonical ORFs\n"
+            + "".join(orf_gtf_lines(entry.orf.record for entry in entries)), encoding="utf-8")
+        with paths["transcripts.fasta"].open("w") as transcripts, \
+             paths["proteins.fasta"].open("w") as proteins:
+            for entry in entries:
+                description = (f"gene={entry.orf.record.gene_name or ''} "
+                               f"orf_biotype={entry.orf_type or ''} "
+                               f"host_transcript={entry.source_transcript_id or ''}").rstrip()
+                write_fasta(transcripts, entry.accession, entry.orf.coding_sequence,
+                            description=description)
+                write_fasta(proteins, f"{entry.accession}.p", entry.sequence,
+                            description=description)
+        return {"annotation_gtf": str(paths["annotation.gtf"]),
+                "transcript_fasta": str(paths["transcripts.fasta"]),
+                "protein_fasta": str(paths["proteins.fasta"]),
+                "transcript_count": len(entries),
+                "protein_count": len(entries),
+                "omitted_entries": len(self.proteins) - len(entries)}
 
 
 def _nc_orf_inputs(reference, sources, cache_root):

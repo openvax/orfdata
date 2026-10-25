@@ -10,14 +10,20 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{name = "OpenVax"}]
-dependencies = []
+dependencies = ["datacache>=1.25.1,<2", "pandas>=3,<4", "pyyaml>=6,<7"]
 
 [project.optional-dependencies]
 pyensembl = ["pyensembl>=2.27.2"]
-build-data = ["openpyxl>=3.1", "biopython>=1.80,<2"]
+build-data = ["openpyxl>=3.1"]
+# Viral support needs nothing beyond the base install; the extra stays valid for
+# existing instructions, and the viral *data* is acquired with
+# 'orfdata download viral'.
+viral = []
 data = ["datacache>=1.25.1,<2"]
 columnar = ["pyarrow>=14"]
-dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "biopython>=1.80,<2", "pyensembl>=2.27.2", "datacache>=1.25.1,<2"]
+# gb-io is a development dependency only: tests compare ORFdata's GenBank
+# reader with an independent implementation of the format.
+dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "pyensembl>=2.27.2", "datacache>=1.25.1,<2", "gb-io>=0.4,<0.5"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10"]
 
 [project.scripts]

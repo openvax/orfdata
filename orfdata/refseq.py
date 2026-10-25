@@ -9,7 +9,7 @@ from collections import defaultdict
 from dataclasses import replace
 from pathlib import Path
 
-from .proteome import Occurrence, ProteomeEntry, _sha256
+from .proteome import Occurrence, ProteinSequence, _sha256
 from .reference import ReferenceContext
 
 _ACCESSION = re.compile(r"[A-Z]{2}_[0-9]+\.[1-9][0-9]*")
@@ -107,7 +107,7 @@ def refseq_proteome(cls, protein_fasta, feature_table, *, reference, expected_sh
         raise ValueError("RefSeq source/sequence checksums disagree with reference")
     reference = replace(reference, source_sha256=source_hash, sequence_sha256=sequence_hash)
     source = f"NCBI RefSeq:{reference.annotation_version}"
-    entries = [ProteomeEntry(accession, proteins[accession], "annotated", reference.taxon_id,
+    entries = [ProteinSequence(accession, proteins[accession], "annotated", reference.taxon_id,
                 source, occurrences=tuple(occurrences[accession][key] for key in sorted(occurrences[accession])),
                 source_binding="feature-table-accession-join; spliced CDS coordinates unavailable")
                for accession in sorted(proteins)]

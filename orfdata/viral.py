@@ -5,10 +5,10 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 from functools import cached_property, lru_cache
-from importlib.resources import files
 
 from .model import TranscriptORF
 from .reference import ReferenceContext, species_taxon
+from .reference_table import packaged_bytes
 from .rna import SourceRNA
 
 _CATALOG_SHA256 = "aca0c72948d4cda896d14b32203981bce4759e0c70212c05dca6f3d0e16ed4b4"
@@ -78,9 +78,7 @@ class ViralReference:
 
 @lru_cache(maxsize=1)
 def _catalog():
-    raw = files("orfdata").joinpath("data/viral/hpv16-refseq-CDS.json.gz").read_bytes()
-    if hashlib.sha256(raw).hexdigest() != _CATALOG_SHA256:
-        raise ValueError("Bundled viral CDS catalogue checksum mismatch")
+    raw = packaged_bytes("data/viral/hpv16-refseq-CDS.json.gz", _CATALOG_SHA256)
     data = json.loads(gzip.decompress(raw))
     if data["schema"] != "orfdata.viral_cds.v2":
         raise ValueError("Unsupported viral CDS catalogue schema")

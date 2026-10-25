@@ -12,13 +12,23 @@ is a recorded host of the virus.
 Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl,data,build-data]'
+python -m pip install 'orfdata[pyensembl,build-data]'
 pyensembl install --release 115 --species human
 orfdata setup --species human --catalogs all  # For ncORF presets and "all"
 ```
 
-The second command downloads and indexes Ensembl 115 for human GRCh38. orfdata
-never downloads or indexes annotation data itself; it reports what is missing.
+Viral support is part of the base install; only the data is downloaded. Get
+the human GDC viral references — genomes, coding transcripts and proteins, as
+three named layers — with `orfdata download viral --species human`. Use
+`orfdata download list` to see every known resource and `orfdata download
+status` to see what is local. To annotate variants in viral transcripts or
+noncanonical ORFs with varcode, isovar, topiary or vaxrank, see
+[Downstream tools](downstream.md).
+
+The second command downloads and indexes Ensembl 115 for human GRCh38. Opening
+ORFdata resources never downloads them implicitly; use the explicit commands
+under `orfdata download` or the corresponding PyEnsembl command when data is
+missing.
 
 ## Build a human proteome
 

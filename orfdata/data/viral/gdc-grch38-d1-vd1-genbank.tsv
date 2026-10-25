@@ -1,0 +1,205 @@
+# schema: orfdata.reference_ledger.v2
+# panel: GRCh38.d1.vd1
+# source: genbank (https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi)
+# checked_utc: 2026-10-24T20:32:46Z
+index	abbreviation	source	identifier	state	length_nt	sequence_md5	sequence_sha256	coding_features	taxon_id	title
+1	CMV ( HHV-5)	genbank	AY446894.2	published	235646	385e4f3b7d6d4059bd38ec8ab4315519	8eba1d58f74ea86047702e858efaf2d5856ab7e109936d03cec5d954124496d5	169	10359	Human herpesvirus 5 strain Merlin, complete genome
+2	EBV (HHV-4)	genbank	AJ507799.2	published	171823	6743bd63b3ff2b5b8985d8933c53290a	38f5d42e1662f853f2cf2fa583f5d43e03609cea48e9a4fb21551216ae4e4fd6	95	10376	Human herpesvirus 4 complete wild type genome
+3	HBV	genbank	X04615.1	published	3215	1a9e5d598b3a8cc55c540376d3a90948	4fb3bb3f3003925deaf69df4f98ac2c8ee83d5a482ae06f8f5a5cfcb99ddc870	4	10407	Hepatitis B virus genome, subtype ayr
+4	HCV-1	genbank	AF009606.1	published	9646	967a32c1b6fde723514fde3187a8f014	ae890914689f2425ffa302496923fe8f8c4864b1659c1ddf5ab9fe068b2438a1	1	2847144	Hepatitis C virus subtype 1a polyprotein gene, complete cds
+5	HCV-2	genbank	AF177036.1	published	9711	85cbf1ae715165867a00e411eb6eb416	b7794054b4d01f3fdb208756dd7381ccf7738bc9c8b16b26eea102bf0962dacf	1	31649	Hepatitis C virus subtype 2a strain HC-J6CH clone pJ6CF, complete genome
+6	HIV-1	genbank	AF033819.3	published	9181	bbf2c9acba90e37c651795a0ed32ace4	0cfba8731832840b1328eac809832dc2b51586d242b5236887f35ae0ae855ea6	9	11676	HIV-1, complete genome
+7	HIV-2	genbank	M30502.1	published	10359	e750121a3f5154c84250fb076ad31429	63f5981431b47f27d5b8e58d04469368412e72f379c75b0a6c19d5ce0842a246	9	11709	Human immunodeficiency virus 2 isolate BEN, complete genome
+8	HHV-8, KSHV	genbank	AF148805.2	published	137969	7c6a9b3bac1aeb9951318f3a3e86fe61	8567b8e76fade0e376ad4a08ea579d90ba2afb14498c5449b57e3bc72769fa76	86	37296	Human herpesvirus 8 strain GK18, complete genome
+9	HTLV-1	genbank	AF033817.1	published	8507	76b1d23cc34dcf9dafd6f71815ade675	ec010a951cfbcbc6d5b28b6ed87740ced4a354990a5c000846236c7f0516f474	6	11908	Human T-cell lymphotropic virus 1, complete genome
+10	MCV	genbank	HM011556.1	published	5387	203e8a9fe025df02a3869bf2c473977e	cfc6b7dcfa3edea847a8444c6d6e805938ca805e211691cc87b38f0303d13837	4	493803	Merkel cell polyomavirus isolate R17b, complete genome
+11	SV40	genbank	J02400.1	published	5243	ff5afc4e6da9b2f279d7cecb4c6db359	c64b63ead33f537a0949be2be79c04be3b7dbd2cdc0dc7efd94a90ae54110484	7	1891767	Simian virus 40 complete genome
+12	HPV16	genbank	K02718.1	published	7904	a0171af0223b8e3ba93f7dda76c73b46	00bf586053791d9db5ee45be51f1b7db0e3e685ee996b40e9769e9acc87d589e	8	333760	Human papillomavirus type 16 (HPV16), complete genome
+13	HPV18	genbank	X05015.1	published	7857	086f6043d045878be2aeae9512599ef5	4344160791e2d8d5512508cbe588832acedbc422f9296e7dd5e60c1f182202c9	8	333761	Human papillomavirus type 18 E6, E7, E1, E2, E4, E5, L1 & L2 genes
+14	HPV26	genbank	X74472.1	published	7855	e80acf23c85cdb86e59e36366979d8fb	89311ceb9c834f5c8286db130a7959b220fd66cb9acc2b8eee96aa226eb42619	6	333762	Human papillomavirus type 26 genomic DNA
+15	HPV31	genbank	J04353.1	published	7912	a3eb8de75c9d108069fe180d1889e513	e8ebbecf7d63316c54dba62c6ce2d8222cafcdf84e753c335eb889b3af824472	8	10585	Human papillomavirus type 31 (HPV-31) complete genome
+16	HPV33	genbank	M12732.1	published	7909	5a63222eabf9f67c2d7fc26c9664f664	1e3d39ccf54bb916bf7746c81f4ef3b65e8052beebc9235eed61bca6a19d1fb9	8	10586	Human papillomavirus type 33, complete genome
+17	HPV35	genbank	X74477.1	published	7879	65a26bc3780236b9b8e044a6f68e9648	961bae3b1dac6e4302acb25508cf994e221b29ce1dd59ad3cf00d259cac1317c	6	31551	Human papillomavirus type 35H genomic DNA
+18	HPV39	genbank	M62849.1	published	7833	f608a8a5efb43ff64cc76fc34f647ed3	e1f6766b967cbbeedd81030c860fc76165fae65e8a2f2bf94b04267d6a1c28c7	8	10588	Human papillomavirus ORFs
+19	HPV45	genbank	X74479.1	published	7858	176d77ed0bde5368c671f59e0a2f79d9	c8298080b1a5259b3718bc85f796a6cc4673ff49ddd8a0ab80d13f3fd4ecd2cc	6	10593	Human papillomavirus type 45 genomic DNA
+20	HPV51	genbank	M62877.1	published	7808	3c8f02193ec4de0a1aeb7c3210c9da45	79aaa742738c6a735a6da956dc0e8e682de0c448c5c8993a4ee2de8acfc3f20e	0	10595	Human papilloma virus type 51 genomic DNA, partial sequence
+21	HPV52	genbank	X74481.1	published	7942	6df5c5133e772ba7e861da135ade6442	f92f64a80bfde5f1c31cc0870103f5f8aaa3cfb1079f4eea14c0ab12d2bf65de	6	10618	Human papillomavirus type 52 genomic DNA
+22	HPV53	genbank	X74482.1	published	7856	34021fd1425fd8db664d351b4e5a2fe1	adf3afe5e0425522c8cb4109bef2862f26724c047183da8f3bb345b1c30d2156	5	333765	Human papillomavirus type 53 genomic DNA
+23	HPV56	genbank	X74483.1	published	7844	acfabcd94aa2f3bd7446cab5cbe4f325	c465ddfebe162ffde9ed4d7b6b533487016c0aed138a14c990698bbe5622e2ab	5	10596	Human papillomavirus type 56 genomic DNA
+24	HPV58	genbank	D90400.1	published	7824	39897df45734491473ca926350e47b25	a521ecba7badd42bfe9392fb27f53c42fb4eab25321ea9e2600a6ccee7acd285	8	10598	Human papillomavirus type 58 complete genome
+25	HPV59	genbank	X77858.1	published	7896	60b2cb4674c78e07b8d0fd1a874b718e	d83f09b0bdf1044067cfcc2e6a1511d646682b3b536d42228b8196f1e712e98e	8	37115	Human papilloma virus type 59, complete viral genome
+26	HPV66	genbank	U31794.1	published	7824	50cbe41d426874c38e97d4391b975bcb	a308f330f21985a85ae1413f7e320de079084dd8d0509c063215b157478e8d51	7	37119	Human papillomavirus type 66, complete genome
+27	HPV68	genbank	DQ080079.1	published	7822	1916ddde186835ce2cc3c6a94ac37b9d	aaf2d85144df5b84a82d671fdd6bd1320bec5cda0646b378aab780b0d4080a4b	8	338322	Human papillomavirus type 68a, complete genome
+28	HPV69	genbank	AB027020.1	published	7700	00bb5d4628d0adb4b2085c2f37f1c8d1	10d42eb28948653d829a7d9aea0097aa4f9a2be2e013457cebdbe9472da47274	8	37121	Human papillomavirus type 69 DNA, complete genome
+29	HPV73	genbank	X94165.1	published	7700	77c9382472c6eacd091ff24cc2b0ef50	7ee2ba17f5c9830ab50a99cbf4b6cc4996dbeefde83f7287d9d8dd8764e81a02	6	51033	Human papillomavirus type 73 E6, E7, E1, E2, E4, L2, and L1 genes
+30	HPV82	genbank	AB027021.1	published	7871	943047e67915b1af931224ddba5076dd	7fad2556381ae6d3c90a3a35df2c0ac0df289eccb438fdc52a00766a5570075c	8	129724	Human papillomavirus type 82 DNA, complete genome
+31	HPV1	genbank	V01116.1	published	7815	b9828b5ae1a19244f123deda155465be	0cf4fcca308f6fdddfed85beabcb58abf899b82fab0903b01dee2c8a26d3f010	5	10583	Human papilloma virus type 1a E6, E8, E7, L2 & L2 genes
+32	HPV2	genbank	X55964.1	published	7860	192ab56dcf968678627eac24f46fccef	ca1dbe8c4cedaee130ca4a2de7f32b39bab32095c181c93b8504b3644983051e	0	10584	Human papilloma virus type 2a complete DNA
+33	HPV3	genbank	X74462.1	published	7820	76d207eed780ce2a19ef4d658aaa20ad	3d67a3a174277dbc8315c4c5d19d37b02af5b4f6c8f8772f08ef416c72b0db1a	7	10614	Human papillomavirus type 3 genomic DNA
+34	HPV4	genbank	X70827.1	published	7353	aa3d944093b410950891abe1cc4fda4d	245517aff24ebf11866e863e127ace681075c18914d310a3a311133792c3eb28	7	10617	Human papillomavirus type 4 complete genome
+35	HPV5	genbank	M17463.1	published	7746	5c97821a2cd6bd9f9c17b6c04d2da3c4	faca2e0611e0d3049cb05b4e5f8f5236cfbeecc8503d4e4e180b6c2795ba55a5	8	333923	Human papillomoavirus type 5, complete genome
+36	HPV6	genbank	X00203.1	published	7902	58bdebc6b3bbaaec591dac97b069decd	de8cd7360a69c496f0747657db8b678ca4f366c1f0f624c21a53d0477e2861bf	9	10600	Genital human papillomavirus type 6b (HPV6b)
+37	HPV7	genbank	X74463.1	published	8027	a040634ec88a65ec6e4c9736bcbb4168	dd38278b12ed2483c69ffbaf315dd48b45f5f80bc97fed0e6500e09c8348a67d	6	10620	Human papillomavirus type 7 genomic DNA
+38	HPV8	genbank	M12737.1	published	7654	2237f9c91dc92254accf2074c664062b	607f69afe94407b149b81ea0f4d7c90ff8dbaa5ca452658a13fe13d9ff2a2b02	0	10579	Human papillomavirus type 8, complete genome
+39	HPV9	genbank	X74464.1	published	7434	c094e73e6370c8a1044887a4f4044579	f3f2fd9b2a5ad354d0155fe7bb5f2441343952693ef766b5e75be432bc25f0c7	7	10621	Human papillomavirus type 9 genomic DNA
+40	HPV10	genbank	X74465.1	published	7919	17be6311d99d430c0d7de9fe664c2ea4	e8f6bece3be8fd61d0eeea2d2757da348a8a325080b1f40a51e46db06eec11f6	7	333759	Human papillomavirus type 10 genomic DNA
+41	HPV11	genbank	M14119.1	published	7931	0f1a8744680836f77cf00effea59f272	93811692de9d0f3d926b3b60faf0f9bf4deba8d497575da90be73df08abf4b95	9	10580	Human papillomavirus type 11 (HPV-11) complete genome
+42	HPV12	genbank	X74466.1	published	7673	186d225e11455d0d1c83b90166af6b19	f40899782fef2e187ad33a6baa1d2c438a8b6086e66282aed59e38be921968e1	6	10604	Human papillomavirus type 12 genomic DNA
+43	HPV13	genbank	X62843.1	published	7880	023f134f656edc13cf58d9cd1338c4a1	d4249c385e5389d1f7bbce44a98eb7706eed124f6f6a181d0dfac57d51838db9	8	10573	Human papilloma virus type 13 DNA
+44	HPV14	genbank	X74467.1	published	7439	4ffb16aa4ddcd00af5c57ef53c9e7c41	ecf2dada6c58eeda4b5443e9032d2dc615fb9b003120f35d37c46fa398b39cd3	4	31546	Human papillomavirus type 14D genomic DNA
+45	HPV15	genbank	X74468.1	published	7412	de90fb6db27401dc0d8360db89a9f693	f67c8aabfb50ec7a2a0520f9ec5c74745b4e10d357624aa2cf105d5bd08805a6	6	10606	Human papillomavirus type 15 genomic DNA
+46	HPV17	genbank	X74469.1	published	7427	585d0316ccaaf32ab7bf1ab937782d29	73826b20af05cd9c97a80d1741c6aa40dc25d5f8a14e91d8c67061b5f0e18e7f	6	10607	Human papillomavirus type 17 genomic DNA
+47	HPV19	genbank	X74470.1	published	7685	7c93c42310e8bcba46600ad0feafbe52	5a1a493baa96c415b851be8c4c736646076b1288dd11186ea504dc0c54b1f2a8	6	10608	Human papillomavirus type 19 genomic DNA
+48	HPV20	genbank	U31778.1	published	7757	ffd2f5f93955b87a24afe1a237e6f7a6	b9ae47d45247102665bb8ed907af008512aacd2ba6abe6cb701995f34b9a36c5	7	31547	Human papillomavirus type 20, complete genome
+49	HPV21	genbank	U31779.1	published	7779	a27c9b4238b977597e40c400e68a3dbf	742fbe8ecef776d952e3343229a9e1484c5ffe468ab6e32de71d1bb8db405169	7	31548	Human papillomavirus type 21, complete genome
+50	HPV22	genbank	U31780.1	published	7368	e31788444217c50f6196005cf473b872	b5e61cba4666a55f80bd66be94bde3712b83808561079173a3a0859b96fbba08	7	37954	Human papillomavirus type 22, complete genome
+51	HPV23	genbank	U31781.1	published	7324	e103ee3b646b52518b334d50b7ef50f7	46db74edb2b4fb9aa44f357f76dee86458848ecdfdb1637ff3ca57d97be1eacc	7	37955	Human papillomavirus type 23, complete genome
+52	HPV24	genbank	U31782.1	published	7452	d5c172e0ff19ad3209c4c41e05130ab8	d2dda0f8cf63601afa52d6bc625d0a5801306173ce053af3bf3f8e10555413de	7	37956	Human papillomavirus type 24, complete genome
+53	HPV25	genbank	X74471.1	published	7713	d4fd9c7d213d5a6d129f5bd07b2c1925	ec43f0087b0f8e4639c5f516327b3b0e2ff0a0657ba3bd659cf83a40097aafc4	6	10609	Human papillomavirus type 25 genomic DNA
+54	HPV27	genbank	X74473.1	published	7823	e24b1181649bc9740015922062582370	5713ef50b78019e0ec6f5ed8b14cea6e92ecd2b9cc0bc4ec285519017217a868	7	333752	Human papillomavirus type 27 genomic DNA
+55	HPV28	genbank	U31783.1	published	7959	987730f58ed1c09557e30a233fa015e2	1f9e245c708e2b48ba1a354830ceffa1d72925bc20295de88eabf945b23a6ca3	7	37111	Human papillomavirus type 28, complete genome
+56	HPV29	genbank	U31784.1	published	7916	d90050b1784d37561ab1ce293a74d43f	abd310caedfe5f8baacdf8a2367082715831d93f40f1c0e65870ffc4eb0ae44a	7	37112	Human papillomavirus type 29, complete genome
+57	HPV30	genbank	X74474.1	published	7852	f71effda71c5496a7062d4af1878ad9b	6d814659de3b2c40e31a5f9bffdee7031c8d18db91501f2607f97186fd611a07	6	10611	Human papillomavirus type 30 genomic DNA
+58	HPV32	genbank	X74475.1	published	7961	cb7c7c5fadd9d687580b90103ed31935	8914f567905d23b303f2445ded93ff33513847db4cee11916d8417fba9150b4d	6	333763	Human papillomavirus type 32 genomic DNA
+59	HPV34	genbank	X74476.1	published	7723	a29c11ee243aa17e78b1248eb782aabc	ecce7fc979907c89d738ca4a056c6e5556b573f3aa6217ef102e96c0e15b394f	6	333764	Human papillomavirus type 34 genomic DNA
+60	HPV36	genbank	U31785.1	published	7722	6c7dcd5397498bc666000d02fe59e444	ccb740f4eca0c32e890c73971a0e5873536a85cd731c2a4cb53a6bf896e941eb	7	37957	Human papillomavirus type 36, complete genome
+61	HPV37	genbank	U31786.1	published	7421	22589b4208238eff73a746f54f669d9d	9f950575ea667a62b6888bb704be27a884699194e25bc50d0e10dd634e5c637b	7	37958	Human papillomavirus type 37, complete genome
+62	HPV38	genbank	U31787.1	published	7400	8879d189a799721e2431681ad6597d17	326ed3572ee7c0e43d025b207886af1602fd8cb8e19e3c373b28b007d415ec48	7	37959	Human papillomavirus type 38, complete genome
+63	HPV40	genbank	X74478.1	published	7909	f0f022186c633f88ed9ddd5ad192120f	8bf9b849c0ca09d82bc9b9366ed13ebc64254fbe024d79ad3e23f3245798a29e	6	10615	Human papillomavirus type 40 genomic DNA
+64	HPV41	genbank	X56147.1	published	7614	92320d8fa9b11da98bf867c0b95a3756	7027ee3ae8f65a2659cecdaa485cf54b545979f40470f8282b70a5e9dc786420	11	10589	Human papillomavirus type 41
+65	HPV42	genbank	M73236.1	published	7917	dab6a33f845417a16afe8001f61add93	c86206d7fbcbd4228de5984aadd69f6535a4b1950edf74d61bfbb034de1dc609	8	10590	Human papillomavirus ORF E6, ORF E7, ORF E1, ORF E2, ORF E4, ORF E5, ORF L2, and ORF L1 genes, complete cds
+66	HPV43	genbank	AJ620205.1	published	7975	dc3decd0d51ada7b7dfb372166f3cf6c	efecd2b5c38e631a6b3e2754413cad2a03325de240766f988bc3f0f850737c01	10	10591	Human papillomavirus type 43 complete genome
+67	HPV44	genbank	U31788.1	published	7833	cf0db1400cddcb4137e58e189cdd7248	206ec054678ce02b1bf46e9ef637cad9e9321d05bcc702eab2f88419bdaf5b7b	7	10592	Human papillomavirus type 44, complete genome
+68	HPV47	genbank	M32305.1	published	7726	3a8d6daca930f713141fce9d299d9fd9	983477ac98956819961ff9c173e6a0082fef99154b461cc2a4899ac57bc801d5	8	10594	Human papillomavirus type 47 (HPV-47) +-sense strand
+69	HPV48	genbank	U31789.1	published	7100	a508f652315eae252f157a09319b0eb5	de7d70dd762806b708a44ffa5b47be18ea8f2f652074c88d42802466ae61b7bd	7	40538	Human papillomavirus type 48, complete genome
+70	HPV49	genbank	X74480.1	published	7560	1b743a8eca4c838928fa9f21a375ac0e	b13911807168522b560dbec6b18be5ac47a895aed689e0cb6b40e6af60c10bed	6	10616	Human papillomavirus type 49 genomic DNA
+71	HPV50	genbank	U31790.1	published	7184	617b538534a59c4e9efe03209fd6dc20	2990216160e377025a5b0ab8a7314dd31629c93ba5f43305e797398e945537fc	7	40539	Human papillomavirus type 50, complete genome
+72	HPV54	genbank	AF436129.1	published	7717	bfece52cfe18d9b6d8031ba0021d6354	3fab45d174431a3689571ab7d107c28a6a57ac1ecc7a6244107762256e70427f	7	1671798	Human papillomavirus type 54 subtype AE9, complete genome
+73	HPV57	genbank	X55965.1	published	7861	5bc1bc40c8a99f88da9b31c6af623150	553669cbebf86c01e21e881d21582aef5451e910c375390fd103c522e8d47758	7	333753	Human papillomavirus type 57 complete DNA
+74	HPV60	genbank	U31792.1	published	7313	e68516d3e950a61ef77de5162722a779	ff9a962a924344d82b0e9bff22dd91488af60b8dc3fdd6764f2ba6f4f43edde9	7	40540	Human papillomavirus type 60, complete genome
+75	HPV61	genbank	U31793.1	published	7989	0f4cfc0462ca57dd6de0df703f733483	3da15615c8ea4d187668fdca746c8e4dc1c394731b0e33b97029257a8ddb4f92	7	37116	Human papillomavirus type 61, complete genome
+76	HPV62	genbank	AY395706.1	published	8092	4fe577a75da4a03696bd5446245b10b2	8977b7c36682be1efb7c136c6df7968b4e77b5f4e1316d1e79520e59f3ce4492	7	334210	Human papillomavirus type 62 isolate Qv18091, complete genome
+77	HPV63	genbank	X70828.1	published	7348	fdf8434c13df3b41839c8adfef67eb7c	6db79c12fd16d157e86a6269042e7830d7413419c524fc9ee510206621cd608c	7	28311	Human papillomavirus type 63 complete genome
+78	HPV65	genbank	X70829.1	published	7308	e771640e058e67c3602b0650ef961183	bd18ea12d2b9eb9a430c46fcfba19f57079b7b25ad33533515f60f1deda96616	7	28312	Human papillomavirus type 65 complete genome
+79	HPV67	genbank	D21208.1	published	7801	3589e45e911c8a147880642e7f5ace7d	0ac7ab11405d387ec11b5b89555d66359f7d0921db954be22310289dd8985c27	8	37120	Human papillomavirus type 67 complete genome
+80	HPV70	genbank	U21941.1	published	7905	4834ef8dbe0fa7a689578f459778b9c1	f349836c903293e9eaa76d1affc1e57efbaffc8775410ce65c4a41c6b51c5fca	8	39457	Human papillomavirus type 70, complete genome
+81	HPV71	genbank	AB040456.1	published	8017	16ba7c7add9abf41422f11606d19ae35	69e9502bf04561ee75a24925aa08baca4f326faaea66728533e2853ee29c0f22	1	120686	Human papillomavirus type 71 DNA, complete genome
+82	HPV72	genbank	X94164.1	published	7988	e69e37e13dca5561e4a74739de90a718	6fc440d1b03c6852262606ada254b9cc699ca6fe46b019e9426f5fe4f1a6212e	8	333770	Human papillomavirus type 72 E6, E7, E1A, E1B, E2, E4, L2, and L1 genes
+83	HPV74	genbank	AF436130.1	published	7887	6a0a89b3df16cd6194f472f0baf15cfe	2d93d9556c0bbfb6c0fab04340201f0e3e7b1bfcfa246a3368d1bb9cc65fa2e6	8	44028	Human papillomavirus type 74 subtype AE10, complete genome
+84	HPV75	genbank	Y15173.1	published	7537	63cd55c3cbbd89bc203b96fe1847822c	564f923fc92913b7e49fc7494a862fdac0d5a0252570ca5f8bba29d3ba99fce8	7	69984	Human papillomavirus type 75 E6, E7, E1, E2, E4, L2, and L1 genes
+85	HPV76	genbank	Y15174.1	published	7549	15e48b7d05475be78b03fe2fdfe22171	3f49e4bfc403c3912861e39ecc34b207845004bfaf9f9d4198cd7454edfe7834	7	69985	Human papillomavirus type 76 E6, E7, E1, E2, E4, L2, and L1 genes
+86	HPV77	genbank	Y15175.1	published	7887	cba43def2e1cafdc872a9fa8bcdddb14	5397cae43e60498bb0ee066a0f1af2aacf4f61755d73f7342a81f39ce5d72ef4	7	69986	Human papillomavirus type 77 E6, E7, E1, E2, E4, L2, and L1 genes
+87	HPV78	genbank	KC138720.1	published	7830	2015f692e6053022adddbfb7d836915e	55c182e1bed96b10f1b965cbd1111647249c8a59419b2ef434db2c37bcd8e623	7	1288116	Human Papillomavirus type XS2, complete genome
+88	HPV80	genbank	Y15176.1	published	7427	2f98e71374b715198f4f5de01e3efe86	d4a994c20d40beed7c54f37c4273305dc3d500648295e7e82729670c85322c8c	7	69987	Human papillomavirus type 80 E6, E7, E1, E2, E4, L2, and L1 genes
+89	HPV81	genbank	AJ620209.1	published	8070	80056e4b904d8dbdf5f780dc2a58ce04	a7e467bc1e8617134c64136cc67acf8627eca6582f7474c3065d9b83a23dd6cc	10	333771	Human papillomavirus type 81 complete genome
+90	HPV83	genbank	AF151983.1	published	8104	b9cded333b8164fb689ab0520f00780c	6efffe5c0dab8013c8900d7bedd10f66ff2a7b66fcf15fde9e79859cc13480e8	7	333772	Human papillomavirus type 83, complete genome
+91	HPV84	genbank	AF293960.1	published	7948	cadcaa42ced89c449c8c31e80ebfe0d0	a97797d5b2a0e02dbe9ddafc90911f411ff5e472bc1ddac4db81b03331aa9497	7	150546	Human papillomavirus type 84, complete genome
+92	HPV85	genbank	AF131950.1	published	7812	60318a665305740ed3517947681d04f7	7a7955be22c4b905e0b20523db4faf48787fa3a5020345c96605c61b54ec37ba	8	2848423	Human papillomavirus candHPV85, complete genome
+93	HPV86	genbank	AF349909.1	published	7983	1388efd42b12d649b2051257baceefab	a86dbd9f207d8f9dd3d876c1a3c0b75cc7c06003a13c7f89a7eadff1e1015829	7	171370	Human papillomavirus type 86 candidate, complete genome
+94	HPV87	genbank	AJ400628.2	published	7998	490541bd60ba12eda2228d508e88a215	2125ec4450d4e29d33b8dc73de64f56a15134019058eba2f5bbf3a34d85e32dc	7	120381	Human papillomavirus type 87 (candidate) complete genome
+95	HPV88	genbank	EF467176.1	published	7326	a1b064eb642b2ee6d3956375ac01736e	888c9ec86654a80b94e594fa6475b209412176916cb98f8656781b1c8e1030b7	7	337054	Human papillomavirus type 88, complete genome
+96	HPV89	genbank	AF436128.1	published	8078	c9c6bce18b2ebce864a844a4465b8e0e	d6dce27d16dc27f5477023eb18689b1174d43e2e1f62518092f34ec2a8f461ff	7	202250	Human papillomavirus - cand89, complete genome
+97	HPV90	genbank	AY057438.1	published	8033	647b32a8e2e92b00a336ea5c508eafc1	5e501a30784c3c719a7a2525c8b086de6de8a2437b02f6f056339b5441439c39	7	333769	Human papillomavirus type 90, complete genome
+98	HPV91	genbank	AF419318.1	published	7966	d93890ecebac4320dbeeb5401a418b2b	4a568d7540dc553afb2fcf2e240b7917b39c14abf28378ec105889b5a8fe9264	7	202252	Human papillomavirus type 91, complete genome
+99	HPV92	genbank	AF531420.1	published	7461	0ead8d4900dedd6f80f6403ced22edb9	0efdf76866b77bb398086d462828a7ebb1dc1f2890b59ab211c30964edb162b0	7	211787	Human papillomavirus type 92, complete genome
+100	HPV93	genbank	AY382778.1	published	7450	694e2d9e3dbfae88de3fe5902b0abd90	988e881f705f1bfa59be2d29e036934e628441b66f50c7ffca6470a49341ed62	7	247268	Human papillomavirus type 93, complete genome
+101	HPV94	genbank	AJ620211.1	published	7881	c093e81c694d75dce410561debd41d6f	88404ab0481113b1732a0609922b4aa24f200d4bece65ca821ca109a6a1668c3	8	260717	Human papillomavirus type 94 complete genome
+102	HPV95	genbank	AJ620210.1	published	7337	d01b17c22e85b02786364d1e99159f0e	81b70d34b8d6e78eef0af64c368eed92d88443c95e4b119abf4306b6b2775c9e	7	260716	Human papillomavirus type 95 E6 gene, E7 gene, E1 gene, E2 gene, E4 gene, L2 gene and L1 gene
+103	HPV96	genbank	AY382779.2	published	7438	a64c0dfdd2dddec60a6b6d591fedcc09	c4c18c8e3cadd95628630345752b63f47c9ee8a7bce9e85e6885296d863acdf3	7	247269	Human papillomavirus type 96, complete genome
+104	HPV97	genbank	DQ080080.1	published	7843	b623b76a176219c28c471ebd8181d70e	c7f0e594f6675d69730a6eb51f7a83182429f4be0667cf8bfb059419b43fb05b	8	338324	Human papillomavirus type 97, complete genome
+105	HPV98	genbank	FM955837.2	published	7466	b5caf69b42a6d761dbab3dd6d114dfd0	3fa1c38f1047a906e941fa51600d1924ab4e89a50b0cf6b2d2f2142c6ec5730e	7	587347	Human papillomavirus type 98, complete genome
+106	HPV99	genbank	FM955838.1	published	7698	2940278d6a0584d956d061ce5f6c8ffd	24d01e143083aedb1232db28bdc313187df522da2929bc350baa5044920d16b1	6	587348	Human papillomavirus type 99, complete genome
+107	HPV100	genbank	FM955839.1	published	7380	06634b00a968366c460db25256972703	ecd35309f568fed2aa8195e6884b81197001024163e20bc65889d0a6a470466f	7	587349	Human papillomavirus type 100, complete genome
+108	HPV101	genbank	DQ080081.1	published	7259	f2853fc1dcaa7cbeb74873022f069ff0	0fbbe519d3ba121ba4cecc3c17d075f7bbb26f837469a62af02cf5ab8b855696	6	915425	Human papillomavirus type 101, complete genome
+109	HPV102	genbank	DQ080083.1	published	8078	5d7fbc9b4dd231dbd9bad8ddd69a65b0	2c8f3794c67eb19151df7df0abe834d3e88de9a2f7972cdea33651208ffb48fa	7	338327	Human papillomavirus type 102, complete genome
+110	HPV103	genbank	DQ080078.1	published	7263	6dbc0bbb0ea366d78239adfb0d6ee4d5	f22ef7324dd8319e1586f91338656cfc49926695167d012d45d3a40c07ad9385	6	338323	Human papillomavirus type 103, complete genome
+111	HPV104	genbank	FM955840.1	published	7386	f0c0d41ffde6b064d8eca7a4b73f18e8	b08c665d2cce95923e48f8317f31e5a25a161b97c234643e88ff29aaf97394bb	7	518628	Human papillomavirus type 104, complete genome
+112	HPV105	genbank	FM955841.1	published	7667	343f3e4a02584149c231d8cc5d69f824	05980910fa54e31f534a1932a1678ea1317db147b9f70b19631afb7c7c88f65f	6	587350	Human papillomavirus type 105, complete genome
+113	HPV106	genbank	DQ080082.1	published	8035	05f99168db49c6f2925b33ac5d5709ab	580f08d5782c69c7415fe92e9737d2f4266fce6dc1de2e7f0a29dc44bb778692	7	338326	Human papillomavirus type 106, complete genome
+114	HPV107	genbank	EF422221.1	published	7562	b47efa7a57ee384379cbad57313c55ae	243e1486163466769a5e309274b437a50d8ca613e0f5eda526c0b9798394a71e	7	427343	Human papillomavirus type 107, complete genome
+115	HPV108	genbank	FM212639.1	published	7149	c81f420567ddc28a05a784938619da00	a034646fb54271d0bbec40dcfb4d6e05940c683cc5df48ac2fbdf8b8b0f3b830	5	565537	Human papillomavirus type 108, complete genome
+116	HPV109	genbank	EU541441.1	published	7346	0005954ad7c4cd795d9466eceaca0589	7b9e4fdc2cb48c5d105267d54968db73ba02de5bbd25a3b6686dfcac9a88bb48	7	915426	Human papillomavirus type 109, complete genome
+117	HPV110	genbank	EU410348.1	published	7423	2648612dc13d49c811d5764185e53552	52e05c67a27025afdc5ce36c901c2b375406f86b7ee3ce6aa935aca89061f7f0	7	518629	Human papillomavirus type 110, complete genome
+118	HPV111	genbank	EU410349.1	published	7384	209cb3098481e80fc710857e4db5869e	1b94850e43866e8e28ae893c8cc1ed80f9db2682e115e3675d324e32eb326801	7	518630	Human papillomavirus type 111, complete genome
+119	HPV112	genbank	EU541442.1	published	7227	1e31b87aff03603f092c9400b8b97eee	1aa7be8856d30d6197c0fbcf9b9e4e07da20b2aa95cab772adb1d55d9de8fe71	7	915427	Human papillomavirus type 112, complete genome
+120	HPV113	genbank	FM955842.1	published	7412	9edcec5d7e4cd34149317e570362aca1	c6cd3d5c32847a7a854ee1e6ba8195af3f67adda253da9460fd24556cf20add7	7	587351	Human papillomavirus type 113, complete genome
+121	HPV114	genbank	GQ244463.1	published	8069	08213b3f805b5c2032ffd22fda1699d8	0b32c2adde1c48bc8147a54007f668d9795e76ec652c9866d457b5e67a4920d1	7	735496	Human papillomavirus type 114, complete genome
+122	HPV115	genbank	FJ947080.1	published	7476	0bca56704ef5cf29e77603137f7697c8	1aa281813f86dc372204eba472aaea28c99ec1aca66b849020e15d2149bea500	7	696746	Human papillomavirus type 115 isolate GC02, complete genome
+123	HPV116	genbank	FJ804072.1	published	7184	9ade0e20e2ed45091fff24ecdcb34a98	c7cff79e4a47f7676f54f08317ff8d79956e05af1f829ea34efda81a599d9f3e	7	915428	Human papillomavirus type 116 strain HPV116, complete sequence
+124	HPV117	genbank	GQ246950.1	published	7895	20ae074c21ab8ad9c606800259178c9b	771c0ebdbd8b5e82ac3b7d4ace81b0a2b5ce86b6610305c701f214fe63fe89d8	6	720708	Human papillomavirus type 117 clone K6, complete genome
+125	HPV118	genbank	GQ246951.1	published	7597	1890accdfb943678b444aa6cce05f4b4	35139bafac923694a29b5eff9e574379618710d79b7b37b3707ab63d2833829e	6	927771	Human papillomavirus type 118 clone K2, complete genome
+126	HPV119	genbank	GQ845441.1	published	7251	31b59afd3fff0d42097589717e2c17e0	9c3d8e05ed303387553a22863ff340888f2eb1d5ae55fdb1846d8b0f7f993fc3	7	765051	Human papillomavirus type 119, complete genome
+127	HPV120	genbank	GQ845442.1	published	7304	7ee8c104b2525c9c7c4327418b815ff8	4f3ba28c454a021238debf52abd87fbab314e39c2ed37f145607565850b08b3e	7	765052	Human papillomavirus type 120, complete genome
+128	HPV121	genbank	GQ845443.1	published	7342	41136a3588448c7309869197deebc4c5	ffef70fe42548ceaeae8414c4abcc99d18f90aaaef419ddb2bd22f01f97c6402	7	915429	Human papillomavirus type 121, complete genome
+129	HPV122	genbank	GQ845444.1	published	7397	83f8e02e193ee0e34aae1ee9507b1935	f02e63026847a78e5d03816344d8ba7b426475be7875cd228d3f93f5d6ba0104	7	765054	Human papillomavirus type 122, complete genome
+130	HPV123	genbank	GQ845445.1	published	7329	51e0c60318906cc3eeb07059247477e3	0c835949aa73b32c4ae2fd75c443541272932e52c9010ee6b4d90d01fa9168af	7	765055	Human papillomavirus type 123, complete genome
+131	HPV124	genbank	GQ845446.1	published	7489	f5f1d51973871a9ee37b540706e8d87f	ee222022dec4dcb500af32afcda48a9fa99c935821e047e331c327ea99b44e9f	7	765056	Human papillomavirus type 124, complete genome
+132	HPV125	genbank	FN547152.2	published	7809	4a32cf03a4a42f53c504bc6587a85215	1e8fbd39bff2330e5e62b9d7ad4e0275a51bfa02bab31d1a540cb1165d5a1143	8	673323	Human papillomavirus type 125 complete genome, strain SIBX9
+133	HPV126	genbank	AB646346.1	published	7326	c8e00db88885714f9efe0eb7727b6fbf	7d3314c47221dde3e94da0d7d5f549baeac2eafb3b483495d281aa405e75e77e	7	1055684	Human papillomavirus type 126 DNA, complete genome
+134	HPV127	genbank	HM011570.1	published	7181	0d6f492e70667061fc90a3c61968ea02	e85e5e173459627e6b19556044340d3c0cc35cc5405bcb8068fa5ab26a0243b9	7	746832	Gammapapillomavirus HPV127 isolate R3a, complete genome
+135	HPV128	genbank	GU225708.1	published	7259	aeb5f1b2dbea9749ac93ee427f999b18	857d78ad09deddda927c93b98694881fce6e263059938b2839eb91c4a75e27c4	7	931209	Human papillomavirus type 128, complete genome
+136	HPV129	genbank	GU233853.1	published	7219	30e4cc9463392a731d4a708ed81536e6	5a693217022456309c926cbb2acbced0d661ccae1d5562273c8b334939f08a20	7	931210	Human papillomavirus type 129, complete genome
+137	HPV130	genbank	GU117630.1	published	7388	f5cd74f557245dfc0f6f84e7311577a7	af87dbb62d2aba683af6c58a5598928ad8f9ee0184074956caad430d109159e9	7	909329	Human papillomavirus type 130, complete genome
+138	HPV131	genbank	GU117631.1	published	7182	8a959d3f8b6b6f66fa9ab000734be904	7e6dffa4e0b5a0fbd62b3ef46e84cb7ea68d99ceb60d309d4c2dbe1dc939b731	7	909330	Human papillomavirus type 131, complete genome
+139	HPV132	genbank	GU117632.1	published	7125	bb7c369dd699b6148adc1e5a2e81015a	566bd9fb3afafe8a734ecf90b1e577e5b945679a60ce8e3aeeef8d77cfe4a403	7	909331	Human papillomavirus type 132, complete genome
+140	HPV133	genbank	GU117633.1	published	7358	352291cba012fb3052855b250355fb06	267fcd430cf2ab19f4d36a9b72f3525098feb6761c8205dd94503d9d31fc6f88	7	909332	Human papillomavirus type 133, complete genome
+141	HPV134	genbank	GU117634.1	published	7309	d0a3f5d4f7f57f09740e889429b470ad	c9b66a80a1431dd6f005fdcf684cd7ed4d905719caa12a30cce7c1ccb36f3e1f	7	909333	Human papillomavirus type 134, complete genome
+142	HPV135	genbank	HM999987.1	published	7293	68fb4e78f3a6daddef798859bf47bc39	77e656217259514b5c51cc83cb5469ec601a110c55fe1313abeafc98c5734174	7	1070408	Human papillomavirus type 135 isolate NJ3500, complete genome
+143	HPV136	genbank	HM999988.1	published	7319	b3d3c03380eb6df28c0b39d3a080e0f9	bfa122fa4ebf5ee0fe24c5e9d37f6d1d605f9bf1ffc8107f50b70daf4eb91829	7	1070409	Human papillomavirus type 136 isolate CL3865, complete genome
+144	HPV137	genbank	HM999989.1	published	7236	897a59271ce08be58f053bee64a4e81e	b63835b487d96cd59f0a8d05c52b23c31f4582c701f937c756889559f3ac8361	7	1070410	Human papillomavirus type 137 isolate NJ2801H, complete genome
+145	HPV138	genbank	HM999990.1	published	7353	8dedf7cb3de75feba374d101655b5ce0	3b13f2fba6f288470998946db0041c0df94bb478a5616ae13078765faea15b6d	7	1070411	Human papillomavirus type 138 isolate GH13, complete genome
+146	HPV139	genbank	HM999991.1	published	7360	70222a6c44abe1140f660e628764d455	86e28c59d55a2415432f00cc247dbeca0bbbb3fc0bbec876ab2dafb41f3c792b	7	1070412	Human papillomavirus type 139 isolate GH1646, complete genome
+147	HPV140	genbank	HM999992.1	published	7341	543054488a9a0a2ff6abf34942a090bb	89339068349c833704b625417c1a7b621308f8b607bb2f7d4aa7960bcf854825	7	1070413	Human papillomavirus type 140 isolate NJ2801C1, complete genome
+148	HPV141	genbank	HM999993.1	published	7384	8f4c02724ec42fe5b7e83ae58a9d399e	0ae74a8fd15a0a35b1dcd01b1bf8499d85874f5e85aa061cbdbb14a1f8c084d9	7	1070414	Human papillomavirus type 141 isolate NJ2801Cn, complete genome
+149	HPV142	genbank	HM999994.1	published	7374	99d609d99f3dfd18db935f66b713f921	76e42690b3e9c52b1b82ad2aeff3f89bb8f68d55232b36bccdde664e00b7c558	7	1070415	Human papillomavirus type 142 isolate GH1302, complete genome
+150	HPV143	genbank	HM999995.1	published	7715	9878b399594d7a9acfb970aeb3916fb3	ba899efda45b9683a7a39d476ec5d44dc5c60f641778bb74bdcef663f577fbb6	7	1070416	Human papillomavirus type 143 isolate CL3220, complete genome
+151	HPV144	genbank	HM999996.1	published	7271	01389d29ccca4280c4c1c2ee475ebff9	a5c61c1af132991dc7aeb7709efe9f7be42b1c22874cb2e5323f3c950c0a9c38	7	1070417	Human papillomavirus type 144 isolate CL3740, complete genome
+152	HPV145	genbank	HM999997.1	published	7375	9503154a1b9385b184669b64a299c77a	408bee3bc129e853fb8bf6d2a2379c971221ffb5545c6068a883cd71c5644c9c	7	1070418	Human papillomavirus type 145 isolate CL4112, complete genome
+153	HPV146	genbank	HM999998.1	published	7265	c24dd164640bdeaa60747df3207eebf6	4aa977cbd65bc3b9028901b6e6a586f9ec2c9fa86c7675b80229664949be3d66	7	1070419	Human papillomavirus type 146 isolate GH1677, complete genome
+154	HPV147	genbank	HM999999.1	published	7224	50b87b9ad49e5b8290f19983b89cfbd0	35fe9906154f8c97c7c4796532c67c359a24c2bd19ec5424c6f695c62f9d411a	7	1070420	Human papillomavirus type 147 isolate GH659, complete genome
+155	HPV148	genbank	GU129016.1	published	7164	d9c1c6336df04b8174d94bacacc4a54a	497f5a6360ba1e52bf08228076439e95fe5d5ae62fda80d0b1b4bfa8895a4115	7	942038	Human papillomavirus type 148, complete genome
+156	HPV149	genbank	GU117629.1	published	7333	3e9dd911d4ecf950c8177ce7cab0e148	3e9a13aad5969ef78714b8610b5ee8b80f17017edccc7141d87c041bb4f9d57c	7	909328	Human papillomavirus type 149, complete genome
+157	HPV150	genbank	FN677755.1	published	7436	84bf585b033255ddeb2e83ce2004ad1b	62875b328f51bbe1e7ee0e1b98969c960b1d1215d992a6f0bc54acda3586ab03	7	743811	Human papillomavirus type 150, complete genome, isolate SIBX1
+158	HPV151	genbank	FN677756.1	published	7386	f00b1e9b58945e1028ee3a4d4d1f67c8	ef3732fd787c471a1b010f2d6fcb7196f5edd3c441937855b0288b28f8a9dee5	7	743812	Human papillomavirus type 151, complete genome, isolate SIBX2
+159	HPV152	genbank	JF304768.1	published	7480	1a689e02849586e521126236b989328d	86479aec2104da1cdac1f83628b55efef96fee58b6163afe684dc804e86e2c3f	6	990302	Human papillomavirus type 152 isolate Muc17.1, complete genome
+160	HPV153	genbank	JN171845.1	published	7240	02dd76d22ca7e30ae46daa6f3a77dfbc	16347325b0267f9b618a09c5de00f155c7492792245903ec3f790b0b048a6d59	7	1110710	Human Papillomavirus type 153, complete genome
+161	HPV154	genbank	JN211193.1	published	7286	bd4fa0b5c4e6da1b9dc2ee61cc4f9563	71012c7003697a2e92dd04c7aec5498515c5d9870fe6326678d583d98a73df13	7	1195796	Human papillomavirus type 154 isolate PV77, complete genome
+162	HPV155	genbank	JF906559.1	published	7352	123526182d91b301433d086192253163	212e4c6af7ffceb6461fac0b154875705dd452df82480e08eef68bb32598fecf	7	1165934	Human papillomavirus 155 isolate SE42, complete genome
+163	HPV156	genbank	JX429973.1	published	7329	5cf42706d31ff1a3a766c89f338467c8	bebc257ae4eac071a84bf432358e0cfa4e780c799087c4405b4fcc4f4cddb703	7	1248396	Human papillomavirus type 156 isolate GC01, complete genome
+164	HPV159	genbank	HE963025.1	published	7443	5ade6867bf5f257d25fd9dfd423d71ec	3557006367741172aeea995726a4934451d213169b3b806383a5a91e9717154a	7	1209820	Human papillomavirus type 159 complete genome, isolate SIBX8
+165	HPV160	genbank	AB745694.1	published	7779	f873ddf258da29e9d9d5262ddd0fbad6	6990be527fdde811bc64690db2b5da400e5bb6cdb936d63474cfa065a4a65538	7	2259332	Human papillomavirus 160 DNA, complete genome, strain: TM
+166	HPV161	genbank	JX413109.1	published	7238	b123807939e627ad4b6dbe35250c7b2c	753d114589134c9e5ad69b924b9b181645bb32c7eb479fa25acd699b5963b31a	6	1315264	Human papillomavirus type 161 isolate KC1, complete genome
+167	HPV162	genbank	JX413108.1	published	7214	7e12b416955b56be0d3bb565fc51488e	66d4dedbb98372e66c868c4d6b55bc2c140969b350aefbb30c9ec48009876689	6	1315263	Human papillomavirus type 162 isolate KC2, complete genome
+168	HPV163	genbank	JX413107.1	published	7233	ab83a191838a1ba7bfaaf2cdfa02311c	c330b172386f2000d4507c489cac4091845fd5aa4e6782e126ba55deb735321f	6	1315262	Human papillomavirus type 163 isolate KC3, complete genome
+169	HPV164	genbank	JX413106.1	published	7233	888361c60e7dcb6e99106a4871a461a8	28a2daa925908bdca015d6c124f3ef1f0b8c715ac01d3f99bd62b100b38d5446	7	1315261	Human papillomavirus type 164 isolate KC4, complete genome
+170	HPV165	genbank	JX444072.1	published	7129	ad30a8938980f7d15b9fa299bc4b9d6f	c15cfc947de14978db652ad2c9c809bc2d3625686d0ada7497841ab750b39bcc	6	1315266	Human papillomavirus type 165 isolate KC7, complete genome
+171	HPV166	genbank	JX413104.1	published	7212	27356d475bcdb5789701f67c9e6303ec	5d2fd976398600e8d18f6679719bad697228f454688833c9bcc2c86b5bb4a9fb	6	1315259	Human papillomavirus type 166 isolate KC9, complete genome
+172	HPV167	genbank	KC862318.1	published	7228	a595379c54151d8c846a7dd460eb8f1f	218a294fff0568f4e3c2d7b261808f791979c3df4cccf54dda317045653a4407	6	1420545	Human papillomavirus type 167 isolate KC10, complete genome
+173	HPV168	genbank	KC862317.1	published	7204	6b725bf8b466ea19c7ea7efec9162fb4	62af8367368acdc17a9abb30630184cb0228109b46c2f2c3fed9a4375d4c0ba4	7	1420544	Human papillomavirus type 168 isolate KC15, complete genome
+174	HPV169	genbank	JX413105.1	published	7252	4b37ab183c05f072f749587bb8659605	27e08304643dab2c0205bc8ff9dcd1cc3394014851a564732f52ab7b3b7afb59	7	1315260	Human papillomavirus type 169 isolate KC6, complete genome
+175	HPV170	genbank	JX413110.1	published	7417	3590855ab9488eaf05a58ce6bda3b580	429e8974a42d27aba5594d2c89200fffec14e07692f7a83f605842e92c915446	6	1315265	Human papillomavirus type 170 isolate KC8, complete genome
+176	HPV171	genbank	KF006398.1	published	7261	2a0d58b7573ce441a6b26e122c9c2b1c	5612962b1e1794c136602fca520f4747a25db0cadcb0204f1928f5f088144b1a	7	1434986	Human papillomavirus type 171, complete genome
+177	HPV172	genbank	KF006399.1	published	7203	94bdad003e3eebd5a4801b1ef77ce6a8	648112b23d72e7670f68667d2ce1e0f4c3d33b9a8088dbe65c7dfe165e3038a8	7	1434987	Human papillomavirus type 172, complete genome
+178	HPV173	genbank	KF006400.1	published	7297	67c80f2ef26fc07242d3b5394af03e1b	9fdde7f6c979c6b5676109f8303a9b26557267b106314a5efe707126931ab7e9	6	1434988	Human papillomavirus type 173, complete genome
+179	HPV174	genbank	HF930491.1	published	7359	abe9f9972df30f7ca7b7feafdf423b5d	6559a48b7832dc372ded32433f4bc4ee1b66a01dc3d8c9c5373d60a16cb9e89c	7	1347832	Human papillomavirus type 174 complete genome, isolate V001
+180	HPV175	genbank	KC108721.1	published	7226	bdad213f320e1242eea9ff67a7362ad8	f1a1d3391fe6b8e819e820c5be32bad8e941dda4028f8704be18ea0fb04581e6	7	1434782	Human papillomavirus type 175 isolate SE87, complete genome
+181	HPV178	genbank	KJ130020.1	published	7314	57af5faad1a4af0d266f149557317331	7bbb089df6b55454b68054eea70dd27cad55688ab4c18e374a2a8ec51a72348a	7	1478160	Human papillomavirus type 178, complete genome
+182	HPV179	genbank	HG421739.1	published	7228	0449df5b9ae2b57857605b43cad9b55b	af24858b225fbc08be9ba728382f8ea6739c8d43595f75a2d5e22d897d89ca6d	6	1472342	Human papillomavirus type 179 complete genome, isolate SIBX16
+183	HPV180	genbank	KC108722.1	published	7356	b1b0f08ffa330288eee7af0e0bd50c0d	05ee77badf9abe011fc76350fdc3e6ea953b0d525f9a760651098e0479af2b08	7	1449827	Human papillomavirus type 180 isolate FA69, complete genome
+184	HPV184	genbank	HG530535.1	published	7324	41c6e4e743a09f917de403c487e09718	3551a286ad0b28a168097a7973b8e0bfb6a4e6baacdbff434c14804f9fd9a26c	6	1472343	Human papillomavirus type 184 complete genome, isolate SIBX17
+185	HPV197	genbank	KM085343.1	published	7278	ed8be5b41b6b548c13fbd39938394b81	4cb74d9547552f88a2d59c2395d3bae57fef3b10fc6f2f7e535067c2b7718b5a	7	1542134	Human papillomavirus type 197 isolate SE46, complete genome
+186	HPV199	genbank	KJ913662.1	published	7184	8ecedfd002d8242e88e96ebb402c0fd4	3230b5b82ea81f14963be7319e54bc64a9a9de142c52f6c15858ea8992d07657	6	1545700	Human papillomavirus type 199 isolate KC82-SLO, complete genome
+187	HPV-mCG2	genbank	JF966378.1	published	7152	dd4d0a0a3ced4c934aed5ab62a29ffd8	68fea93b353a5720f428dff05d38fbf4dab552e19782b607e1d1ec1ab4f92363	7	10566	Human papillomavirus isolate 915 F 06 008 CG2, complete genome
+188	HPV-mCG3	genbank	JF966379.1	published	7095	4afa60070c351be8f5a421be5229e99a	e7e09ff782afe2ff9ae0a3a785512cf042259ec5b2ff41c4e29dcdb433a02bd8	7	10566	Human papillomavirus isolate 915 F 06 008 CG3, complete genome
+189	HPV-mCH2	genbank	KF791917.1	published	7190	b33deaa87987babfb3aff913dee65adf	2570d24b91fe09734281c0d656b51bd818131d5e9ea0a11a08d95d094594dd22	7	10566	Human papillomavirus isolate HPV-CH2, complete genome
+190	HPV-mFD1	genbank	JF966375.1	published	7286	180be26e2bcdf99d040d49e0dc9ec7ec	6b666c1199cd7cf49916e1fa813d49dd96ac0c6a30c8606ff46e212f9cf4e13e	7	10566	Human papillomavirus isolate 915 F 06 007 FD1, complete genome
+191	HPV-mFD2	genbank	JF966376.1	published	7219	cfe2cd76e5a39f6fef22f0fef2264488	134c3970bb3e171966228981adce7d372d651c4c83f402e91bd43fd00dd52904	7	10566	Human papillomavirus isolate 915 F 06 007 FD2, complete genome
+192	HPV-mFS1	genbank	JF966373.1	published	7167	421cad31a2ecbfa78e9b757b1790c301	beabea8de1004ec29b34862723fa3a69f1c67b4a3b1fe205cd9535e4df667f3b	7	10566	Human papillomavirus isolate 915 F 06 005 FS1, complete genome
+193	HPV-mFi864	genbank	KC311731.2	published	7247	34cce98777fae29915aae5025e727c9d	71023d73010cfea79f99b2abfa17096305c8e480d07aafdbbd154caad7155c09	7	10566	Human papillomavirus strain Fi864, complete genome
+194	HPV-mKC5	genbank	JX444073.1	published	7143	823e47fe3bf0d787f3b6e2a451d3ae4c	8d684f16946736acd24987276a77655071234c8f52eb39dcda3fccd0704bafe3	7	1647924	Human papillomavirus KC5, complete genome
+195	HPV-mKN1	genbank	JF966371.1	published	7300	e5735d2d68ca7acccf89916978324dde	6216b0fb489e1c2d2c3493c988d6eddba20eaa4f498e1a912398776f5bac4e9e	7	10566	Human papillomavirus isolate 915 F 06 002 KN1, complete genome
+196	HPV-mKN2	genbank	JF966372.1	published	7299	4d6d7facc89d29447eba6a3c2200c239	a550479b456b02c3fd4b25f63431d65cd293fc4c1334513a8bc38b181364b31a	6	10566	Human papillomavirus isolate 915 F 06 002 KN2, complete genome
+197	HPV-mKN3	genbank	JF966374.1	published	7251	d129703909d99afd3c0174d5b1ca4dcc	ebd6b80b9f38f7f56c1a96b160c1b87a3d26f7b56b7cd8d2b2bfae7e87052eb0	7	10566	Human papillomavirus isolate 915 F 06 002 KN3, complete genome
+198	HPV-mL55	genbank	KF482069.1	published	7177	f4ffc9f5af1f5cd1f966abe338936f42	25f3283c7278ed0ff49d5c4a0c40c310d24c33b07c3a7523041f70c03c9cd359	7	10566	Human papillomavirus isolate HPV-L55, complete genome
+199	HPV-mRTRX7	genbank	U85660.1	published	7731	3fe311a332784c6445126271dc3d7a3f	f832cb5698af52d69f8a1f7dc386230358034884939ac23aa87202a2d0cc7098	7	79691	Human papillomavirus RTRX7, complete genome
+200	HPV-mSD2	genbank	KC113191.1	published	7299	2dd9ac55be63ee832d715d4e09e4c662	430c2f97a19bd4db3f0bcd8329772bcf2d2f065df09da8e0ead81c292666711a	7	10566	Human papillomavirus isolate HPV_SD2R.align1, complete genome

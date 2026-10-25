@@ -1,4 +1,4 @@
-"""Build the metadata-only coverage ledger from GDC's published viral inventory.
+"""Build the metadata-only inventory table from GDC's published viral inventory.
 
 The input is the original ``GRCh83.d1.vd1_virus_decoy.txt`` file. Its name
 contains ``GRCh83`` even though the reference is ``GRCh38.d1.vd1``. No viral
@@ -11,12 +11,15 @@ import hashlib
 import io
 from pathlib import Path
 
-PANEL = "GRCh38.d1.vd1"
-SOURCE_URL = "https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt"
+import pandas as pd
+
+from orfdata.reference_table import write_table
+from orfdata.viral_registry import GDC_VIRUSES, INVENTORY_COLUMNS, INVENTORY_SCHEMA
+
+PANEL = GDC_VIRUSES.panel
+SOURCE_URL = GDC_VIRUSES.panel_url
 SOURCE_SHA256 = "f221e758f47e4784714b4a89198b89536ddacdc905da9c778a6802d3e1e51c56"
 SOURCE_COLUMNS = ("Name", "Abbreviation", "RefSeq", "GenBank", "PaVE ID", "PaVE Notes")
-OUTPUT_COLUMNS = ("index", "name", "abbreviation", "refseq", "genbank", "pave_id",
-                  "pave_notes", "bundled_reference_id", "coding_models", "status")
 
 # An inventory row becomes covered only after its GDC placement is released.
 # This records the source CDS count, not a claim of exhaustive viral ORF coverage.
@@ -40,23 +43,18 @@ def build(raw):
     if set(BUNDLED_CDS) - set(abbreviations):
         raise ValueError("A bundled reference is absent from the GDC inventory")
 
-    output = io.StringIO()
-    output.write("# schema: orfdata.viral_panel_coverage.v1\n")
-    output.write(f"# panel: {PANEL}\n")
-    output.write(f"# source: {SOURCE_URL}\n")
-    output.write(f"# source_sha256: {SOURCE_SHA256}\n")
-    writer = csv.DictWriter(output, fieldnames=OUTPUT_COLUMNS, delimiter="\t",
-                            lineterminator="\n")
-    writer.writeheader()
-    for index, row in enumerate(rows, 1):
-        abbreviation = row["Abbreviation"]
-        reference_id, coding_models = BUNDLED_CDS.get(abbreviation, ("", ""))
-        writer.writerow(dict(index=index, name=row["Name"], abbreviation=abbreviation,
-                             refseq=row["RefSeq"], genbank=row["GenBank"],
-                             pave_id=row["PaVE ID"], pave_notes=row["PaVE Notes"],
-                             status="source_cds_bundled" if reference_id else "not_bundled",
-                             bundled_reference_id=reference_id, coding_models=coding_models))
-    return output.getvalue().encode("utf-8")
+    def inventory_row(index, row):
+        reference_id, coding_models = BUNDLED_CDS.get(row["Abbreviation"], ("", ""))
+        return dict(index=index, name=row["Name"], abbreviation=row["Abbreviation"],
+                    refseq=row["RefSeq"], genbank=row["GenBank"], pave_id=row["PaVE ID"],
+                    pave_notes=row["PaVE Notes"],
+                    status="source_cds_bundled" if reference_id else "not_bundled",
+                    bundled_reference_id=reference_id, coding_models=coding_models)
+
+    return write_table(
+        pd.DataFrame([inventory_row(index, row) for index, row in enumerate(rows, 1)]),
+        schema=INVENTORY_SCHEMA, columns=INVENTORY_COLUMNS,
+        metadata={"panel": PANEL, "source": SOURCE_URL, "source_sha256": SOURCE_SHA256})
 
 
 def main():

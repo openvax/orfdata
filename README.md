@@ -16,11 +16,36 @@ evidence.
 Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl,data,build-data]'
+python -m pip install 'orfdata[pyensembl,build-data]'
 pyensembl install --release 115 --species human
 # For the ncORF evidence presets and "all":
 orfdata setup --species human --catalogs all
 ```
+
+List every bundled, downloadable or buildable resource and what is installed:
+
+```sh
+orfdata download list
+orfdata download status
+```
+
+`orfdata setup --species human` also installs `gdc-viruses`, the default
+200-reference GDC viral screen for human transcriptome analysis;
+`--collections none` skips it. Viral support is part of the base install, and
+only the data is downloaded. To acquire only the viral references:
+
+```sh
+orfdata download viral --species human
+orfdata viral summary
+```
+
+Each viral collection keeps three layers apart — the viral genomes, one coding
+transcript per source CDS feature with a GTF placing it on them, and the
+proteins those transcripts encode. Because the three share identifiers, the set
+opens as a PyEnsembl genome, so varcode, isovar, topiary and vaxrank can
+annotate variants on viral contigs. `orfdata proteome --annotation DIR` writes
+the same three files for noncanonical ORFs. See
+[Downstream tools](https://openvax.github.io/orfdata/downstream/).
 
 ## Example
 
@@ -108,6 +133,13 @@ amino acids, parent protein accession, sample, change IDs and source before
 `combined.with_derived_proteins(...)` adds them. These sequences are not
 inferred from variants or included in the reference proteome by default.
 
+For a named, checksummed sequence input with no genomic placement, use the
+general `ProteinSet`. `with_protein_set(...)` records a donor, transgene or
+other selected component; `with_viral(...)` uses the same input plus a sourced
+host association. ncORF sources with transcript coordinates and evidence stay
+as `ORFCatalog` records and produce the same `ProteinSequence` output when
+bound to a reference.
+
 ```sh
 orfdata proteome --species human --release 115 --nc-orf-sources all --viral all --output human-all-proteins.fasta
 ```
@@ -127,10 +159,14 @@ packaged bases and coding paths. The functional loaders remain available.
 When annotating an existing alignment, `viral_orfs(reference_dna,
 contig="HPV16")` checks its actual reference sequence before applying the same
 models.
-The first [coding reference](https://openvax.github.io/orfdata/viral/) contains
-the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC placements;
-the host association is distinct from the virus's own taxon. Broader
-imports remain in [the viral roadmap](https://github.com/openvax/orfdata/issues/91).
+The curated [coding reference](https://openvax.github.io/orfdata/viral/)
+contains the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC
+placements; the host association is distinct from the virus's own taxon. The
+separate `gdc-viruses` source bundle contains all 200 GDC source genomes and
+their annotated CDS/protein FASTAs for human analysis. It does not assert a
+human source host for every virus; source-host metadata remains separate.
+Promoting further source records into the curated
+`ViralReference` API remains in the [viral roadmap](https://github.com/openvax/orfdata/issues/91).
 
 ## Measurement datasets
 
@@ -162,6 +198,8 @@ The [documentation](https://openvax.github.io/orfdata/) covers:
 
 | Task | Guide |
 | --- | --- |
+| Discover, inspect and download data | [Discover and download data](https://openvax.github.io/orfdata/downloads/) |
+| Use ORFs and viral references with varcode, isovar, topiary and vaxrank | [Downstream tools](https://openvax.github.io/orfdata/downstream/) |
 | Build a proteome: evidence levels, exclusions, contigs, viral proteins | [Build a reference proteome](https://openvax.github.io/orfdata/proteome/) |
 | ORF classes, evidence definitions, Varcode and Isovar integration | [ORFs and evidence](https://openvax.github.io/orfdata/reference/) |
 | Species and reference identity, mitochondrial genetic codes | [Species, references and genetic codes](https://openvax.github.io/orfdata/species/) |

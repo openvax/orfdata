@@ -43,7 +43,7 @@ def build(args):
 def test_refseq_keeps_all_gene_occurrences_and_offline_provenance(tmp_path, compressed):
     args = source(tmp_path, compressed=compressed)
     result = build(args)
-    entry, = result.entries
+    entry, = result.proteins
     assert entry.sequence == 'ACDEFG'
     assert [o.gene_id for o in entry.occurrences] == ['123', '124']
     assert [o.transcript_id for o in entry.occurrences] == ['XM_123.1', 'XM_124.2']
@@ -57,7 +57,7 @@ def test_refseq_keeps_all_gene_occurrences_and_offline_provenance(tmp_path, comp
     args[1].unlink()
     replay = Proteome.load(saved)
     assert replay.identity == result.identity
-    assert replay.entries == result.entries
+    assert replay.proteins == result.proteins
     assert replay.layers == result.layers
 
 
@@ -67,7 +67,7 @@ def test_refseq_preserves_repeated_placements_and_untranslated_cds_count(tmp_pat
     rows.append(dict(rows[0], start='1001', end='1200'))
     rows.append(dict(rows[0], **{'class': 'without_protein', 'product_accession': '', 'related_accession': ''}))
     result = build(source(tmp_path, rows=rows))
-    assert len(result.entries[0].occurrences) == 3
+    assert len(result.proteins[0].occurrences) == 3
     assert result.layers[0]['cds_without_protein'] == 1
     assert result.layers[0]['genomic_spans']['XP_123.1'] == [[1, 200], [1001, 1200], [2, 201]]
 
