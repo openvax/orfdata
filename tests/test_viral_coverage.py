@@ -8,7 +8,13 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from orfdata import download_viral_inventory, viral_panel_coverage, viral_references
+from orfdata import (
+    download_viral_inventory,
+    viral_contexts,
+    viral_panel_coverage,
+    viral_references,
+)
+from orfdata.viral_coverage import CONTEXT_COLUMNS, COVERAGE_COLUMNS
 from tools.build_gdc_viral_coverage import SOURCE_SHA256, build
 
 FIXTURE = Path(__file__).parent / "data/viral/GRCh83.d1.vd1_virus_decoy.txt.gz"
@@ -74,6 +80,19 @@ def test_a_coverage_query_hands_back_a_frame_callers_can_work_on():
     # Editing a result never reaches the packaged table behind it.
     inventory.loc[inventory.index[0], "name"] = "scribbled on"
     assert viral_panel_coverage().at[0, "name"] == "Human Cytomegalovirus"
+
+
+def test_every_frame_carries_exactly_the_columns_it_documents():
+    """The documented column set is the API, so a filtered frame keeps it too."""
+    inventory = viral_panel_coverage()
+    assert tuple(inventory.columns) == COVERAGE_COLUMNS
+    assert tuple(viral_panel_coverage(available=True).columns) == COVERAGE_COLUMNS
+    assert tuple(viral_panel_coverage(virus="nothing-matches-this").columns) == COVERAGE_COLUMNS
+    assert tuple(viral_contexts().columns) == CONTEXT_COLUMNS
+    # The two derived columns say what they promise about the packaged ones.
+    assert (inventory["available"] == (inventory["bundled_reference_id"] != "")).all()
+    assert inventory["contexts"].map(type).eq(tuple).all()
+    assert viral_contexts()["aliases"].map(type).eq(tuple).all()
 
 
 def test_inventory_download_uses_datacache_with_the_published_pin(monkeypatch, tmp_path):

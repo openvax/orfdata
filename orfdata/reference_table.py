@@ -28,12 +28,16 @@ SCHEMA_KEY = "schema"
 class PackagedTable:
     """A checksummed table packaged with ORFdata, named by its schema and columns."""
 
+    #: Path of the file inside the ``orfdata`` package.
     resource: str
+    #: SHA-256 the packaged bytes must have before a single row is read.
     sha256: str
+    #: Schema name the file's own ``# schema:`` line must carry.
     schema: str
+    #: Every column the file must have, in order; this is the frame's shape.
     columns: tuple[str, ...]
-    # Columns that hold whole numbers, read as nullable integers so a blank
-    # stays a blank instead of becoming a float or a string.
+    #: Which of those columns hold whole numbers, read as nullable ``Int64``
+    #: so a blank stays a blank instead of becoming a float or a string.
     numeric: tuple[str, ...] = ()
 
     @property
@@ -44,8 +48,11 @@ class PackagedTable:
     def read(self):
         """This table, with its builder's header lines in ``attrs``.
 
-        The packaged bytes are read and checked once; every caller gets its
-        own frame to do as it likes with.
+        The frame's columns are exactly :attr:`columns`, in that order. Every
+        column reads as ``str`` except those named in :attr:`numeric`, which
+        read as nullable ``Int64`` so a blank stays blank. The packaged bytes
+        are read and checked once; every caller gets its own frame to do as it
+        likes with.
         """
         return _packaged(self).copy()
 
@@ -70,7 +77,12 @@ def _packaged(table):
 
 
 def read_table(raw, *, schema, columns, numeric=(), name="reference table"):
-    """Read a reference table's bytes, checking what it says it is before trusting it."""
+    """Read a reference table's bytes, checking what it says it is before trusting it.
+
+    Returns a frame whose columns are exactly ``columns``, those in ``numeric``
+    as ``Int64`` and the rest as ``str``, with the file's ``# key: value``
+    header lines in ``frame.attrs``.
+    """
     text = raw.decode("utf-8")
     metadata = {}
     for line in text.splitlines():

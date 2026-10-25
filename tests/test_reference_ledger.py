@@ -8,10 +8,15 @@ from orfdata import viral_collection, viral_collections, viral_panel_coverage
 from orfdata.record_sources import SourceRecord
 from orfdata.reference_ledger import (
     COLUMNS,
+    FRAME_COLUMNS,
     INCONSISTENT,
+    INDEX,
+    MEASURED,
+    NUMERIC,
     PUBLISHED,
     UNAVAILABLE,
     Anchor,
+    empty_ledger,
     ledger_from_rows,
     ledger_row,
     published,
@@ -130,6 +135,26 @@ def test_the_published_collection_carries_a_ledger_for_each_of_its_sources():
     for anchor in collection.anchors:
         anchor.check(collection.ledger(anchor.source))
     assert viral_collection("gdc-viruses") is collection
+
+
+def test_every_ledger_carries_exactly_the_columns_it_documents():
+    """Packaged, freshly built and empty ledgers are all the same frame."""
+    collection, = viral_collections()
+    built = ledger_from_rows([_row()])
+    for ledger in (collection.ledger("genbank"), collection.ledger("pave"),
+                   built, empty_ledger(), read_ledger_bytes(write_ledger(
+                       built, panel="TEST", source="pave", source_url="",
+                       checked="2026-01-01T00:00:00Z"))):
+        assert ledger.index.name == INDEX
+        assert tuple(ledger.columns) == FRAME_COLUMNS
+    assert set(COLUMNS) == set(FRAME_COLUMNS) | {INDEX}
+    # A row the source could not serve pins nothing in any measured column.
+    pave = collection.ledger("pave")
+    unserved = pave[pave["state"] != PUBLISHED]
+    assert len(unserved) == 2
+    for column in MEASURED:
+        blank = unserved[column].isna() if column in NUMERIC else unserved[column] == ""
+        assert blank.all(), column
 
 
 def test_entries_that_did_not_check_out_are_named_as_such():

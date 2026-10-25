@@ -79,3 +79,15 @@ def test_the_published_collections_declare_every_table_they_read():
         for source in collection.sources():
             table = collection.ledgers[source]
             assert table.schema and table.sha256 and len(table.read())
+
+
+def test_a_read_table_has_exactly_the_columns_it_declares():
+    """The declaration is the frame's shape, so nothing reads columns it never named."""
+    table = PackagedTable(resource="data/test/table.tsv", sha256="", schema=SCHEMA,
+                          columns=COLUMNS, numeric=("index",))
+    frame = read_table(_content(), schema=table.schema, columns=table.columns,
+                       numeric=table.numeric)
+    assert tuple(frame.columns) == table.columns
+    assert str(frame["index"].dtype) == "Int64"
+    assert all(str(frame[column].dtype) == "str"
+               for column in table.columns if column not in table.numeric)

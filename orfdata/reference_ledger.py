@@ -15,8 +15,32 @@ second source would add. A row the source could not serve records why, and
 pins nothing.
 
 Ledgers are packaged, checksummed :class:`~orfdata.reference_table.PackagedTable`
-data, built by ``tools/build_reference_ledger.py``, and read as data frames
-keyed by entry abbreviation.
+data, built by ``tools/build_reference_ledger.py``.
+
+A ledger reads as a data frame indexed by ``abbreviation`` (:data:`INDEX`)
+whose columns are :data:`FRAME_COLUMNS`:
+
+===================  =======  =======================================================
+column               dtype    meaning
+===================  =======  =======================================================
+``abbreviation``     str      the inventory row this describes; the frame's index
+``index``            Int64    that row's 1-based position in the inventory
+``source``           str      which source this row speaks for, e.g. ``genbank``
+``identifier``       str      what the source publishes the entry under, versioned
+``state``            str      one of :data:`STATES`; only ``published`` pins anything
+``length_nt``        Int64    bases in the molecule the source serves
+``sequence_md5``     str      MD5 of the uppercased sequence, as GDC publishes it
+``sequence_sha256``  str      SHA-256 of the same bases
+``coding_features``  Int64    how many CDS features the source annotates on it
+``taxon_id``         Int64    the NCBI taxon the record cross-references, if any
+``title``            str      the source's own one-line description of the record
+===================  =======  =======================================================
+
+Every column but ``abbreviation``, ``index``, ``source``, ``identifier``,
+``state`` and ``title`` is :data:`MEASURED` off the molecule, so it is blank
+(``pd.NA`` or ``""``) wherever ``state`` is not ``published``. ``taxon_id`` is
+also blank where the source names no taxon. :data:`COLUMNS` is the on-disk
+column order, which carries ``abbreviation`` as an ordinary column.
 """
 
 import hashlib
@@ -30,6 +54,9 @@ SCHEMA = "orfdata.reference_ledger.v2"
 COLUMNS = ("index", "abbreviation", "source", "identifier", "state", "length_nt",
            "sequence_md5", "sequence_sha256", "coding_features", "taxon_id", "title")
 NUMERIC = ("index", "length_nt", "coding_features", "taxon_id")
+# A read ledger is keyed by entry abbreviation, so that column is its index.
+INDEX = "abbreviation"
+FRAME_COLUMNS = tuple(column for column in COLUMNS if column != INDEX)
 # What was measured off the molecule, and so is blank unless the source served one.
 MEASURED = ("length_nt", "sequence_md5", "sequence_sha256", "coding_features", "taxon_id")
 # What the source turned out to be for an entry.
@@ -113,11 +140,11 @@ def _keyed(frame, name):
     repeated = frame["abbreviation"][frame["abbreviation"].duplicated()]
     if len(repeated):
         raise ValueError(f"Repeated ledger entry {repeated.iloc[0]} in {name}")
-    return frame.set_index("abbreviation")
+    return frame.set_index(INDEX)
 
 
 def read_ledger(table):
-    """Read a packaged ledger, keyed by entry abbreviation."""
+    """Read a packaged ledger: a frame indexed by :data:`INDEX`, columns :data:`FRAME_COLUMNS`."""
     return _keyed(table.read(), table.name)
 
 
@@ -143,14 +170,18 @@ def write_ledger(ledger, *, panel, source, source_url, checked, notes=()):
 
 
 def empty_ledger():
-    """A ledger with no rows, for a source that has none packaged."""
+    """A ledger with no rows, for a source that has none packaged.
+
+    It carries the same index and columns as any other ledger, so a caller
+    never has to tell "nothing packaged" apart from "nothing published".
+    """
     frame = pd.DataFrame({column: pd.Series(dtype="Int64" if column in NUMERIC else "str")
                           for column in COLUMNS})
-    return frame.set_index("abbreviation")
+    return frame.set_index(INDEX)
 
 
 def ledger_from_rows(rows, name="reference ledger"):
-    """A ledger built from freshly fetched rows, keyed by entry abbreviation."""
+    """A ledger built from freshly fetched rows, in the shape :data:`FRAME_COLUMNS` describes."""
     frame = pd.DataFrame(list(rows), columns=list(COLUMNS))
     for column in COLUMNS:
         frame[column] = (frame[column].astype("Int64") if column in NUMERIC

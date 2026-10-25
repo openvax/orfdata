@@ -85,6 +85,56 @@ print(ledger.at["HPV16", "sequence_md5"], int(ledger.at["HPV16", "coding_feature
 # f2463721818c29998ef5ab917e6df74a 10
 ```
 
+### What is in each table
+
+Every table ORFdata hands back is a data frame with a fixed, documented column
+set. `orfdata.viral_coverage.COVERAGE_COLUMNS`,
+`orfdata.viral_coverage.CONTEXT_COLUMNS` and
+`orfdata.reference_ledger.FRAME_COLUMNS` are those sets as code, and a test
+holds each frame to them.
+
+`viral_panel_coverage()` — one row per screened reference, default integer index:
+
+| column | dtype | meaning |
+| --- | --- | --- |
+| `index` | Int64 | the row's 1-based position in the published inventory |
+| `name` | str | the virus name as the panel publishes it |
+| `abbreviation` | str | the panel's short label, unique within a collection |
+| `refseq` | str | the RefSeq accession the panel lists, or `""` |
+| `genbank` | str | the GenBank accession the panel lists, or `""` |
+| `pave_id` | str | the PaVE reference the panel lists, or `""` |
+| `pave_notes` | str | the panel's own note about that PaVE reference |
+| `bundled_reference_id` | str | the ORFdata coding reference for this row, or `""` |
+| `coding_models` | Int64 | how many source CDS models that reference carries |
+| `status` | str | `source_cds_bundled` or `not_bundled` |
+| `available` | bool | whether `bundled_reference_id` is set |
+| `contexts` | object | tuple of context names this row belongs to |
+
+`collection.ledger(source)` — one row per entry the source names, indexed by
+`abbreviation`:
+
+| column | dtype | meaning |
+| --- | --- | --- |
+| `index` | Int64 | that entry's position in the inventory |
+| `source` | str | which source this row speaks for, e.g. `genbank` |
+| `identifier` | str | what the source publishes the entry under, versioned |
+| `state` | str | `published`, `unavailable` or `inconsistent` |
+| `length_nt` | Int64 | bases in the molecule the source serves |
+| `sequence_md5` | str | MD5 of the uppercased sequence |
+| `sequence_sha256` | str | SHA-256 of the same bases |
+| `coding_features` | Int64 | how many CDS features the source annotates on it |
+| `taxon_id` | Int64 | the NCBI taxon the record cross-references, if any |
+| `title` | str | the source's own one-line description of the record |
+
+Only a `published` row pins anything: everything measured off the molecule —
+`length_nt`, `sequence_md5`, `sequence_sha256`, `coding_features`, `taxon_id`
+— is blank on any other state, and `taxon_id` is also blank where the source
+names no taxon.
+
+`viral_contexts()` carries `name`, `title`, `description` and `source` as str,
+`references` as the number of inventory rows in that context, and `aliases` as
+a tuple of the shorter names it also answers to.
+
 ## Download viral genomes, coding transcripts and proteins
 
 To install all 200 GenBank source records for annotation, run:

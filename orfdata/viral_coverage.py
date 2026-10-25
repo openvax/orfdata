@@ -4,9 +4,33 @@ Every inventory query names a collection, by its own name or by the panel it
 follows, and reads that collection's packaged table. The GDC human screen is
 the default because it is the one collection published today.
 
-An inventory reads as a data frame: one row per reference the panel screens
-for, with the accessions each source names it by and whether ORFdata bundles
-coding models for it. Filter it with the arguments here or with pandas.
+An inventory reads as a data frame with a default integer index, one row per
+reference the panel screens for, whose columns are :data:`COVERAGE_COLUMNS`:
+
+========================  ======  ======================================================
+column                    dtype   meaning
+========================  ======  ======================================================
+``index``                 Int64   the row's 1-based position in the published inventory
+``name``                  str     the virus name as the panel publishes it
+``abbreviation``          str     the panel's short label, unique within a collection
+``refseq``                str     the RefSeq accession the panel lists, or ``""``
+``genbank``               str     the GenBank accession the panel lists, or ``""``
+``pave_id``               str     the PaVE reference the panel lists, or ``""``
+``pave_notes``            str     the panel's own note about that PaVE reference
+``bundled_reference_id``  str     the ORFdata coding reference for this row, or ``""``
+``coding_models``         Int64   how many source CDS models that reference carries
+``status``                str     ``source_cds_bundled`` or ``not_bundled``
+``available``             bool    whether ``bundled_reference_id`` is set
+``contexts``              object  tuple of context names this row belongs to
+========================  ======  ======================================================
+
+:func:`viral_contexts` returns a second frame, columns :data:`CONTEXT_COLUMNS`:
+``name``, ``title``, ``description`` and ``source`` as str, ``references`` as
+the number of inventory rows in that context, and ``aliases`` as a tuple of
+the shorter names it also answers to.
+
+Filter either with the arguments here or with pandas; ``frame.attrs`` carries
+the packaged table's own header, including which panel it follows.
 
 Inventory accessions are reproduced as published and may omit versions. A
 ``status`` of ``not_bundled`` means that ORFdata has not released a qualified
@@ -22,6 +46,7 @@ import pandas as pd
 
 from .viral_registry import (
     GDC_VIRUSES,
+    INVENTORY_COLUMNS,
     ViralCollection,
     viral_collection,
     viral_collections,
@@ -31,6 +56,10 @@ PANEL = GDC_VIRUSES.panel
 INVENTORY_URL = GDC_VIRUSES.panel_url
 INVENTORY_SHA256 = GDC_VIRUSES.panel_sha256
 INVENTORY_SIZE = GDC_VIRUSES.panel_size
+# What a read inventory carries: its packaged columns, then the two this
+# module derives. The module docstring says what each one means.
+COVERAGE_COLUMNS = INVENTORY_COLUMNS + ("available", "contexts")
+CONTEXT_COLUMNS = ("name", "title", "description", "source", "references", "aliases")
 # The columns a search looks through, being the ways a row can be named.
 SEARCHED = ("name", "abbreviation", "refseq", "genbank", "pave_id")
 _CONTEXTS = {
@@ -80,7 +109,7 @@ def _coverage(collection=GDC_VIRUSES):
 
 
 def viral_contexts(panel=None, *, collection=None):
-    """List selectable contexts without downloading data.
+    """List selectable contexts without downloading data, as :data:`CONTEXT_COLUMNS`.
 
     Context membership is many-to-many and describes a sourced selection use;
     it does not change a reference's accession/version identity or assert
@@ -120,7 +149,8 @@ def viral_panel_coverage(panel=None, *, collection=None, available=None, virus=N
                          context_match="any"):
     """Every inventory row of one collection, named by panel or by collection.
 
-    Includes references whose source CDS records are not yet bundled in
+    Returns a frame whose columns are :data:`COVERAGE_COLUMNS`, described in
+    this module's docstring. Includes references whose source CDS records are not yet bundled in
     ORFdata. This is an inventory and coverage query, not a selection of
     protein sequences. The released coding references are available separately
     through ``viral_references()``.
