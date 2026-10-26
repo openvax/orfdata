@@ -1578,12 +1578,17 @@ example, most <code>processed_transcript</code> ORFs are on <code>protein_coding
 or <code>retained_intron</code> transcripts, and 48 uORFs are on nonsense-mediated-decay
 transcripts. One RNA can carry several ORFs.</p>
 <h2 id="objects-and-queries">Objects and queries<a class="headerlink" href="#objects-and-queries" title="Permanent link">&para;</a></h2>
-<p>A <code>TranscriptORF</code> is one ORF on one PyEnsembl transcript. It covers both
-annotated CDSs and the catalogue's extra ORFs, so all the ORFs on an RNA are
-handled the same way. <code>ReferenceORF</code> is the same class under its original
-name. Each has:</p>
+<p>A <code>TranscriptORF</code> is one ORF placed on one RNA, including its ordinary annotated
+CDS, catalogue ORFs, and source-defined ORFs. It connects the coding sequence and
+protein to that RNA's coordinates for variant interpretation, RNA evidence and
+proteome export. The RNA may be a PyEnsembl transcript or a <code>SourceRNA</code>, and one
+RNA may carry several ORFs. Canonical transcript selection is independent of the
+ORF placement. <code>ReferenceORF</code> is the same class under its original name. Each has:</p>
 <ul>
-<li><code>kind</code>: <code>"annotated"</code> for an annotated CDS, <code>"extra_orf"</code> for a catalogue ORF.</li>
+<li><code>kind</code>: <code>"annotated"</code> for an annotated CDS, <code>"extra_orf"</code> for a catalogue or
+  source-defined ORF.</li>
+<li><code>record</code>: optional catalogue provenance. An annotated CDS or an ORF constructed
+  with <code>TranscriptORF.at</code> has <code>record=None</code> and is still a valid <code>TranscriptORF</code>.</li>
 <li><code>orf_id</code>: the source ORF ID, or the versioned protein ID of an annotated CDS.</li>
 <li><code>start</code> and <code>end</code>: Python slice coordinates into the transcript's spliced
   sequence, so <code>transcript.sequence[orf.start:orf.end] == orf.coding_sequence</code>.
@@ -1595,15 +1600,28 @@ name. Each has:</p>
   source says, and <code>on_source_transcript</code>: whether this is that transcript.</li>
 <li><code>protein_sequence</code>, <code>orf_type</code>, <code>model</code> and <code>evidence</code>. An annotated CDS has
   no <code>orf_type</code>, <code>model</code> or evidence of its own.</li>
-<li><code>start_complete</code> and <code>stop_complete</code>, and for an annotated CDS
+<li><code>start_complete</code> and <code>stop_complete</code>: independent <code>True</code>, <code>False</code> or <code>None</code>
+  (unknown) boundary states. <code>coding_phase</code> is the number of leading bases before
+  the first complete codon, or <code>None</code> if the frame is unknown. For an annotated CDS,
   <code>equivalent_ids</code>: other annotated proteins with the identical placement.</li>
 </ul>
-<p>An extra ORF is checked strictly: the assembly, available species information,
+<p>A catalogue ORF is checked strictly: the assembly, available species information,
 the full spliced coding path, the protein sequence and the terminal stop must
 all match. An annotated CDS is taken as the annotation defines it, with the
 annotation's protein. Annotations include selenoproteins and CDSs without
 marked start or stop codons, so translation is not re-checked;
 <code>start_complete</code> and <code>stop_complete</code> report what the annotation marks.</p>
+<p>For a source-defined fragment, <code>TranscriptORF.at(rna, start, end=end, phase=phase,
+start_complete=False, ...)</code> retains its exact interval on the parent RNA. Phase
+is 0, 1 or 2 leading bases (INSDC <code>codon_start - 1</code>). Leading and trailing partial
+codons remain in <code>coding_sequence</code> and <code>coding_positions</code>; the protein contains
+only translated complete codons. A known local frame does not imply a known
+initiation site. Pass <code>None</code> for an unknown start or stop boundary. Supplied
+protein sequences and known stop declarations are checked against the interval.</p>
+<p><code>TranscriptORF.from_dict(orf.to_dict(), rna)</code> restores the placement against an
+explicitly supplied RNA, checking its identity, reference, coding path and
+sequence fingerprints. It preserves source evidence and optional catalogue
+provenance.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">extra_orfs</span>
 
 <span class="n">orfs</span> <span class="o">=</span> <span class="n">extra_orfs</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>  <span class="c1"># Every catalogue ORF, on every transcript carrying it.</span>
