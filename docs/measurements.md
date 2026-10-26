@@ -73,6 +73,19 @@ same region can be compared through an explicit `same_target` relationship;
 such a density ratio describes that region, not a particular uORF inside it.
 Regions do not automatically bind to PyEnsembl or participate in gene/ORF orthology.
 
+When a source also defines a candidate or partial coding model, connect the two
+with `TargetRelation(..., relation="region_orf_context", ...)`: the left target
+is the measured `region`; the right is an `orf` target created from its
+`TranscriptORF` with `ScopedTarget.from_orf`. Annotated and source-defined ORFs
+work without a catalogue record. Supply the source's mapping evidence, such as
+the reported interval relationship, coordinates and source record IDs, and its
+cardinality (`one_to_many` or `unknown` when appropriate). Keep each candidate
+as its own relation. This preserves a region's relationship to coding models
+without converting region measurements into ORF abundance or translation
+evidence. `MatchedMeasurements.ratio` rejects this context relation even if the
+source reports only one candidate. Partial boundary/frame details remain on the
+referenced ORF; the relation does not fill them in.
+
 For native sources with unreported genomic metadata, use explicit
 [source references and mapping views](source-references.md) to retain the original
 observation alongside its mapping to a PyEnsembl target.

@@ -16,6 +16,7 @@ from orfdata import (
     ProteinProduct,
     ReferenceContext,
     RNAFeature,
+    ScopedTarget,
     SourceRNA,
     TranscriptORF,
     annotated_orfs,
@@ -88,6 +89,9 @@ def test_native_annotation_orfs_restore_without_a_catalogue_record(genome, trans
     assert restored.start_complete == orf.start_complete
     assert restored.coding_phase == orf.coding_phase
     assert restored.decoded_stop_codons == orf.decoded_stop_codons
+    target = ScopedTarget.from_orf(restored, namespace="Ensembl:115")
+    assert target.identifier == orf.orf_id and target.kind == "orf"
+    assert target.reference == orf.context
     wrong = json.loads(json.dumps(orf.to_dict()))
     wrong["coding_sequence"] = "C" + wrong["coding_sequence"][1:]
     if wrong["coding_sequence"] == orf.coding_sequence:

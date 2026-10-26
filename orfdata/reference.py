@@ -271,12 +271,12 @@ class ScopedTarget:
 
     @classmethod
     def from_orf(cls, reference_orf, *, namespace):
-        """Identify a bound reference ORF in an explicit catalogue/release namespace."""
+        """Identify a transcript ORF in an explicit source/release namespace."""
         from .model import ReferenceORF
 
         if not isinstance(reference_orf, ReferenceORF):
             raise TypeError("Expected a bound ReferenceORF, not a modified variant/RNA product")
-        return cls(reference_orf.context, "orf", reference_orf.model.orf_id, namespace)
+        return cls(reference_orf.context, "orf", reference_orf.orf_id, namespace)
 
     @classmethod
     def from_pyensembl(cls, feature, *, kind, namespace, context=None, versioned=False):
