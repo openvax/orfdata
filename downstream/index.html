@@ -1485,6 +1485,10 @@ those take a genome.</p>
 <code>ncorfs/proteins.fasta</code>: one coding transcript per ncORF, placed on its host
 gene, with the spliced coding sequence and the translation. In Python the same
 is <code>proteome.write_annotation("ncorfs")</code>.</p>
+<p>Catalogue imports preserve short translated ORFs for variant annotation. If a
+particular peptide-search workflow requires a length floor, add
+<code>--min-protein-length 5</code>; the generated proteome records the explicit policy and
+its omitted count, while the underlying catalogue remains complete.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pyensembl</span><span class="w"> </span><span class="kn">import</span> <span class="n">Genome</span>
 
 <span class="n">genome</span> <span class="o">=</span> <span class="n">Genome</span><span class="p">(</span>

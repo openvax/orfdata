@@ -1932,6 +1932,18 @@ See <a href="../reference/#evidence">ORFs and evidence</a> for the full definiti
 <code>nc_orf_sources=["proteomics", "immunopeptidomics"]</code> keeps ORFs with either kind of
 MS peptide, unlike <code>"ms"</code>, which also counts unclassified MS. For ORFs that
 need two kinds of evidence at once, combine rules with <code>&amp;</code>, below.</p>
+<p>Length is a separate consumer policy, never an import rule. RibORF catalogues
+retain valid short source ORFs because they can matter for variant annotation
+even when they are unsuitable for a peptide search. Use
+<code>catalog.query(min_protein_length=5)</code>, <code>extra_orfs(...,
+min_protein_length=5)</code>, or:</p>
+<div class="highlight"><pre><span></span><code><span class="n">search_reference</span> <span class="o">=</span> <span class="n">transcriptome</span><span class="o">.</span><span class="n">proteome</span><span class="p">(</span>
+    <span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"ribosome"</span><span class="p">,</span> <span class="n">min_protein_length</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>The corresponding CLI option is <code>--min-protein-length 5</code>. A proteome snapshot's
+ncORF layer records both the threshold and <code>length_filtered</code>, so the omission is
+auditable and changes the cache identity. Reference CDS proteins are unaffected.</p>
 <h3 id="separate-ribo-seq-and-ms-stringency">Separate Ribo-seq and MS stringency<a class="headerlink" href="#separate-ribo-seq-and-ms-stringency" title="Permanent link">&para;</a></h3>
 <p>For more control, pass a rule. <code>RiboSeq(min_studies=n)</code> needs ribosome
 profiling in at least <code>n</code> independent studies the source names, and
