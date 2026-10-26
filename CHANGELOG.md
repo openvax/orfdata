@@ -1,3 +1,12 @@
+# 0.39.1
+
+- Allow `ScopedTarget.from_orf` to identify annotated and source-defined
+  transcript ORFs without requiring a catalogue record (#61).
+- Link measured source regions to candidate or partial ORFs with an explicit
+  `region_orf_context` relation. Retain region measurements, mapping evidence
+  and candidate ambiguity; the relation does not establish ORF translation,
+  transfer abundance or authorize ORF-specific ratios (#64).
+
 # 0.39.0
 
 - Keep bounded source ORFs on their full parent RNA with explicit frame, separate

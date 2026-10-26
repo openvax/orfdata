@@ -21,7 +21,7 @@ PAIRING_BASES = (
 )
 TEMPORAL_RELATIONS = ("concurrent", "longitudinal", "unknown")
 TARGET_RELATIONS = ("same_target", "canonical_translation", "parent_rna_context", "shared_group_member",
-                    "gene_protein_group_context")
+                    "gene_protein_group_context", "region_orf_context")
 
 
 def _target(data):
@@ -144,6 +144,8 @@ class TargetRelation(_Record):
             raise ValueError("Canonical translation links a gene/transcript to a protein")
         if self.relation == "parent_rna_context" and kinds not in (("gene", "orf"), ("transcript", "orf")):
             raise ValueError("Parent RNA context links a gene/transcript to an ORF")
+        if self.relation == "region_orf_context" and kinds != ("region", "orf"):
+            raise ValueError("Region ORF context links a source region to a candidate or partial ORF")
         if self.relation == "shared_group_member" and kinds not in (("protein_group", "protein"), ("protein_group", "orf")):
             raise ValueError("Group membership links a group to one candidate member")
         if self.relation == "gene_protein_group_context" and kinds not in (("gene", "protein_group"), ("transcript", "protein_group")):
@@ -164,8 +166,9 @@ class MatchedMeasurements(_Record):
     """One declared relationship with all original values and explicit missingness.
 
     Tuples avoid multiplying technical/quantity records into pseudo-replicates.
-    For parent_rna_context, left values remain measurements of the parent RNA.
-    They are never measurements of the ORF named on the right.
+    For parent_rna_context and region_orf_context, left values remain measurements
+    of the parent RNA or source region. They are never measurements of the ORF
+    named on the right.
     """
 
     pairing: AssayPair
@@ -226,13 +229,13 @@ class MatchedMeasurements(_Record):
 
         No implicit log conversion, replicate aggregation, unit conversion or
         uncertainty propagation. Undefined ratios are not_measured with a reason.
-        Parent RNA and ambiguous group membership cannot produce ORF ratios.
+        RNA/region context and ambiguous group membership cannot produce ORF ratios.
         """
         _identifier(method, "ratio method")
         if not isinstance(normalization, Mapping) or not normalization:
             raise ValueError("Ratio normalization and assumptions must be explicit")
         if self.relation.relation not in ("same_target", "canonical_translation"):
-            raise ValueError("Parent RNA/group membership cannot establish target-specific ratios")
+            raise ValueError("Parent RNA/group membership or region context cannot establish target-specific ratios")
         if self.relation.cardinality != "one_to_one":
             raise ValueError("A target-specific ratio requires one-to-one attribution")
         if not ((numerator in self.left and denominator in self.right)

@@ -18,6 +18,8 @@ from orfdata import (
     Sample,
     ScopedTarget,
     SourceAsset,
+    SourceRNA,
+    TranscriptORF,
 )
 from orfdata.cli import run
 from orfdata.pairing import AssayPair, MatchedMeasurements, TargetRelation
@@ -102,3 +104,53 @@ def test_same_region_ratio_does_not_become_an_orf_estimate(experiment):
         OrthologyMapping("regions", rna.target,
                          replace(rna.target, reference=experiment[0].references[0]),
                          experiment[0].sources[0], "test", "one_to_one", {"score": 1}, {"source": "synthetic"})
+
+
+def test_region_to_partial_candidates_keeps_measurements_and_uncertainty(experiment, tmp_path):
+    manifest, samples, assays, observations = experiment
+    reference = manifest.references[0]
+    region = ScopedTarget(reference, "region", "window", "synthetic:regions")
+    rna = SourceRNA("rna", "ATGGCTAAATAG", reference, "synthetic")
+    candidates = [TranscriptORF.at(rna, start, end=9, start_complete=None, stop_complete=False,
+                                   orf_id=f"candidate-{start}", source="synthetic") for start in (0, 3)]
+    targets = [ScopedTarget.from_orf(orf, namespace="synthetic:candidates") for orf in candidates]
+    assert [target.identifier for target in targets] == [orf.orf_id for orf in candidates]
+    assert all(orf.record is None for orf in candidates)
+    left = replace(observations[0], target=region, value=2, unit="RPKM")
+    right = [replace(left, measurement_id=f"rpf-{i}", assay_id="rpf", target=target,
+                     quantity="ribosome_occupancy", value=6) for i, target in enumerate(targets)]
+    relations = [TargetRelation(
+        f"context-{i}", manifest.dataset_id, manifest.version, region, target,
+        "region_orf_context", "one_to_many",
+        dict(source_asset="input.tsv", basis="source-reported candidate within measured window",
+             source_window=[0, 12], coding_interval=orf.cdna_interval,
+             start_complete=orf.start_complete, stop_complete=orf.stop_complete,
+             frame=orf.coding_phase, translation_status="candidate"))
+        for i, (target, orf) in enumerate(zip(targets, candidates))]
+    pair = AssayPair("pair", reference, manifest.dataset_id, manifest.version, "rna", "rpf",
+                     "same_material", dict(scope="synthetic source pairing"), "concurrent")
+    dataset = QuantitativeDataset.create(
+        tmp_path / "candidates.sqlite", manifest, samples=samples,
+        assays=(*assays, Assay("rpf", "sample", "ribo_seq", reference)),
+        measurements=(left, *right), pairings=(pair,), relations=relations)
+    assert list(dataset.measurements(target=region)) == [left]
+    assert list(dataset.relations(left_target=region)) == relations
+    matches = list(dataset.matched_measurements(allowed_bases=["same_material"]))
+    assert len(matches) == 2
+    for match in matches:
+        assert match.left == (left,)
+        assert len(match.right) == 1 and match.right[0].target.kind == "orf"
+        restored = MatchedMeasurements.from_dict(json.loads(json.dumps(match.to_dict())))
+        assert restored == match and restored.relation.evidence["start_complete"] is None
+        # Even a source-declared single candidate cannot receive a window's ratio.
+        for cardinality in ("one_to_many", "one_to_one", "unknown"):
+            candidate = replace(match, relation=replace(match.relation, cardinality=cardinality))
+            with pytest.raises(ValueError, match="region context"):
+                candidate.ratio(candidate.right[0], left, measurement_id="invalid-ratio",
+                                method="test", normalization=dict(scope="synthetic"))
+    with pytest.raises(ValueError, match="source region"):
+        replace(relations[0], left=targets[0])
+    with pytest.raises(ValueError, match="source region"):
+        replace(relations[0], right=region)
+    with pytest.raises(ValueError, match="require mapping evidence"):
+        replace(relations[0], evidence={})
