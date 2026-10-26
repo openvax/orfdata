@@ -37,12 +37,17 @@ transcripts. One RNA can carry several ORFs.
 
 ## Objects and queries
 
-A `TranscriptORF` is one ORF on one PyEnsembl transcript. It covers both
-annotated CDSs and the catalogue's extra ORFs, so all the ORFs on an RNA are
-handled the same way. `ReferenceORF` is the same class under its original
-name. Each has:
+A `TranscriptORF` is one ORF placed on one RNA, including its ordinary annotated
+CDS, catalogue ORFs, and source-defined ORFs. It connects the coding sequence and
+protein to that RNA's coordinates for variant interpretation, RNA evidence and
+proteome export. The RNA may be a PyEnsembl transcript or a `SourceRNA`, and one
+RNA may carry several ORFs. Canonical transcript selection is independent of the
+ORF placement. `ReferenceORF` is the same class under its original name. Each has:
 
-- `kind`: `"annotated"` for an annotated CDS, `"extra_orf"` for a catalogue ORF.
+- `kind`: `"annotated"` for an annotated CDS, `"extra_orf"` for a catalogue or
+  source-defined ORF.
+- `record`: optional catalogue provenance. An annotated CDS or an ORF constructed
+  with `TranscriptORF.at` has `record=None` and is still a valid `TranscriptORF`.
 - `orf_id`: the source ORF ID, or the versioned protein ID of an annotated CDS.
 - `start` and `end`: Python slice coordinates into the transcript's spliced
   sequence, so `transcript.sequence[orf.start:orf.end] == orf.coding_sequence`.
@@ -54,15 +59,30 @@ name. Each has:
   source says, and `on_source_transcript`: whether this is that transcript.
 - `protein_sequence`, `orf_type`, `model` and `evidence`. An annotated CDS has
   no `orf_type`, `model` or evidence of its own.
-- `start_complete` and `stop_complete`, and for an annotated CDS
+- `start_complete` and `stop_complete`: independent `True`, `False` or `None`
+  (unknown) boundary states. `coding_phase` is the number of leading bases before
+  the first complete codon, or `None` if the frame is unknown. For an annotated CDS,
   `equivalent_ids`: other annotated proteins with the identical placement.
 
-An extra ORF is checked strictly: the assembly, available species information,
+A catalogue ORF is checked strictly: the assembly, available species information,
 the full spliced coding path, the protein sequence and the terminal stop must
 all match. An annotated CDS is taken as the annotation defines it, with the
 annotation's protein. Annotations include selenoproteins and CDSs without
 marked start or stop codons, so translation is not re-checked;
 `start_complete` and `stop_complete` report what the annotation marks.
+
+For a source-defined fragment, `TranscriptORF.at(rna, start, end=end, phase=phase,
+start_complete=False, ...)` retains its exact interval on the parent RNA. Phase
+is 0, 1 or 2 leading bases (INSDC `codon_start - 1`). Leading and trailing partial
+codons remain in `coding_sequence` and `coding_positions`; the protein contains
+only translated complete codons. A known local frame does not imply a known
+initiation site. Pass `None` for an unknown start or stop boundary. Supplied
+protein sequences and known stop declarations are checked against the interval.
+
+`TranscriptORF.from_dict(orf.to_dict(), rna)` restores the placement against an
+explicitly supplied RNA, checking its identity, reference, coding path and
+sequence fingerprints. It preserves source evidence and optional catalogue
+provenance.
 
 ```python
 from orfdata import extra_orfs

@@ -1,3 +1,19 @@
+# 0.39.0
+
+- Keep bounded source ORFs on their full parent RNA with explicit frame, separate
+  unknown/incomplete start and stop boundaries, and leading/trailing partial
+  codons retained in coding coordinates. Protein sequences contain translated
+  complete codons only; no missing sequence is padded (#64).
+- Expose coding origin/phase, coding genomic positions and reference identity
+  directly on TranscriptORF. Coordinate queries retain unavailable residues for
+  partial codons and unknown frames. Catalogue provenance remains optional for
+  annotated CDSs and source-defined placements (#61).
+- Add checked TranscriptORF reconstruction against a supplied or archived RNA,
+  preserving source evidence, reference context and exact sequences. Replay
+  source-defined translation to reject inconsistent phases or proteins.
+- Pin native RPL18 and KAZN partial-CDS source rows and verify both strands,
+  non-AUG starts, exact boundaries and annotation/source snapshot round trips.
+
 # 0.38.2
 
 - Accept explicit source-transcript genetic-code declarations in OpenProt

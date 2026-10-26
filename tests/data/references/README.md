@@ -32,3 +32,11 @@ published `CHECKSUMS`.
 Sources: [Ensembl data use](https://www.ensembl.org/info/about/legal/disclaimer.html),
 [yeast assembly/annotation](https://jun2026.archive.ensembl.org/Saccharomyces_cerevisiae/Info/Annotation),
 [NCBI S288C taxonomy](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=559292).
+
+`ensembl115.json` also retains the original GTF lines for the incomplete RPL18
+(`ENST00000084795`) and KAZN (`ENST00000376028`) CDSs. The former has a leading
+partial codon represented as `X` by the source protein; the latter has the native
+`cds_end_NF` tag, no stop codon, and one trailing partial-codon base that is absent
+from the protein FASTA. All three input-file SHA-256 values were rechecked before
+extracting these records. Exon numbering in generated GTF scaffolds follows RNA
+order, including on the minus strand.

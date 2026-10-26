@@ -86,6 +86,20 @@ class ORFEvidence:
             result.pop("summaries")
         return result
 
+    @classmethod
+    def from_dict(cls, value):
+        """Restore source observations without assigning them to a new ORF."""
+        peptides = []
+        for original in value.get("peptides", ()):
+            peptide = dict(original)
+            for name in ("protein_intervals", "review_ratings"):
+                peptide[name] = tuple(tuple(item) for item in peptide.get(name, ()))
+            for name in ("datasets", "spectrum_ids"):
+                peptide[name] = tuple(peptide.get(name, ()))
+            peptides.append(PeptideEvidence(**peptide))
+        return cls(tuple(value.get("ribosome_studies", ())), tuple(peptides),
+                   tuple(EvidenceSummary.from_dict(s) for s in value.get("summaries", ())))
+
     def has_evidence(self, method, *, require_unique=False, require_reviewed=False, require_resolved=False):
         """Whether this evidence satisfies an evidence rule or method name.
 
@@ -325,7 +339,7 @@ class ORFRecord:
                 else "kozak_preference_unchanged"
             )
         codons = None
-        if relative > 0:
+        if relative > 0 and self.translation_table is not None:
             offset = start + (relative - 1) // 3 * 3
             before, after = sequence[offset : offset + 3], altered[offset : offset + 3]
             if len(before) == 3 and all(b in "ACGT" for b in before + after):

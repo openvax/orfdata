@@ -68,6 +68,10 @@ class SourceRNA:
         return self.id
 
     @property
+    def name(self):
+        return self.id
+
+    @property
     def transcript_id(self):
         return self.id
 

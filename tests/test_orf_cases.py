@@ -14,6 +14,7 @@ from orfdata import (
     IRES,
     ORFEvidence,
     ProteinProduct,
+    ReferenceContext,
     RNAFeature,
     SourceRNA,
     TranscriptORF,
@@ -23,6 +24,76 @@ from orfdata import (
     rfam_ires,
 )
 from orfdata.sequence import CODONS
+
+
+@pytest.mark.parametrize("strand", ("+", "-"))
+@pytest.mark.parametrize("start_complete", (False, None))
+def test_bounded_partial_codons_keep_the_parent_rna_and_phase(strand, start_complete):
+    # A source fragment has two leading bases, two complete codons, and one trailing base.
+    # The partial codons are retained in coordinates, never padded into amino acids.
+    reference = ReferenceContext(9606, "human", "GRCh38", "synthetic", "1")
+    exons = ((100, 105), (200, 206)) if strand == "+" else ((200, 206), (100, 105))
+    rna = SourceRNA("partial", "CCAAGCTAAAGTT", reference, "synthetic", contig="1", strand=strand,
+                    exons=exons, gene_id="gene-1", gene_name="GENE1")
+    orf = TranscriptORF.at(rna, 2, end=11, phase=2, start_complete=start_complete,
+                           stop_complete=False, orf_id="fragment", source="synthetic", protein="AK",
+                           evidence=ORFEvidence(ribosome_studies=("source-study",)))
+    assert orf.transcript is rna and orf.record is None
+    assert orf.cdna_interval == (2, 11) and orf.coding_sequence == "AAGCTAAAG"
+    assert orf.protein_sequence == "AK" and orf.coding_phase == 2
+    assert orf.start_complete is start_complete and orf.stop_complete is False
+    assert orf.start_codon is None and orf.stop_codon is None
+    positions = (list(range(100, 106)) + list(range(200, 207)) if strand == "+" else
+                 list(range(206, 199, -1)) + list(range(105, 99, -1)))
+    assert orf.coding_positions == tuple(positions[2:11])
+    snapshot = json.loads(json.dumps(orf.to_dict()))
+    restored = TranscriptORF.from_dict(snapshot, rna)
+    assert restored.transcript is rna and restored.record is None
+    assert restored.coding_phase == 2 and restored.evidence == orf.evidence
+    assert json.loads(json.dumps(restored.to_dict())) == snapshot
+    wrong_phase = dict(snapshot, coding_phase=0, coding_origin=0)
+    with pytest.raises(ValueError, match="source protein"):
+        TranscriptORF.from_dict(wrong_phase, rna)
+    with pytest.raises(ValueError, match="source protein"):
+        TranscriptORF.at(rna, 2, end=11, phase=0, start_complete=False,
+                         orf_id="wrong-frame", source="synthetic", protein="AK")
+
+
+def test_partial_boundaries_are_independent_of_sequence_decoding():
+    reference = ReferenceContext(9606, "human", "GRCh38", "synthetic", "1")
+    rna = SourceRNA("partial", "ATGGCTTAA", reference, "synthetic")
+    unknown = TranscriptORF.at(rna, 0, end=9, start_complete=None, stop_complete=None,
+                               orf_id="uncertain", source="synthetic")
+    assert unknown.protein_sequence == "MA"
+    assert unknown.start_complete is None and unknown.stop_complete is None
+    assert unknown.start_codon is None and unknown.stop_codon is None
+    tail = SourceRNA("tail", "ATGGCTAA", reference, "synthetic")
+    fragment = TranscriptORF.at(tail, 0, orf_id="tail", source="synthetic")
+    assert fragment.coding_sequence == tail.sequence and fragment.end == len(tail.sequence)
+    assert fragment.protein_sequence == "MA" and fragment.stop_complete is False
+    with pytest.raises(ValueError, match="stop completeness"):
+        TranscriptORF.at(tail, 0, end=8, stop_complete=True, orf_id="bad-stop", source="synthetic")
+    with pytest.raises(ValueError, match="complete start"):
+        TranscriptORF.at(tail, 0, phase=1, orf_id="bad-start", source="synthetic")
+
+
+@pytest.mark.parametrize("transcript_id", ("ENST00000395826", "ENST00000084795", "ENST00000419783"))
+def test_native_annotation_orfs_restore_without_a_catalogue_record(genome, transcript_id):
+    transcript = genome.transcript_by_id(transcript_id)
+    orf = TranscriptORF.from_annotation(transcript)
+    restored = TranscriptORF.from_dict(json.loads(json.dumps(orf.to_dict())), transcript)
+    assert restored.record is None and restored.kind == "annotated"
+    assert restored.annotation_id == orf.annotation_id
+    assert restored.protein_sequence == orf.protein_sequence
+    assert restored.start_complete == orf.start_complete
+    assert restored.coding_phase == orf.coding_phase
+    assert restored.decoded_stop_codons == orf.decoded_stop_codons
+    wrong = json.loads(json.dumps(orf.to_dict()))
+    wrong["coding_sequence"] = "C" + wrong["coding_sequence"][1:]
+    if wrong["coding_sequence"] == orf.coding_sequence:
+        wrong["coding_sequence"] = "A" + wrong["coding_sequence"][1:]
+    with pytest.raises(ValueError, match="coding sequence differs"):
+        TranscriptORF.from_dict(wrong, transcript)
 
 DATA = Path(__file__).parent / "data" / "references"
 ENSEMBL = json.loads((DATA / "ensembl115.json").read_text())
@@ -45,7 +116,8 @@ def genome(tmp_path_factory):
         genes[t["gene_id"]] = (t["contig"], t["strand"], min(start, span[2]), max(end, span[3]), gene)
         line = f'{t["contig"]}\tensembl\t{{}}\t{{}}\t{{}}\t.\t{t["strand"]}\t.\t{attrs}{{}}\n'
         rows.append(line.format("transcript", start, end, ""))
-        rows += [line.format("exon", a, b, f' exon_number "{i + 1}"; exon_id "{t["id"]}-{i}";') for i, (a, b) in enumerate(exons)]
+        rows += [line.format("exon", a, b, f' exon_number "{i + 1}"; exon_id "{t["id"]}-{i}";')
+                 for i, (a, b) in enumerate(sorted(exons, reverse=t["strand"] == "-"))]
         protein = f' protein_id "{t["protein_id"]}"; protein_version "{t["protein_version"]}";' if "protein_id" in t else ""
         rows += [line.format("CDS", a, b, protein) for a, b in t["cds"]]
         rows += [line.format(feature, a, b, "") for feature in ("start_codon", "stop_codon") for a, b in t[feature]]
@@ -257,6 +329,23 @@ def test_start_incomplete_cds_keeps_its_reading_frame(genome):
     assert truncation.end == cds.end and truncation.cds_relation == "N_terminal_truncation"
     shifted = TranscriptORF.at(rpl18, first + 31, orf_id="s", source="test", start_complete=False)
     assert shifted.cds_relation in ("internal", "downstream_overlapping")
+
+
+def test_native_three_prime_partial_cds_keeps_its_last_partial_codon(genome):
+    native = next(t for t in ENSEMBL["transcripts"] if t["id"] == "ENST00000376028")
+    assert any('tag "cds_end_NF"' in row["text"] for row in native["native_gtf"])
+    assert not native["stop_codon"]
+    transcript = genome.transcript_by_id(native["id"])
+    cds = TranscriptORF.from_annotation(transcript)
+    assert (cds.start_complete, cds.stop_complete, cds.coding_phase) == (True, False, 0)
+    assert len(cds.coding_sequence) == 499 and len(cds.protein_sequence) == 166
+    assert cds.protein_sequence == native["protein"]
+    assert all(transcript.spliced_offset(position) == cds.start + i
+               for i, position in enumerate(cds.coding_positions))
+    last = cds.map_genomic_position(cds.coding_positions[-1], genome_build="GRCh38")
+    assert last["role"] == "partial_codon" and last["reference_amino_acid"] is None
+    restored = TranscriptORF.from_dict(json.loads(json.dumps(cds.to_dict())), transcript)
+    assert restored.coding_sequence == cds.coding_sequence and restored.stop_complete is False
 
 
 def test_fragments_decode_declared_recoding_and_need_a_codon(genome):

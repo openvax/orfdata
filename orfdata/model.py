@@ -1,12 +1,15 @@
 """Reference ORF identity and its binding to an annotated transcript."""
 
 import hashlib
+import json
 from dataclasses import asdict, dataclass, replace
 from typing import Optional
 
 from .initiation_context import annotate_initiation_context
 from .reference import ReferenceContext, canonical_species, species_taxon
 from .sequence import CODONS, genetic_code, read_orf
+
+_INFER_BOUNDARY = object()
 
 
 @dataclass(frozen=True)
@@ -227,11 +230,14 @@ def _species(value):
 
 @dataclass(frozen=True, init=False)
 class TranscriptORF:
-    """One ORF on one PyEnsembl transcript.
+    """One ORF on one RNA, including its ordinary annotated CDS.
 
     ``kind`` is ``"annotated"`` for an annotated CDS, or ``"extra_orf"`` for a
-    catalogue ORF validated against the transcript's spliced path, sequence
-    and protein. ``start`` and ``end`` are Python slice coordinates into the
+    catalogue or source-defined ORF. ``record`` is optional catalogue provenance:
+    annotated CDSs and ORFs constructed with ``at`` do not need one. The RNA
+    can be a PyEnsembl transcript or a SourceRNA; one RNA can carry several ORFs.
+    Canonical transcript selection is independent of this coding placement.
+    ``start`` and ``end`` are Python slice coordinates into the
     transcript's spliced sequence: ``transcript.sequence[start:end]`` is the
     coding sequence, including the stop codon when one is present.
 
@@ -255,8 +261,8 @@ class TranscriptORF:
     coding_sequence: str
     context: ReferenceContext
     kind: str = "extra_orf"
-    start_complete: bool = True
-    stop_complete: bool = True
+    start_complete: Optional[bool] = True
+    stop_complete: Optional[bool] = True
     annotation_id: Optional[str] = None
     source_transcript_id: Optional[str] = None
     equivalent_ids: tuple = ()
@@ -374,7 +380,8 @@ class TranscriptORF:
 
     @classmethod
     def at(cls, rna, start, *, orf_id, source, protein=None, start_codon=None, recoded=None,
-           translation_table=1, orf_type=None, evidence=None, context=None, start_complete=True):
+           translation_table=1, orf_type=None, evidence=None, context=None, start_complete=True,
+           end=None, phase=0, stop_complete=_INFER_BOUNDARY):
         """A source-defined ORF read from ``start`` in an RNA's spliced sequence.
 
         ``rna`` is a PyEnsembl transcript or a :class:`SourceRNA`. Codons are read
@@ -387,21 +394,58 @@ class TranscriptORF:
         A linear RNA ending before a stop gives ``stop_complete=False``. For a
         fragment whose start the source does not establish, pass
         ``start_complete=False``: the first codon is read as an ordinary codon.
+        ``None`` keeps a source's unknown boundary distinct from a known partial
+        boundary. ``end`` bounds a source coding fragment on this same RNA;
+        ``phase`` is the number (0, 1 or 2) of leading bases before its first
+        complete codon, equivalent to INSDC ``codon_start - 1``. Leading and
+        trailing partial codons stay in ``coding_sequence`` and its coordinates.
+        An explicit ``stop_complete`` is checked against the supplied interval;
+        ``None`` preserves an unknown source boundary.
         """
         from .catalog import ORFEvidence
 
+        for name, boundary in (("start_complete", start_complete), ("stop_complete", stop_complete)):
+            if boundary is not _INFER_BOUNDARY and boundary is not None and type(boundary) is not bool:
+                raise ValueError(f"{name} must be True, False or None")
+        if type(phase) is not int or phase not in (0, 1, 2):
+            raise ValueError("Coding phase must be 0, 1 or 2")
+        if phase and start_complete:
+            raise ValueError("A complete start cannot have a partial leading codon")
         code = genetic_code(translation_table)
         reference = getattr(rna, "reference", None)
         if not isinstance(reference, ReferenceContext):
             reference = ReferenceContext.from_genome(rna.genome, context=context)
+        elif context is not None and reference.key != context.key:
+            raise ValueError("Source RNA and explicit reference context disagree")
         circular = getattr(rna, "topology", "linear") == "circular"
-        coding, translated, stopped = read_orf(rna.sequence, start, code=code, start_codon=start_codon,
+        size = len(rna.sequence)
+        if type(start) is not int or not 0 <= start < size:
+            raise ValueError("Coding start must be an RNA offset")
+        if end is not None and (type(end) is not int or not start < end <= size):
+            raise ValueError("Coding end must bound a nonempty interval on the RNA")
+        if circular and (end is not None or phase):
+            raise ValueError("Bounded or phased circular coding intervals are not supported")
+        sequence = rna.sequence if end is None else rna.sequence[:end]
+        if not circular and start + phase + 3 > len(sequence):
+            raise ValueError(f"No complete codon follows offset {start}")
+        coding, translated, stopped = read_orf(sequence, start + phase, code=code, start_codon=start_codon,
                                                recoded=recoded, circular=circular, initiation=start_complete)
         if not coding:
             raise ValueError(f"No complete codon follows offset {start}")
+        if end is not None:
+            if stopped and start + phase + len(coding) != end:
+                raise ValueError("The coding interval extends beyond its translated stop")
+            coding = str(rna.sequence[start:end]).upper()
+        elif not circular and not stopped:
+            coding = str(rna.sequence[start:]).upper()
+        elif phase:
+            coding = str(rna.sequence[start:start + phase]).upper() + coding
+        if stop_complete is not _INFER_BOUNDARY:
+            if stop_complete is not None and stop_complete != stopped:
+                raise ValueError("Declared stop completeness disagrees with the coding sequence")
+            stopped = stop_complete
         if protein is not None and translated != protein:
             raise ValueError(f"{orf_id} does not translate to the source protein from offset {start}")
-        size = len(rna.sequence)
         offsets = [(start + i) % size for i in range(len(coding))]
         layout = _rna_layout(rna)
         orf = object.__new__(cls)
@@ -411,7 +455,7 @@ class TranscriptORF:
                  _blocks=_layout_blocks(layout, rna.strand, offsets) if layout[0] else (),
                  _source_gene=(rna.gene_id, rna.gene_name), _protein=translated, _orf_type=orf_type,
                  _evidence=evidence if evidence is not None else ORFEvidence(), _source=source,
-                 _table=translation_table)
+                 _table=translation_table, _phase=phase)
         return orf
 
     def _set(self, **values):
@@ -518,13 +562,101 @@ class TranscriptORF:
         Negative when an annotated CDS begins with a partial codon, which
         Ensembl translates as ``X``; None when the frame is unknown.
         """
+        if "_coding_origin" in self.__dict__:
+            return self._coding_origin
         if self.start_complete or self.kind != "annotated":
-            return 0
+            return self.__dict__.get("_phase", 0)
         if not self.stop_complete:
             return None
         phase = len(self.coding_sequence) % 3
         leading = len(self.protein_sequence) - (len(self.coding_sequence) - phase) // 3 + 1
         return phase - 3 * leading if leading in (0, 1) else None
+
+    @property
+    def coding_phase(self):
+        """Leading bases before the first complete codon; None if the frame is unknown."""
+        origin = self._origin
+        return None if origin is None else origin % 3
+
+    @property
+    def coding_origin(self):
+        """Codon offset for protein residue zero; negative for an annotated leading partial residue."""
+        return self._origin
+
+    @property
+    def coding_positions(self):
+        """Genomic positions of the coding interval in RNA order, including partial codons."""
+        positions = self.genomic_positions
+        return tuple(p for a, b in self.segments for p in positions[a:b])
+
+    @property
+    def translation_table(self):
+        """Declared NCBI table ID, or None when the source did not declare one."""
+        return self.__dict__.get("_table") if self.model is None else self.model.translation_table
+
+    @property
+    def contig(self):
+        return self.transcript.contig
+
+    @property
+    def strand(self):
+        return self.transcript.strand
+
+    @property
+    def genome_build(self):
+        return self.context.genome_build
+
+    @property
+    def taxon_id(self):
+        return self.context.taxon_id
+
+    @property
+    def reference_context(self):
+        return self.context
+
+    def map_genomic_position(self, position, *, genome_build):
+        """Map a base in this placement; incomplete codons keep explicit unavailable residues."""
+        from dataclasses import asdict
+
+        if type(position) is not int or position < 1:
+            raise ValueError("position must be a positive integer")
+        if genome_build != self.genome_build:
+            raise ValueError(f"Expected genome build {self.genome_build}, got {genome_build}")
+        positions = self.coding_positions
+        if position not in positions:
+            return None
+        offset = positions.index(position)
+        origin = self.coding_origin
+        index = None if origin is None else (offset - origin) // 3
+        codon = None if index is None else origin + 3 * index
+        complete = codon is not None and 0 <= codon and codon + 3 <= len(positions)
+        stop = bool(complete and self.stop_complete and index == len(self.protein_sequence))
+        amino = "*" if stop else (self.protein_sequence[index] if complete and
+                                  0 <= index < len(self.protein_sequence) else None)
+        covered = [p for p in self.evidence.peptides if amino is not None and any(
+            a <= index + 1 <= b for a, b in p.protein_intervals)]
+        return dict(orf_id=self.orf_id, genome_build=self.genome_build,
+                    coding_nucleotide_offset=offset,
+                    amino_acid_position=None if amino is None else index + 1,
+                    reference_amino_acid=amino,
+                    role=("frame_unknown" if origin is None else "partial_codon" if not complete
+                          else "stop_codon" if stop else "start_codon" if index == 0 and self.start_complete
+                          else "body"),
+                    reference_peptides=[asdict(p) for p in covered],
+                    reference_ms_support=any(p.is_supporting for p in covered),
+                    mutant_translation_evidence="not_assessed")
+
+    def map_initiation_position(self, position, *, genome_build):
+        """Map this placement's initiation context, when its start is known."""
+        from .catalog import ORFRecord
+
+        return ORFRecord.map_initiation_position(self, position, genome_build=genome_build)
+
+    def annotate_initiation_snv(self, position, ref, alt, *, genome_build):
+        """Compare this placement's context without inferring a missing genetic code."""
+        from .catalog import ORFRecord
+
+        return ORFRecord.annotate_initiation_snv(self, position, ref, alt, genome_build=genome_build)
 
     @property
     def subcodon_introns(self):
@@ -672,12 +804,14 @@ class TranscriptORF:
         genome = transcript.genome
         species = getattr(genome, "species", None)
         return dict(
+            schema="orfdata.transcript_orf.v1",
             kind=self.kind,
             orf_id=self.orf_id,
             equivalent_ids=self.equivalent_ids,
             source_transcript_id=self.source_transcript_id,
             on_source_transcript=self.on_source_transcript,
             model=None if self.model is None else self.model.to_dict(),
+            record=None if self.record is None else self.record.to_dict(),
             evidence=self.evidence.to_dict(),
             reference_context=self.context.to_dict(),
             reference_key=self.context.key,
@@ -699,6 +833,14 @@ class TranscriptORF:
                 topology=getattr(transcript, "topology", "linear"),
             ),
             source=self.source,
+            source_gene_id=self.source_gene_id,
+            source_gene_name=self.source_gene_name,
+            orf_type=self.orf_type,
+            coding_sequence=self.coding_sequence,
+            protein_sequence=self.protein_sequence,
+            translation_table=self.translation_table,
+            coding_phase=self.coding_phase,
+            coding_origin=self._origin,
             start=self.start,
             end=self.end,
             segments=self.segments,
@@ -712,6 +854,89 @@ class TranscriptORF:
             subcodon_introns=self.subcodon_introns,
             coordinates="0-based-half-open-cdna;1-based-inclusive-genome",
         )
+
+    @classmethod
+    def from_dict(cls, value, transcript):
+        """Restore a checked coding placement on an explicitly supplied, possibly archived RNA.
+
+        The complete RNA sequence, reference context, coordinates and protein
+        fingerprints must agree. Annotation and source-defined placements keep
+        ``record=None``; no catalogue observation is fabricated during replay.
+        """
+        from .catalog import ORFEvidence, _record
+
+        if value.get("schema") != "orfdata.transcript_orf.v1":
+            raise ValueError("Unsupported transcript ORF snapshot schema")
+        context = ReferenceContext(**value["reference_context"])
+        if value["reference_key"] != context.key:
+            raise ValueError("Transcript ORF snapshot reference key disagrees")
+        source_context = getattr(transcript, "reference", None)
+        if isinstance(source_context, ReferenceContext):
+            if source_context.key != context.key:
+                raise ValueError("Transcript ORF snapshot reference mismatch")
+        else:
+            ReferenceContext.from_genome(transcript.genome, context=context)
+        resolved = value["resolved_transcript"]
+        if (transcript.id != resolved["id"]
+                or getattr(transcript, "version", None) != resolved["version"]):
+            raise ValueError("Transcript ORF snapshot transcript identity mismatch")
+        if value.get("record") is not None:
+            restored = cls(_record(value["record"]), transcript, context=context, any_transcript=True)
+        else:
+            if value.get("model") is not None:
+                raise ValueError("Transcript ORF snapshot lacks its catalogue record")
+            if value["kind"] not in ("annotated", "extra_orf"):
+                raise ValueError("Unknown transcript ORF kind")
+            for name in ("start_complete", "stop_complete"):
+                boundary = value[name]
+                if boundary is not None and type(boundary) is not bool:
+                    raise ValueError(f"{name} must be True, False or None")
+            start, end = value["start"], value["end"]
+            size = len(transcript.sequence)
+            if (type(start) is not int or type(end) is not int
+                    or not 0 <= start < size or not 0 < end <= size):
+                raise ValueError("Transcript ORF snapshot coding interval is outside its RNA")
+            if end <= start and getattr(transcript, "topology", "linear") != "circular":
+                raise ValueError("Only a circular RNA can have a wrapped coding interval")
+            origin = value["coding_origin"]
+            if origin is not None and (type(origin) is not int or not -2 <= origin <= 2):
+                raise ValueError("Transcript ORF snapshot has an invalid coding origin")
+            restored = object.__new__(cls)
+            restored._set(record=None, transcript=transcript, context=context,
+                          kind=value["kind"], start=start, end=end,
+                          coding_sequence=value["coding_sequence"], _protein=value["protein_sequence"],
+                          start_complete=value["start_complete"], stop_complete=value["stop_complete"],
+                          annotation_id=value["orf_id"], source_transcript_id=value["source_transcript_id"],
+                          equivalent_ids=tuple(value["equivalent_ids"]),
+                          _source=value["source"], _source_gene=(value["source_gene_id"], value["source_gene_name"]),
+                          _orf_type=value["orf_type"], _table=value["translation_table"],
+                          _coding_origin=origin, _evidence=ORFEvidence.from_dict(value["evidence"]),
+                          _blocks=tuple(tuple(b) for b in value["coding_blocks"]), _layout=_rna_layout(transcript))
+            coding = "".join(restored.transcript_sequence[a:b] for a, b in restored.segments)
+            if coding != restored.coding_sequence:
+                raise ValueError("Transcript ORF snapshot coding sequence differs from its RNA")
+            offsets = [i for a, b in restored.segments for i in range(a, b)]
+            blocks = (_layout_blocks(restored._layout, transcript.strand, offsets)
+                      if restored._layout[0] else ())
+            if blocks != restored.coding_blocks:
+                raise ValueError("Transcript ORF snapshot coding path differs from its RNA")
+            if restored.kind == "extra_orf":
+                # Replay the source-defined translation rather than trusting a
+                # mutually consistent set of exported phase/protein fields.
+                restored = cls.at(
+                    transcript, start, end=None if getattr(transcript, "topology", "linear") == "circular" else end,
+                    phase=value["coding_phase"], orf_id=value["orf_id"], source=value["source"],
+                    protein=value["protein_sequence"], start_codon=value["start_codon"],
+                    recoded={index: residue for index, _, residue in value["decoded_stop_codons"]},
+                    translation_table=value["translation_table"], orf_type=value["orf_type"],
+                    evidence=ORFEvidence.from_dict(value["evidence"]), context=context,
+                    start_complete=value["start_complete"], stop_complete=value["stop_complete"])
+            elif ((restored.start_complete and origin != 0)
+                  or (restored.stop_complete and origin != len(coding) - 3 * (len(restored.protein_sequence) + 1))):
+                raise ValueError("Transcript ORF snapshot coding phase contradicts its annotated boundaries")
+        if json.dumps(restored.to_dict(), sort_keys=True) != json.dumps(value, sort_keys=True):
+            raise ValueError("Transcript ORF snapshot does not round-trip to its source definition")
+        return restored
 
 
 def _relation(start, end, cds_start, cds_end, frame):

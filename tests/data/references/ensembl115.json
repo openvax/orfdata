@@ -1308,7 +1308,69 @@
 "sequence": "CCCACAGGGAGTGGACATCCGCCATAACAAGGACCGAAAGGTTCGGCGCAAGGAGCCCAAGAGCCAGGATATCTACCTGAGGCTGTTGGTCAAGTTATACAGGTTTCTGGCCAGAAGAACCAACTCCACATTCAACCAGGTTGTGTTGAAGAGGTTGTTTATGAGTCGCACCAACCGGCCGCCTCTGTCCCTTTCCCGGATGATCCGGAAGATGAAGCTTCCTGGCCGGGAAAACAAGACGGCCGTGGTTGTGGGGACCATAACTGATGATGTGCGGGTTCAGGAGGTACCCAAACTGAAGGTATGTGCACTGCGCGTGACCAGCCGGGCCCGCAGCCGCATCCTCAGGGCAGGGGGCAAGATCCTCACTTTCGACCAGCTGGCCCTGGACTCCCCTAAGGGCTGTGGCACTGTCCTGCTCTCCGGTCCTCGCAAGGGCCGAGAGGTGTACCGGCATTTCGGCAAGGCCCCAGGAACCCCGCACAGCCACACCAAACCCTACGTCCGCTCCAAGGGCCGGAAGTTCGAGCGTGCCAGAGGCCGACGGGCCAGCCGAGGCTACAAAAACTAACCCTGGATCCTACTCTCTTATTAAAAAGATTTTTGCTGACA",
 "protein_id": "ENSP00000084795",
 "protein_version": 5,
-"protein": "XPQGVDIRHNKDRKVRRKEPKSQDIYLRLLVKLYRFLARRTNSTFNQVVLKRLFMSRTNRPPLSLSRMIRKMKLPGRENKTAVVVGTITDDVRVQEVPKLKVCALRVTSRARSRILRAGGKILTFDQLALDSPKGCGTVLLSGPRKGREVYRHFGKAPGTPHSHTKPYVRSKGRKFERARGRRASRGYKN"
+"protein": "XPQGVDIRHNKDRKVRRKEPKSQDIYLRLLVKLYRFLARRTNSTFNQVVLKRLFMSRTNRPPLSLSRMIRKMKLPGRENKTAVVVGTITDDVRVQEVPKLKVCALRVTSRARSRILRAGGKILTFDQLALDSPKGCGTVLLSGPRKGREVYRHFGKAPGTPHSHTKPYVRSKGRKFERARGRRASRGYKN",
+"native_gtf": [
+{
+"line": 7267860,
+"text": "19\thavana\ttranscript\t48615331\t48617884\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267861,
+"text": "19\thavana\texon\t48617791\t48617884\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"1\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00002386111\"; exon_version \"1\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267862,
+"text": "19\thavana\tCDS\t48617791\t48617884\t.\t-\t1\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"1\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000084795\"; protein_version \"5\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267863,
+"text": "19\thavana\texon\t48617316\t48617423\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"2\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003689442\"; exon_version \"1\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267864,
+"text": "19\thavana\tCDS\t48617316\t48617423\t.\t-\t0\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"2\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000084795\"; protein_version \"5\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267865,
+"text": "19\thavana\texon\t48616726\t48616824\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"3\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003479382\"; exon_version \"1\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267866,
+"text": "19\thavana\tCDS\t48616726\t48616824\t.\t-\t0\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"3\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000084795\"; protein_version \"5\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267867,
+"text": "19\thavana\texon\t48616079\t48616202\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"4\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003473433\"; exon_version \"1\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267868,
+"text": "19\thavana\tCDS\t48616079\t48616202\t.\t-\t0\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"4\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000084795\"; protein_version \"5\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267869,
+"text": "19\thavana\texon\t48615877\t48615946\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"5\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003572556\"; exon_version \"1\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267870,
+"text": "19\thavana\tCDS\t48615877\t48615946\t.\t-\t2\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"5\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000084795\"; protein_version \"5\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267871,
+"text": "19\thavana\texon\t48615331\t48615447\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"6\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003627949\"; exon_version \"1\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267872,
+"text": "19\thavana\tCDS\t48615375\t48615447\t.\t-\t1\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"6\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000084795\"; protein_version \"5\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267873,
+"text": "19\thavana\tstop_codon\t48615372\t48615374\t.\t-\t0\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; exon_number \"6\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+},
+{
+"line": 7267874,
+"text": "19\thavana\tthree_prime_utr\t48615331\t48615371\t.\t-\t.\tgene_id \"ENSG00000063177\"; gene_version \"14\"; transcript_id \"ENST00000084795\"; transcript_version \"9\"; gene_name \"RPL18\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"RPL18-201\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; tag \"cds_start_NF\"; tag \"mRNA_start_NF\"; transcript_support_level \"1\";"
+}
+]
 },
 {
 "id": "ENST00000324460",
@@ -1404,6 +1466,122 @@
 "protein_id": "ENSP00000324173",
 "protein_version": 6,
 "protein": "MKLSLVAAMLLLLSAARAEEEDKKEDVGTVVGIDLGTTYSCVGVFKNGRVEIIANDQGNRITPSYVAFTPEGERLIGDAAKNQLTSNPENTVFDAKRLIGRTWNDPSVQQDIKFLPFKVVEKKTKPYIQVDIGGGQTKTFAPEEISAMVLTKMKETAEAYLGKKVTHAVVTVPAYFNDAQRQATKDAGTIAGLNVMRIINEPTAAAIAYGLDKREGEKNILVFDLGGGTFDVSLLTIDNGVFEVVATNGDTHLGGEDFDQRVMEHFIKLYKKKTGKDVRKDNRAVQKLRREVEKAKRALSSQHQARIEIESFYEGEDFSETLTRAKFEELNMDLFRSTMKPVQKVLEDSDLKKSDIDEIVLVGGSTRIPKIQQLVKEFFNGKEPSRGINPDEAVAYGAAVQAGVLSGDQDTGDLVLLDVCPLTLGIETVGGVMTKLIPRNTVVPTKKSQIFSTASDNQPTVTIKVYEGERPLTKDNHLLGTFDLTGIPPAPRGVPQIEVTFEIDVNGILRVTAEDKGTGNKNKITITNDQNRLTPEEIERMVNDAEKFAEEDKKLKERIDTRNELESYAYSLKNQIGDKEKLGGKLSSEDKETMEKAVEEKIEWLESHQDADIEDFKAKKKELEEIVQPIISKLYGSAGPPPTGEEDTAEKDEL"
+},
+{
+"id": "ENST00000376028",
+"version": 8,
+"gene_id": "ENSG00000189337",
+"gene_version": 17,
+"gene_name": "KAZN",
+"biotype": "protein_coding",
+"gene_biotype": "protein_coding",
+"contig": "1",
+"strand": "+",
+"exons": [
+[
+14929800,
+14930044
+],
+[
+14960684,
+14960875
+],
+[
+15034749,
+15034885
+],
+[
+15043989,
+15044159
+],
+[
+15056091,
+15056145
+]
+],
+"cds": [
+[
+14960740,
+14960875
+],
+[
+15034749,
+15034885
+],
+[
+15043989,
+15044159
+],
+[
+15056091,
+15056145
+]
+],
+"start_codon": [
+[
+14960740,
+14960742
+]
+],
+"stop_codon": [],
+"native_gtf": [
+{
+"line": 1590,
+"text": "1\thavana\ttranscript\t14929800\t15056145\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1591,
+"text": "1\thavana\texon\t14929800\t14930044\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"1\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00001544753\"; exon_version \"1\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1592,
+"text": "1\thavana\texon\t14960684\t14960875\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"2\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003566337\"; exon_version \"1\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1593,
+"text": "1\thavana\tCDS\t14960740\t14960875\t.\t+\t0\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"2\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000365196\"; protein_version \"4\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1594,
+"text": "1\thavana\tstart_codon\t14960740\t14960742\t.\t+\t0\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"2\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1595,
+"text": "1\thavana\texon\t15034749\t15034885\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"3\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003536210\"; exon_version \"1\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1596,
+"text": "1\thavana\tCDS\t15034749\t15034885\t.\t+\t2\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"3\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000365196\"; protein_version \"4\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1597,
+"text": "1\thavana\texon\t15043989\t15044159\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"4\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00003693501\"; exon_version \"1\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1598,
+"text": "1\thavana\tCDS\t15043989\t15044159\t.\t+\t0\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"4\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000365196\"; protein_version \"4\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1599,
+"text": "1\thavana\texon\t15056091\t15056145\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"5\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; exon_id \"ENSE00001600178\"; exon_version \"1\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1600,
+"text": "1\thavana\tCDS\t15056091\t15056145\t.\t+\t0\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; exon_number \"5\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; protein_id \"ENSP00000365196\"; protein_version \"4\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1601,
+"text": "1\thavana\tfive_prime_utr\t14929800\t14930044\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+},
+{
+"line": 1602,
+"text": "1\thavana\tfive_prime_utr\t14960684\t14960739\t.\t+\t.\tgene_id \"ENSG00000189337\"; gene_version \"17\"; transcript_id \"ENST00000376028\"; transcript_version \"8\"; gene_name \"KAZN\"; gene_source \"ensembl_havana\"; gene_biotype \"protein_coding\"; transcript_name \"KAZN-202\"; transcript_source \"havana\"; transcript_biotype \"protein_coding\"; tag \"cds_end_NF\"; tag \"mRNA_end_NF\"; transcript_support_level \"3\";"
+}
+],
+"protein_id": "ENSP00000365196",
+"protein_version": 4,
+"sequence": "GGGAGAGGGAAGGTCAGGCTTGCCTCCTGTTCACAAGGACAACCTCTGTCTCCCTTGTGGCGGCTTCTATGAAGGTGGGGACTCCAGGCTTTCTCTCGTCTGCTTTTTGGATGCCTTCAAGAGAGGCCAGTTAGAGGATATCAATTGTGGCAATTCCCCAGAGCCCTCATCAGATGGCATTAGCCCGTCATGTGCTGCAGTGGCACCCAGTTTGGAGGAAATTCGGAACCAGAAGAGTGTGACAGTGCTCCTGCGGGAAGAAGTGTCGCGGCTCCAGGAGGAAGTTCACCTTCTCCGGCAGATGAAGGAGATGTTGGCGAAGGACCTGGAGGAGTCGCAGGGCGGCAAGTCCTCTGAGGTCCTCTCGGCCACCGAGCTCAGGGTCCAGCTGGCCCAGAAGGAGCAGGAGCTAGCCAGAGCCAAAGAAGCCTTGCAGGCCATGAAAGCTGATCGGAAGCGCTTAAAGGGCGAGAAGACAGACCTGGTGAGCCAGATGCAGCAGCTGTATGCCACACTGGAGAGCCGCGAGGAGCAGCTCCGAGACTTCATCCGCAACTATGAGCAGCACCGCAAGGAGAGCGAGGATGCGGTCAAAGCGCTGGCCAAGGAGAAGGACCTGCTGGAGCGTGAGAAGTGGGAGCTGCGGCGCCAAGCCAAGGAGGCCACAGACCACGCCACGGCACTGCGCTCCCAGCTGGACCTCAAGGACAACCGGATGAAGGAGCTGGAGGCCGAGCTGGCCATGGCCAAACAGTCCTTAGCTACGCTGACCAAGGACGTCCCCAAGCGGCATTCCCTCG",
+"protein": "MKEMLAKDLEESQGGKSSEVLSATELRVQLAQKEQELARAKEALQAMKADRKRLKGEKTDLVSQMQQLYATLESREEQLRDFIRNYEQHRKESEDAVKALAKEKDLLEREKWELRRQAKEATDHATALRSQLDLKDNRMKELEAELAMAKQSLATLTKDVPKRHSL"
 }
 ]
 }

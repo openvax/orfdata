@@ -11,7 +11,14 @@ import pytest
 from pyensembl import Genome
 from pyensembl.species import find_species_by_name
 
-from orfdata import EvidenceSummary, ORFEvidence, ORFModel, ORFRecord, ReferenceContext
+from orfdata import (
+    EvidenceSummary,
+    ORFEvidence,
+    ORFModel,
+    ORFRecord,
+    ReferenceContext,
+    TranscriptORF,
+)
 from orfdata.sequence import CODONS, GENETIC_CODES, genetic_code
 
 FIXTURES = json.loads((Path(__file__).parent / "data/references/mitochondrial.json").read_text())["examples"]
@@ -86,6 +93,9 @@ def test_native_mitochondrial_orfs_bind_only_under_their_declared_code(native):
     assert bound.genetic_code.table_id == example["model"]["translation_table"]
     assert bound.to_dict()["model"]["translation_table"] == example["model"]["translation_table"]
     assert bound.transcript is transcript and transcript.biotype == example["transcript"]["biotype"]
+    restored = TranscriptORF.from_dict(json.loads(json.dumps(bound.to_dict())), transcript)
+    assert restored.to_dict() == bound.to_dict()
+    assert restored.record.evidence == orf.evidence
     for table in {1, 2, 3} - {orf.translation_table}:
         with pytest.raises(ValueError, match="mismatch|initiation codon"):
             replace(orf, translation_table=table).bind(transcript)
