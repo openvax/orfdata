@@ -338,8 +338,8 @@ each species' sheet of Supplementary Data 3, imported the same way:
   Only the 171 ORFs on an Ensembl transcript, such as truncations and iORFs,
   place on a PyEnsembl genome; the rest (uORFs in 5′ UTRs, ORFs on CUTs) stay
   in the catalogue, queryable by region and gene, until ORFs on source-defined
-  RNAs are supported (#66). Types: uORF (321), lncORF (249), dORF (224),
-  truncation (137), extension (67), uoORF (55), doORF (40) and iORF (35).
+  RNAs are supported (#66). Types: uORF (393), dORF (267), lncORF (260), iORF
+  (139), truncation (138), extension (67), uoORF (58) and doORF (47).
 
 ## Dog
 
