@@ -1,3 +1,16 @@
+# 0.38.0
+
+- Add an experimental, resumable Sage pipeline for re-searching the 132
+  available Canine PeptideAtlas mzML runs against Ensembl 110 dog proteins and
+  candidate ncORFs. It verifies remote Deflate64 members, preserves per-run
+  receipts, applies class-specific target-decoy FDR and conservative sequence
+  filters, and exports candidate peptide and ORF tables without treating them
+  as released ORFdata evidence. One real PXD052932 run now covers the complete
+  fetch, Sage, parquet, aggregation and restart path.
+- Score ties receive one q-value for the complete tie; Ensembl selenocysteine
+  and other non-BLOSUM62 residues are normalized explicitly for homology; and
+  an incomplete batch exits nonzero. Regression tests cover all three cases.
+
 # 0.37.0
 
 - RibORF catalogue release 2 preserves every short source ORF that passes the
