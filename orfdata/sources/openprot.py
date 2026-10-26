@@ -31,6 +31,7 @@ from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
 from ..model import ORFModel
 from ..reference import ScopedTarget
+from ..sequence import genetic_code
 
 MS_DEFINITION = "Sum of study-specific unique-peptide counts; not global peptide uniqueness."
 TE_DEFINITION = "Count of studies reporting one or more significant translation detections."
@@ -83,6 +84,9 @@ def _summary(reference, accession, protein, method, metric, value, definition, u
 def import_orfs(inputs, output, manifest):
     """Write the catalogue ``manifest`` describes from its OpenProt TSV, BED and FASTA archives."""
     processing = manifest.processing
+    translation_tables = processing.get("translation_tables", {})
+    for code in translation_tables.values():
+        genetic_code(code)  # Unsupported source declarations must never fall back.
     members = processing["members"]
     rows = list(csv.DictReader(io.StringIO(_member(inputs["tsv"], members["tsv"])), delimiter="\t"))
     bed = [line.split("\t") for line in _member(inputs["bed"], members["bed"]).splitlines() if line.strip()]
@@ -92,13 +96,16 @@ def import_orfs(inputs, output, manifest):
     tsv = next(s for s in manifest.sources if s.asset_id == "tsv")
     if len(bed) != len(rows):
         raise ValueError("OpenProt TSV and BED row counts disagree")
+    unknown = set(translation_tables) - {row["transcript accession"] for row in rows}
+    if unknown:
+        raise ValueError("OpenProt translation tables name absent source transcripts: %s" % sorted(unknown))
 
     paths, unresolved, scores = defaultdict(dict), [], {}
     for line, (row, region) in enumerate(zip(rows, bed), start=2):
         accession, transcript = row["protein accession"], row["transcript accession"]
-        if row["chr"] in ("MT", "M"):  # Needs table 2 and its starts, e.g. human IP_306399 begins ATA (#55).
+        if row["chr"] in ("MT", "M") and transcript not in translation_tables:
             raise ValueError(f"OpenProt TSV line {line} ({accession}) is mitochondrial; the importer handles "
-                             "nuclear ORFs only")
+                             "it only with an explicit source-transcript translation table")
         length = int(row["protein length (a.a.)"])
         blocks = _blocks(region)
         protein = proteins.get(accession)
@@ -116,7 +123,7 @@ def import_orfs(inputs, output, manifest):
         if not transcript.startswith(processing["transcript_prefix"]):
             unresolved.append(dict(protein=accession, transcript=transcript, reason=processing["unresolved_reason"]))
             continue
-        key = (row["chr"], region[5], blocks)
+        key = (row["chr"], region[5], blocks, translation_tables.get(transcript, 1))
         found = paths[accession].setdefault(key, dict(protein=protein, genes={}, types=set()))
         found["genes"][transcript] = row["gene symbol"].split(".")[0]  # Overlapping genes can share a path.
         found["types"].add(row["protein type"])
@@ -124,7 +131,7 @@ def import_orfs(inputs, output, manifest):
     records = []
     for accession, found in sorted(paths.items()):
         ms, te = scores[accession]
-        for (contig, strand, blocks), path in sorted(found.items(), key=lambda item: min(item[1]["genes"])):
+        for (contig, strand, blocks, table), path in sorted(found.items(), key=lambda item: min(item[1]["genes"])):
             transcript = min(path["genes"])
             if len(path["types"]) != 1:
                 raise ValueError(f"OpenProt gives {accession} several protein types")
@@ -132,7 +139,7 @@ def import_orfs(inputs, output, manifest):
             model = ORFModel(accession if len(found) == 1 else f"{accession}@{transcript}", transcript,
                              path["genes"][transcript], "", contig, strand, blocks, protein, path["types"].pop(),
                              record_reference.genome_build, record_reference.taxon_id, record_reference.species,
-                             source="openprot", reference_context=record_reference)
+                             source="openprot", reference_context=record_reference, translation_table=table)
             summaries = tuple(_summary(summary_reference, accession, protein, *values, tsv.url, tsv.sha256) for values in (
                 ("ms", "MS score", ms, MS_DEFINITION), ("ribosome", "TE Translation Event score", te, TE_DEFINITION)))
             records.append(ORFRecord.from_model(model, ORFEvidence(summaries=summaries)))

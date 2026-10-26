@@ -1,3 +1,12 @@
+# 0.38.2
+
+- Accept explicit source-transcript genetic-code declarations in OpenProt
+  import manifests. Mitochondrial rows without a declaration still fail;
+  unsupported codes and declarations naming absent transcripts are rejected.
+  Verify the pinned human IP_306399 row under table 2 while preserving its
+  coordinates and aggregate evidence counts (#57). Whole human/yeast catalogue
+  publication remains separate from this qualified import path (#18).
+
 # 0.38.1
 
 - Accept native ORF IDs reused by distinct sources in directly constructed
