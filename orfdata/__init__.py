@@ -19,9 +19,11 @@ from .catalog_manifest import CatalogManifest
 from .catalogs import CatalogRegistry, build_catalog
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
+from .downloads import DataStatus, list_data
 from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .genomes import PinnedGenome, install_genome, load_genome, pinned_genomes
+from .gtf import orf_gtf_lines
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext, annotate_initiation_context
 from .install import install_species
 from .liftover import (
@@ -56,11 +58,17 @@ from .pairing import (
 )
 from .proteome import (
     BindingFailure,
+    DerivedProtein,
     ExtraORFs,
     Occurrence,
+    ProducerInfo,
+    ProducerLink,
+    ProducerRecord,
+    ProteinDerivation,
+    ProteinSequence,
+    ProteinSet,
     Proteome,
-    ProteomeEntry,
-    ViralProteome,
+    ReferenceTranscriptome,
     annotated_orfs,
     extra_orfs,
 )
@@ -78,6 +86,26 @@ from .viral import (
     viral_reference_sequence,
     viral_references,
 )
+from .viral_coverage import (
+    download_viral_inventory,
+    viral_contexts,
+    viral_panel_coverage,
+)
+from .viral_panel import (
+    ViralReferenceFiles,
+    download_viral_references,
+    open_viral_references,
+    select_viral_references,
+    viral_annotation_survey,
+    viral_genome,
+    viral_reference_summary,
+)
+from .viral_registry import ViralCollection, viral_collection, viral_collections
+from .viral_subsets import (
+    normalize_viral_subsets,
+    viral_subset_abbreviations,
+    viral_subsets,
+)
 
 __all__ = [
     "ViralProduct",
@@ -86,15 +114,38 @@ __all__ = [
     "viral_reference",
     "viral_reference_sequence",
     "viral_references",
+    "download_viral_inventory",
+    "viral_contexts",
+    "viral_panel_coverage",
+    "viral_subsets",
+    "normalize_viral_subsets",
+    "viral_subset_abbreviations",
+    "ViralReferenceFiles",
+    "download_viral_references",
+    "open_viral_references",
+    "select_viral_references",
+    "viral_genome",
+    "viral_annotation_survey",
+    "viral_reference_summary",
     "__version__",
     "Proteome",
-    "ProteomeEntry",
-    "ViralProteome",
+    "ProteinSet",
+    "ProteinSequence",
+    "ReferenceTranscriptome",
     "Occurrence",
     "extra_orfs",
     "annotated_orfs",
+    "orf_gtf_lines",
+    "ViralCollection",
+    "viral_collection",
+    "viral_collections",
     "ExtraORFs",
     "BindingFailure",
+    "DerivedProtein",
+    "ProteinDerivation",
+    "ProducerInfo",
+    "ProducerLink",
+    "ProducerRecord",
     "GeneticCode",
     "genetic_code",
     "SourceRNA",
@@ -123,6 +174,8 @@ __all__ = [
     "QuantitativeDataset",
     "DatasetRegistry",
     "build_dataset",
+    "DataStatus",
+    "list_data",
     "DatasetManifest",
     "SourceAsset",
     "Sample",

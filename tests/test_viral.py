@@ -2,7 +2,6 @@
 
 import gzip
 import hashlib
-import io
 import json
 from copy import deepcopy
 from dataclasses import FrozenInstanceError
@@ -10,18 +9,27 @@ from importlib.resources import files
 from pathlib import Path
 
 import pytest
-from Bio import SeqIO
 
 import orfdata.viral as viral_module
 from orfdata import (
     SourceRNA,
     ViralReference,
+    genbank,
     viral_orfs,
     viral_reference,
     viral_reference_sequence,
     viral_references,
 )
+from orfdata.viral_annotation import exon_blocks, extract
 from tools.build_hpv16_cds import build
+
+
+def _sequence(record):
+    return record.sequence
+
+
+def _qualifier(feature, key):
+    return next(value for name, value in feature.qualifiers if name == key)
 
 FIXTURE = Path(__file__).parent / "data/viral/NC_001526.4.gb.gz"
 EXPECTED = {
@@ -35,7 +43,7 @@ EXPECTED = {
 def source():
     raw = gzip.decompress(FIXTURE.read_bytes())
     assert hashlib.sha256(raw).hexdigest() == "282be442f226cc809fefbda616ac136b8d20dfde23fad09558f3f653a3de96a4"
-    return raw, SeqIO.read(io.StringIO(raw.decode()), "genbank")
+    return raw, genbank.parse(raw.decode("utf-8"))
 
 
 def test_catalogue_rebuilds_from_the_pinned_public_annotation(source):
@@ -48,16 +56,16 @@ def test_catalogue_rebuilds_from_the_pinned_public_annotation(source):
 
 def test_native_source_paths_match_all_nine_source_proteins(source):
     _, record = source
-    orfs = viral_orfs(str(record.seq))
-    definitions = {f.qualifiers["protein_id"][0]: f for f in record.features if f.type == "CDS"}
+    orfs = viral_orfs(_sequence(record))
+    definitions = {_qualifier(f, "protein_id"): f for f in record.features if f.kind == "CDS"}
     assert {orf.orf_id: len(orf.protein_sequence) for orf in orfs} == EXPECTED
     for orf in orfs:
         feature = definitions[orf.orf_id]
         assert isinstance(orf.transcript, SourceRNA)
         assert orf.transcript.biotype == "source_CDS_fragment"
         assert orf.transcript.genome is None
-        assert orf.protein_sequence == feature.qualifiers["translation"][0]
-        assert orf.coding_sequence == str(feature.extract(record.seq))
+        assert orf.protein_sequence == _qualifier(feature, "translation")
+        assert orf.coding_sequence == extract(_sequence(record), exon_blocks(feature.location))
         assert orf.start_complete and orf.stop_complete
         assert orf.context.annotation_version == "NC_001526.4"
         assert orf.context.taxon_id == 333760
@@ -67,7 +75,7 @@ def test_native_source_paths_match_all_nine_source_proteins(source):
 
 def test_gdc_rotation_is_exact_and_retains_spliced_coding_positions(source):
     _, record = source
-    native = str(record.seq)
+    native = _sequence(record)
     gdc = native[-864:] + native[:-864]
     assert hashlib.md5(gdc.encode()).hexdigest() == "f2463721818c29998ef5ab917e6df74a"
     orfs = {orf.orf_id: orf for orf in viral_orfs(gdc, contig="HPV16")}
@@ -83,7 +91,7 @@ def test_gdc_rotation_is_exact_and_retains_spliced_coding_positions(source):
 
 def test_mutated_same_name_reference_and_partial_dna_are_not_qualified(source):
     _, record = source
-    native = str(record.seq)
+    native = _sequence(record)
     changed = ("A" if native[0] != "A" else "C") + native[1:]
     for sequence in (changed, native[1:], native[::-1]):
         with pytest.raises(ValueError, match="No unique released"):
@@ -118,7 +126,7 @@ def test_discovery_is_offline_and_reference_objects_are_immutable(source, monkey
         patch.setattr(viral_module, "viral_orfs", lambda **kwargs: 1 / 0)
         patch.setattr(viral_module, "viral_reference_sequence", lambda reference_id: 1 / 0)
         assert viral_references(host="human") == references
-    assert viral_orfs(str(record.seq))[0].context.annotation_version == "NC_001526.4"
+    assert viral_orfs(_sequence(record))[0].context.annotation_version == "NC_001526.4"
 
 
 def test_host_group_and_type_select_exact_references_with_distinct_taxa():
@@ -152,7 +160,7 @@ def test_explicit_multiple_host_associations_can_select_one_reference_from_each_
 
 def test_bundled_reference_sequences_and_named_orfs_match_both_source_placements(source):
     _, record = source
-    native = str(record.seq)
+    native = _sequence(record)
     gdc = native[-864:] + native[:-864]
     for reference_id, expected in (("NC_001526.4", native),
                                    ("GRCh38.d1.vd1:HPV16", gdc)):
@@ -192,7 +200,9 @@ def test_corrupt_packaged_catalogue_fails_before_returning_models(monkeypatch):
 
     module._catalog.cache_clear()
     try:
-        monkeypatch.setattr(module, "files", lambda name: CorruptResource())
+        # Every packaged file is read through one checked reader, so that is
+        # the seam a corrupt one has to be served through.
+        monkeypatch.setattr("orfdata.reference_table.files", lambda name: CorruptResource())
         with pytest.raises(ValueError, match="checksum mismatch"):
             viral_references()
     finally:

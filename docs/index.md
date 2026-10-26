@@ -9,24 +9,37 @@ is a recorded host of the virus.
 
 ## Install
 
-Use Python 3.9 or later. Install orfdata and one PyEnsembl annotation:
+Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl]'
+python -m pip install 'orfdata[pyensembl,build-data]'
 pyensembl install --release 115 --species human
+orfdata setup --species human --catalogs all  # For ncORF presets and "all"
 ```
 
-The second command downloads and indexes Ensembl 115 for human GRCh38. orfdata
-never downloads or indexes annotation data itself; it reports what is missing.
+Viral support is part of the base install; only the data is downloaded. Get
+the human GDC viral references — genomes, coding transcripts and proteins, as
+three named layers — with `orfdata download viral --species human`. Use
+`orfdata download list` to see every known resource and `orfdata download
+status` to see what is local. To annotate variants in viral transcripts or
+noncanonical ORFs with varcode, isovar, topiary or vaxrank, see
+[Downstream tools](downstream.md).
+
+The second command downloads and indexes Ensembl 115 for human GRCh38. Opening
+ORFdata resources never downloads them implicitly; use the explicit commands
+under `orfdata download` or the corresponding PyEnsembl command when data is
+missing.
 
 ## Build a human proteome
 
 ```python
 from pyensembl import EnsemblRelease
-from orfdata import Proteome
+from orfdata import ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")
-proteome = Proteome.from_genome(genome).with_extra_orfs(evidence="ms")
+transcriptome = ReferenceTranscriptome.from_genome(genome)
+reference = transcriptome.proteome()  # Reference CDS proteins only.
+proteome = transcriptome.proteome(nc_orf_sources="ms")
 proteome.write_fasta("human-e115.fasta")
 print(proteome.summary()["kinds"], len(proteome.excluded))
 ```
@@ -35,8 +48,9 @@ print(proteome.summary()["kinds"], len(proteome.excluded))
 {'annotated': 245535, 'extra_orf': 2181} 5
 ```
 
-`Proteome.from_genome` takes every protein in the Ensembl 115 annotation.
-`with_extra_orfs(evidence="ms")` adds the bundled human ORFs that have
+`proteome()` takes every reference CDS protein in the Ensembl 115 annotation.
+Use `isoforms="longest"` for one reference protein per gene, selected by length.
+`nc_orf_sources="ms"` adds the bundled human ORFs that have
 supporting mass-spectrometry (MS) peptides: 2,181 of the 2,186 are encoded by
 an Ensembl 115 transcript, which must contain the ORF's exact spliced coding
 path. The other 5 are listed in `proteome.excluded` with the reason. Each entry
@@ -46,23 +60,32 @@ minute, and `proteome.save(path)` keeps it as a checksummed snapshot.
 The same proteome from the command line:
 
 ```sh
-orfdata proteome --species human --release 115 --output human-e115.fasta
+orfdata proteome --species human --release 115 --nc-orf-sources ms --output human-e115.fasta
 ```
 
-## Choose the evidence
+## Choose ncORF sources
 
-| `evidence=` | Selects ORFs with | Human ORFs | Encoded in Ensembl 115 |
+| `nc_orf_sources=` | Selects ORFs with | Human ORFs | Encoded in Ensembl 115 |
 | --- | --- | ---: | ---: |
-| `"ribosome"` or `"riboseq"` | Ribosome profiling (all bundled ORFs) | 7,264 | 7,239 |
-| `"ms"` (default) | Any supporting MS peptide | 2,186 | 2,181 |
+| `"ribosome"` or `"riboseq"` | Ribosome profiling across all datasets | 69,286 | 69,162 |
+| `"ms"` | Any supporting MS peptide | 2,186 | 2,181 |
 | `"immunopeptidomics"` | Peptides eluted from MHC (in human, HLA) molecules | 1,881 | 1,879 |
 | `"proteomics"` | Peptides from digested cellular proteins | 73 | 72 |
-| `"all"` | Every catalogue ORF | 7,264 | 7,239 |
+| `"all"` | Every compatible dataset | 69,286 | 69,162 |
+
+Use `nc_orf_sources="bundled"` for the bundled dataset alone, or a list of
+names such as `["bundled", "ncorf-mammals-human"]` for a subset. Evidence presets
+and `"all"` require all compatible datasets; install human's optional datasets
+once with `orfdata setup --species human --catalogs all`. Missing resources
+produce installation instructions. The defaults still add no ncORFs.
+RibORF source catalogues include valid 1–4-residue ORFs. Apply a downstream
+policy explicitly with `min_protein_length=5`, or CLI
+`--min-protein-length 5`, when a peptide-search reference should omit them.
 
 Most MS support in the bundled human catalogue comes from
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
 does not establish a stable protein. See
-[building a reference proteome](proteome.md#choose-the-evidence) for
+[building a reference proteome](proteome.md#add-ncorfs-with-selected-evidence) for
 stricter filters and what each level means.
 
 ## Look up the ORFs on a transcript
@@ -96,17 +119,17 @@ transcript alongside them.
 
 | Species | Annotated proteins | Noncanonical ORFs |
 | --- | --- | --- |
-| Human | From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and [T2T-CHM13](catalogs.md#t2t-chm13). 57,607 with the [optional Ribo-seq catalogues](catalogs.md#human-ribo-seq-orfs-optional) of Chang et al. and Yang et al. (`catalogs="all"`) |
-| Mouse | From PyEnsembl | 48,805 ORFs on GRCm39: Ribo-seq ORFs of Chang et al. and Yang et al., and 2,976 MS-supported ones (OpenProt 2.2), [built locally](catalogs.md#mouse) with `orfdata setup --species mouse`; lifted to GRCm38 and NCBIM37 |
-| Zebrafish | From PyEnsembl | 9,759 GRCz11 Ribo-seq ORFs of Yang et al., [built locally](catalogs.md#zebrafish-c-elegans-and-yeast) |
-| C. elegans | From PyEnsembl | 2,849 WBcel235 Ribo-seq ORFs of Yang et al., built locally |
-| Budding yeast | From PyEnsembl | 1,128 R64-1-1 Ribo-seq ORFs of Yang et al., built locally; 171 lie on Ensembl's transcripts |
+| Human | From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and [T2T-CHM13](catalogs.md#t2t-chm13). 69,286 with the [optional Ribo-seq catalogues](catalogs.md#human-ribo-seq-orfs-optional) of Chang et al. and Yang et al. (`nc_orf_sources="all"`) |
+| Mouse | From PyEnsembl | 60,707 ORFs on GRCm39: Ribo-seq ORFs of Chang et al. and Yang et al., and 2,976 MS-supported ones (OpenProt 2.2), [built locally](catalogs.md#mouse) with `orfdata setup --species mouse`; lifted to GRCm38 and NCBIM37 |
+| Zebrafish | From PyEnsembl | 15,491 GRCz11 Ribo-seq ORFs of Yang et al., [built locally](catalogs.md#zebrafish-c-elegans-and-yeast) |
+| C. elegans | From PyEnsembl | 4,035 WBcel235 Ribo-seq ORFs of Yang et al., built locally |
+| Budding yeast | From PyEnsembl | 1,369 R64-1-1 Ribo-seq ORFs of Yang et al., built locally; 171 lie on Ensembl's transcripts |
 | Dog | From PyEnsembl | None: [no public dog Ribo-seq or ncORF MS exists](catalogs.md#dog) |
 
 Other assemblies use a catalogue lifted to them once `orfdata chains download`
 has fetched the chain files (with `--accept-terms` for UCSC's non-commercial
 mouse chains); see [every assembly of a species](catalogs.md#every-assembly-of-a-species).
-`with_extra_orfs()` raises for a species without a catalogue, or whose
+`with_nc_orfs()` raises for a species without a catalogue, or whose
 catalogue or chains aren't installed yet, rather than returning an
 annotated-only proteome. Human ORF evidence is never transferred
 to another species. The same API also serves

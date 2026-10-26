@@ -102,10 +102,9 @@ def test_any_source_id_finds_the_merged_orf_and_the_cli_merges_files(genome, tmp
     monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: genome)
     paths = []
     for name, catalog in (("first", make_catalog()), ("second", other_catalog())):
-        paths += ["--catalog", str(tmp_path / f"{name}.json")]
+        paths += ["--nc-orf-sources", str(tmp_path / f"{name}.json")]
         (tmp_path / f"{name}.json").write_text(json.dumps(catalog.to_dict()))
-    run(["proteome", "--species", "mouse", "--release", "1", "--min-ribo-seq-studies", "1",
-         "--min-ms-peptides", "1", *paths])
+    run(["proteome", "--species", "mouse", "--release", "1", *paths])
     assert "equivalent=other:OP_1" in capsys.readouterr().out
 
 

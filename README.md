@@ -3,8 +3,8 @@
 
 # orfdata
 
-orfdata builds the protein reference for a species: the proteins annotated in
-a [PyEnsembl](https://github.com/openvax/pyensembl) genome, plus open reading
+orfdata builds protein references from transcript models in
+a [PyEnsembl](https://github.com/openvax/pyensembl) annotation, plus open reading
 frames (ORFs) that ribosome-profiling studies found translated outside those
 annotations. These include upstream and downstream ORFs, ORFs in other reading
 frames of a coding sequence, and ORFs on RNAs annotated as noncoding. Each added
@@ -13,41 +13,78 @@ evidence.
 
 ## Installation
 
-Use Python 3.9 or later. Install orfdata and one PyEnsembl annotation:
+Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl]'
+python -m pip install 'orfdata[pyensembl,build-data]'
 pyensembl install --release 115 --species human
+# For the ncORF evidence presets and "all":
+orfdata setup --species human --catalogs all
 ```
+
+List every bundled, downloadable or buildable resource and what is installed:
+
+```sh
+orfdata download list
+orfdata download status
+```
+
+`orfdata setup --species human` also installs `gdc-viruses`, the default
+200-reference GDC viral screen for human transcriptome analysis;
+`--collections none` skips it. Viral support is part of the base install, and
+only the data is downloaded. To acquire only the viral references:
+
+```sh
+orfdata download viral --species human
+orfdata viral summary
+```
+
+Each viral collection keeps three layers apart — the viral genomes, one coding
+transcript per source CDS feature with a GTF placing it on them, and the
+proteins those transcripts encode. Because the three share identifiers, the set
+opens as a PyEnsembl genome, so varcode, isovar, topiary and vaxrank can
+annotate variants on viral contigs. `orfdata proteome --annotation DIR` writes
+the same three files for noncanonical ORFs. See
+[Downstream tools](https://openvax.github.io/orfdata/downstream/).
 
 ## Example
 
 ```python
 from pyensembl import EnsemblRelease
-from orfdata import Proteome
+from orfdata import ReferenceTranscriptome
 
 genome = EnsemblRelease(115, species="human")
-proteome = Proteome.from_genome(genome).with_extra_orfs(evidence="ms")
+transcriptome = ReferenceTranscriptome.from_genome(genome)
+reference = transcriptome.proteome()                    # Reference CDS proteins only; all isoforms.
+one_per_gene = transcriptome.proteome(isoforms="longest")
+proteome = transcriptome.proteome(nc_orf_sources="ms")          # Explicitly add MS-supported ncORFs.
 proteome.write_fasta("human-e115.fasta")
-print(proteome.summary()["kinds"], len(proteome.excluded))
+print(proteome.summary()["protein_sources"], len(proteome.excluded))
 ```
 
 ```text
-{'annotated': 245535, 'extra_orf': 2181} 5
+{'reference_cds': 245535, 'nc_orf': 2181} 5
 ```
 
-This takes every protein in the Ensembl 115 annotation and adds the 2,181
+`proteome()` defaults to reference CDS proteins, with no ncORFs or viruses.
+`isoforms="longest"` selects one protein per gene by length, with accession
+and transcript ID breaking ties. This does not assign Ensembl canonical or
+MANE status. `nc_orf_sources="ms"` takes every protein in the Ensembl 115 annotation and adds the 2,181
 bundled human ORFs that have supporting mass-spectrometry peptides and are
 encoded by an Ensembl 115 transcript. Each entry lists every transcript encoding
 it; the other 5 selected ORFs are listed in `proteome.excluded` with the
-reason. Use `evidence="ribosome"` for all 7,239 encoded ribosome-profiling ORFs,
-or a rule such as `RiboSeq(min_studies=2) & MS()` to set Ribo-seq and MS
-stringency separately (1,293 encoded ORFs).
+reason. `nc_orf_sources="ribosome"` includes Ribo-seq-supported ORFs from
+all compatible registered datasets. Use a rule such as
+`RiboSeq(min_studies=2) & MS()` to set Ribo-seq and MS stringency separately.
+A dataset name such as `"bundled"` selects every ORF in that dataset;
+a list such as `["bundled", "ncorf-mammals-human"]` combines datasets.
+`nc_orf_sources="all"` includes every compatible registered dataset, including
+optional ones. Missing datasets raise with installation instructions.
 `proteome.save(path)` writes a checksummed snapshot that `Proteome.load` reads
 offline. From the command line:
 
 ```sh
-orfdata proteome --species human --release 115 --output human-e115.fasta
+orfdata proteome --species human --release 115 --nc-orf-sources ms --output human-e115.fasta
 ```
 
 A translated ORF or a detected peptide does not by itself establish a stable,
@@ -58,11 +95,11 @@ immunopeptidomics: peptides eluted from HLA molecules.
 
 | Species | Noncanonical ORFs | Sources |
 | --- | ---: | --- |
-| Human | 7,264 bundled; 57,607 with `catalogs="all"` | GENCODE; optionally Chang et al. 2025 and Yang et al. 2024 Ribo-seq |
-| Mouse | 48,805 | Chang et al. and Yang et al. Ribo-seq, OpenProt 2.2 MS |
-| Zebrafish | 9,759 | Yang et al. Ribo-seq |
-| C. elegans | 2,849 | Yang et al. Ribo-seq |
-| Yeast | 1,128 | Yang et al. Ribo-seq |
+| Human | 7,264 bundled; 69,286 with `nc_orf_sources="all"` | GENCODE; optionally Chang et al. 2025 and Yang et al. 2024 Ribo-seq |
+| Mouse | 60,707 | Chang et al. and Yang et al. Ribo-seq, OpenProt 2.2 MS |
+| Zebrafish | 15,491 | Yang et al. Ribo-seq |
+| C. elegans | 4,035 | Yang et al. Ribo-seq |
+| Yeast | 1,369 | Yang et al. Ribo-seq |
 | Dog | none: no public dog Ribo-seq or ncORF MS exists | |
 
 Human's bundled catalogue needs no setup. For the others, `pip install
@@ -74,10 +111,49 @@ After `orfdata chains download` (add
 (GRCh37, NCBI36, GRCm38, NCBIM37) and T2T-CHM13 use these catalogues lifted
 to them; `orfdata genomes install t2t-chm13` installs a CHM13 annotation. Dog proteomes contain their
 PyEnsembl-annotated proteins. `load_catalog(species=...)` and
-`with_extra_orfs()` pick the catalogue for a species and raise when none is
+`with_nc_orfs("all")` select catalogues for a species and raise when none is
 available or built.
-Human evidence is never transferred to another species. Viral proteomes can be added with
-`with_viral(...)`, but only to a proteome for one of the virus's recorded hosts.
+Human evidence is never transferred to another species. Viral proteins can
+be added only to a proteome for a recorded host. To build one dictionary and
+FASTA with the reference CDS proteins, all binding catalogue ORFs and the
+bundled viruses associated with human:
+
+```python
+combined = transcriptome.proteome(nc_orf_sources="all", viral="all")
+proteins_by_id = combined.by_accession()  # Reference CDS, ncORF and viral entries.
+combined.write_fasta("human-all-proteins.fasta")
+combined.save("human-all-proteins.proteome.json.gz")  # Complete provenance.
+
+nc_only = transcriptome.proteome(reference_cds=False, nc_orf_sources="all")
+nc_only.write_fasta("human-reference-ncorfs.fasta")
+
+# A peptide-search policy can exclude short products without deleting their ORF models.
+search_reference = transcriptome.proteome(
+    nc_orf_sources="all", min_protein_length=5
+)
+```
+
+For sample-specific altered sequences, `DerivedProtein` records the supplied
+amino acids, parent protein accession, sample, change IDs and source before
+`combined.with_derived_proteins(...)` adds them. These sequences are not
+inferred from variants or included in the reference proteome by default.
+
+For a named, checksummed sequence input with no genomic placement, use the
+general `ProteinSet`. `with_protein_set(...)` records a donor, transgene or
+other selected component; `with_viral(...)` uses the same input plus a sourced
+host association. ncORF sources with transcript coordinates and evidence stay
+as `ORFCatalog` records and produce the same `ProteinSequence` output when
+bound to a reference.
+
+```sh
+orfdata proteome --species human --release 115 --nc-orf-sources all --viral all --output human-all-proteins.fasta
+```
+
+`viral="all"` selects one protein set per bundled virus and keeps its exact
+reference ID in FASTA headers. To select one virus, use `viral="HPV16"` or
+`with_viral("HPV16")`.
+Viral proteins are included only when requested; a recorded host association
+does not say which virus is present in a sample.
 orfdata also provides [RNA, ribosome and protein measurements](https://openvax.github.io/orfdata/measurements/)
 for human, mouse, dog and yeast.
 
@@ -88,10 +164,14 @@ packaged bases and coding paths. The functional loaders remain available.
 When annotating an existing alignment, `viral_orfs(reference_dna,
 contig="HPV16")` checks its actual reference sequence before applying the same
 models.
-The first [coding reference](https://openvax.github.io/orfdata/viral/) contains
-the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC placements;
-the host association is distinct from the virus's own taxon. Broader
-imports remain in [the viral roadmap](https://github.com/openvax/orfdata/issues/91).
+The curated [coding reference](https://openvax.github.io/orfdata/viral/)
+contains the nine RefSeq NC_001526.4 HPV16 CDSs, with native and GDC
+placements; the host association is distinct from the virus's own taxon. The
+separate `gdc-viruses` source bundle contains all 200 GDC source genomes and
+their annotated CDS/protein FASTAs for human analysis. It does not assert a
+human source host for every virus; source-host metadata remains separate.
+Promoting further source records into the curated
+`ViralReference` API remains in the [viral roadmap](https://github.com/openvax/orfdata/issues/91).
 
 ## Measurement datasets
 
@@ -123,6 +203,8 @@ The [documentation](https://openvax.github.io/orfdata/) covers:
 
 | Task | Guide |
 | --- | --- |
+| Discover, inspect and download data | [Discover and download data](https://openvax.github.io/orfdata/downloads/) |
+| Use ORFs and viral references with varcode, isovar, topiary and vaxrank | [Downstream tools](https://openvax.github.io/orfdata/downstream/) |
 | Build a proteome: evidence levels, exclusions, contigs, viral proteins | [Build a reference proteome](https://openvax.github.io/orfdata/proteome/) |
 | ORF classes, evidence definitions, Varcode and Isovar integration | [ORFs and evidence](https://openvax.github.io/orfdata/reference/) |
 | Species and reference identity, mitochondrial genetic codes | [Species, references and genetic codes](https://openvax.github.io/orfdata/species/) |

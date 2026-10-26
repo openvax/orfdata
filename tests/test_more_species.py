@@ -27,16 +27,16 @@ FILES = {
     "ncorf-mammals-human": dict(bed=CHANG / "human.bed", proteins=CHANG / "human.pep.fa", table=CHANG / "S3.xlsx",
                                 gtf=CHANG / "human-ensembl107.gtf.gz"),
 }
-# Each sheet's rows: an annotated CDS (not imported), a short ORF and the rest; see the READMEs.
+# Each sheet's rows: an annotated CDS (not imported), a retained short ORF and the rest; see the READMEs.
 COVERAGE = {
-    "riborf-zebrafish": dict(records=5, distinct_protein_sequences=5, evidence_summaries=5, source_rows=7,
-                             short_rows=1, resolved_rows=5, unresolved_rows=1),
-    "riborf-worm": dict(records=5, distinct_protein_sequences=5, evidence_summaries=5, source_rows=6, short_rows=1,
-                        resolved_rows=5, unresolved_rows=0),
-    "riborf-human": dict(records=5, distinct_protein_sequences=5, evidence_summaries=5, source_rows=7, short_rows=1,
+    "riborf-zebrafish": dict(records=6, distinct_protein_sequences=6, evidence_summaries=6, source_rows=7,
+                             short_rows=1, resolved_rows=6, unresolved_rows=1),
+    "riborf-worm": dict(records=6, distinct_protein_sequences=6, evidence_summaries=6, source_rows=6, short_rows=1,
+                        resolved_rows=6, unresolved_rows=0),
+    "riborf-human": dict(records=6, distinct_protein_sequences=6, evidence_summaries=6, source_rows=7, short_rows=1,
+                         resolved_rows=6, unresolved_rows=1),
+    "riborf-yeast": dict(records=5, distinct_protein_sequences=5, evidence_summaries=5, source_rows=6, short_rows=1,
                          resolved_rows=5, unresolved_rows=1),
-    "riborf-yeast": dict(records=4, distinct_protein_sequences=4, evidence_summaries=4, source_rows=6, short_rows=1,
-                         resolved_rows=4, unresolved_rows=1),
     "ncorf-mammals-human": dict(records=3, distinct_protein_sequences=3, evidence_summaries=6, source_rows=4,
                                 resolved_rows=3, unresolved_rows=1),
 }
@@ -117,7 +117,7 @@ def test_zebrafish_leaves_out_an_orf_with_ambiguous_bases(tmp_path):
 def test_worm_names_with_dots_of_their_own_are_kept_whole(tmp_path):
     catalog = built(tmp_path, "riborf-worm").open("riborf-worm")
     assert {r.transcript_id for r in catalog.records} == {"F45H11.11.1", "F08G2.13", "T07C12.13.1", "C45B2.8.1",
-                                                          "M163.15"}
+                                                          "M163.15", "E04F6.16"}
     gtg = next(r for r in catalog.records if r.transcript_id == "M163.15")
     assert (gtg.start_codon, gtg.biotype) == ("GTG", "lncORF")
 
@@ -127,7 +127,7 @@ def test_yeast_orfs_come_from_the_genome_and_place_inside_ensembl_transcripts(tm
     found = {r.transcript_id: r for r in catalog.records}
     # Only an ORF on Ensembl's (CDS-only) transcript takes its name; the others keep the source's transcript name,
     # with the Ensembl gene where there is one, and an unstable transcript Ensembl lacks keeps its own.
-    assert set(found) == {"YNL046W_mRNA", "YNR004W", "YNL130C", "CUT808"}
+    assert set(found) == {"YNL046W_mRNA", "YNR004W", "YNL130C", "CUT808", "YNL048W"}
     assert (found["YNR004W"].biotype, found["YNR004W"].gene_name) == ("uORF", "SWM2")
     assert (found["CUT808"].biotype, found["CUT808"].gene_id) == ("lncORF", "CUT808")
     # An extension across CPT1's intron is rebuilt from its two block sizes.
@@ -144,7 +144,8 @@ def test_yeast_orfs_come_from_the_genome_and_place_inside_ensembl_transcripts(tm
         placed = extra_orfs(loaded, None, catalog=catalog)
         assert {o.orf_id for o in placed} == {found["YNL046W_mRNA"].orf_id}
         assert {e.orf_id: e.reason for e in placed.excluded} == {
-            found[t].orf_id: "Transcript absent from this annotation" for t in ("YNR004W", "YNL130C", "CUT808")}
+            found[t].orf_id: "Transcript absent from this annotation"
+            for t in ("YNR004W", "YNL130C", "CUT808", "YNL048W")}
         # No record names an Ensembl transcript that doesn't carry it.
         for transcript in loaded.transcripts():
             assert [o.orf_id for o in catalog.for_transcript(transcript)] == (
@@ -169,7 +170,7 @@ def test_human_ribo_seq_catalogues_are_used_only_when_asked_for(tmp_path):
     bundled = load_catalog()
     assert load_catalog(species="human", registry=registry).records == bundled.records
     everything = load_catalog(species="human", registry=registry, catalogs="all")
-    assert len(everything.records) == len(bundled.records) + 5 + 3
+    assert len(everything.records) == len(bundled.records) + 6 + 3
     only = load_catalog(species="human", registry=registry, catalogs=["riborf-human"])
     assert {r.source for r in only.records} == {"riborf-human"}
     with pytest.raises(ValueError, match="No homo_sapiens catalogue named 'riborf-mouse'"):

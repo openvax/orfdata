@@ -81,6 +81,31 @@ def test_pyensembl_species_reference_resolution_is_offline(taxon, species, assem
     assert ReferenceContext(**json.loads(json.dumps(resolved.to_dict()))) == resolved
 
 
+def test_reference_taxon_can_be_a_strain_with_an_explicit_species_ancestor():
+    dog = transcript(context()).genome
+    dog.taxon_id, dog.species_taxon_id = 9615, 9612
+    assert ReferenceContext.from_genome(dog).taxon_id == 9615  # Do not collapse dog into wolf.
+    yeast = context(4932, "yeast", "R64-1-1", strain="S288C", strain_taxon_id=559292)
+    t = transcript(yeast)
+    t.genome.taxon_id = 559292
+    t.genome.species_taxon_id = 4932
+    t.genome.strain = "S288C"
+    t.genome.strain_taxon_id = 559292
+    assert ReferenceContext.from_genome(t.genome) == yeast
+    yeast.validate_genome(t.genome)
+    assert ORFRecord.from_model(model(yeast)).bind(t).context == yeast
+    # Species normalization must not erase an explicitly conflicting strain.
+    with pytest.raises(ValueError, match="strain_taxon_id mismatch"):
+        replace(yeast, strain_taxon_id=None).validate_genome(t.genome)
+    for species, reference_taxon, ancestor in (("yeast", 9606, 4932), ("human", 559292, 9606),
+                                               ("mouse", 559292, 4932)):
+        t.genome.species, t.genome.taxon_id, t.genome.species_taxon_id = species, reference_taxon, ancestor
+        with pytest.raises(ValueError, match="taxonomy disagree"):
+            ReferenceContext.from_genome(t.genome)
+        with pytest.raises(ValueError, match="taxonomy disagree"):
+            yeast.validate_genome(t.genome)
+
+
 def test_dog_alias_regression_and_no_breed_assembly_collapse():
     expected = context()
     assert _species(find_species_by_name("canis_lupus_familiaris")) == _species("canis_lupus_familiaris")
@@ -206,7 +231,9 @@ def test_cli_keeps_pinned_reference_in_json_tsv_and_fasta(tmp_path, capsys):
     row = next(csv.DictReader(io.StringIO(capsys.readouterr().out), delimiter="\t"))
     assert json.loads(row["reference_context_json"])["annotation_version"] == "110"
     run(["--catalog", str(path), "--format", "fasta"])
-    assert f"taxon=9615 reference={c.key}" in capsys.readouterr().out
+    fasta = capsys.readouterr().out
+    assert f"taxon=9615 reference={c.key}" in fasta
+    assert f"kind=extra_orf source={catalogue.source}" in fasta
 
 
 def test_taxonomy_conflicts_and_unsupported_alias_versions_fail():

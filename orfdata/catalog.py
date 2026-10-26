@@ -588,6 +588,7 @@ class ORFCatalog:
         require_reviewed=False,
         require_resolved=False,
         biotype=None,
+        min_protein_length=None,
         include_initiation_context=False,
     ):
         """Filter records; genomic intervals are 1-based inclusive and spliced.
@@ -602,6 +603,8 @@ class ORFCatalog:
         scope, not unique in every normal human proteome.
         ``require_resolved`` excludes aggregate-only support: MS needs a peptide
         observation and ribosome evidence needs a named study.
+        ``min_protein_length`` is an explicit consumer selection in amino acids;
+        the catalogue itself retains every representable source ORF.
         ``include_initiation_context`` also intersects placed spliced start
         flanks, for example an upstream Kozak SNV. The default remains coding
         blocks only. It does not include introns between context bases.
@@ -619,6 +622,8 @@ class ORFCatalog:
             raise ValueError(f"Expected genome build {self.genome_build}, got {genome_build}")
         rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
                              require_resolved=require_resolved)
+        if min_protein_length is not None:
+            _positive_integer(min_protein_length, "min_protein_length")
 
         return tuple(
             r
@@ -642,6 +647,7 @@ class ORFCatalog:
                 )
             )
             and (biotype is None or any(m.biotype == biotype for m in r.members or (r,)))
+            and (min_protein_length is None or len(r.protein_sequence) >= min_protein_length)
             and (rule is None or rule.matches(r.evidence))
         )
 
@@ -963,8 +969,8 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     builds = sorted({c.genome_build for c in found})
     known = "; ".join(f"{c.species} {c.genome_build} ({c.label})"
                       for c in sorted(choices, key=lambda c: (c.species, c.genome_build, c.name))) or "none"
-    annotated_only = (" For a proteome of annotated proteins only, pass extra_orfs=False "
-                      "(orfdata proteome --extra-orf-evidence none).")
+    annotated_only = (" For reference CDS proteins only, use Proteome.build(genome) "
+                      "without ncORF options (the default for orfdata proteome too).")
     if not found:
         raise ValueError(f"No ORF catalogue covers {species}{'' if genome_build is None else ' ' + genome_build}. "
                          f"Catalogues exist for: {known}. Load a local file with load_catalog(path) or add one "
@@ -1092,7 +1098,7 @@ def _selected(found, catalogs, species):
     unknown = [n for n in names if n not in known]
     if not names or unknown:
         raise ValueError(f"No {species} catalogue named {', '.join(map(repr, unknown)) or 'in an empty selection'}; "
-                         f"{species} has {', '.join(known)}, or pass catalogs='all'")
+                         f"{species} has {', '.join(known)}, or select 'all'")
     return [c for c in found if c.name in names]
 
 

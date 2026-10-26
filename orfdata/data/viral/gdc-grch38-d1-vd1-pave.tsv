@@ -1,0 +1,195 @@
+# schema: orfdata.reference_ledger.v2
+# panel: GRCh38.d1.vd1
+# source: pave (https://pave.niaid.nih.gov/api/genome)
+# checked_utc: 2026-10-24T20:35:01Z
+# expected_hpv16: f2463721818c29998ef5ab917e6df74a
+index	abbreviation	source	identifier	state	length_nt	sequence_md5	sequence_sha256	coding_features	taxon_id	title
+12	HPV16	pave	HPV16REF	published	7906	f2463721818c29998ef5ab917e6df74a	a9e63c3d3754c2b09942e16eac9f8c9092245b61647861e12397b7413b56e365	10		Human Papillomavirus 16 (HPV16), complete genome
+13	HPV18	pave	HPV18REF	published	7857	61e2cd0ee6952b469c8c51d7526b2067	0e601fdc943a6c5ff5344c7b3f77797d3e92ce33a1f4ab9209d4eb8738fc64ad	10		Human Papillomavirus 18 (HPV18), complete genome
+14	HPV26	pave	HPV26REF	published	7855	e80acf23c85cdb86e59e36366979d8fb	89311ceb9c834f5c8286db130a7959b220fd66cb9acc2b8eee96aa226eb42619	9		Human Papillomavirus 26 (HPV26), complete genome
+15	HPV31	pave	HPV31REF	published	7912	a3eb8de75c9d108069fe180d1889e513	e8ebbecf7d63316c54dba62c6ce2d8222cafcdf84e753c335eb889b3af824472	10		Human Papillomavirus 31 (HPV31), complete genome
+16	HPV33	pave	HPV33REF	published	7909	5a63222eabf9f67c2d7fc26c9664f664	1e3d39ccf54bb916bf7746c81f4ef3b65e8052beebc9235eed61bca6a19d1fb9	10		Human Papillomavirus 33 (HPV33), complete genome
+17	HPV35	pave	HPV35REF	published	7879	65a26bc3780236b9b8e044a6f68e9648	961bae3b1dac6e4302acb25508cf994e221b29ce1dd59ad3cf00d259cac1317c	10		Human Papillomavirus 35 (HPV35), complete genome
+18	HPV39	pave	HPV39REF	published	7833	f608a8a5efb43ff64cc76fc34f647ed3	e1f6766b967cbbeedd81030c860fc76165fae65e8a2f2bf94b04267d6a1c28c7	10		Human Papillomavirus 39 (HPV39), complete genome
+19	HPV45	pave	HPV45REF	published	7858	176d77ed0bde5368c671f59e0a2f79d9	c8298080b1a5259b3718bc85f796a6cc4673ff49ddd8a0ab80d13f3fd4ecd2cc	10		Human Papillomavirus 45 (HPV45), complete genome
+20	HPV51	pave	HPV51REF	published	7808	3c8f02193ec4de0a1aeb7c3210c9da45	79aaa742738c6a735a6da956dc0e8e682de0c448c5c8993a4ee2de8acfc3f20e	9		Human Papillomavirus 51 (HPV51), complete genome
+21	HPV52	pave	HPV52REF	published	7942	6df5c5133e772ba7e861da135ade6442	f92f64a80bfde5f1c31cc0870103f5f8aaa3cfb1079f4eea14c0ab12d2bf65de	10		Human Papillomavirus 52 (HPV52), complete genome
+22	HPV53	pave	HPV53REF	published	7859	151db3f4d44cdba7d690229b1d52b7ca	1612054d7448522f79c891264c82e4a6f0138491526627623cc07739304bafdc	9		Human Papillomavirus 53 (HPV53), complete genome
+23	HPV56	pave	HPV56REF	published	7845	d2f00e24b6ad9efde507d68de8f74d13	b715216f22621d57846ba1387c1823e88123160b0cec9fea1feb085355e38237	9		Human Papillomavirus 56 (HPV56), complete genome
+24	HPV58	pave	HPV58REF	published	7824	39897df45734491473ca926350e47b25	a521ecba7badd42bfe9392fb27f53c42fb4eab25321ea9e2600a6ccee7acd285	10		Human Papillomavirus 58 (HPV58), complete genome
+25	HPV59	pave	HPV59REF	published	7896	2675db9aa99096fcc94038b28d67a46f	b4f8067aefb9928b3966988203c7d428a4d7c02b9682490c188e12c863053af0	9		Human Papillomavirus 59 (HPV59), complete genome
+26	HPV66	pave	HPV66REF	published	7824	50cbe41d426874c38e97d4391b975bcb	a308f330f21985a85ae1413f7e320de079084dd8d0509c063215b157478e8d51	9		Human Papillomavirus 66 (HPV66), complete genome
+27	HPV68	pave	HPV68REF	published	7822	1916ddde186835ce2cc3c6a94ac37b9d	aaf2d85144df5b84a82d671fdd6bd1320bec5cda0646b378aab780b0d4080a4b	10		Human Papillomavirus 68 (HPV68), complete genome
+28	HPV69	pave	HPV69REF	published	7700	00bb5d4628d0adb4b2085c2f37f1c8d1	10d42eb28948653d829a7d9aea0097aa4f9a2be2e013457cebdbe9472da47274	9		Human Papillomavirus 69 (HPV69), complete genome
+29	HPV73	pave	HPV73REF	published	7700	77c9382472c6eacd091ff24cc2b0ef50	7ee2ba17f5c9830ab50a99cbf4b6cc4996dbeefde83f7287d9d8dd8764e81a02	10		Human Papillomavirus 73 (HPV73), complete genome
+30	HPV82	pave	HPV82REF	published	7870	306af0627861ec98335455fb17b74a5c	fd6e7000b075e29deafd190341cb9cb757865f8092959e6ab09d0b2cfaa58af5	9		Human Papillomavirus 82 (HPV82), complete genome
+31	HPV1	pave	HPV1REF	published	7816	a9cd9ef880b850075a1cdd49bdf0e683	c2bccd0907325cebe24b7f825d0248a33572b127c1b7f5ac50ee67c70affe7c9	8		Human Papillomavirus 1 (HPV1), complete genome
+32	HPV2	pave	HPV2REF	published	7860	192ab56dcf968678627eac24f46fccef	ca1dbe8c4cedaee130ca4a2de7f32b39bab32095c181c93b8504b3644983051e	9		Human Papillomavirus 2 (HPV2), complete genome
+33	HPV3	pave	HPV3REF	published	7820	76d207eed780ce2a19ef4d658aaa20ad	3d67a3a174277dbc8315c4c5d19d37b02af5b4f6c8f8772f08ef416c72b0db1a	9		Human Papillomavirus 3 (HPV3), complete genome
+34	HPV4	pave	HPV4REF	published	7353	aa3d944093b410950891abe1cc4fda4d	245517aff24ebf11866e863e127ace681075c18914d310a3a311133792c3eb28	8		Human Papillomavirus 4 (HPV4), complete genome
+35	HPV5	pave	HPV5REF	published	7746	b9927c45ce49d63672ec18508cc032d8	912c5f8d8c56e3d52f48586a2bc580eda014a40123814c0437bef70fbed0353c	8		Human Papillomavirus 5 (HPV5), complete genome
+36	HPV6	pave	HPV6REF	published	7996	4a27fe6ac899524970d4c3c7bd01de9c	3de042e8b9257a887364d611b82ce3d422df5a2e0497df2573a146ff6b533e8b	10		Human Papillomavirus 6 (HPV6), complete genome
+37	HPV7	pave	HPV7REF	published	8027	ed130fb7bf85c3b4d47017c90dc8e4bc	db3b7413482c423268249c52be4150857f20b80923fbc36dc1cd107e70232de8	10		Human Papillomavirus 7 (HPV7), complete genome
+38	HPV8	pave	HPV8REF	published	7654	2237f9c91dc92254accf2074c664062b	607f69afe94407b149b81ea0f4d7c90ff8dbaa5ca452658a13fe13d9ff2a2b02	8		Human Papillomavirus 8 (HPV8), complete genome
+39	HPV9	pave	HPV9REF	published	7434	c094e73e6370c8a1044887a4f4044579	f3f2fd9b2a5ad354d0155fe7bb5f2441343952693ef766b5e75be432bc25f0c7	8		Human Papillomavirus 9 (HPV9), complete genome
+40	HPV10	pave	HPV10REF	published	7919	17be6311d99d430c0d7de9fe664c2ea4	e8f6bece3be8fd61d0eeea2d2757da348a8a325080b1f40a51e46db06eec11f6	9		Human Papillomavirus 10 (HPV10), complete genome
+41	HPV11	pave	HPV11REF	published	7931	0f1a8744680836f77cf00effea59f272	93811692de9d0f3d926b3b60faf0f9bf4deba8d497575da90be73df08abf4b95	10		Human Papillomavirus 11 (HPV11), complete genome
+42	HPV12	pave	HPV12REF	published	7673	186d225e11455d0d1c83b90166af6b19	f40899782fef2e187ad33a6baa1d2c438a8b6086e66282aed59e38be921968e1	8		Human Papillomavirus 12 (HPV12), complete genome
+43	HPV13	pave	HPV13REF	published	7880	023f134f656edc13cf58d9cd1338c4a1	d4249c385e5389d1f7bbce44a98eb7706eed124f6f6a181d0dfac57d51838db9	10		Human Papillomavirus 13 (HPV13), complete genome
+44	HPV14	pave	HPV14REF	published	7713	d03b8dae14fc8c4a8661cbde8b42391a	35d8a22e1c83778f3287494b947aba6163b1601f64b8c48c5ebfd010d778cfe4	8		Human Papillomavirus 14 (HPV14), complete genome
+45	HPV15	pave	HPV15REF	published	7413	222a911ba7654b25e420279dd2a13046	8f68f0ad63d6172346aef7c91b99664e4691c4fdde5e9ba340a0f4bbacad3a4f	8		Human Papillomavirus 15 (HPV15), complete genome
+46	HPV17	pave	HPV17REF	published	7426	bef0838ba8486d27a636b6924f3c2ae5	cc4adc2802528b9fe7a51c1cf8da25fa6f6cd0530e97491e7235025c55030242	8		Human Papillomavirus 17 (HPV17), complete genome
+47	HPV19	pave	HPV19REF	published	7685	7c93c42310e8bcba46600ad0feafbe52	5a1a493baa96c415b851be8c4c736646076b1288dd11186ea504dc0c54b1f2a8	8		Human Papillomavirus 19 (HPV19), complete genome
+48	HPV20	pave	HPV20REF	published	7757	ffd2f5f93955b87a24afe1a237e6f7a6	b9ae47d45247102665bb8ed907af008512aacd2ba6abe6cb701995f34b9a36c5	8		Human Papillomavirus 20 (HPV20), complete genome
+49	HPV21	pave	HPV21REF	published	7779	a27c9b4238b977597e40c400e68a3dbf	742fbe8ecef776d952e3343229a9e1484c5ffe468ab6e32de71d1bb8db405169	8		Human Papillomavirus 21 (HPV21), complete genome
+50	HPV22	pave	HPV22REF	published	7368	e31788444217c50f6196005cf473b872	b5e61cba4666a55f80bd66be94bde3712b83808561079173a3a0859b96fbba08	8		Human Papillomavirus 22 (HPV22), complete genome
+51	HPV23	pave	HPV23REF	published	7324	e103ee3b646b52518b334d50b7ef50f7	46db74edb2b4fb9aa44f357f76dee86458848ecdfdb1637ff3ca57d97be1eacc	8		Human Papillomavirus 23 (HPV23), complete genome
+52	HPV24	pave	HPV24REF	published	7452	d5c172e0ff19ad3209c4c41e05130ab8	d2dda0f8cf63601afa52d6bc625d0a5801306173ce053af3bf3f8e10555413de	8		Human Papillomavirus 24 (HPV24), complete genome
+53	HPV25	pave	HPV25REF	published	7713	d4fd9c7d213d5a6d129f5bd07b2c1925	ec43f0087b0f8e4639c5f516327b3b0e2ff0a0657ba3bd659cf83a40097aafc4	8		Human Papillomavirus 25 (HPV25), complete genome
+54	HPV27	pave	HPV27REF	published	7831	ba174b8ee1b8eaf1adeeffc1f1ac7e36	6dcd957e70e8ebe74daa17ffa0464daa5fd65a7407f87a9f9d16b65148fad81d	9		Human Papillomavirus 27 (HPV27), complete genome
+55	HPV28	pave	HPV28REF	published	7959	987730f58ed1c09557e30a233fa015e2	1f9e245c708e2b48ba1a354830ceffa1d72925bc20295de88eabf945b23a6ca3	10		Human Papillomavirus 28 (HPV28), complete genome
+56	HPV29	pave	HPV29REF	published	7916	d90050b1784d37561ab1ce293a74d43f	abd310caedfe5f8baacdf8a2367082715831d93f40f1c0e65870ffc4eb0ae44a	9		Human Papillomavirus 29 (HPV29), complete genome
+57	HPV30	pave	HPV30REF	published	7852	f71effda71c5496a7062d4af1878ad9b	6d814659de3b2c40e31a5f9bffdee7031c8d18db91501f2607f97186fd611a07	9		Human Papillomavirus 30 (HPV30), complete genome
+58	HPV32	pave	HPV32REF	published	7961	cb7c7c5fadd9d687580b90103ed31935	8914f567905d23b303f2445ded93ff33513847db4cee11916d8417fba9150b4d	9		Human Papillomavirus 32 (HPV32), complete genome
+59	HPV34	pave	HPV34REF	published	7723	a29c11ee243aa17e78b1248eb782aabc	ecce7fc979907c89d738ca4a056c6e5556b573f3aa6217ef102e96c0e15b394f	10		Human Papillomavirus 34 (HPV34), complete genome
+60	HPV36	pave	HPV36REF	published	7722	6c7dcd5397498bc666000d02fe59e444	ccb740f4eca0c32e890c73971a0e5873536a85cd731c2a4cb53a6bf896e941eb	8		Human Papillomavirus 36 (HPV36), complete genome
+61	HPV37	pave	HPV37REF	published	7421	22589b4208238eff73a746f54f669d9d	9f950575ea667a62b6888bb704be27a884699194e25bc50d0e10dd634e5c637b	8		Human Papillomavirus 37 (HPV37), complete genome
+62	HPV38	pave	HPV38REF	published	7400	8879d189a799721e2431681ad6597d17	326ed3572ee7c0e43d025b207886af1602fd8cb8e19e3c373b28b007d415ec48	8		Human Papillomavirus 38 (HPV38), complete genome
+63	HPV40	pave	HPV40REF	published	7909	f0f022186c633f88ed9ddd5ad192120f	8bf9b849c0ca09d82bc9b9366ed13ebc64254fbe024d79ad3e23f3245798a29e	10		Human Papillomavirus 40 (HPV40), complete genome
+64	HPV41	pave	HPV41REF	published	7614	92320d8fa9b11da98bf867c0b95a3756	7027ee3ae8f65a2659cecdaa485cf54b545979f40470f8282b70a5e9dc786420	7		Human Papillomavirus 41 (HPV41), complete genome
+65	HPV42	pave	HPV42REF	published	7917	dab6a33f845417a16afe8001f61add93	c86206d7fbcbd4228de5984aadd69f6535a4b1950edf74d61bfbb034de1dc609	8		Human Papillomavirus 42 (HPV42), complete genome
+66	HPV43	pave	HPV43REF	published	7975	dc3decd0d51ada7b7dfb372166f3cf6c	efecd2b5c38e631a6b3e2754413cad2a03325de240766f988bc3f0f850737c01	9		Human Papillomavirus 43 (HPV43), complete genome
+67	HPV44	pave	HPV44REF	published	7833	cf0db1400cddcb4137e58e189cdd7248	206ec054678ce02b1bf46e9ef637cad9e9321d05bcc702eab2f88419bdaf5b7b	10		Human Papillomavirus 44 (HPV44), complete genome
+68	HPV47	pave	HPV47REF	published	7726	3a8d6daca930f713141fce9d299d9fd9	983477ac98956819961ff9c173e6a0082fef99154b461cc2a4899ac57bc801d5	8		Human Papillomavirus 47 (HPV47), complete genome
+69	HPV48	pave	HPV48REF	published	7100	a508f652315eae252f157a09319b0eb5	de7d70dd762806b708a44ffa5b47be18ea8f2f652074c88d42802466ae61b7bd	8		Human Papillomavirus 48 (HPV48), complete genome
+70	HPV49	pave	HPV49REF	published	7560	1b743a8eca4c838928fa9f21a375ac0e	b13911807168522b560dbec6b18be5ac47a895aed689e0cb6b40e6af60c10bed	8		Human Papillomavirus 49 (HPV49), complete genome
+71	HPV50	pave	HPV50REF	published	7184	617b538534a59c4e9efe03209fd6dc20	2990216160e377025a5b0ab8a7314dd31629c93ba5f43305e797398e945537fc	8		Human Papillomavirus 50 (HPV50), complete genome
+72	HPV54	pave	HPV54REF	published	7759	31c61347a2b336308571c4dca4f0687d	4b885b2392dbcf8cd341823574c00e1f0f820b89508f7aee01dd84d3e9a22e5b	9		Human Papillomavirus 54 (HPV54), complete genome
+73	HPV57	pave	HPV57REF	published	7861	5bc1bc40c8a99f88da9b31c6af623150	553669cbebf86c01e21e881d21582aef5451e910c375390fd103c522e8d47758	9		Human Papillomavirus 57 (HPV57), complete genome
+74	HPV60	pave	HPV60REF	published	7313	e68516d3e950a61ef77de5162722a779	ff9a962a924344d82b0e9bff22dd91488af60b8dc3fdd6764f2ba6f4f43edde9	8		Human Papillomavirus 60 (HPV60), complete genome
+75	HPV61	pave	HPV61REF	published	7989	0f4cfc0462ca57dd6de0df703f733483	3da15615c8ea4d187668fdca746c8e4dc1c394731b0e33b97029257a8ddb4f92	9		Human Papillomavirus 61 (HPV61), complete genome
+76	HPV62	pave	HPV62REF	published	8092	4fe577a75da4a03696bd5446245b10b2	8977b7c36682be1efb7c136c6df7968b4e77b5f4e1316d1e79520e59f3ce4492	9		Human Papillomavirus 62 (HPV62), complete genome
+77	HPV63	pave	HPV63REF	published	7348	fdf8434c13df3b41839c8adfef67eb7c	6db79c12fd16d157e86a6269042e7830d7413419c524fc9ee510206621cd608c	8		Human Papillomavirus 63 (HPV63), complete genome
+78	HPV65	pave	HPV65REF	published	7308	e771640e058e67c3602b0650ef961183	bd18ea12d2b9eb9a430c46fcfba19f57079b7b25ad33533515f60f1deda96616	8		Human Papillomavirus 65 (HPV65), complete genome
+79	HPV67	pave	HPV67REF	published	7801	3589e45e911c8a147880642e7f5ace7d	0ac7ab11405d387ec11b5b89555d66359f7d0921db954be22310289dd8985c27	10		Human Papillomavirus 67 (HPV67), complete genome
+80	HPV70	pave	HPV70REF	published	7905	4834ef8dbe0fa7a689578f459778b9c1	f349836c903293e9eaa76d1affc1e57efbaffc8775410ce65c4a41c6b51c5fca	10		Human Papillomavirus 70 (HPV70), complete genome
+81	HPV71	pave	HPV71REF	published	8037	d0baff9d7d7d9f6350983f777b452af0	a8d326322d56ca48f78b3491b0e8d8d2b77e18cb735975b92c5db1027fdf19a5	9		Human Papillomavirus 71 (HPV71), complete genome
+82	HPV72	pave	HPV72REF	published	7989	2068f07c47a0cda284dc9bfc2b9ccf00	8e3e037bab3937aefbd5fd50843aa409033f5e019bf2936e99a7d2ec5643f313	9		Human Papillomavirus 72 (HPV72), complete genome
+83	HPV74	pave	HPV74REF	published	7887	6a0a89b3df16cd6194f472f0baf15cfe	2d93d9556c0bbfb6c0fab04340201f0e3e7b1bfcfa246a3368d1bb9cc65fa2e6	10		Human Papillomavirus 74 (HPV74), complete genome
+84	HPV75	pave	HPV75REF	published	7537	63cd55c3cbbd89bc203b96fe1847822c	564f923fc92913b7e49fc7494a862fdac0d5a0252570ca5f8bba29d3ba99fce8	8		Human Papillomavirus 75 (HPV75), complete genome
+85	HPV76	pave	HPV76REF	published	7549	15e48b7d05475be78b03fe2fdfe22171	3f49e4bfc403c3912861e39ecc34b207845004bfaf9f9d4198cd7454edfe7834	8		Human Papillomavirus 76 (HPV76), complete genome
+86	HPV77	pave	HPV77REF	published	7887	cba43def2e1cafdc872a9fa8bcdddb14	5397cae43e60498bb0ee066a0f1af2aacf4f61755d73f7342a81f39ce5d72ef4	9		Human Papillomavirus 77 (HPV77), complete genome
+87	HPV78	pave	HPV78REF	published	7830	2015f692e6053022adddbfb7d836915e	55c182e1bed96b10f1b965cbd1111647249c8a59419b2ef434db2c37bcd8e623	9		Human Papillomavirus 78 (HPV78), complete genome
+88	HPV80	pave	HPV80REF	published	7427	2f98e71374b715198f4f5de01e3efe86	d4a994c20d40beed7c54f37c4273305dc3d500648295e7e82729670c85322c8c	8		Human Papillomavirus 80 (HPV80), complete genome
+89	HPV81	pave	HPV81REF	published	8070	80056e4b904d8dbdf5f780dc2a58ce04	a7e467bc1e8617134c64136cc67acf8627eca6582f7474c3065d9b83a23dd6cc	9		Human Papillomavirus 81 (HPV81), complete genome
+90	HPV83	pave	HPV83REF	published	8104	b9cded333b8164fb689ab0520f00780c	6efffe5c0dab8013c8900d7bedd10f66ff2a7b66fcf15fde9e79859cc13480e8	9		Human Papillomavirus 83 (HPV83), complete genome
+91	HPV84	pave	HPV84REF	published	7948	cadcaa42ced89c449c8c31e80ebfe0d0	a97797d5b2a0e02dbe9ddafc90911f411ff5e472bc1ddac4db81b03331aa9497	9		Human Papillomavirus 84 (HPV84), complete genome
+92	HPV85	pave	HPV85REF	published	7812	60318a665305740ed3517947681d04f7	7a7955be22c4b905e0b20523db4faf48787fa3a5020345c96605c61b54ec37ba	10		Human Papillomavirus 85 (HPV85), complete genome
+93	HPV86	pave	HPV86REF	published	7983	1388efd42b12d649b2051257baceefab	a86dbd9f207d8f9dd3d876c1a3c0b75cc7c06003a13c7f89a7eadff1e1015829	9		Human Papillomavirus 86 (HPV86), complete genome
+94	HPV87	pave	HPV87REF	published	7999	6c2cf3140f7576801d1b684253d6a3a5	23e3b041aa8f8e46e1866914387f5ff02373a2c3a17d322084ec79f76a64062b	9		Human Papillomavirus 87 (HPV87), complete genome
+95	HPV88	pave	HPV88REF	published	7326	a1b064eb642b2ee6d3956375ac01736e	888c9ec86654a80b94e594fa6475b209412176916cb98f8656781b1c8e1030b7	8		Human Papillomavirus 88 (HPV88), complete genome
+96	HPV89	pave	HPV89REF	published	8078	c9c6bce18b2ebce864a844a4465b8e0e	d6dce27d16dc27f5477023eb18689b1174d43e2e1f62518092f34ec2a8f461ff	9		Human Papillomavirus 89 (HPV89), complete genome
+97	HPV90	pave	HPV90REF	published	8033	647b32a8e2e92b00a336ea5c508eafc1	5e501a30784c3c719a7a2525c8b086de6de8a2437b02f6f056339b5441439c39	9		Human Papillomavirus 90 (HPV90), complete genome
+98	HPV91	pave	HPV91REF	published	7966	d93890ecebac4320dbeeb5401a418b2b	4a568d7540dc553afb2fcf2e240b7917b39c14abf28378ec105889b5a8fe9264	9		Human Papillomavirus 91 (HPV91), complete genome
+99	HPV92	pave	HPV92REF	published	7461	0ead8d4900dedd6f80f6403ced22edb9	0efdf76866b77bb398086d462828a7ebb1dc1f2890b59ab211c30964edb162b0	8		Human Papillomavirus 92 (HPV92), complete genome
+100	HPV93	pave	HPV93REF	published	7450	694e2d9e3dbfae88de3fe5902b0abd90	988e881f705f1bfa59be2d29e036934e628441b66f50c7ffca6470a49341ed62	8		Human Papillomavirus 93 (HPV93), complete genome
+101	HPV94	pave	HPV94REF	published	7881	2b20accbf322cbedc5e0241e5d8defa7	2748fdde4916be4d742c9c0d6024421278d989e87bda7a38e45d8b4d2ee6d10c	9		Human Papillomavirus 94 (HPV94), complete genome
+102	HPV95	pave	HPV95REF	published	7337	d01b17c22e85b02786364d1e99159f0e	81b70d34b8d6e78eef0af64c368eed92d88443c95e4b119abf4306b6b2775c9e	8		Human Papillomavirus 95 (HPV95), complete genome
+103	HPV96	pave	HPV96REF	published	7438	a64c0dfdd2dddec60a6b6d591fedcc09	c4c18c8e3cadd95628630345752b63f47c9ee8a7bce9e85e6885296d863acdf3	8		Human Papillomavirus 96 (HPV96), complete genome
+104	HPV97	pave	HPV97REF	published	7843	b623b76a176219c28c471ebd8181d70e	c7f0e594f6675d69730a6eb51f7a83182429f4be0667cf8bfb059419b43fb05b	10		Human Papillomavirus 97 (HPV97), complete genome
+105	HPV98	pave	HPV98REF	published	7466	b5caf69b42a6d761dbab3dd6d114dfd0	3fa1c38f1047a906e941fa51600d1924ab4e89a50b0cf6b2d2f2142c6ec5730e	8		Human Papillomavirus 98 (HPV98), complete genome
+106	HPV99	pave	HPV99REF	published	7698	2940278d6a0584d956d061ce5f6c8ffd	24d01e143083aedb1232db28bdc313187df522da2929bc350baa5044920d16b1	8		Human Papillomavirus 99 (HPV99), complete genome
+107	HPV100	pave	HPV100REF	published	7380	06634b00a968366c460db25256972703	ecd35309f568fed2aa8195e6884b81197001024163e20bc65889d0a6a470466f	8		Human Papillomavirus 100 (HPV100), complete genome
+108	HPV101	pave	HPV101REF	published	7259	f2853fc1dcaa7cbeb74873022f069ff0	0fbbe519d3ba121ba4cecc3c17d075f7bbb26f837469a62af02cf5ab8b855696	8		Human Papillomavirus 101 (HPV101), complete genome
+109	HPV102	pave	HPV102REF	published	8078	5d7fbc9b4dd231dbd9bad8ddd69a65b0	2c8f3794c67eb19151df7df0abe834d3e88de9a2f7972cdea33651208ffb48fa	9		Human Papillomavirus 102 (HPV102), complete genome
+110	HPV103	pave	HPV103REF	published	7263	6dbc0bbb0ea366d78239adfb0d6ee4d5	f22ef7324dd8319e1586f91338656cfc49926695167d012d45d3a40c07ad9385	8		Human Papillomavirus 103 (HPV103), complete genome
+111	HPV104	pave	HPV104REF	published	7386	f0c0d41ffde6b064d8eca7a4b73f18e8	b08c665d2cce95923e48f8317f31e5a25a161b97c234643e88ff29aaf97394bb	8		Human Papillomavirus 104 (HPV104), complete genome
+112	HPV105	pave	HPV105REF	published	7667	343f3e4a02584149c231d8cc5d69f824	05980910fa54e31f534a1932a1678ea1317db147b9f70b19631afb7c7c88f65f	8		Human Papillomavirus 105 (HPV105), complete genome
+113	HPV106	pave	HPV106REF	published	8035	05f99168db49c6f2925b33ac5d5709ab	580f08d5782c69c7415fe92e9737d2f4266fce6dc1de2e7f0a29dc44bb778692	9		Human Papillomavirus 106 (HPV106), complete genome
+114	HPV107	pave	HPV107REF	published	7562	b47efa7a57ee384379cbad57313c55ae	243e1486163466769a5e309274b437a50d8ca613e0f5eda526c0b9798394a71e	8		Human Papillomavirus 107 (HPV107), complete genome
+115	HPV108	pave	HPV108REF	published	7150	87a75dcf7cb074a0e1ed79fd79be45a8	6eb1a18009dfa42b213e30dcdc5f6be5f9f41d2042657527cbbd4b62396b1485	8		Human Papillomavirus 108 (HPV108), complete genome
+116	HPV109	pave	HPV109REF	published	7346	0005954ad7c4cd795d9466eceaca0589	7b9e4fdc2cb48c5d105267d54968db73ba02de5bbd25a3b6686dfcac9a88bb48	8		Human Papillomavirus 109 (HPV109), complete genome
+117	HPV110	pave	HPV110REF	published	7423	2648612dc13d49c811d5764185e53552	52e05c67a27025afdc5ce36c901c2b375406f86b7ee3ce6aa935aca89061f7f0	8		Human Papillomavirus 110 (HPV110), complete genome
+118	HPV111	pave	HPV111REF	published	7386	4570ee81ad9589ad82a49848b87c4f5d	8f831f06c984b93883b98c951ca36aacf37a0d460d1bd5c7614a10a4ae56ca6e	8		Human Papillomavirus 111 (HPV111), complete genome
+119	HPV112	pave	HPV112REF	published	7227	1e31b87aff03603f092c9400b8b97eee	1aa7be8856d30d6197c0fbcf9b9e4e07da20b2aa95cab772adb1d55d9de8fe71	8		Human Papillomavirus 112 (HPV112), complete genome
+120	HPV113	pave	HPV113REF	published	7412	9edcec5d7e4cd34149317e570362aca1	c6cd3d5c32847a7a854ee1e6ba8195af3f67adda253da9460fd24556cf20add7	8		Human Papillomavirus 113 (HPV113), complete genome
+121	HPV114	pave	HPV114REF	published	8070	f60586bf3ae42d71e01fd1554864d8e1	2c14eb209511899a663a85bf82ac16b7a9de63f9b7e6705b4a7f9b162e903213	9		Human Papillomavirus 114 (HPV114), complete genome
+122	HPV115	pave	HPV115REF	published	7476	0bca56704ef5cf29e77603137f7697c8	1aa281813f86dc372204eba472aaea28c99ec1aca66b849020e15d2149bea500	8		Human Papillomavirus 115 (HPV115), complete genome
+123	HPV116	pave	HPV116REF	published	7184	9ade0e20e2ed45091fff24ecdcb34a98	c7cff79e4a47f7676f54f08317ff8d79956e05af1f829ea34efda81a599d9f3e	8		Human Papillomavirus 116 (HPV116), complete genome
+124	HPV117	pave	HPV117REF	published	7895	20ae074c21ab8ad9c606800259178c9b	771c0ebdbd8b5e82ac3b7d4ace81b0a2b5ce86b6610305c701f214fe63fe89d8	9		Human Papillomavirus 117 (HPV117), complete genome
+125	HPV118	pave	HPV118REF	published	7597	1890accdfb943678b444aa6cce05f4b4	35139bafac923694a29b5eff9e574379618710d79b7b37b3707ab63d2833829e	8		Human Papillomavirus 118 (HPV118), complete genome
+126	HPV119	pave	HPV119REF	published	7251	31b59afd3fff0d42097589717e2c17e0	9c3d8e05ed303387553a22863ff340888f2eb1d5ae55fdb1846d8b0f7f993fc3	8		Human Papillomavirus 119 (HPV119), complete genome
+127	HPV120	pave	HPV120REF	published	7304	7ee8c104b2525c9c7c4327418b815ff8	4f3ba28c454a021238debf52abd87fbab314e39c2ed37f145607565850b08b3e	8		Human Papillomavirus 120 (HPV120), complete genome
+128	HPV121	pave	HPV121REF	published	7342	41136a3588448c7309869197deebc4c5	ffef70fe42548ceaeae8414c4abcc99d18f90aaaef419ddb2bd22f01f97c6402	8		Human Papillomavirus 121 (HPV121), complete genome
+129	HPV122	pave	HPV122REF	published	7397	83f8e02e193ee0e34aae1ee9507b1935	f02e63026847a78e5d03816344d8ba7b426475be7875cd228d3f93f5d6ba0104	8		Human Papillomavirus 122 (HPV122), complete genome
+130	HPV123	pave	HPV123REF	published	7329	51e0c60318906cc3eeb07059247477e3	0c835949aa73b32c4ae2fd75c443541272932e52c9010ee6b4d90d01fa9168af	8		Human Papillomavirus 123 (HPV123), complete genome
+131	HPV124	pave	HPV124REF	published	7489	f5f1d51973871a9ee37b540706e8d87f	ee222022dec4dcb500af32afcda48a9fa99c935821e047e331c327ea99b44e9f	8		Human Papillomavirus 124 (HPV124), complete genome
+132	HPV125	pave	HPV125REF	published	7809	4a32cf03a4a42f53c504bc6587a85215	1e8fbd39bff2330e5e62b9d7ad4e0275a51bfa02bab31d1a540cb1165d5a1143	9		Human Papillomavirus 125 (HPV125), complete genome
+133	HPV126	pave	HPV126REF	published	7326	c8e00db88885714f9efe0eb7727b6fbf	7d3314c47221dde3e94da0d7d5f549baeac2eafb3b483495d281aa405e75e77e	8		Human Papillomavirus 126 (HPV126), complete genome
+134	HPV127	pave	HPV127REF	published	7181	0d6f492e70667061fc90a3c61968ea02	e85e5e173459627e6b19556044340d3c0cc35cc5405bcb8068fa5ab26a0243b9	8		Human Papillomavirus 127 (HPV127), complete genome
+135	HPV128	pave	HPV128REF	published	7259	aeb5f1b2dbea9749ac93ee427f999b18	857d78ad09deddda927c93b98694881fce6e263059938b2839eb91c4a75e27c4	8		Human Papillomavirus 128 (HPV128), complete genome
+136	HPV129	pave	HPV129REF	published	7219	30e4cc9463392a731d4a708ed81536e6	5a693217022456309c926cbb2acbced0d661ccae1d5562273c8b334939f08a20	8		Human Papillomavirus 129 (HPV129), complete genome
+137	HPV130	pave	HPV130REF	published	7388	f5cd74f557245dfc0f6f84e7311577a7	af87dbb62d2aba683af6c58a5598928ad8f9ee0184074956caad430d109159e9	8		Human Papillomavirus 130 (HPV130), complete genome
+138	HPV131	pave	HPV131REF	published	7182	8a959d3f8b6b6f66fa9ab000734be904	7e6dffa4e0b5a0fbd62b3ef46e84cb7ea68d99ceb60d309d4c2dbe1dc939b731	8		Human Papillomavirus 131 (HPV131), complete genome
+139	HPV132	pave	HPV132REF	published	7125	bb7c369dd699b6148adc1e5a2e81015a	566bd9fb3afafe8a734ecf90b1e577e5b945679a60ce8e3aeeef8d77cfe4a403	8		Human Papillomavirus 132 (HPV132), complete genome
+140	HPV133	pave	HPV133REF	published	7358	352291cba012fb3052855b250355fb06	267fcd430cf2ab19f4d36a9b72f3525098feb6761c8205dd94503d9d31fc6f88	8		Human Papillomavirus 133 (HPV133), complete genome
+141	HPV134	pave	HPV134REF	published	7309	d0a3f5d4f7f57f09740e889429b470ad	c9b66a80a1431dd6f005fdcf684cd7ed4d905719caa12a30cce7c1ccb36f3e1f	8		Human Papillomavirus 134 (HPV134), complete genome
+142	HPV135	pave	HPV135REF	published	7293	68fb4e78f3a6daddef798859bf47bc39	77e656217259514b5c51cc83cb5469ec601a110c55fe1313abeafc98c5734174	8		Human Papillomavirus 135 (HPV135), complete genome
+143	HPV136	pave	HPV136REF	published	7319	b3d3c03380eb6df28c0b39d3a080e0f9	bfa122fa4ebf5ee0fe24c5e9d37f6d1d605f9bf1ffc8107f50b70daf4eb91829	8		Human Papillomavirus 136 (HPV136), complete genome
+144	HPV137	pave	HPV137REF	published	7236	897a59271ce08be58f053bee64a4e81e	b63835b487d96cd59f0a8d05c52b23c31f4582c701f937c756889559f3ac8361	8		Human Papillomavirus 137 (HPV137), complete genome
+145	HPV138	pave	HPV138REF	published	7353	8dedf7cb3de75feba374d101655b5ce0	3b13f2fba6f288470998946db0041c0df94bb478a5616ae13078765faea15b6d	8		Human Papillomavirus 138 (HPV138), complete genome
+146	HPV139	pave	HPV139REF	published	7360	70222a6c44abe1140f660e628764d455	86e28c59d55a2415432f00cc247dbeca0bbbb3fc0bbec876ab2dafb41f3c792b	8		Human Papillomavirus 139 (HPV139), complete genome
+147	HPV140	pave	HPV140REF	published	7341	543054488a9a0a2ff6abf34942a090bb	89339068349c833704b625417c1a7b621308f8b607bb2f7d4aa7960bcf854825	8		Human Papillomavirus 140 (HPV140), complete genome
+148	HPV141	pave	HPV141REF	published	7384	8f4c02724ec42fe5b7e83ae58a9d399e	0ae74a8fd15a0a35b1dcd01b1bf8499d85874f5e85aa061cbdbb14a1f8c084d9	8		Human Papillomavirus 141 (HPV141), complete genome
+149	HPV142	pave	HPV142REF	published	7374	99d609d99f3dfd18db935f66b713f921	76e42690b3e9c52b1b82ad2aeff3f89bb8f68d55232b36bccdde664e00b7c558	8		Human Papillomavirus 142 (HPV142), complete genome
+150	HPV143	pave	HPV143REF	published	7715	9878b399594d7a9acfb970aeb3916fb3	ba899efda45b9683a7a39d476ec5d44dc5c60f641778bb74bdcef663f577fbb6	8		Human Papillomavirus 143 (HPV143), complete genome
+151	HPV144	pave	HPV144REF	published	7271	01389d29ccca4280c4c1c2ee475ebff9	a5c61c1af132991dc7aeb7709efe9f7be42b1c22874cb2e5323f3c950c0a9c38	8		Human Papillomavirus 144 (HPV144), complete genome
+152	HPV145	pave	HPV145REF	published	7375	9503154a1b9385b184669b64a299c77a	408bee3bc129e853fb8bf6d2a2379c971221ffb5545c6068a883cd71c5644c9c	8		Human Papillomavirus 145 (HPV145), complete genome
+153	HPV146	pave	HPV146REF	published	7265	c24dd164640bdeaa60747df3207eebf6	4aa977cbd65bc3b9028901b6e6a586f9ec2c9fa86c7675b80229664949be3d66	8		Human Papillomavirus 146 (HPV146), complete genome
+154	HPV147	pave	HPV147REF	published	7224	50b87b9ad49e5b8290f19983b89cfbd0	35fe9906154f8c97c7c4796532c67c359a24c2bd19ec5424c6f695c62f9d411a	8		Human Papillomavirus 147 (HPV147), complete genome
+155	HPV148	pave	HPV148REF	published	7164	d9c1c6336df04b8174d94bacacc4a54a	497f5a6360ba1e52bf08228076439e95fe5d5ae62fda80d0b1b4bfa8895a4115	8		Human Papillomavirus 148 (HPV148), complete genome
+156	HPV149	pave	HPV149REF	published	7333	3e9dd911d4ecf950c8177ce7cab0e148	3e9a13aad5969ef78714b8610b5ee8b80f17017edccc7141d87c041bb4f9d57c	8		Human Papillomavirus 149 (HPV149), complete genome
+157	HPV150	pave	HPV150REF	published	7436	84bf585b033255ddeb2e83ce2004ad1b	62875b328f51bbe1e7ee0e1b98969c960b1d1215d992a6f0bc54acda3586ab03	8		Human Papillomavirus 150 (HPV150), complete genome
+158	HPV151	pave	HPV151REF	published	7386	f00b1e9b58945e1028ee3a4d4d1f67c8	ef3732fd787c471a1b010f2d6fcb7196f5edd3c441937855b0288b28f8a9dee5	8		Human Papillomavirus 151 (HPV151), complete genome
+159	HPV152	pave	HPV152REF	published	7480	1a689e02849586e521126236b989328d	86479aec2104da1cdac1f83628b55efef96fee58b6163afe684dc804e86e2c3f	8		Human Papillomavirus 152 (HPV152), complete genome
+160	HPV153	pave	HPV153REF	published	7240	02dd76d22ca7e30ae46daa6f3a77dfbc	16347325b0267f9b618a09c5de00f155c7492792245903ec3f790b0b048a6d59	8		Human Papillomavirus 153 (HPV153), complete genome
+161	HPV154	pave	HPV154REF	published	7286	bd4fa0b5c4e6da1b9dc2ee61cc4f9563	71012c7003697a2e92dd04c7aec5498515c5d9870fe6326678d583d98a73df13	8		Human Papillomavirus 154 (HPV154), complete genome
+162	HPV155	pave	HPV155REF	published	7352	123526182d91b301433d086192253163	212e4c6af7ffceb6461fac0b154875705dd452df82480e08eef68bb32598fecf	8		Human Papillomavirus 155 (HPV155), complete genome
+163	HPV156	pave	HPV156REF	published	7328	ad3c2daece54ec5167263253d5a1e187	c1544486859c41008b8ccc23f4c10c84c54f6aad67d430527532350be47f82a6	8		Human Papillomavirus 156 (HPV156), complete genome
+164	HPV159	pave	HPV159REF	published	7443	5ade6867bf5f257d25fd9dfd423d71ec	3557006367741172aeea995726a4934451d213169b3b806383a5a91e9717154a	8		Human Papillomavirus 159 (HPV159), complete genome
+165	HPV160	pave	HPV160REF	published	7779	f873ddf258da29e9d9d5262ddd0fbad6	6990be527fdde811bc64690db2b5da400e5bb6cdb936d63474cfa065a4a65538	9		Human Papillomavirus 160 (HPV160), complete genome
+166	HPV161	pave	HPV161REF	published	7238	b123807939e627ad4b6dbe35250c7b2c	753d114589134c9e5ad69b924b9b181645bb32c7eb479fa25acd699b5963b31a	8		Human Papillomavirus 161 (HPV161), complete genome
+167	HPV162	pave	HPV162REF	published	7214	7e12b416955b56be0d3bb565fc51488e	66d4dedbb98372e66c868c4d6b55bc2c140969b350aefbb30c9ec48009876689	8		Human Papillomavirus 162 (HPV162), complete genome
+168	HPV163	pave	HPV163REF	published	7233	ab83a191838a1ba7bfaaf2cdfa02311c	c330b172386f2000d4507c489cac4091845fd5aa4e6782e126ba55deb735321f	8		Human Papillomavirus 163 (HPV163), complete genome
+169	HPV164	pave	HPV164REF	published	7233	888361c60e7dcb6e99106a4871a461a8	28a2daa925908bdca015d6c124f3ef1f0b8c715ac01d3f99bd62b100b38d5446	8		Human Papillomavirus 164 (HPV164), complete genome
+170	HPV165	pave	HPV165REF	published	7129	3cac0653704240bcebdbd633e10ccdc6	ce652a6e564b7eae57639d4bb6b32f6abf1694c02b51b38196efd5933e3fbb7f	8		Human Papillomavirus 165 (HPV165), complete genome
+171	HPV166	pave	HPV166REF	published	7212	27356d475bcdb5789701f67c9e6303ec	5d2fd976398600e8d18f6679719bad697228f454688833c9bcc2c86b5bb4a9fb	8		Human Papillomavirus 166 (HPV166), complete genome
+172	HPV167	pave	HPV167REF	published	7228	a595379c54151d8c846a7dd460eb8f1f	218a294fff0568f4e3c2d7b261808f791979c3df4cccf54dda317045653a4407	8		Human Papillomavirus 167 (HPV167), complete genome
+173	HPV168	pave	HPV168REF	published	7204	6b725bf8b466ea19c7ea7efec9162fb4	62af8367368acdc17a9abb30630184cb0228109b46c2f2c3fed9a4375d4c0ba4	8		Human Papillomavirus 168 (HPV168), complete genome
+174	HPV169	pave	HPV169REF	published	7252	4b37ab183c05f072f749587bb8659605	27e08304643dab2c0205bc8ff9dcd1cc3394014851a564732f52ab7b3b7afb59	8		Human Papillomavirus 169 (HPV169), complete genome
+175	HPV170	pave	HPV170REF	published	7417	3590855ab9488eaf05a58ce6bda3b580	429e8974a42d27aba5594d2c89200fffec14e07692f7a83f605842e92c915446	8		Human Papillomavirus 170 (HPV170), complete genome
+176	HPV171	pave	HPV171REF	published	7261	2a0d58b7573ce441a6b26e122c9c2b1c	5612962b1e1794c136602fca520f4747a25db0cadcb0204f1928f5f088144b1a	8		Human Papillomavirus 171 (HPV171), complete genome
+177	HPV172	pave	HPV172REF	published	7203	94bdad003e3eebd5a4801b1ef77ce6a8	648112b23d72e7670f68667d2ce1e0f4c3d33b9a8088dbe65c7dfe165e3038a8	8		Human Papillomavirus 172 (HPV172), complete genome
+178	HPV173	pave	HPV173REF	published	7297	67c80f2ef26fc07242d3b5394af03e1b	9fdde7f6c979c6b5676109f8303a9b26557267b106314a5efe707126931ab7e9	8		Human Papillomavirus 173 (HPV173), complete genome
+179	HPV174	pave	HPV174REF	published	7359	abe9f9972df30f7ca7b7feafdf423b5d	6559a48b7832dc372ded32433f4bc4ee1b66a01dc3d8c9c5373d60a16cb9e89c	8		Human Papillomavirus 174 (HPV174), complete genome
+180	HPV175	pave	HPV175REF	published	7226	bdad213f320e1242eea9ff67a7362ad8	f1a1d3391fe6b8e819e820c5be32bad8e941dda4028f8704be18ea0fb04581e6	8		Human Papillomavirus 175 (HPV175), complete genome
+181	HPV178	pave	HPV178REF	published	7314	57af5faad1a4af0d266f149557317331	7bbb089df6b55454b68054eea70dd27cad55688ab4c18e374a2a8ec51a72348a	8		Human Papillomavirus 178 (HPV178), complete genome
+182	HPV179	pave	HPV179REF	published	7228	0449df5b9ae2b57857605b43cad9b55b	af24858b225fbc08be9ba728382f8ea6739c8d43595f75a2d5e22d897d89ca6d	8		Human Papillomavirus 179 (HPV179), complete genome
+183	HPV180	pave	HPV180REF	published	7356	b1b0f08ffa330288eee7af0e0bd50c0d	05ee77badf9abe011fc76350fdc3e6ea953b0d525f9a760651098e0479af2b08	8		Human Papillomavirus 180 (HPV180), complete genome
+184	HPV184	pave	HPV184REF	published	7324	41c6e4e743a09f917de403c487e09718	3551a286ad0b28a168097a7973b8e0bfb6a4e6baacdbff434c14804f9fd9a26c	8		Human Papillomavirus 184 (HPV184), complete genome
+185	HPV197	pave	HPV197REF	published	7278	ed8be5b41b6b548c13fbd39938394b81	4cb74d9547552f88a2d59c2395d3bae57fef3b10fc6f2f7e535067c2b7718b5a	8		Human Papillomavirus 197 (HPV197), complete genome
+186	HPV199	pave	HPV199REF	published	7184	8ecedfd002d8242e88e96ebb402c0fd4	3230b5b82ea81f14963be7319e54bc64a9a9de142c52f6c15858ea8992d07657	8		Human Papillomavirus 199 (HPV199), complete genome
+187	HPV-mCG2	pave	HPV-mCG2nr	published	7152	dd4d0a0a3ced4c934aed5ab62a29ffd8	68fea93b353a5720f428dff05d38fbf4dab552e19782b607e1d1ec1ab4f92363	8		Human Papillomavirus isolate CG2 (HPV-mCG2), complete genome
+188	HPV-mCG3	pave	HPV-mCG3nr	published	7095	4afa60070c351be8f5a421be5229e99a	e7e09ff782afe2ff9ae0a3a785512cf042259ec5b2ff41c4e29dcdb433a02bd8	8		Human Papillomavirus isolate CG3 (HPV-mCG3), complete genome
+189	HPV-mCH2	pave	HPV-mCH2nr	published	7190	b33deaa87987babfb3aff913dee65adf	2570d24b91fe09734281c0d656b51bd818131d5e9ea0a11a08d95d094594dd22	8		Human Papillomavirus isolate CH2 (HPV-mCH2), complete genome
+190	HPV-mFD1	pave	HPV-mFD1nr	published	7286	180be26e2bcdf99d040d49e0dc9ec7ec	6b666c1199cd7cf49916e1fa813d49dd96ac0c6a30c8606ff46e212f9cf4e13e	8		Human Papillomavirus isolate FD1 (HPV-mFD1), complete genome
+191	HPV-mFD2	pave	HPV-mFD2nr	published	7219	cfe2cd76e5a39f6fef22f0fef2264488	134c3970bb3e171966228981adce7d372d651c4c83f402e91bd43fd00dd52904	8		Human Papillomavirus isolate FD2 (HPV-mFD2), complete genome
+192	HPV-mFS1	pave	HPV-mFS1nr	published	7167	421cad31a2ecbfa78e9b757b1790c301	beabea8de1004ec29b34862723fa3a69f1c67b4a3b1fe205cd9535e4df667f3b	8		Human Papillomavirus isolate FS1 (HPV-mFS1), complete genome
+193	HPV-mFi864	pave	HPV-mFi864nr	published	7247	34cce98777fae29915aae5025e727c9d	71023d73010cfea79f99b2abfa17096305c8e480d07aafdbbd154caad7155c09	8		Human Papillomavirus isolate Fi864 (HPV-mFi864), complete genome
+194	HPV-mKC5	pave	HPV-mKC5nr	published	7143	823e47fe3bf0d787f3b6e2a451d3ae4c	8d684f16946736acd24987276a77655071234c8f52eb39dcda3fccd0704bafe3	8		Human Papillomavirus isolate KC5 (HPV-mKC5), complete genome
+195	HPV-mKN1	pave	HPV-mKN1nr	published	7300	e5735d2d68ca7acccf89916978324dde	6216b0fb489e1c2d2c3493c988d6eddba20eaa4f498e1a912398776f5bac4e9e	8		Human Papillomavirus isolate KN1 (HPV-mKN1), complete genome
+196	HPV-mKN2	pave	HPV-mKN2nr	published	7299	4d6d7facc89d29447eba6a3c2200c239	a550479b456b02c3fd4b25f63431d65cd293fc4c1334513a8bc38b181364b31a	8		Human Papillomavirus isolate KN2 (HPV-mKN2), complete genome
+197	HPV-mKN3	pave	HPV-mKN3nr	published	7251	d129703909d99afd3c0174d5b1ca4dcc	ebd6b80b9f38f7f56c1a96b160c1b87a3d26f7b56b7cd8d2b2bfae7e87052eb0	8		Human Papillomavirus isolate KN3 (HPV-mKN3), complete genome
+198	HPV-mL55	pave	HPV-mL55nr	published	7177	f4ffc9f5af1f5cd1f966abe338936f42	25f3283c7278ed0ff49d5c4a0c40c310d24c33b07c3a7523041f70c03c9cd359	8		Human Papillomavirus isolate L55 (HPV-mL55), complete genome
+199	HPV-mRTRX7	pave	HPV-mRTRX7nr	unavailable						
+200	HPV-mSD2	pave	HPV-mSD2nr	unavailable						
