@@ -15,6 +15,7 @@ from dataclasses import asdict, dataclass, replace
 from importlib.resources import files
 from pathlib import Path
 from typing import NamedTuple, Optional
+from urllib.parse import quote
 
 from .evidence import EVIDENCE_METHODS as EVIDENCE_METHODS  # Re-exported for existing imports.
 from .evidence import MS_METHODS, evidence_rule, stored_method
@@ -402,25 +403,52 @@ class ORFRecord:
         }
 
 
+def _qualify_colliding_ids(records):
+    """Give colliding source records unique catalogue IDs, retaining their native records."""
+    records = tuple(records)
+    keys = [(r.source, r.orf_id) for r in records]
+    if len(set(keys)) != len(keys):
+        raise ValueError("Duplicate ORF identifiers within one source")
+    names = [r.orf_id for r in records]
+    qualified = set()
+    while True:
+        counts = Counter(names)
+        collisions = {i for i, name in enumerate(names) if counts[name] > 1}
+        if not collisions:
+            break
+        # Qualify all participants, including a native ID that equals another
+        # record's generated ID. Escaping makes source/ID boundaries unambiguous.
+        qualified.update(collisions)
+        names = [f"{quote(r.source, safe='')}:{quote(r.orf_id, safe='')}" if i in qualified
+                 else r.orf_id for i, r in enumerate(records)]
+    return tuple(r if name == r.orf_id else replace(
+        r, orf_id=name, members=r.members or (r,), lifted_from=None, liftover=None)
+        for r, name in zip(records, names))
+
+
 class ORFCatalog:
     """Offline ORF records for one explicitly identified species and assembly."""
 
     def __init__(self, records, metadata):
-        self.records = tuple(records)
+        self.records = _qualify_colliding_ids(records)
         self._metadata = deepcopy(metadata)
         self.genome_build = metadata["genome_build"]
         self.taxon_id = metadata["taxon_id"]
         self.species = metadata["species"]
         self._by_id = {r.orf_id: r for r in self.records}
-        if len(self._by_id) != len(self.records):
-            raise ValueError("Duplicate ORF identifiers")
         self._aliases = {}
+        self._by_source_id = {}
         for r in self.records:
             names = {f"{m.source}:{m.orf_id}" for m in r.members or (r,)} | {m.orf_id for m in r.members}
             # A source accession split by coding path, "IP_1@ENST...", still answers to "IP_1".
             names |= {m.orf_id.split("@")[0] for m in r.members or (r,) if "@" in m.orf_id}
             for alias in names - {r.orf_id}:
                 self._aliases.setdefault(alias, []).append(r)
+            for member in r.members or (r,):
+                for name in {member.orf_id, member.orf_id.split("@")[0]}:
+                    matches = self._by_source_id.setdefault((member.source, name), [])
+                    if not any(match is r for match in matches):
+                        matches.append(r)
         for r in self.records:
             if r.genome_build != self.genome_build or r.strand not in ("+", "-"):
                 raise ValueError(f"Invalid assembly or strand for {r.orf_id}")
@@ -503,14 +531,17 @@ class ORFCatalog:
         """Return a copy of dataset version, sources, scope and provenance."""
         return deepcopy(self._metadata)
 
-    def get(self, orf_id):
+    def get(self, orf_id, *, source=None):
         """Return the ORF with this ID, bare or as ``source:id``; unknown IDs raise KeyError.
 
         In a merged catalogue every source's ID finds its ORF. A bare ID that
         two sources use for different ORFs raises rather than choosing one.
+        ``source`` selects a native ID explicitly, including when a source or
+        native ID contains a colon and the combined string is ambiguous.
         """
-        found = list(dict.fromkeys(
-            ([self._by_id[orf_id]] if orf_id in self._by_id else []) + list(self._aliases.get(orf_id, ()))))
+        matches = (self._by_source_id.get((source, orf_id), ()) if source is not None else
+                   ([self._by_id[orf_id]] if orf_id in self._by_id else []) + list(self._aliases.get(orf_id, ())))
+        found = list({id(record): record for record in matches}.values())
         if len(found) > 1:
             raise ValueError(f"{orf_id} names several ORFs: {', '.join(r.orf_id for r in found)}")
         if not found:
@@ -780,21 +811,20 @@ def merge_catalogs(catalogs):
                     groups.append(group)
                 group[0].add(origin[id(record)])
                 group[1].append(record)
-    uses = Counter(orf_id for _, members in groups for orf_id in {m.orf_id for m in members})
     records = []
     for _, members in groups:
         primary = members[0]
-        orf_id = primary.orf_id if uses[primary.orf_id] == 1 else f"{primary.source}:{primary.orf_id}"
-        if len(members) == 1 and orf_id == primary.orf_id:
+        if len(members) == 1:
             records.append(primary)
             continue
         pinned = {None if m.reference_context is None else m.reference_context.key for m in members}
         records.append(replace(
             # The merged ORF is no one source's lift; each member keeps its own lift provenance.
-            primary, orf_id=orf_id, members=tuple(members), lifted_from=None, liftover=None,
+            primary, members=tuple(members), lifted_from=None, liftover=None,
             initiation_context=_shared_context(primary, members),
             # Sources pinned to different annotations of one assembly leave the ORF unpinned.
             reference_context=primary.reference_context if len(pinned) == 1 else None, **_union(members, study)))
+    records = _qualify_colliding_ids(records)
     paths = {}
     for record in records:
         paths.setdefault(_path_key(record), set()).add((_merge_key(record), record.orf_id))

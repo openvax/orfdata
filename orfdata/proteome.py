@@ -779,17 +779,20 @@ class ExtraORFs:
                 found.append(orf)
         return tuple(found)
 
-    def for_orf(self, orf_id):
+    def for_orf(self, orf_id, *, source=None):
         """Every transcript placement of one ORF, the source's own transcript first.
 
         After merging catalogues, any source's ID finds the ORF, bare or as
         ``source:id``; a bare ID two sources use for different ORFs raises.
+        Pass ``source`` to select the native ID in one source explicitly.
         """
         if self.catalog is not None:
             try:
-                orf_id = self.catalog.get(orf_id).orf_id
+                orf_id = self.catalog.get(orf_id, source=source).orf_id
             except KeyError:
                 return ()
+        elif source is not None:
+            raise ValueError("Source-qualified lookup requires the source catalogue")
         return tuple(sorted((o for o in self.orfs if o.orf_id == orf_id),
                             key=lambda o: (not o.on_source_transcript, _versioned(o.transcript))))
 

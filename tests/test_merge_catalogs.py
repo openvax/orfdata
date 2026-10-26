@@ -62,6 +62,64 @@ def test_one_id_for_different_orfs_is_qualified_and_never_guessed():
         merged.get("missing")
 
 
+def test_direct_catalogue_preserves_colliding_source_records_and_lookup(tmp_path):
+    first = replace(orf("shared", ribosome_studies=("study-a",)), source="a")
+    second = replace(orf("shared", ribosome_studies=("study-b",)), source="b")
+    catalog = ORFCatalog([first, second], metadata("combined-v1", "combined"))
+    assert [r.orf_id for r in catalog.records] == ["a:shared", "b:shared"]
+    for original in (first, second):
+        record = catalog.get("shared", source=original.source)
+        assert record.members == (original,)
+        assert catalog.get(f"{original.source}:shared") is record
+        assert record.ribosome_studies == original.ribosome_studies
+    with pytest.raises(ValueError, match="shared names several ORFs"):
+        catalog.get("shared")
+    with pytest.raises(KeyError):
+        catalog.get("shared", source="absent")
+    path = tmp_path / "collisions.json.gz"
+    catalog.save(path)
+    loaded = load_catalog(path)
+    assert loaded.to_dict() == catalog.to_dict()
+    assert loaded.get("shared", source="a").members == (first,)
+    with pytest.raises(ValueError, match="names several ORFs"):
+        loaded.get("shared")
+
+
+def test_source_qualified_ids_cannot_overwrite_native_ids_or_delimiter_collisions():
+    records = [replace(orf(identifier), source=source) for source, identifier in (
+        ("a", "x"), ("b", "x"), ("a", "a:x"), ("a:b", "c"), ("a", "b:c"))]
+    catalog = ORFCatalog(records, metadata("combined-v1", "combined"))
+    assert len({r.orf_id for r in catalog.records}) == len(records)
+    for original in records:
+        resolved = catalog.get(original.orf_id, source=original.source)
+        assert original in (resolved.members or (resolved,))
+    for ambiguous in ("x", "a:x", "a:b:c"):
+        with pytest.raises(ValueError, match="names several ORFs"):
+            catalog.get(ambiguous)
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_duplicate_ids_within_one_source_still_raise(changed):
+    original = orf("same")
+    other = replace(original, protein_sequence="MKPA") if changed else original
+    with pytest.raises(ValueError, match="Duplicate ORF identifiers"):
+        ORFCatalog([original, other], metadata("fixture-v1", "synthetic"))
+
+
+def test_direct_collisions_keep_distinct_placements_and_proteome_records(genome):  # noqa: F811
+    records = [replace(orf("shared"), source="a"),
+               replace(orf("shared", blocks=((218, 226),), protein="MK"), source="b")]
+    catalog = ORFCatalog(records, metadata("combined-v1", "combined"))
+    found = extra_orfs(genome, catalog=catalog)
+    assert {o.protein_sequence for o in found.for_orf("shared", source="a")} == {"MKPG"}
+    assert {o.protein_sequence for o in found.for_orf("shared", source="b")} == {"MK"}
+    with pytest.raises(ValueError, match="names several ORFs"):
+        found.for_orf("shared")
+    proteins = Proteome.from_genome(genome).with_extra_orfs(None, catalog=catalog)
+    assert {(p.accession, p.sequence) for p in proteins if p.kind == "extra_orf"} == {
+        ("a:shared", "MKPG"), ("b:shared", "MK")}
+
+
 def test_incompatible_catalogues_are_not_merged():
     first = make_catalog()
     assert merge_catalogs([first]) is first
