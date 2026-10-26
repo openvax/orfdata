@@ -1,3 +1,13 @@
+# 0.38.1
+
+- Accept native ORF IDs reused by distinct sources in directly constructed
+  catalogues. Qualify colliding catalogue IDs automatically while preserving
+  each original record and its evidence in `members`. Reject duplicate IDs
+  within one source and raise on ambiguous bare or combined-string lookups.
+- Add explicit `source=` selection to `ORFCatalog.get()` and
+  `ExtraORFs.for_orf()`. Preserve colliding occurrences through binding,
+  proteome construction and offline round trips (#71).
+
 # 0.38.0
 
 - Add an experimental, resumable Sage pipeline for re-searching the 132

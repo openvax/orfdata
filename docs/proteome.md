@@ -281,6 +281,15 @@ other.
   `source:id`. `catalog.get` and `ExtraORFs.for_orf` accept any of them.
 - **ID collisions.** When two sources use one ID for different ORFs, both
   become `source:id`, and the bare ID raises rather than picking one.
+  Direct `ORFCatalog(records, metadata)` construction follows the same rule,
+  retaining each native record in `members` without merging its evidence.
+  IDs must still be unique within a source. If a source or native ID contains
+  punctuation that would collide with a generated ID, generated components
+  are percent-escaped; native IDs remain available through the source records.
+  Use `catalog.get("native-id", source="study")` or
+  `orfs.for_orf("native-id", source="study")` for explicit source selection.
+  A combined string such as `study:native-id` raises if it also identifies
+  another native record; explicit source selection resolves that ambiguity.
 - **Evidence.** Each source's evidence is kept, and evidence rules see the union:
   a peptide counts once per sequence. A Ribo-seq study two catalogues label
   differently counts once when their `ribosome_study_pmids` metadata give it
