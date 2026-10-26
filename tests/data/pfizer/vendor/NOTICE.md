@@ -28,3 +28,13 @@ The numeric value/presence storage convention is independently documented in
 https://github.com/BenBruyneel/proteinDiscover/blob/main/R/transformRaw.R.
 No implementation from that project is included here; native type/label
 metadata and exact source bytes govern the decoding tests.
+
+`search-slice.fasta` contains twelve complete records from the checksum-pinned
+20,649-record searched FASTA. They are the candidate accessions for the eight
+native peptide examples. `search-slice.json` records the full-reference audit,
+every matching offset (zero-based, end-exclusive), and the slice's own hash.
+The full-reference candidate set was independently compared against exhaustive
+substring searches. This offline slice preserves that regression, but is not
+itself the complete searched reference. Isoleucine/leucine-equivalent matches
+are distinguished from exact residue matches; neither changes the original
+vendor-reported memberships or supplies evidence of individual protein detection.

@@ -2,13 +2,17 @@
 
 import base64
 import copy
+import hashlib
 import json
 import struct
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from orfdata.sources.pfizer_vendor import DistributionDecoder
+from orfdata.search_reference import SearchReference
+from orfdata.sources.pfizer import protein_manifest, search_references
+from orfdata.sources.pfizer_vendor import DistributionDecoder, peptide_candidates
 
 NATIVE = json.loads((Path(__file__).parent / "data/pfizer/vendor/native.json").read_text())
 TABLES = NATIVE["tables"]
@@ -88,3 +92,51 @@ def test_inconsistent_metadata_is_rejected():
     tables["DataTypesColumns"].append(tables["DataTypesColumns"][0])
     with pytest.raises(ValueError, match="column identity"):
         decoder(tables)
+
+
+def fixture_search(path, count):
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    original, = search_references(protein_manifest("dog"))
+    source = replace(original.source, url=path.as_uri(), size=path.stat().st_size, sha256=digest)
+    reference = replace(original.reference, sequence_sha256=digest,
+                        annotation_name="explicit test FASTA slice")
+    spec = replace(original, dataset_id="pfizer-dog-candidate-fixture", source=source,
+                   reference=reference, expected_sequences=count)
+    return SearchReference(path, spec)
+
+
+def test_native_shared_peptide_has_more_search_candidates_than_reported_members():
+    directory = Path(__file__).parent / "data/pfizer/vendor"
+    audit = json.loads((directory / "search-slice.json").read_text())
+    fasta = directory / "search-slice.fasta"
+    assert hashlib.sha256(fasta.read_bytes()).hexdigest() == audit["fixture_sha256"]
+    reference = fixture_search(fasta, audit["fixture_sequences"])
+    peptides = {row["peptide"] for row in audit["candidate_placements"]}
+    assert list(peptide_candidates(peptides, reference)) == audit["candidate_placements"]
+    shared = next(row for row in TABLES["SharedPeptideExamples"] if row["PeptideGroupID"] == 8)
+    reported = {accession.strip() for accession in shared["ParentProteinAccessions"].split(";")}
+    candidates = {row["accession"] for row in peptide_candidates([shared["Sequence"]], reference)}
+    assert reported == {"A0A5F4BP72", "E2RMY1"}
+    assert candidates == reported | {"E2RPC3", "J9NWC2"}
+    assert shared["ParentProteinCount"] == 2
+
+
+def test_candidate_matching_keeps_repeated_sites_il_ambiguity_and_no_matches(tmp_path):
+    fasta = tmp_path / "synthetic.fasta"
+    fasta.write_text(">sp|ONE|ONE_DOG synthetic OX=9615\nMIIILLLAAA\n"
+                     ">tr|TWO|TWO_DOG synthetic OX=9615\nMAAAA\n")
+    reference = fixture_search(fasta, 2)
+    matches = list(peptide_candidates(["II", "AA", "NOPE", "II"], reference))
+    ii = [r for r in matches if r["peptide"] == "II"]
+    assert [(r["start"], r["end"]) for r in ii] == [(1, 3), (2, 4), (3, 5), (4, 6), (5, 7)]
+    assert [r["basis"] for r in ii] == ["exact_residues"] * 2 + ["isoleucine_leucine_equivalent"] * 3
+    assert len(list(peptide_candidates(["II"], reference, equate_il=False))) == 2
+    aa = [r for r in matches if r["peptide"] == "AA"]
+    assert len(aa) == 5 and {r["accession"] for r in aa} == {"ONE", "TWO"}
+    assert matches[-1] == dict(peptide="NOPE", accession=None, start=None, end=None,
+                              status="no_search_match", basis="exact_or_il_equivalent")
+    assert not list(peptide_candidates([], reference))
+    with pytest.raises(ValueError, match="residue budget"):
+        list(peptide_candidates(["AAAA"], reference, max_residues=3))
+    with pytest.raises(ValueError, match="unmodified uppercase"):
+        list(peptide_candidates(["M[Oxidation]AA"], reference))

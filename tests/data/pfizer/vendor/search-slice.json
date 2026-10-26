@@ -1,0 +1,107 @@
+{
+  "candidate_placements": [
+    {
+      "accession": "A0A5F4BP72",
+      "basis": "exact_residues",
+      "end": 736,
+      "peptide": "AAAAAAAAAK",
+      "start": 726,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4BUN6",
+      "basis": "exact_residues",
+      "end": 73,
+      "peptide": "AAAAAAAAAVSR",
+      "start": 61,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4CG76",
+      "basis": "exact_residues",
+      "end": 59,
+      "peptide": "AAAAAAAAAAAAAAGTEAGPGAAGGAENGSEVAAPPAGLSGPAEAGPGVAGER",
+      "start": 6,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4CTF3",
+      "basis": "exact_residues",
+      "end": 716,
+      "peptide": "AAAAAAAAAAAAATSVGGTIPGPGPGGGQGPGEGGDRK",
+      "start": 678,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4D6M6",
+      "basis": "exact_residues",
+      "end": 164,
+      "peptide": "AAAAAAAAATAVLATPSPSPESSPALTK",
+      "start": 136,
+      "status": "candidate"
+    },
+    {
+      "accession": "E2RMY1",
+      "basis": "exact_residues",
+      "end": 168,
+      "peptide": "AAAAAAAAAK",
+      "start": 158,
+      "status": "candidate"
+    },
+    {
+      "accession": "E2RPC3",
+      "basis": "exact_residues",
+      "end": 197,
+      "peptide": "AAAAAAAAAK",
+      "start": 187,
+      "status": "candidate"
+    },
+    {
+      "accession": "E2RPD2",
+      "basis": "exact_residues",
+      "end": 37,
+      "peptide": "AAAAAAAAAAAVAVPLAGGQEGSPGGVR",
+      "start": 9,
+      "status": "candidate"
+    },
+    {
+      "accession": "F1PB37",
+      "basis": "exact_residues",
+      "end": 201,
+      "peptide": "AAAAAGVSVTYSTPFGAR",
+      "start": 183,
+      "status": "candidate"
+    },
+    {
+      "accession": "J9NWC2",
+      "basis": "exact_residues",
+      "end": 608,
+      "peptide": "AAAAAAAAAK",
+      "start": 598,
+      "status": "candidate"
+    },
+    {
+      "accession": "J9NX68",
+      "basis": "exact_residues",
+      "end": 40,
+      "peptide": "AAAAAAAPAPAAEILLTPAR",
+      "start": 20,
+      "status": "candidate"
+    },
+    {
+      "accession": "Q5W7P8",
+      "basis": "exact_residues",
+      "end": 201,
+      "peptide": "AAAAAGVSVTYSTPFGAR",
+      "start": 183,
+      "status": "candidate"
+    }
+  ],
+  "fixture_sequences": 12,
+  "fixture_sha256": "de012a61795ce6f2ae6d51728ddee272e69927b52a8aaa24f84a61bcb89696d7",
+  "fixture_size": 10655,
+  "independent_brute_force_equal": true,
+  "peptides": 8,
+  "source_sequences": 20649,
+  "source_sha256": "d8488bf283de653efcff2e5de6d413b116e1ba4a2eb89298bd31205e72fef682"
+}

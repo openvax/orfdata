@@ -6,7 +6,63 @@ an absent reporter into a measured zero.
 """
 
 import math
+import re
 import struct
+
+
+def peptide_candidates(peptides, search_reference, *, max_residues=250000, equate_il=True):
+    """Stream all placements in an already verified, complete searched FASTA.
+
+    Inputs are a bounded batch of unmodified sequence strings. Every accession
+    and repeated occurrence is retained. The optional I/L comparison keeps its
+    result distinct from exact residue equality; it does not modify sequences.
+    Missing candidates are explicit. This establishes sequence compatibility,
+    not detection, unique attribution, or coverage of unsearched canine isoforms.
+    The native vendor-reported assignments must be retained separately.
+    """
+    from ..search_reference import SearchReference
+
+    if not isinstance(search_reference, SearchReference):
+        raise TypeError("Peptide matching requires a checksum-verified SearchReference")
+    if type(max_residues) is not int or max_residues < 1 or type(equate_il) is not bool:
+        raise ValueError("Invalid peptide matching resource limit or I/L policy")
+    sequences, residues = set(), 0
+    for peptide in peptides:
+        if not isinstance(peptide, str) or not re.fullmatch("[A-Z]+", peptide):
+            raise ValueError("Peptide must be a nonempty unmodified uppercase sequence")
+        if peptide not in sequences:
+            residues += len(peptide)
+            if residues > max_residues:
+                raise ValueError("Peptide matching batch exceeds its explicit residue budget")
+            sequences.add(peptide)
+    if not sequences:
+        return
+    try:
+        import ahocorasick
+    except ImportError:
+        raise ImportError("Peptide extraction requires orfdata[canine-extraction]") from None
+    normalized = {}
+    for peptide in sorted(sequences):
+        key = peptide.replace("I", "L") if equate_il else peptide
+        normalized.setdefault(key, []).append(peptide)
+    matcher = ahocorasick.Automaton()
+    for key, originals in sorted(normalized.items()):
+        matcher.add_word(key, originals)
+    matcher.make_automaton()
+    found = set()
+    for protein in sorted(search_reference.entries(), key=lambda record: record.target.identifier):
+        sequence = protein.sequence.replace("I", "L") if equate_il else protein.sequence
+        for end, originals in matcher.iter(sequence):
+            for peptide in originals:
+                start = end + 1 - len(peptide)
+                exact = protein.sequence[start:end + 1] == peptide
+                found.add(peptide)
+                yield dict(peptide=peptide, accession=protein.target.identifier,
+                           start=start, end=end + 1, status="candidate",
+                           basis="exact_residues" if exact else "isoleucine_leucine_equivalent")
+    for peptide in sorted(sequences - found):
+        yield dict(peptide=peptide, accession=None, start=None, end=None,
+                   status="no_search_match", basis="exact_or_il_equivalent" if equate_il else "exact_residues")
 
 
 class DistributionDecoder:
