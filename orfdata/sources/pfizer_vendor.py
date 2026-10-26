@@ -9,6 +9,98 @@ import math
 import re
 import struct
 
+from ..measurements import Measurement
+from ..reference import ScopedTarget
+from .pfizer_lineage import native_assay_id, native_sample_id
+
+
+class NativeQuantification:
+    """Attach decoded native abundances to checked pools/runs in the common API.
+
+    Peptide groups and PSMs retain independent source record IDs and native
+    quality fields. No confidence threshold, reassignment, re-normalization or
+    inference of protein/individual-dog abundance occurs here.
+    """
+
+    def __init__(self, decoder, lineage, reference, dataset_id, dataset_version, *, source_asset):
+        if reference.taxon_id != 9615:
+            raise ValueError("Canine native quantification requires a canine reference")
+        if not isinstance(source_asset, str) or not source_asset.strip():
+            raise ValueError("Native quantification requires an explicit source asset ID")
+        self.decoder, self.reference = decoder, reference
+        self.dataset_id, self.dataset_version = dataset_id, dataset_version
+        self.source_asset = source_asset
+        self.channels = {(c["file_set_number"], c["channel"]): c for c in lineage["channels"]}
+        self.runs = {(r["workflow_id"], r["file_id"]): r for r in lineage["runs"]}
+        if len(self.channels) != len(lineage["channels"]) or len(self.runs) != len(lineage["runs"]):
+            raise ValueError("Duplicate native quantification lineage identity")
+
+    def peptide_abundances(self, table, row, column="Abundances"):
+        """Yield every native cell, including null vectors, missing and nonfinite cells.
+
+        All units name the original table and column. In particular PSM
+        Abundances is not ReporterQuanResults.Height or the released iBAQ.
+        A nonfinite native value has common status missing, with its original
+        spelling and nonfinite state preserved explicitly in provenance.
+        """
+        allowed = {"TargetPeptideGroups": ("Abundances", "AbundancesNormalized", "AbundancesScaled"),
+                   "TargetPsms": ("Abundances",)}
+        if table not in allowed or column not in allowed[table]:
+            raise ValueError("Unsupported native peptide abundance table/column")
+        if not isinstance(row["Sequence"], str) or not re.fullmatch("[A-Z]+", row["Sequence"]):
+            raise ValueError("Native peptide sequence must be unmodified uppercase residues")
+        run = None
+        if table == "TargetPsms":
+            key = row["WorkflowID"], row["SpectrumFileId"]
+            if key not in self.runs:
+                raise ValueError("PSM references an unresolved native acquisition")
+            run = self.runs[key]
+            if (row["StudyFileId"] != run["study_file_id"]
+                    or row["SpectrumFileName"] != run["file_name"]):
+                raise ValueError("PSM acquisition identity disagrees with native run metadata")
+            identifiers = dict(WorkflowID=row["WorkflowID"], PeptideID=row["PeptideID"])
+        else:
+            identifiers = dict(PeptideGroupID=row["PeptideGroupID"])
+        source_id = ":".join(str(value) for value in identifiers.values())
+        quality_fields = ("Confidence", "MatchConfidence", "Qvalityqvalue", "QvalityPEP", "SVM_Score",
+                          "PercolatorqValue", "PercolatorPEP", "PercolatorSVMScore", "ExcludedBy", "PsmAmbiguity")
+        quality = {key: row[key] for key in quality_fields if key in row}
+        # SQLite scalar infinities are legal; common metadata must remain JSON-safe.
+        for key, value in quality.items():
+            if isinstance(value, float) and not math.isfinite(value):
+                quality[key] = dict(status="nonfinite", native_value=
+                                    "NaN" if math.isnan(value) else "Infinity" if value > 0 else "-Infinity")
+        target = ScopedTarget(self.reference, "peptide", row["Sequence"], "amino-acid-sequence")
+        definition = self.decoder.columns[self.decoder.tables[table]["DataTypeID"], column]
+        for cell in self.decoder.decode(table, column, row[column]):
+            if run is not None:
+                channel_key = run["file_set_number"], cell["label"]
+            else:
+                label = re.fullmatch(r"F(\d+): (\d+(?:N|C)?), Sample", cell["label"])
+                if label is None:
+                    raise ValueError("Unrecognized native peptide-group sample label")
+                channel_key = int(label[1]), label[2]
+            if channel_key not in self.channels:
+                raise ValueError("Native quantification channel lacks reconciled lineage")
+            channel = self.channels[channel_key]
+            yield Measurement(
+                f"{table}:{source_id}:{column}:{cell['box_id']}", target,
+                native_sample_id(channel), native_assay_id(channel, run),
+                "peptide_abundance", cell["value"], f"PD2.4 {table}.{column}",
+                self.dataset_id, self.dataset_version,
+                status="measured" if cell["status"] == "measured" else "missing",
+                provenance=dict(
+                    source_asset=self.source_asset, native_table=table, native_record=identifiers,
+                    native_column=column, native_partition="target",
+                    native_quality=quality, native_modifications=row.get("Modifications"),
+                    native_modified_sequence=row.get("ModifiedSequence", row.get("AnnotatedSequence")),
+                    native_distribution=cell, channel_role=channel["role"],
+                    source_column_definition={k: definition[k] for k in
+                                              ("ColumnID", "Property_DisplayName", "Property_Description",
+                                               "SpecialValueType", "SpecialValueTypeID")},
+                    protein_attribution="separate reported memberships and searched-reference candidates",
+                    transformation="none"))
+
 
 def peptide_candidates(peptides, search_reference, *, max_residues=250000, equate_il=True):
     """Stream all placements in an already verified, complete searched FASTA.

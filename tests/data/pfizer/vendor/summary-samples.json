@@ -1,0 +1,348 @@
+{
+  "samples": [
+    {
+      "BioReplicate": "RBI-0000137273",
+      "Channel": "126",
+      "Condition": "Adrenal",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137411",
+      "Channel": "127_C",
+      "Condition": "Uterus_Endometrium",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137298",
+      "Channel": "127_N",
+      "Condition": "Ovary",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137275",
+      "Channel": "128_C",
+      "Condition": "Bone_Marrow",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137292",
+      "Channel": "128_N",
+      "Condition": "GI_Stomach",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137282",
+      "Channel": "129_C",
+      "Condition": "Cerebral_Cortex",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137412",
+      "Channel": "129_N",
+      "Condition": "White_Blood_Cells",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137301",
+      "Channel": "130_C",
+      "Condition": "Parotid_Gland",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137405",
+      "Channel": "130_N",
+      "Condition": "Testis",
+      "Mixture": "Pool1",
+      "Run": "Pool1_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137274",
+      "Channel": "126",
+      "Condition": "Bladder",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137400",
+      "Channel": "127_C",
+      "Condition": "Prostate",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137299",
+      "Channel": "127_N",
+      "Condition": "Pancreas",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137291",
+      "Channel": "128_C",
+      "Condition": "GI_Jejunum",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137290",
+      "Channel": "128_N",
+      "Condition": "GI_Ileum",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137406",
+      "Channel": "129_C",
+      "Condition": "Thymus",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137297",
+      "Channel": "129_N",
+      "Condition": "Lymph_Node",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137293",
+      "Channel": "130_C",
+      "Condition": "Heart",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137281",
+      "Channel": "130_N",
+      "Condition": "Cerebellum",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137410",
+      "Channel": "131_N",
+      "Condition": "Uterus_Cervix",
+      "Mixture": "Pool2",
+      "Run": "Pool2_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137287",
+      "Channel": "126",
+      "Condition": "Fallopian_Tube",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137407",
+      "Channel": "127_C",
+      "Condition": "Thyroid",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137300",
+      "Channel": "127_N",
+      "Condition": "Parathyroid",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137289",
+      "Channel": "128_C",
+      "Condition": "GI_Duodenum",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137294",
+      "Channel": "128_N",
+      "Condition": "Kidney",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137276",
+      "Channel": "129_C",
+      "Condition": "Breast/Mammary",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137404",
+      "Channel": "129_N",
+      "Condition": "Spleen",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137401",
+      "Channel": "130_C",
+      "Condition": "Skeletal_Muscle",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137286",
+      "Channel": "130_N",
+      "Condition": "Eye",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137285",
+      "Channel": "131_N",
+      "Condition": "Endothelium",
+      "Mixture": "Pool3",
+      "Run": "Pool3_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137296",
+      "Channel": "126",
+      "Condition": "Lung",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137409",
+      "Channel": "127_C",
+      "Condition": "Ureter",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137303",
+      "Channel": "127_N",
+      "Condition": "Pituitary",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137288",
+      "Channel": "128_C",
+      "Condition": "GI_Colon",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137402",
+      "Channel": "128_N",
+      "Condition": "Skin",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137403",
+      "Channel": "129_C",
+      "Condition": "Spinal_Cord",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137408",
+      "Channel": "129_N",
+      "Condition": "Tonsil",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137295",
+      "Channel": "130_C",
+      "Condition": "Liver",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    },
+    {
+      "BioReplicate": "RBI-0000137302",
+      "Channel": "130_N",
+      "Condition": "Peripheral_Nerve",
+      "Mixture": "Pool4",
+      "Run": "Pool4_1",
+      "TechRepMixture": "1",
+      "sample.type": "sample"
+    }
+  ],
+  "scope": "All distinct seven-column source sample records; no abundance rows",
+  "source_sha256": "ae2953c3fe3c31bc5fa06a9a0b222815376faea25489e6626af3736b7f4cbef2"
+}

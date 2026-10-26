@@ -38,3 +38,30 @@ substring searches. This offline slice preserves that regression, but is not
 itself the complete searched reference. Isoleucine/leucine-equivalent matches
 are distinguished from exact residue matches; neither changes the original
 vendor-reported memberships or supplies evidence of individual protein detection.
+
+`study-slice.xml` retains the complete FileSets, QuanMethods and Samples elements
+from the deposited 20210614_zoomapdog_nodbsearch.pdStudy. This includes both cyno
+and dog, to check that the dog reconciliation selects only its four file sets.
+The full source is 3,528,792 bytes, SHA-256
+`fd0a494cd0a73d120045e092668f7ce02cc23ec57722cc48d309e57ca6394bb8`.
+The XML slice is 60,419 bytes, SHA-256
+`ad15f7d631559d48d85c4e3d41302c363ba38cc8fbebe50a6ec7a647e34ab2a4`.
+`summary-samples.json` contains all 38 distinct seven-field sample records from
+the already pinned protein summary; it contains no abundance rows.
+
+`dog-panel.json` records literal dog channel/tissue facts and cell locations
+from Supplemental Table S2 (TableS2_tissues_proteomics!M1:Q13). The original
+316,225-byte workbook has SHA-256
+`a95b7a2514679ba6f7283573059f27e6182b5620f6d0beead601e47daf85e740` and MD5
+`e354f58534b5c41c7819285605a2ad97` (the latter independently supplied by the
+article's Europe PMC full-text XML). All 61 retained cells were independently
+checked with openpyxl 3.1.5 against the untouched original workbook.
+
+Supplement source: Oziolor et al., DOI 10.1038/s41597-026-07512-9,
+41597_2026_7512_MOESM15_ESM.xlsx, retrieved via
+https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13482810/supplementaryFiles?includeInlineImage=false.
+The publication/supplement license is CC BY-NC-ND 4.0
+(https://creativecommons.org/licenses/by-nc-nd/4.0/), distinct from the CC0
+deposited study/data inputs above. The complete workbook and its formatting are
+not redistributed here. Tests use these factual cells in a synthetic minimal
+OOXML wrapper to check reading without recalculation or modification.

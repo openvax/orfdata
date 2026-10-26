@@ -1,0 +1,599 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Study><StudyDefinition Version="1" CreationDate="5/18/2021 8:52:06 AM" LastChangeDate="9/25/2023 9:59:31 AM" Name="20210614_zoomapdog_nodbsearch" Description="" Directory="\\amer.pfizer.com\pfizerfiles\Research\CMG\techcenter-msproteomics\xuel12\temp\zoomap\dog\20210614_zoomapdog_pdresult" NextFileSetNumber="9" NextSampleNumber="89"><FileSets>
+			<FileSet Name="IQP_1269_Cyno_P4" Version="1" Id="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleFileSetNumber="1" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18631_1269_Cyno_P4-F1.raw" FileTime="6/1/2020 8:54:49 AM" FileSize="819222500 [Byte]" FractionNumber="1" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18632_1269_Cyno_P4-F2.raw" FileTime="6/1/2020 8:54:19 AM" FileSize="803247323 [Byte]" FractionNumber="2" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18633_1269_Cyno_P4-F3.raw" FileTime="6/1/2020 8:54:50 AM" FileSize="838731625 [Byte]" FractionNumber="3" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18634_1269_Cyno_P4-F4.raw" FileTime="6/2/2020 10:37:07 AM" FileSize="872088590 [Byte]" FractionNumber="4" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18635_1269_Cyno_P4-F5.raw" FileTime="6/2/2020 10:38:37 AM" FileSize="872383732 [Byte]" FractionNumber="5" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18636_1269_Cyno_P4-F6.raw" FileTime="6/2/2020 10:37:40 AM" FileSize="852826662 [Byte]" FractionNumber="6" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18637_1269_Cyno_P4-F7.raw" FileTime="6/2/2020 10:39:00 AM" FileSize="869694985 [Byte]" FractionNumber="7" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18638_1269_Cyno_P4-F8.raw" FileTime="6/2/2020 10:38:52 AM" FileSize="918290374 [Byte]" FractionNumber="8" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18639_1269_Cyno_P4-F9.raw" FileTime="6/2/2020 10:38:03 AM" FileSize="953384075 [Byte]" FractionNumber="9" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18640_1269_Cyno_P4-F10.raw" FileTime="6/2/2020 10:38:11 AM" FileSize="912937849 [Byte]" FractionNumber="10" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18641_1269_Cyno_P4-F11.raw" FileTime="6/3/2020 3:25:26 PM" FileSize="874712349 [Byte]" FractionNumber="11" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18642_1269_Cyno_P4-F12.raw" FileTime="6/3/2020 3:24:50 PM" FileSize="895384907 [Byte]" FractionNumber="12" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18643_1269_Cyno_P4-F13.raw" FileTime="6/3/2020 3:24:27 PM" FileSize="887278006 [Byte]" FractionNumber="13" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18647_1269_Cyno_P4-F14.raw" FileTime="6/3/2020 3:24:19 PM" FileSize="907457897 [Byte]" FractionNumber="14" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18648_1269_Cyno_P4-F15.raw" FileTime="6/3/2020 3:23:04 PM" FileSize="902799564 [Byte]" FractionNumber="15" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18649_1269_Cyno_P4-F16.raw" FileTime="6/3/2020 3:22:51 PM" FileSize="900250761 [Byte]" FractionNumber="16" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18650_1269_Cyno_P4-F17.raw" FileTime="6/3/2020 3:22:39 PM" FileSize="868730777 [Byte]" FractionNumber="17" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18651_1269_Cyno_P4-F18.raw" FileTime="6/4/2020 9:13:36 AM" FileSize="837733921 [Byte]" FractionNumber="18" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18652_1269_Cyno_P4-F19.raw" FileTime="6/4/2020 9:11:35 AM" FileSize="882714798 [Byte]" FractionNumber="19" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18653_1269_Cyno_P4-F20.raw" FileTime="6/4/2020 9:13:41 AM" FileSize="838596005 [Byte]" FractionNumber="20" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18654_1269_Cyno_P4-F21.raw" FileTime="6/4/2020 9:12:03 AM" FileSize="881528921 [Byte]" FractionNumber="21" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18655_1269_Cyno_P4-F22.raw" FileTime="6/4/2020 9:11:41 AM" FileSize="818904517 [Byte]" FractionNumber="22" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18656_1269_Cyno_P4-F23.raw" FileTime="6/4/2020 4:29:48 PM" FileSize="831394181 [Byte]" FractionNumber="23" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18657_1269_Cyno_P4-F24.raw" FileTime="6/4/2020 4:31:50 PM" FileSize="920634001 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+			<FileSet Name="IQP_1269_Cyno_P3" Version="1" Id="d7136642-b19f-43b2-9b78-2e003dcca035" SampleFileSetNumber="2" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18694_1269_Cyno-P3-F1-RTS.raw" FileTime="6/7/2020 3:42:37 PM" FileSize="739396763 [Byte]" FractionNumber="1" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18695_1269_Cyno-P3-F2-RTS.raw" FileTime="6/7/2020 9:41:48 PM" FileSize="785394240 [Byte]" FractionNumber="2" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18696_1269_Cyno-P3-F3-RTS.raw" FileTime="6/8/2020 6:41:10 AM" FileSize="782776449 [Byte]" FractionNumber="3" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18697_1269_Cyno-P3-F4-RTS.raw" FileTime="6/8/2020 6:41:16 AM" FileSize="768401570 [Byte]" FractionNumber="4" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18698_1269_Cyno-P3-F5-RTS.raw" FileTime="6/8/2020 4:16:00 PM" FileSize="783926244 [Byte]" FractionNumber="5" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18699_1269_Cyno-P3-F6-RTS.raw" FileTime="6/8/2020 4:16:08 PM" FileSize="787621942 [Byte]" FractionNumber="6" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18700_1269_Cyno-P3-F7-RTS.raw" FileTime="6/9/2020 7:33:08 AM" FileSize="802345830 [Byte]" FractionNumber="7" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18701_1269_Cyno-P3-F8-RTS.raw" FileTime="6/9/2020 7:32:17 AM" FileSize="894114059 [Byte]" FractionNumber="8" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18702_1269_Cyno-P3-F9-RTS.raw" FileTime="6/9/2020 7:31:01 AM" FileSize="815286697 [Byte]" FractionNumber="9" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18703_1269_Cyno-P3-F10-RTS.raw" FileTime="6/9/2020 7:31:35 AM" FileSize="794031362 [Byte]" FractionNumber="10" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18704_1269_Cyno-P3-F11-RTS.raw" FileTime="6/9/2020 10:36:06 PM" FileSize="773285289 [Byte]" FractionNumber="11" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18705_1269_Cyno-P3-F12-RTS.raw" FileTime="6/9/2020 10:35:11 PM" FileSize="713715253 [Byte]" FractionNumber="12" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18706_1269_Cyno-P3-F13-RTS.raw" FileTime="6/9/2020 10:34:23 PM" FileSize="712880122 [Byte]" FractionNumber="13" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18707_1269_Cyno-P3-F14-RTS.raw" FileTime="6/9/2020 10:34:47 PM" FileSize="752463794 [Byte]" FractionNumber="14" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18708_1269_Cyno-P3-F15-RTS.raw" FileTime="6/10/2020 1:03:55 PM" FileSize="831719199 [Byte]" FractionNumber="15" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18709_1269_Cyno-P3-F16-RTS.raw" FileTime="6/10/2020 1:03:07 PM" FileSize="797314733 [Byte]" FractionNumber="16" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18710_1269_Cyno-P3-F17-RTS.raw" FileTime="6/10/2020 1:02:05 PM" FileSize="729938435 [Byte]" FractionNumber="17" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18711_1269_Cyno-P3-F18-RTS.raw" FileTime="6/10/2020 1:02:01 PM" FileSize="748446194 [Byte]" FractionNumber="18" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18712_1269_Cyno-P3-F19-RTS.raw" FileTime="6/11/2020 7:41:44 PM" FileSize="737173511 [Byte]" FractionNumber="19" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18713_1269_Cyno-P3-F20-RTS.raw" FileTime="6/11/2020 7:41:33 PM" FileSize="691162024 [Byte]" FractionNumber="20" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18714_1269_Cyno-P3-F21-RTS.raw" FileTime="6/11/2020 7:41:23 PM" FileSize="668947092 [Byte]" FractionNumber="21" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18715_1269_Cyno-P3-F22-RTS.raw" FileTime="6/11/2020 7:40:54 PM" FileSize="693981100 [Byte]" FractionNumber="22" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18716_1269_Cyno-P3-F23-RTS.raw" FileTime="6/11/2020 7:40:16 PM" FileSize="748202762 [Byte]" FractionNumber="23" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP1-18717_1269_Cyno-P3-F24-RTS.raw" FileTime="6/11/2020 7:40:51 PM" FileSize="649705836 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+			<FileSet Name="IQP_1269_Cyno_P1" Version="1" Id="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleFileSetNumber="3" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07405_1269_Cyno_P1-F1_1.raw" FileTime="5/16/2020 1:56:47 PM" FileSize="887270186 [Byte]" FractionNumber="1" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07408_1269_Cyno_P1-F3.raw" FileTime="5/17/2020 5:10:53 PM" FileSize="890646590 [Byte]" FractionNumber="2" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07409_1269_Cyno_P1-F4.raw" FileTime="5/17/2020 5:10:24 PM" FileSize="880290040 [Byte]" FractionNumber="3" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07410_1269_Cyno_P1-F5.raw" FileTime="5/17/2020 5:13:35 PM" FileSize="903332612 [Byte]" FractionNumber="4" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07411_1269_Cyno_P1-F6.raw" FileTime="5/17/2020 5:13:05 PM" FileSize="940181312 [Byte]" FractionNumber="5" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07412_1269_Cyno_P1-F7.raw" FileTime="5/17/2020 5:12:10 PM" FileSize="1003732204 [Byte]" FractionNumber="6" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07413_1269_Cyno_P1-F8.raw" FileTime="5/17/2020 5:12:00 PM" FileSize="979400604 [Byte]" FractionNumber="7" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07414_1269_Cyno_P1-F9.raw" FileTime="5/19/2020 10:32:35 AM" FileSize="1030236044 [Byte]" FractionNumber="8" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07415_1269_Cyno_P1-F10.raw" FileTime="5/19/2020 10:39:23 AM" FileSize="1033918422 [Byte]" FractionNumber="9" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07416_1269_Cyno_P1-F11.raw" FileTime="5/19/2020 10:37:54 AM" FileSize="1113404694 [Byte]" FractionNumber="10" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07417_1269_Cyno_P1-F12.raw" FileTime="5/19/2020 10:35:50 AM" FileSize="1142912002 [Byte]" FractionNumber="11" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07418_1269_Cyno_P1-F13.raw" FileTime="5/19/2020 10:33:36 AM" FileSize="1153958730 [Byte]" FractionNumber="12" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07419_1269_Cyno_P1-F14.raw" FileTime="5/19/2020 10:39:16 AM" FileSize="1138733028 [Byte]" FractionNumber="13" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07420_1269_Cyno_P1-F15.raw" FileTime="5/19/2020 10:37:09 AM" FileSize="1230473646 [Byte]" FractionNumber="14" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07421_1269_Cyno_P1-F16.raw" FileTime="5/19/2020 10:34:51 AM" FileSize="1174371082 [Byte]" FractionNumber="15" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07422_1269_Cyno_P1-F17.raw" FileTime="5/19/2020 10:32:28 AM" FileSize="1207134978 [Byte]" FractionNumber="16" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07423_1269_Cyno_P1-F18.raw" FileTime="5/19/2020 10:32:01 AM" FileSize="1169593464 [Byte]" FractionNumber="17" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07424_1269_Cyno_P1-F19.raw" FileTime="5/20/2020 9:18:34 AM" FileSize="1211861134 [Byte]" FractionNumber="18" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07425_1269_Cyno_P1-F20.raw" FileTime="5/20/2020 9:17:57 AM" FileSize="1232459438 [Byte]" FractionNumber="19" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07426_1269_Cyno_P1-F21.raw" FileTime="5/20/2020 9:17:16 AM" FileSize="1208934416 [Byte]" FractionNumber="20" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07427_1269_Cyno_P1-F22.raw" FileTime="5/20/2020 9:15:36 AM" FileSize="1219433024 [Byte]" FractionNumber="21" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07428_1269_Cyno_P1-F23.raw" FileTime="5/20/2020 9:18:54 AM" FileSize="1200681332 [Byte]" FractionNumber="22" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07429_1269_Cyno_P1-F24.raw" FileTime="5/20/2020 9:16:08 AM" FileSize="1208722290 [Byte]" FractionNumber="23" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07430_1269_Cyno_P1-F2_2.raw" FileTime="5/20/2020 9:16:20 AM" FileSize="1297430898 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+			<FileSet Name="IQP_1269_Cyno_P2" Version="1" Id="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleFileSetNumber="4" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07434_1269_Cyno_P2-F1.raw" FileTime="5/21/2020 10:47:01 AM" FileSize="924697016 [Byte]" FractionNumber="1" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07435_1269_Cyno_P2-F2.raw" FileTime="5/21/2020 10:46:31 AM" FileSize="1010171256 [Byte]" FractionNumber="2" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07436_1269_Cyno_P2-F3.raw" FileTime="5/21/2020 10:45:44 AM" FileSize="872215372 [Byte]" FractionNumber="3" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07437_1269_Cyno_P2-F4.raw" FileTime="5/21/2020 10:45:03 AM" FileSize="958183704 [Byte]" FractionNumber="4" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07438_1269_Cyno_P2-F5.raw" FileTime="5/21/2020 10:44:28 AM" FileSize="939426288 [Byte]" FractionNumber="5" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07439_1269_Cyno_P2-F6.raw" FileTime="5/22/2020 9:17:57 AM" FileSize="1081840248 [Byte]" FractionNumber="6" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07440_1269_Cyno_P2-F7.raw" FileTime="5/22/2020 9:15:06 AM" FileSize="1073936724 [Byte]" FractionNumber="7" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07441_1269_Cyno_P2-F8.raw" FileTime="5/22/2020 9:19:34 AM" FileSize="981832606 [Byte]" FractionNumber="8" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07442_1269_Cyno_P2-F9.raw" FileTime="5/22/2020 9:18:25 AM" FileSize="1099663364 [Byte]" FractionNumber="9" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07443_1269_Cyno_P2-F10.raw" FileTime="5/22/2020 9:15:45 AM" FileSize="1114483212 [Byte]" FractionNumber="10" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07444_1269_Cyno_P2-F11.raw" FileTime="5/22/2020 9:15:59 AM" FileSize="1124951720 [Byte]" FractionNumber="11" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07445_1269_Cyno_P2-F12.raw" FileTime="5/24/2020 12:29:46 PM" FileSize="1125587668 [Byte]" FractionNumber="12" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07446_1269_Cyno_P2-F13.raw" FileTime="5/24/2020 12:28:37 PM" FileSize="1087545018 [Byte]" FractionNumber="13" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07447_1269_Cyno_P2-F14.raw" FileTime="5/24/2020 12:27:31 PM" FileSize="1069766702 [Byte]" FractionNumber="14" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07448_1269_Cyno_P2-F15.raw" FileTime="5/24/2020 12:26:24 PM" FileSize="1150446510 [Byte]" FractionNumber="15" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07449_1269_Cyno_P2-F16.raw" FileTime="5/24/2020 12:25:13 PM" FileSize="1167235666 [Byte]" FractionNumber="16" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07450_1269_Cyno_P2-F17.raw" FileTime="5/24/2020 12:24:03 PM" FileSize="1142735868 [Byte]" FractionNumber="17" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07451_1269_Cyno_P2-F18.raw" FileTime="5/24/2020 12:22:44 PM" FileSize="1143473820 [Byte]" FractionNumber="18" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07452_1269_Cyno_P2-F19.raw" FileTime="5/24/2020 12:21:30 PM" FileSize="1192026320 [Byte]" FractionNumber="19" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07453_1269_Cyno_P2-F20.raw" FileTime="5/24/2020 12:20:12 PM" FileSize="1163835102 [Byte]" FractionNumber="20" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07454_1269_Cyno_P2-F21.raw" FileTime="5/24/2020 12:19:00 PM" FileSize="1198756678 [Byte]" FractionNumber="21" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07455_1269_Cyno_P2-F22.raw" FileTime="5/24/2020 12:17:43 PM" FileSize="1184510944 [Byte]" FractionNumber="22" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07456_1269_Cyno_P2-F23.raw" FileTime="5/24/2020 12:15:46 PM" FileSize="1228719862 [Byte]" FractionNumber="23" />
+					<File FileName="\20210518_zoomapcyno_nodbsearch\IQP2-07457_1269_Cyno_P2-F24.raw" FileTime="5/24/2020 12:16:27 PM" FileSize="1188960522 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+			<FileSet Name="IQP_1269_Dog_P1" Version="1" Id="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleFileSetNumber="5" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19058_1269D-P1-F1-RTS.raw" FileTime="7/28/2020 7:09:11 PM" FileSize="945301680 [Byte]" FractionNumber="1" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19059_1269D-P1-F2-RTS.raw" FileTime="7/29/2020 9:43:23 AM" FileSize="903033394 [Byte]" FractionNumber="2" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19060_1269D-P1-F3-RTS.raw" FileTime="7/29/2020 9:42:25 AM" FileSize="931225045 [Byte]" FractionNumber="3" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19061_1269D-P1-F4-RTS.raw" FileTime="7/29/2020 9:41:14 AM" FileSize="880858626 [Byte]" FractionNumber="4" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19062_1269D-P1-F5-RTS.raw" FileTime="7/29/2020 9:41:17 AM" FileSize="925295230 [Byte]" FractionNumber="5" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19063_1269D-P1-F6-RTS.raw" FileTime="7/30/2020 6:41:38 AM" FileSize="926456054 [Byte]" FractionNumber="6" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19064_1269D-P1-F7-RTS.raw" FileTime="7/30/2020 6:40:41 AM" FileSize="992952888 [Byte]" FractionNumber="7" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19065_1269D-P1-F8-RTS.raw" FileTime="7/30/2020 6:39:39 AM" FileSize="964728071 [Byte]" FractionNumber="8" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19066_1269D-P1-F9-RTS.raw" FileTime="7/30/2020 6:38:17 AM" FileSize="963411352 [Byte]" FractionNumber="9" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19067_1269D-P1-F10-RTS.raw" FileTime="7/30/2020 6:36:55 AM" FileSize="1009679028 [Byte]" FractionNumber="10" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19068_1269D-P1-F11-RTS.raw" FileTime="7/30/2020 6:37:31 AM" FileSize="1047579901 [Byte]" FractionNumber="11" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19069_1269D-P1-F12-RTS.raw" FileTime="7/30/2020 9:24:33 PM" FileSize="991298603 [Byte]" FractionNumber="12" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19070_1269D-P1-F13-RTS.raw" FileTime="7/30/2020 9:23:34 PM" FileSize="1047680621 [Byte]" FractionNumber="13" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19071_1269D-P1-F14-RTS.raw" FileTime="7/30/2020 9:22:11 PM" FileSize="1045132064 [Byte]" FractionNumber="14" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19072_1269D-P1-F15-RTS.raw" FileTime="7/30/2020 9:22:41 PM" FileSize="1049369283 [Byte]" FractionNumber="15" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19073_1269D-P1-F16-RTS.raw" FileTime="7/31/2020 12:34:47 PM" FileSize="1074084115 [Byte]" FractionNumber="16" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19074_1269D-P1-F17-RTS.raw" FileTime="7/31/2020 12:33:44 PM" FileSize="1053480159 [Byte]" FractionNumber="17" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19075_1269D-P1-F18-RTS.raw" FileTime="7/31/2020 12:32:40 PM" FileSize="1065749272 [Byte]" FractionNumber="18" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19076_1269D-P1-F19-RTS.raw" FileTime="7/31/2020 12:31:20 PM" FileSize="971945755 [Byte]" FractionNumber="19" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19077_1269D-P1-F20-RTS.raw" FileTime="7/31/2020 12:31:20 PM" FileSize="1013737167 [Byte]" FractionNumber="20" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19078_1269D-P1-F21-RTS.raw" FileTime="7/31/2020 4:01:44 PM" FileSize="1068325358 [Byte]" FractionNumber="21" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19079_1269D-P1-F22-RTS.raw" FileTime="8/1/2020 6:31:24 AM" FileSize="1034265597 [Byte]" FractionNumber="22" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19080_1269D-P1-F23-RTS.raw" FileTime="8/1/2020 6:30:00 AM" FileSize="1033572088 [Byte]" FractionNumber="23" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19081_1269D-P1-F24-RTS.raw" FileTime="8/1/2020 6:30:29 AM" FileSize="1093932255 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+			<FileSet Name="IQP_1269_Dog_P2" Version="1" Id="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleFileSetNumber="6" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-18996_1269D-P2-F1-RTS.raw" FileTime="7/18/2020 11:03:13 PM" FileSize="767103842 [Byte]" FractionNumber="1" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-18997_1269D-P2-F2-RTS.raw" FileTime="7/19/2020 9:51:00 AM" FileSize="832523575 [Byte]" FractionNumber="2" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-18998_1269D-P2-F3-RTS.raw" FileTime="7/19/2020 9:51:14 AM" FileSize="814111925 [Byte]" FractionNumber="3" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-18999_1269D-P2-F4-RTS.raw" FileTime="7/19/2020 9:51:07 AM" FileSize="786981382 [Byte]" FractionNumber="4" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19000_1269D-P2-F5-RTS.raw" FileTime="7/20/2020 9:50:30 AM" FileSize="797587202 [Byte]" FractionNumber="5" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19001_1269D-P2-F6-RTS.raw" FileTime="7/20/2020 9:49:45 AM" FileSize="848483534 [Byte]" FractionNumber="6" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19002_1269D-P2-F7-RTS.raw" FileTime="7/20/2020 9:48:59 AM" FileSize="849557372 [Byte]" FractionNumber="7" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19003_1269D-P2-F8-RTS.raw" FileTime="7/20/2020 9:48:09 AM" FileSize="826278695 [Byte]" FractionNumber="8" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19004_1269D-P2-F9-RTS.raw" FileTime="7/20/2020 9:47:21 AM" FileSize="850502596 [Byte]" FractionNumber="9" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19005_1269D-P2-F10-RTS.raw" FileTime="7/20/2020 9:46:09 AM" FileSize="874833361 [Byte]" FractionNumber="10" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19006_1269D-P2-F11-RTS.raw" FileTime="7/20/2020 9:46:29 AM" FileSize="873605701 [Byte]" FractionNumber="11" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19007_1269D-P2-F12-RTS.raw" FileTime="7/21/2020 7:34:20 AM" FileSize="843535550 [Byte]" FractionNumber="12" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19013_1269D-P2-F13-RTS.raw" FileTime="7/21/2020 7:34:42 AM" FileSize="927002186 [Byte]" FractionNumber="13" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19014_1269D-P2-F14-RTS.raw" FileTime="7/21/2020 8:55:08 PM" FileSize="991191610 [Byte]" FractionNumber="14" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19015_1269D-P2-F15-RTS.raw" FileTime="7/21/2020 8:54:19 PM" FileSize="969011380 [Byte]" FractionNumber="15" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19016_1269D-P2-F16-RTS.raw" FileTime="7/22/2020 9:39:35 AM" FileSize="946171272 [Byte]" FractionNumber="16" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19017_1269D-P2-F17-RTS.raw" FileTime="7/22/2020 9:38:43 AM" FileSize="927026077 [Byte]" FractionNumber="17" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19018_1269D-P2-F18-RTS.raw" FileTime="7/22/2020 9:37:31 AM" FileSize="896543213 [Byte]" FractionNumber="18" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19019_1269D-P2-F19-RTS.raw" FileTime="7/22/2020 9:37:55 AM" FileSize="861384213 [Byte]" FractionNumber="19" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19020_1269D-P2-F20-RTS.raw" FileTime="7/23/2020 8:56:02 PM" FileSize="886541319 [Byte]" FractionNumber="20" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19024_1269D-P2-F21-RTS.raw" FileTime="7/23/2020 8:56:05 PM" FileSize="988326311 [Byte]" FractionNumber="21" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19025_1269D-P2-F22-RTS.raw" FileTime="7/24/2020 7:55:07 AM" FileSize="895803994 [Byte]" FractionNumber="22" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19026_1269D-P2-F23-RTS.raw" FileTime="7/24/2020 7:54:40 AM" FileSize="933058276 [Byte]" FractionNumber="23" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19027_1269D-P2-F24-RTS.raw" FileTime="7/24/2020 7:54:52 AM" FileSize="959231967 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+			<FileSet Name="IQP_1269_Dog_P3" Version="1" Id="16622fbc-f589-466c-94b8-9eb349903d4f" SampleFileSetNumber="7" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19109_1269D-P3-F2-RTS.raw" FileTime="8/5/2020 8:52:10 AM" FileSize="921431104 [Byte]" FractionNumber="1" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19113_1269D-P3-F3-RTS-2.raw" FileTime="8/6/2020 8:24:47 AM" FileSize="957395385 [Byte]" FractionNumber="2" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19119_1269D-P3-F11-RTS.raw" FileTime="8/7/2020 8:41:19 AM" FileSize="955298453 [Byte]" FractionNumber="3" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19120_1269D-P3-F12-RTS.raw" FileTime="8/7/2020 8:43:58 AM" FileSize="980555613 [Byte]" FractionNumber="4" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19121_1269D-P3-F13-RTS.raw" FileTime="8/7/2020 8:41:44 AM" FileSize="1003509895 [Byte]" FractionNumber="5" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19122_1269D-P3-F14-RTS.raw" FileTime="8/7/2020 8:45:22 AM" FileSize="1024473638 [Byte]" FractionNumber="6" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19135_1269D-P3-F24-RTS.raw" FileTime="8/8/2020 5:11:49 PM" FileSize="1001393016 [Byte]" FractionNumber="7" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08294_1269D-P3-F6-RTS-3-LM2.raw" FileTime="8/10/2020 7:59:49 PM" FileSize="1100190664 [Byte]" FractionNumber="8" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08295_1269D-P3-F7-RTS-2-LM2.raw" FileTime="8/11/2020 6:30:52 AM" FileSize="1127361166 [Byte]" FractionNumber="9" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08296_1269D-P3-F17-RTS-2-LM2.raw" FileTime="8/11/2020 6:36:43 AM" FileSize="1099591810 [Byte]" FractionNumber="10" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08297_1269D-P3-F18-RTS-2-LM2.raw" FileTime="8/11/2020 9:15:32 AM" FileSize="1101713564 [Byte]" FractionNumber="11" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08298_1269D-P3-F19-RTS-2-LM2.raw" FileTime="8/11/2020 10:40:58 AM" FileSize="1047528866 [Byte]" FractionNumber="12" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08300_1269D-P3-F20-RTS-2-LM2.raw" FileTime="8/12/2020 7:07:49 AM" FileSize="1195237844 [Byte]" FractionNumber="13" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08301_1269D-P3-F21-RTS-2-LM2.raw" FileTime="8/12/2020 7:10:34 AM" FileSize="1111884694 [Byte]" FractionNumber="14" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08302_1269D-P3-F22-RTS-2-LM2.raw" FileTime="8/12/2020 7:09:29 AM" FileSize="1112156358 [Byte]" FractionNumber="15" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08303_1269D-P3-F23-RTS-2-LM2.raw" FileTime="8/12/2020 7:07:49 AM" FileSize="1074366492 [Byte]" FractionNumber="16" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08304_1269D-P3-F1-RTS-2-LM2.raw" FileTime="8/12/2020 7:07:50 AM" FileSize="1050333650 [Byte]" FractionNumber="17" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08305_1269D-P3-F4-RTS-2-LM2.raw" FileTime="8/13/2020 7:39:36 AM" FileSize="968617106 [Byte]" FractionNumber="18" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08306_1269D-P3-F5-RTS-2-LM2.raw" FileTime="8/13/2020 7:37:21 AM" FileSize="936752980 [Byte]" FractionNumber="19" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08307_1269D-P3-F8-RTS-2-LM2.raw" FileTime="8/13/2020 7:41:51 AM" FileSize="1088885542 [Byte]" FractionNumber="20" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08308_1269D-P3-F9-RTS-2-LM2.raw" FileTime="8/13/2020 7:40:59 AM" FileSize="1216664586 [Byte]" FractionNumber="21" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08309_1269D-P3-F10-RTS-2-LM2.raw" FileTime="8/13/2020 7:39:43 AM" FileSize="1220196084 [Byte]" FractionNumber="22" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08310_1269D-P3-F15-RTS-2-LM2.raw" FileTime="8/13/2020 7:37:25 AM" FileSize="1271939302 [Byte]" FractionNumber="23" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP2-08311_1269D-P3-F16-RTS-2-LM2.raw" FileTime="8/13/2020 7:38:19 AM" FileSize="1250603478 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+			<FileSet Name="IQP_1269_Dog_P4" Version="1" Id="876d4746-f8a7-4d13-ba85-e922383f7568" SampleFileSetNumber="8" QuanMethodId="9">
+				<Files>
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19031_1269D-P4-F1-RTS.raw" FileTime="7/25/2020 9:23:15 AM" FileSize="952076208 [Byte]" FractionNumber="1" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19032_1269D-P4-F2-RTS.raw" FileTime="7/25/2020 9:21:59 AM" FileSize="976019297 [Byte]" FractionNumber="2" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19033_1269D-P4-F3-RTS.raw" FileTime="7/25/2020 9:22:01 AM" FileSize="984100473 [Byte]" FractionNumber="3" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19034_1269D-P4-F4-RTS.raw" FileTime="7/25/2020 9:35:37 AM" FileSize="921523620 [Byte]" FractionNumber="4" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19035_1269D-P4-F5-RTS.raw" FileTime="7/25/2020 9:04:17 PM" FileSize="922711406 [Byte]" FractionNumber="5" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19036_1269D-P4-F6-RTS.raw" FileTime="7/25/2020 9:04:22 PM" FileSize="956302682 [Byte]" FractionNumber="6" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19037_1269D-P4-F7-RTS.raw" FileTime="7/26/2020 11:46:28 AM" FileSize="982326238 [Byte]" FractionNumber="7" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19038_1269D-P4-F8-RTS.raw" FileTime="7/26/2020 11:46:03 AM" FileSize="928792495 [Byte]" FractionNumber="8" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19039_1269D-P4-F9-RTS.raw" FileTime="7/26/2020 11:45:36 AM" FileSize="943385214 [Byte]" FractionNumber="9" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19040_1269D-P4-F10-RTS.raw" FileTime="7/26/2020 11:45:10 AM" FileSize="1010122922 [Byte]" FractionNumber="10" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19041_1269D-P4-F11-RTS.raw" FileTime="7/26/2020 11:44:59 AM" FileSize="977087284 [Byte]" FractionNumber="11" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19042_1269D-P4-F12-RTS.raw" FileTime="7/27/2020 9:48:40 AM" FileSize="1012566430 [Byte]" FractionNumber="12" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19043_1269D-P4-F13-RTS.raw" FileTime="7/27/2020 9:47:57 AM" FileSize="943876515 [Byte]" FractionNumber="13" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19044_1269D-P4-F14-RTS.raw" FileTime="7/27/2020 9:47:45 AM" FileSize="1078818137 [Byte]" FractionNumber="14" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19045_1269D-P4-F15-RTS.raw" FileTime="7/27/2020 9:46:54 AM" FileSize="1039839499 [Byte]" FractionNumber="15" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19046_1269D-P4-F16-RTS.raw" FileTime="7/27/2020 9:46:19 AM" FileSize="1013703913 [Byte]" FractionNumber="16" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19047_1269D-P4-F17-RTS.raw" FileTime="7/27/2020 9:46:31 AM" FileSize="1007965295 [Byte]" FractionNumber="17" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19048_1269D-P4-F18-RTS.raw" FileTime="7/28/2020 7:32:38 AM" FileSize="974626210 [Byte]" FractionNumber="18" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19049_1269D-P4-F19-RTS.raw" FileTime="7/28/2020 7:31:44 AM" FileSize="963120441 [Byte]" FractionNumber="19" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19050_1269D-P4-F20-RTS.raw" FileTime="7/28/2020 7:30:45 AM" FileSize="1026973529 [Byte]" FractionNumber="20" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19051_1269D-P4-F21-RTS.raw" FileTime="7/28/2020 7:29:46 AM" FileSize="1010706205 [Byte]" FractionNumber="21" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19052_1269D-P4-F22-RTS.raw" FileTime="7/28/2020 7:28:23 AM" FileSize="989976660 [Byte]" FractionNumber="22" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19053_1269D-P4-F23-RTS.raw" FileTime="7/28/2020 7:33:35 AM" FileSize="1030655844 [Byte]" FractionNumber="23" />
+					<File FileName="\20210614_zoomapdog_nodbsearch\IQP1-19054_1269D-P4-F24-RTS.raw" FileTime="7/28/2020 7:29:05 AM" FileSize="989390533 [Byte]" FractionNumber="24" />
+				</Files>
+			</FileSet>
+		</FileSets>
+		<QuanMethods>
+			<QuanMethod Version="4" Id="9" Name="TMT 11plex" Description="TMT 11plex" MethodKind="Reporter Based with Isobaric Tags">
+				<QuanChannels>
+					<QuanChannel Name="126" Id="1" QuanMethodId="9" Position="1" />
+					<QuanChannel Name="127N" Id="2" QuanMethodId="9" Position="2" />
+					<QuanChannel Name="127C" Id="3" QuanMethodId="9" Position="3" />
+					<QuanChannel Name="128N" Id="4" QuanMethodId="9" Position="4" />
+					<QuanChannel Name="128C" Id="5" QuanMethodId="9" Position="5" />
+					<QuanChannel Name="129N" Id="6" QuanMethodId="9" Position="6" />
+					<QuanChannel Name="129C" Id="7" QuanMethodId="9" Position="7" />
+					<QuanChannel Name="130N" Id="8" QuanMethodId="9" Position="8" />
+					<QuanChannel Name="130C" Id="9" QuanMethodId="9" Position="9" />
+					<QuanChannel Name="131N" Id="10" QuanMethodId="9" Position="10" />
+					<QuanChannel Name="131C" Id="11" QuanMethodId="9" Position="11" />
+				</QuanChannels>
+			</QuanMethod>
+		</QuanMethods>
+		<Samples>
+			<Sample Name="IQP_1269_Cyno_P4 - [126]" SampleType="Sample" Version="1" Id="375317ef-3f1b-4572-99a6-3d5b0dd5ab7b" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="1">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [127N]" SampleType="Sample" Version="1" Id="90e145e2-86c9-4be3-8e3d-f39f43ede25a" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="2">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [127C]" SampleType="Sample" Version="1" Id="9f212f3c-a8db-4223-9f04-09ff61ae9c14" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="3">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [128N]" SampleType="Sample" Version="1" Id="2ba55d7d-e1e2-4102-9252-55b185baa30e" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="4">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [128C]" SampleType="Sample" Version="1" Id="a8f92c19-bfaf-4329-9a57-2e203f5461af" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="5">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [129N]" SampleType="Sample" Version="1" Id="eb5cbac8-8243-45b9-a72c-0f30f5084890" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="6">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [129C]" SampleType="Sample" Version="1" Id="73b7ef88-a723-4b58-9ac8-dc45f17d92ee" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="7">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [130N]" SampleType="Sample" Version="1" Id="5ca7fc50-36fe-4ea8-93e6-beacf7ea2123" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="8">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [130C]" SampleType="Sample" Version="1" Id="fd8fa8f1-4bbe-425c-a225-1049ef4f8841" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="9">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [131N]" SampleType="Sample" Version="1" Id="82cecc25-67f5-4446-9bcd-32579363903c" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="10">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P4 - [131C]" SampleType="Sample" Version="1" Id="0d4b3ad9-0853-4a77-ae31-b871e42555a3" FileSetId="5faa32dc-6d4c-4c5f-9c90-41395b36f429" SampleNumber="11">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [126]" SampleType="Sample" Version="1" Id="cddd78ce-c502-4844-b121-d9dbdb7a9bd4" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="12">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [127N]" SampleType="Sample" Version="1" Id="5daebb69-3503-4034-b9c4-d4b16aef3974" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="13">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [127C]" SampleType="Sample" Version="1" Id="d4f41370-4966-4bb4-9472-678ac6f4f734" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="14">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [128N]" SampleType="Sample" Version="1" Id="bf61e455-98b5-4d6b-9674-d6ac0455f52d" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="15">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [128C]" SampleType="Sample" Version="1" Id="44434d39-3599-4cda-ba81-4b863fe3bef0" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="16">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [129N]" SampleType="Sample" Version="1" Id="72b0f48c-082a-4dbf-80bf-c65a19b3385a" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="17">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [129C]" SampleType="Sample" Version="1" Id="9cdaf1c9-a02b-4c9d-bd21-3d1cb856a793" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="18">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [130N]" SampleType="Sample" Version="1" Id="f78c611f-ffb7-4c62-bbec-2853c83398ed" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="19">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [130C]" SampleType="Sample" Version="1" Id="be288f01-57df-404d-96c8-fa1c60d705eb" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="20">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [131N]" SampleType="Sample" Version="1" Id="44f6d72e-a925-463e-9df6-d5fc22250622" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="21">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P3 - [131C]" SampleType="Sample" Version="1" Id="cbe70883-e89f-4580-9c25-497286b1c94e" FileSetId="d7136642-b19f-43b2-9b78-2e003dcca035" SampleNumber="22">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [126]" SampleType="Sample" Version="1" Id="7d9ff27f-d115-41e0-b7fa-4b69ae3f73d2" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="23">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [127N]" SampleType="Sample" Version="1" Id="2834e3fa-2206-47b5-829a-df8c784956bd" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="24">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [127C]" SampleType="Sample" Version="1" Id="b2acb548-7959-46db-91db-992b2f6351b5" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="25">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [128N]" SampleType="Sample" Version="1" Id="9d38c8dc-cc22-4b97-ad88-69068580f93e" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="26">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [128C]" SampleType="Sample" Version="1" Id="6c62f823-0129-4488-b8f7-7f7f780fbffb" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="27">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [129N]" SampleType="Sample" Version="1" Id="5edb6ca1-e020-48b7-9ffc-3ed11e2712f0" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="28">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [129C]" SampleType="Sample" Version="1" Id="1b22810d-da13-4be9-963b-db9b317119be" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="29">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [130N]" SampleType="Sample" Version="1" Id="a92729e4-6c3a-418c-9de4-d2d1d00161a9" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="30">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [130C]" SampleType="Sample" Version="1" Id="5fe6c07e-9ee5-43ec-9530-9d8bbbd44426" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="31">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [131N]" SampleType="Sample" Version="1" Id="9da3b9c9-3743-44fe-a95e-3873aebe5229" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="32">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P1 - [131C]" SampleType="Sample" Version="1" Id="e58052b9-133c-4cdf-ac27-fecd0ecfb16f" FileSetId="88699f58-c2f5-47cb-8d70-8b050ed76b1e" SampleNumber="33">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [126]" SampleType="Sample" Version="1" Id="160cea07-1c8d-457c-8ebc-564f1c2e83af" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="34">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [127N]" SampleType="Sample" Version="1" Id="6a2fde69-6fae-4f7e-b65f-569a74c4baf8" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="35">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [127C]" SampleType="Sample" Version="1" Id="a77103fb-1544-44c7-99cd-2992123288e0" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="36">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [128N]" SampleType="Sample" Version="1" Id="1807ea8f-f884-40f3-b85e-4ceca92ac403" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="37">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [128C]" SampleType="Sample" Version="1" Id="4efb444f-adf4-4a8b-862d-e59afe940f66" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="38">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [129N]" SampleType="Sample" Version="1" Id="f978b20d-566a-4fa6-98df-ed9958b9e062" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="39">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [129C]" SampleType="Sample" Version="1" Id="4aee8684-863a-417c-8912-459231e49d86" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="40">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [130N]" SampleType="Sample" Version="1" Id="ba46fac3-f019-4317-84a8-af3f3c6c5501" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="41">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [130C]" SampleType="Sample" Version="1" Id="7e673b09-d1d5-4f21-94dd-3531f3901b73" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="42">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [131N]" SampleType="Sample" Version="1" Id="644948f3-6bee-42bb-8309-04585afde92e" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="43">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Cyno_P2 - [131C]" SampleType="Sample" Version="1" Id="79a8fd20-4067-46d7-acaf-e5ebaf456360" FileSetId="30744d2d-7100-41c8-8c7a-8647decd12bd" SampleNumber="44">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [126]" SampleType="Sample" Version="1" Id="0b67c427-8d28-4bef-95f8-7b4647de1972" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="45">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [127N]" SampleType="Sample" Version="1" Id="ddf9c2ac-b9ae-45c4-a8ae-c4ee6d07b30d" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="49">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [127C]" SampleType="Sample" Version="1" Id="fbf0a874-f9d2-44e5-b1c9-859a311fc6ba" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="50">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [128N]" SampleType="Sample" Version="1" Id="3a4b8c7b-7e7a-461d-a137-4b7a57f8f4df" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="51">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [128C]" SampleType="Sample" Version="1" Id="7400edc0-9691-4311-a647-b8781e5508d7" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="52">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [129N]" SampleType="Sample" Version="1" Id="760ffeb7-12d0-4d6c-a141-1dbc73d9109a" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="53">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [129C]" SampleType="Sample" Version="1" Id="64a4140d-ff0a-4795-a37b-742d337163dd" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="54">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [130N]" SampleType="Sample" Version="1" Id="518342ca-1162-46a0-a167-bbb154562f3f" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="55">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [130C]" SampleType="Sample" Version="1" Id="ff72d0d8-4564-4af2-bd5a-56c187031cad" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="56">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [131N]" SampleType="Sample" Version="1" Id="f3384bd7-fb70-455f-8d85-2372e1e7fe87" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="57">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P1 - [131C]" SampleType="Sample" Version="1" Id="08fd0aec-c7a6-4558-8107-6fa0fc04aaac" FileSetId="a1baa969-e535-4cc8-80bc-ba874d9e4cd4" SampleNumber="58">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [126]" SampleType="Sample" Version="1" Id="02d605e8-410b-4897-a988-1b1cdb65a2d5" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="46">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [127N]" SampleType="Sample" Version="1" Id="c611b4d9-40a1-4769-9f03-f224772ca558" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="59">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [127C]" SampleType="Sample" Version="1" Id="7d0480b1-5fb8-45bd-9ceb-24b8a4c80bbe" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="60">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [128N]" SampleType="Sample" Version="1" Id="0f096b8d-b30b-409c-af2e-cea65eebff10" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="61">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [128C]" SampleType="Sample" Version="1" Id="21b6da65-f13e-46b7-aa32-f043afb305b7" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="62">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [129N]" SampleType="Sample" Version="1" Id="d515644a-6f69-4d84-ad71-30933c14d7d5" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="63">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [129C]" SampleType="Sample" Version="1" Id="e27af624-4207-4c0c-af95-731fcc3ce01b" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="64">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [130N]" SampleType="Sample" Version="1" Id="b04b1824-c08f-4a03-801e-c6686e6f0f89" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="65">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [130C]" SampleType="Sample" Version="1" Id="1f0e0d19-81bc-46fd-85ef-fc6d0fd99bf9" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="66">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [131N]" SampleType="Sample" Version="1" Id="d96ef07d-8a82-4e0d-b4c8-dc7ccc693cdf" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="67">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P2 - [131C]" SampleType="Sample" Version="1" Id="902a0448-1257-41ab-8dc4-cc936bdc7e8b" FileSetId="f2b7b90f-0781-4451-b7cd-14f7caf42c35" SampleNumber="68">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [126]" SampleType="Sample" Version="1" Id="83b7a412-b5e1-4d50-994d-e35efbcda49e" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="47">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [127N]" SampleType="Sample" Version="1" Id="e3ff6fc3-7209-45c8-98a5-3ad8e8a3bad5" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="69">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [127C]" SampleType="Sample" Version="1" Id="874f21d0-1cc4-4efa-8d00-4b457b6a8643" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="70">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [128N]" SampleType="Sample" Version="1" Id="1bbb4a1e-1caf-4b66-abcf-12768f49f27d" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="71">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [128C]" SampleType="Sample" Version="1" Id="2b4de4a1-0b45-46ee-b779-adf6bed50715" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="72">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [129N]" SampleType="Sample" Version="1" Id="d1345068-1498-4e8f-82f0-cc294faf2243" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="73">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [129C]" SampleType="Sample" Version="1" Id="ca54e30c-2299-4d06-8a3c-f09b351fcbf9" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="74">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [130N]" SampleType="Sample" Version="1" Id="c3d2e9ac-335f-4f55-bfcf-5202e61ce8a1" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="75">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [130C]" SampleType="Sample" Version="1" Id="1ed54bb2-3ca0-493d-bb72-8700103d70b7" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="76">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [131N]" SampleType="Sample" Version="1" Id="2a8d110f-5076-4eb4-9554-d51cbe302f00" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="77">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P3 - [131C]" SampleType="Sample" Version="1" Id="00d68687-3a81-4ca3-8578-54115ad5e129" FileSetId="16622fbc-f589-466c-94b8-9eb349903d4f" SampleNumber="78">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [126]" SampleType="Sample" Version="1" Id="1cfe6f71-ba28-4e64-a0b0-1e4c06bfdf6a" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="48">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="1" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [127N]" SampleType="Sample" Version="1" Id="573eec74-108e-450d-b35e-109682098fe0" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="79">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="2" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [127C]" SampleType="Sample" Version="1" Id="133e5288-ea0f-42a5-969b-e50e73afed36" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="80">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="3" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [128N]" SampleType="Sample" Version="1" Id="4dce50dd-a1fa-42d0-bc73-c0a3df985b30" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="81">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="4" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [128C]" SampleType="Sample" Version="1" Id="265dcad4-1c49-486a-a086-9be5b88ed5b9" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="82">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="5" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [129N]" SampleType="Sample" Version="1" Id="bad0bfc6-d3fa-4f13-a186-e2ac0ce7587e" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="83">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="6" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [129C]" SampleType="Sample" Version="1" Id="d4d17649-ae92-4a98-9899-fe981881d410" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="84">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="7" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [130N]" SampleType="Sample" Version="1" Id="51224395-d164-42cb-a4fc-c5ffdd88dd1d" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="85">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="8" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [130C]" SampleType="Sample" Version="1" Id="833b6533-885e-4fb6-b231-dd56181233e8" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="86">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="9" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [131N]" SampleType="Sample" Version="1" Id="5b04cea6-71a8-4ea5-9b99-e04d7003ab07" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="87">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="10" />
+				<FactorValues />
+			</Sample>
+			<Sample Name="IQP_1269_Dog_P4 - [131C]" SampleType="Sample" Version="1" Id="b737bc49-e6f4-40af-a844-74068c935f67" FileSetId="876d4746-f8a7-4d13-ba85-e922383f7568" SampleNumber="88">
+				<QuanChannelInformation QuanMethodId="9" QuanChannelId="11" />
+				<FactorValues />
+			</Sample>
+		</Samples>
+		</StudyDefinition></Study>

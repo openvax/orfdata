@@ -1,0 +1,335 @@
+{
+  "cells": {
+    "M1": "Dog",
+    "M10": "130C",
+    "M11": "131N",
+    "M12": "131C",
+    "M13": "FASTA: Canis lupus familiaris from Uniprot, downloaded July 2023, 20,649 sequences",
+    "M2": "126",
+    "M3": "127N",
+    "M4": "127C",
+    "M5": "128N",
+    "M6": "128C",
+    "M7": "129N",
+    "M8": "129C",
+    "M9": "130N",
+    "N1": "Plex1",
+    "N10": "Parotid_Gland",
+    "N11": "Empty",
+    "N12": "Bridge",
+    "N2": "Adrenal",
+    "N3": "Ovary",
+    "N4": "Uterus_Endometrium",
+    "N5": "GI_Stomach",
+    "N6": "Bone_Marrow",
+    "N7": "White_Blood_Cells",
+    "N8": "Cerebral_Cortex",
+    "N9": "Testis",
+    "O1": "Plex2",
+    "O10": "Heart",
+    "O11": "Uterus_Cervix",
+    "O12": "Bridge",
+    "O2": "Bladder",
+    "O3": "Pancreas",
+    "O4": "Prostate",
+    "O5": "GI_Ileum",
+    "O6": "GI_Jejunum",
+    "O7": "Lymph_Node",
+    "O8": "Thymus",
+    "O9": "Cerebellum",
+    "P1": "Plex3",
+    "P10": "Skeletal_Muscle",
+    "P11": "Endothelium",
+    "P12": "Bridge",
+    "P2": "Fallopian_Tube",
+    "P3": "Parathyroid",
+    "P4": "Thyroid",
+    "P5": "Kidney",
+    "P6": "GI_Duodenum",
+    "P7": "Spleen",
+    "P8": "Breast/Mammary",
+    "P9": "Eye",
+    "Q1": "Plex4",
+    "Q10": "Liver",
+    "Q11": "Empty",
+    "Q12": "Bridge",
+    "Q2": "Lung",
+    "Q3": "Pituitary",
+    "Q4": "Ureter",
+    "Q5": "Skin",
+    "Q6": "GI_Colon",
+    "Q7": "Tonsil",
+    "Q8": "Spinal_Cord",
+    "Q9": "Peripheral_Nerve"
+  },
+  "channels": [
+    {
+      "cell": "N2",
+      "channel": "126",
+      "plex": "Plex1",
+      "source_label": "Adrenal"
+    },
+    {
+      "cell": "N3",
+      "channel": "127N",
+      "plex": "Plex1",
+      "source_label": "Ovary"
+    },
+    {
+      "cell": "N4",
+      "channel": "127C",
+      "plex": "Plex1",
+      "source_label": "Uterus_Endometrium"
+    },
+    {
+      "cell": "N5",
+      "channel": "128N",
+      "plex": "Plex1",
+      "source_label": "GI_Stomach"
+    },
+    {
+      "cell": "N6",
+      "channel": "128C",
+      "plex": "Plex1",
+      "source_label": "Bone_Marrow"
+    },
+    {
+      "cell": "N7",
+      "channel": "129N",
+      "plex": "Plex1",
+      "source_label": "White_Blood_Cells"
+    },
+    {
+      "cell": "N8",
+      "channel": "129C",
+      "plex": "Plex1",
+      "source_label": "Cerebral_Cortex"
+    },
+    {
+      "cell": "N9",
+      "channel": "130N",
+      "plex": "Plex1",
+      "source_label": "Testis"
+    },
+    {
+      "cell": "N10",
+      "channel": "130C",
+      "plex": "Plex1",
+      "source_label": "Parotid_Gland"
+    },
+    {
+      "cell": "N11",
+      "channel": "131N",
+      "plex": "Plex1",
+      "source_label": "Empty"
+    },
+    {
+      "cell": "N12",
+      "channel": "131C",
+      "plex": "Plex1",
+      "source_label": "Bridge"
+    },
+    {
+      "cell": "O2",
+      "channel": "126",
+      "plex": "Plex2",
+      "source_label": "Bladder"
+    },
+    {
+      "cell": "O3",
+      "channel": "127N",
+      "plex": "Plex2",
+      "source_label": "Pancreas"
+    },
+    {
+      "cell": "O4",
+      "channel": "127C",
+      "plex": "Plex2",
+      "source_label": "Prostate"
+    },
+    {
+      "cell": "O5",
+      "channel": "128N",
+      "plex": "Plex2",
+      "source_label": "GI_Ileum"
+    },
+    {
+      "cell": "O6",
+      "channel": "128C",
+      "plex": "Plex2",
+      "source_label": "GI_Jejunum"
+    },
+    {
+      "cell": "O7",
+      "channel": "129N",
+      "plex": "Plex2",
+      "source_label": "Lymph_Node"
+    },
+    {
+      "cell": "O8",
+      "channel": "129C",
+      "plex": "Plex2",
+      "source_label": "Thymus"
+    },
+    {
+      "cell": "O9",
+      "channel": "130N",
+      "plex": "Plex2",
+      "source_label": "Cerebellum"
+    },
+    {
+      "cell": "O10",
+      "channel": "130C",
+      "plex": "Plex2",
+      "source_label": "Heart"
+    },
+    {
+      "cell": "O11",
+      "channel": "131N",
+      "plex": "Plex2",
+      "source_label": "Uterus_Cervix"
+    },
+    {
+      "cell": "O12",
+      "channel": "131C",
+      "plex": "Plex2",
+      "source_label": "Bridge"
+    },
+    {
+      "cell": "P2",
+      "channel": "126",
+      "plex": "Plex3",
+      "source_label": "Fallopian_Tube"
+    },
+    {
+      "cell": "P3",
+      "channel": "127N",
+      "plex": "Plex3",
+      "source_label": "Parathyroid"
+    },
+    {
+      "cell": "P4",
+      "channel": "127C",
+      "plex": "Plex3",
+      "source_label": "Thyroid"
+    },
+    {
+      "cell": "P5",
+      "channel": "128N",
+      "plex": "Plex3",
+      "source_label": "Kidney"
+    },
+    {
+      "cell": "P6",
+      "channel": "128C",
+      "plex": "Plex3",
+      "source_label": "GI_Duodenum"
+    },
+    {
+      "cell": "P7",
+      "channel": "129N",
+      "plex": "Plex3",
+      "source_label": "Spleen"
+    },
+    {
+      "cell": "P8",
+      "channel": "129C",
+      "plex": "Plex3",
+      "source_label": "Breast/Mammary"
+    },
+    {
+      "cell": "P9",
+      "channel": "130N",
+      "plex": "Plex3",
+      "source_label": "Eye"
+    },
+    {
+      "cell": "P10",
+      "channel": "130C",
+      "plex": "Plex3",
+      "source_label": "Skeletal_Muscle"
+    },
+    {
+      "cell": "P11",
+      "channel": "131N",
+      "plex": "Plex3",
+      "source_label": "Endothelium"
+    },
+    {
+      "cell": "P12",
+      "channel": "131C",
+      "plex": "Plex3",
+      "source_label": "Bridge"
+    },
+    {
+      "cell": "Q2",
+      "channel": "126",
+      "plex": "Plex4",
+      "source_label": "Lung"
+    },
+    {
+      "cell": "Q3",
+      "channel": "127N",
+      "plex": "Plex4",
+      "source_label": "Pituitary"
+    },
+    {
+      "cell": "Q4",
+      "channel": "127C",
+      "plex": "Plex4",
+      "source_label": "Ureter"
+    },
+    {
+      "cell": "Q5",
+      "channel": "128N",
+      "plex": "Plex4",
+      "source_label": "Skin"
+    },
+    {
+      "cell": "Q6",
+      "channel": "128C",
+      "plex": "Plex4",
+      "source_label": "GI_Colon"
+    },
+    {
+      "cell": "Q7",
+      "channel": "129N",
+      "plex": "Plex4",
+      "source_label": "Tonsil"
+    },
+    {
+      "cell": "Q8",
+      "channel": "129C",
+      "plex": "Plex4",
+      "source_label": "Spinal_Cord"
+    },
+    {
+      "cell": "Q9",
+      "channel": "130N",
+      "plex": "Plex4",
+      "source_label": "Peripheral_Nerve"
+    },
+    {
+      "cell": "Q10",
+      "channel": "130C",
+      "plex": "Plex4",
+      "source_label": "Liver"
+    },
+    {
+      "cell": "Q11",
+      "channel": "131N",
+      "plex": "Plex4",
+      "source_label": "Empty"
+    },
+    {
+      "cell": "Q12",
+      "channel": "131C",
+      "plex": "Plex4",
+      "source_label": "Bridge"
+    }
+  ],
+  "range": "M1:Q13",
+  "searched_fasta_note": "FASTA: Canis lupus familiaris from Uniprot, downloaded July 2023, 20,649 sequences",
+  "sheet": "TableS2_tissues_proteomics",
+  "source_sha256": "a95b7a2514679ba6f7283573059f27e6182b5620f6d0beead601e47daf85e740"
+}

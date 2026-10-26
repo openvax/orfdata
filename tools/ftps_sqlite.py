@@ -51,7 +51,7 @@ class FTPSRanges:
     """
 
     def __init__(self, identity, *, transfer_limit, request_limit=10000,
-                 seconds_limit=3600, retries=2, timeout=30):
+                 seconds_limit=3600, retries=2, timeout=30, reuse_control=False):
         self.identity = identity
         self.transfer_limit = transfer_limit
         self.request_limit = request_limit
@@ -63,8 +63,13 @@ class FTPSRanges:
         self.failures = []
         self.started = time.monotonic()
         self.ledger = None
+        self.reuse_control = reuse_control
+        self._control = None
+        self.control_connections = 0
+        self.bounded_close_responses = 0
 
     def _connect(self):
+        self.control_connections += 1
         ftp = ftplib.FTP_TLS(context=ssl.create_default_context(), timeout=self.timeout)
         try:
             ftp.connect(self.identity.host, 21)
@@ -76,16 +81,51 @@ class FTPSRanges:
             raise
         return ftp
 
+    def _get_control(self):
+        if self._control is None:
+            self._control = self._connect()
+        return self._control
+
+    def _finish_bounded_transfer(self, ftp):
+        """Consume the observed server response and prove command synchronization.
+
+        MassIVE returns a final 550 network-write error after a deliberately
+        bounded data socket is closed. Only that observed response is accepted,
+        only after the requested payload length was received. A following 200
+        NOOP and fresh SIZE/MDTM must succeed before the channel is reused.
+        Chunk overlap checks independently establish returned-offset integrity.
+        """
+        try:
+            ftp.voidresp()
+        except ftplib.error_perm as error:
+            message = str(error)
+            if not (self.identity.host == "massive-ftp.ucsd.edu" and
+                    message.startswith("550 Issue during transfer: network error:") and
+                    "write:" in message and ("connection reset by peer" in message or "broken pipe" in message)):
+                raise
+            self.bounded_close_responses += 1
+        except ftplib.error_temp as error:
+            if not str(error).startswith("426"):
+                raise
+            ftp.voidresp()  # A 426 may be followed by its final 226 response.
+        if not ftp.voidcmd("NOOP").startswith("200"):
+            raise ValueError("FTPS control responses are not synchronized")
+
+    def close(self):
+        if self._control is not None:
+            self._control.close()
+            self._control = None
+
     def check(self, ftp=None):
         own = ftp is None
-        ftp = ftp or self._connect()
+        ftp = ftp or (self._get_control() if self.reuse_control else self._connect())
         try:
             found = Identity(self.identity.host, self.identity.path,
                              ftp.size(self.identity.path), ftp.sendcmd("MDTM " + self.identity.path))
             if found != self.identity:
                 raise SourceChanged(f"Remote identity changed: {found!r}")
         finally:
-            if own:
+            if own and not self.reuse_control:
                 ftp.close()
 
     def _check_budget(self, amount):
@@ -110,7 +150,7 @@ class FTPSRanges:
             initial_bytes = self.payload_bytes
             status = "failed"
             try:
-                ftp = self._connect()
+                ftp = self._get_control() if self.reuse_control else self._connect()
                 self.check(ftp)
                 reply = ftp.sendcmd("REST " + str(offset))
                 if not reply.startswith("350"):
@@ -129,9 +169,13 @@ class FTPSRanges:
                 # Do not drain RETR: the remote file can be many gigabytes.
                 stream.close()
                 stream = None
-                ftp.close()
-                ftp = None
-                self.check()
+                if self.reuse_control:
+                    self._finish_bounded_transfer(ftp)
+                    self.check(ftp)
+                else:
+                    ftp.close()
+                    ftp = None
+                    self.check()
                 status = "complete"
                 return b"".join(chunks)
             except (OSError, EOFError, ftplib.error_temp) as error:
@@ -143,8 +187,10 @@ class FTPSRanges:
                 try:
                     if stream is not None:
                         stream.close()
-                    if ftp is not None:
+                    if ftp is not None and (not self.reuse_control or status != "complete"):
                         ftp.close()
+                        if self._control is ftp:
+                            self._control = None
                 finally:
                     if reservation is not None:
                         self.ledger.settle(reservation, self.payload_bytes - initial_bytes, status=status)
@@ -155,7 +201,7 @@ class ChunkCache:
     """Persistent checksummed chunks, with verified shifted overlap per chunk."""
 
     def __init__(self, source, directory, *, chunk_size=1024 * 1024,
-                 cache_limit=64 * 1024 * 1024, prior_receipts=(), scratch=None):
+                 cache_limit=64 * 1024 * 1024, prior_receipts=(), scratch=None, read_ahead=None):
         if not 4096 <= chunk_size <= 16 * 1024 * 1024 or chunk_size & (chunk_size - 1):
             raise ValueError("Chunk size must be a power of two from 4 KiB to 16 MiB")
         if cache_limit < chunk_size:
@@ -167,6 +213,9 @@ class ChunkCache:
         self.scratch = scratch or ScratchBudget(self.directory, cache_limit + 32 * 1024 * 1024)
         self.scratch.require(4096)
         self.chunk_size = chunk_size
+        self.read_ahead = chunk_size if read_ahead is None else read_ahead
+        if not chunk_size <= self.read_ahead <= 16 * 1024 * 1024 or self.read_ahead % chunk_size:
+            raise ValueError("Read ahead must be a chunk multiple up to 16 MiB")
         self.cache_limit = cache_limit
         self.hits = 0
         self.read_calls = 0
@@ -291,7 +340,10 @@ class ChunkCache:
                 raise ValueError("Cached chunk checksum/length mismatch")
             self.hits += 1
             return data
-        length = min(self.chunk_size, self.source.identity.size - offset)
+        length = min(self.read_ahead, self.source.identity.size - offset)
+        following = bisect_right(self.chunk_offsets, offset)
+        if following < len(self.chunk_offsets):
+            length = min(length, self.chunk_offsets[following] - offset)
         # Reserve space before the network operation; do not evict and re-fetch
         # indefinitely under an apparently small disk budget.
         if self.cached_bytes + length > self.cache_limit:
@@ -371,9 +423,14 @@ class ChunkCache:
                     cache_hits=self.hits, sqlite_reads=self.read_calls,
                     transfer_limit=self.source.transfer_limit, cache_limit=self.cache_limit,
                     request_limit=self.source.request_limit, seconds_limit=self.source.seconds_limit,
+                    chunk_size=self.chunk_size, read_ahead=self.read_ahead,
+                    reuse_control=self.source.reuse_control,
+                    control_connections=self.source.control_connections,
+                    bounded_close_responses=self.source.bounded_close_responses,
                     accounting="recv data payload, including overlap/retries; excludes network/TLS overhead and server read-ahead")
 
     def close(self):
+        self.source.close()
         if self.ledger is not None:
             self.ledger.close()
             if self.source.ledger is self.ledger:

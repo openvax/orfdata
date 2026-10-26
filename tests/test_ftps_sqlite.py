@@ -280,3 +280,81 @@ def test_cache_scratch_limit_prevents_network_acquisition(sqlite_bytes, tmp_path
         cache.read(0, 100)
     assert source.payload_bytes == 4096
     cache.close()
+
+
+def test_bounded_read_ahead_stops_before_existing_fine_chunks(sqlite_bytes, tmp_path):
+    data, _ = sqlite_bytes
+    cache = ChunkCache(LocalSource(data, transfer_limit=100000), tmp_path / "cache", chunk_size=4096)
+    assert cache.read(8192, 10) == data[8192:8202]
+    cache.read_ahead = 16384
+    assert cache.read(0, 20000) == data[:20000]
+    assert [(int(k), v["length"]) for k, v in sorted(cache.chunks.items(), key=lambda pair: int(pair[0]))] == [
+        (0, 8192), (8192, 4096), (12288, 16384)]
+    assert cache.cached_bytes == 28672
+    cache.close()
+
+
+@pytest.mark.parametrize("response", ["bounded_close", "permission_error", "stale_noop"])
+def test_reused_control_requires_known_completion_noop_and_fresh_identity(monkeypatch, response):
+    import ftplib
+
+    source = FTPSRanges(Identity("massive-ftp.ucsd.edu", "/fixture", 8, "213 pinned"),
+                        transfer_limit=100, reuse_control=True)
+    connections, commands = [], []
+
+    class Stream:
+        def __init__(self, offset):
+            self.data = b"abcdefgh"[offset:]
+
+        def recv(self, length):
+            data, self.data = self.data[:length], self.data[length:]
+            return data
+
+        def close(self):
+            pass
+
+    class FTP:
+        def __init__(self):
+            self.closed = False
+            connections.append(self)
+
+        def size(self, path):
+            commands.append("SIZE")
+            return 8
+
+        def sendcmd(self, command):
+            commands.append(command)
+            if command.startswith("MDTM"):
+                return "213 pinned"
+            self.offset = int(command.split()[1])
+            return "350 OK"
+
+        def transfercmd(self, command):
+            return Stream(self.offset)
+
+        def voidresp(self):
+            if response == "permission_error":
+                raise ftplib.error_perm("550 Permission denied")
+            raise ftplib.error_perm("550 Issue during transfer: network error: write: connection reset by peer")
+
+        def voidcmd(self, command):
+            commands.append(command)
+            return "226 stale completion" if response == "stale_noop" else "200 OK"
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(source, "_connect", FTP)
+    if response != "bounded_close":
+        with pytest.raises((ValueError, ftplib.error_perm)):
+            source.read(0, 3)
+        assert source._control is None and connections[0].closed
+    else:
+        assert source.read(0, 3) == b"abc"
+        assert source.read(3, 3) == b"def"
+        assert len(connections) == 1 and not connections[0].closed
+        assert source.payload_bytes == 6 and source.bounded_close_responses == 2
+        assert commands.count("SIZE") == 4 and commands.count("MDTM /fixture") == 4
+        assert commands.count("NOOP") == 2
+        source.close()
+        assert connections[0].closed
