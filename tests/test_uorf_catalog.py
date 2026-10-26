@@ -167,6 +167,9 @@ def test_minus_strand_spliced_codon_and_stop_mapping():
         {"biotype": "dORF"},
         {"require_unique": True},
         {"evidence": "ribosome", "require_reviewed": True},
+        {"min_protein_length": 0},
+        {"min_protein_length": True},
+        {"min_protein_length": 1.5},
     ],
 )
 def test_ambiguous_or_invalid_queries_are_errors(catalog, options):

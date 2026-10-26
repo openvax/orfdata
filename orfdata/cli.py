@@ -120,6 +120,8 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
                                           "(GENCODE, human); uORF, uoORF, iORF, dORF, doORF, lncORF (mouse Ribo-seq; "
                                           "RibORF also truncation, extension); AltProt, Isoform (OpenProt)")
+    parser.add_argument("--min-protein-length", type=int, metavar="AA",
+                        help="Select ORFs with at least this many amino acids; source catalogues stay unfiltered")
     parser.add_argument("--region", help="1-based inclusive interval: chr7:66205483-66205522")
     parser.add_argument(
         "--position", help="Map a 1-based variant position: chr7:66205483 (JSON only)"
@@ -228,6 +230,7 @@ def _query(args, parser, catalog_loader):
             "transcript_id": args.transcript,
             "evidence": _rule(args, args.evidence, "--evidence"),
             "biotype": args.biotype,
+            "min_protein_length": args.min_protein_length,
             "genome_build": args.genome_build,
             "include_initiation_context": args.include_initiation_context or bool(args.ref),
         }

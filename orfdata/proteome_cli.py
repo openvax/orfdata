@@ -37,6 +37,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
                              "to combine sources. No ncORFs by default")
     parser.add_argument("--no-reference-cds", action="store_true",
                         help="Omit proteins translated from the reference annotation's CDS features")
+    parser.add_argument("--min-protein-length", type=int, metavar="AA",
+                        help="Add only ncORFs with at least this many amino acids; source catalogues stay unfiltered")
     parser.add_argument("--viral", action="append", metavar="REFERENCE",
                         help="Add a bundled virus by type (e.g. HPV16) or exact reference ID; "
                              "use 'all' for every distinct bundled virus recorded for this host; repeat for several")
@@ -74,7 +76,8 @@ def run(argv=None, prog=None, *, genome_loader=None):
             genome = (genome_loader or _ensembl_genome)(args.release, args.species)
         proteome = Proteome.build(
             genome, reference_cds=not args.no_reference_cds, isoforms=args.isoforms,
-            nc_orf_sources=sources, viral=args.viral or (), cache=args.cache, cache_root=args.cache_root)
+            nc_orf_sources=sources, viral=args.viral or (), min_protein_length=args.min_protein_length,
+            cache=args.cache, cache_root=args.cache_root)
         proteome.write_fasta(args.output or sys.stdout)
         annotation = proteome.write_annotation(args.annotation) if args.annotation else None
         if args.snapshot:

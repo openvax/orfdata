@@ -359,6 +359,10 @@ def test_empty_nc_orf_sources_never_load_datasets(genome, monkeypatch):
         assert reference.identity == tx.proteome(nc_orf_sources=empty).identity
         assert reference.with_nc_orfs(empty) is reference
         assert len(tx.proteome(reference_cds=False, nc_orf_sources=empty)) == 0
+        with pytest.raises(ValueError, match="requires nc_orf_sources"):
+            tx.proteome(nc_orf_sources=empty, min_protein_length=5)
+        with pytest.raises(ValueError, match="requires nc_orf_sources"):
+            reference.with_nc_orfs(empty, min_protein_length=5)
 
 
 def test_proteome_rejects_removed_and_invalid_source_options(genome, catalog):
@@ -377,6 +381,11 @@ def test_proteome_rejects_removed_and_invalid_source_options(genome, catalog):
             tx.proteome(isoforms=isoforms)
         with pytest.raises(ValueError, match="isoforms must be"):
             Proteome.from_genome(genome, isoforms=isoforms)
+    for minimum in (0, True, 1.5):
+        with pytest.raises(ValueError, match="min_protein_length"):
+            extra_orfs(genome, None, catalog=catalog, min_protein_length=minimum)
+        with pytest.raises(ValueError, match="min_protein_length"):
+            tx.proteome(nc_orf_sources=catalog, min_protein_length=minimum)
 
 
 def test_extra_orfs_sit_on_every_transcript_carrying_their_coding_path(genome, catalog):
@@ -429,6 +438,11 @@ def test_proteome_entries_keep_every_occurrence_and_source_binding(genome, catal
     assert layer["source"] == "orfdata-catalog:fixture-v1" and len(layer["catalog"]["sha256"]) == 64
     everything = base.with_extra_orfs(None, catalog=catalog)
     assert {e.accession for e in everything if e.kind == "extra_orf"} == {"ms-orf", "ribo-orf", "absent-orf"}
+    length_selected = base.with_extra_orfs(None, catalog=catalog, min_protein_length=3)
+    assert {e.accession for e in length_selected if e.kind == "extra_orf"} == {"ms-orf", "absent-orf"}
+    assert dict(length_selected.layers[-1])["min_protein_length"] == 3
+    assert dict(length_selected.layers[-1])["length_filtered"] == 1
+    assert length_selected.identity != everything.identity
     ribosome = base.with_extra_orfs("ribosome", catalog=catalog)
     assert [e.accession for e in ribosome if e.kind == "extra_orf"] == ["ribo-orf"]
     assert base.with_extra_orfs("ms", catalog=catalog, require_resolved=True).layers[-1]["added"] == 2
@@ -1028,6 +1042,11 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     run(command + ["--nc-orf-sources", str(path), "--no-reference-cds"])
     captured = capsys.readouterr()
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"extra_orf": 3}
+    run(command + ["--nc-orf-sources", str(path), "--no-reference-cds", "--min-protein-length", "3"])
+    captured = capsys.readouterr()
+    selected = json.loads(captured.err)
+    assert captured.out.count(">") == 2 and selected["kinds"] == {"extra_orf": 2}
+    assert selected["layers"][-1]["length_filtered"] == 1
     snapshot = tmp_path / "proteome.json.gz"
     run(command + ["--nc-orf-sources", str(path), "--snapshot", str(snapshot)])
     assert Proteome.load(snapshot).identity == json.loads(capsys.readouterr().err)["identity"]

@@ -7,16 +7,18 @@ from pathlib import Path
 
 import pytest
 
-from orfdata import MS, CatalogRegistry, RiboSeq, extra_orfs
+from orfdata import MS, CatalogRegistry, Proteome, RiboSeq, extra_orfs
 
 FIXTURES = Path(__file__).parent / "data/riborf"
 FILES = dict(table="SD3.xlsx", gtf="ensembl107.gtf.gz", cdna="ensembl107.cdna.fa.gz", ncrna="ensembl107.ncrna.fa.gz")
-# Nineteen real rows; see data/riborf/README.md. Canonical and readthrough rows are not imported, two are too short,
-# and three are unresolved: a transcript that changed length, a TEC transcript without sequence and one whose
-# sequence changed at the same length.
-COVERAGE = dict(records=12, distinct_protein_sequences=12, evidence_summaries=12, source_rows=17, short_rows=2,
-                resolved_rows=12, unresolved_rows=3)
+# Nineteen real rows; see data/riborf/README.md. Canonical and readthrough rows are not imported; the 1- and
+# 4-residue source ORFs are retained. Three rows are unresolved: a transcript that changed length, a TEC transcript
+# without sequence and one whose sequence changed at the same length.
+COVERAGE = dict(records=14, distinct_protein_sequences=14, evidence_summaries=14, source_rows=17, short_rows=2,
+                resolved_rows=14, unresolved_rows=3)
 PATHS = {asset: str(FIXTURES / name) for asset, name in FILES.items()}
+V1_COVERAGE = dict(records=12, distinct_protein_sequences=12, evidence_summaries=12, source_rows=17,
+                   short_rows=2, resolved_rows=12, unresolved_rows=3)
 
 
 @pytest.fixture
@@ -38,11 +40,13 @@ def catalog(tmp_path):
 def test_rows_map_through_their_transcript_and_translate_there(catalog):
     types = sorted((r.biotype, r.start_codon or "") for r in catalog.records)
     # ouORF, odORF and noncoding take Chang et al.'s names; ACG and GTG starts are declared.
-    assert types == [("doORF", ""), ("extension", ""), ("iORF", ""), ("lncORF", ""), ("lncORF", "ACG"),
+    assert types == [("doORF", ""), ("extension", ""), ("iORF", ""), ("iORF", ""),
+                     ("lncORF", ""), ("lncORF", ""), ("lncORF", "ACG"),
                      ("lncORF", "GTG"), ("truncation", ""), ("uORF", ""), ("uORF", ""), ("uORF", ""),
                      ("uORF", "ACG"), ("uoORF", "")]
     assert all(r.protein_sequence.startswith("M") and r.transcript_id.count(".") == 1 for r in catalog.records)
-    assert min(len(r.protein_sequence) for r in catalog.records) == 5  # The 1- and 4-residue rows are left out.
+    assert sorted(len(r.protein_sequence) for r in catalog.records)[:2] == [1, 4]
+    assert len(catalog.query(min_protein_length=5)) == 12
     noncoding = next(r for r in catalog.records if r.transcript_id.startswith("ENSMUST00000235655"))
     assert len(noncoding.protein_sequence) == 26  # Translated from the ncRNA FASTA.
     reasons = {u["transcript"]: u["reason"] for u in catalog.metadata["unresolved"]}
@@ -67,7 +71,7 @@ def test_ids_never_take_a_name_chang_et_al_use(catalog):
 def test_presence_is_aggregate_ribo_seq_support(catalog):
     summary, = catalog.records[0].evidence.summaries
     assert (summary.metric, summary.value, summary.scope) == ("RibORF 2.0 translated ORF", 1, "orf")
-    assert len(catalog.query(evidence=RiboSeq())) == 12 and catalog.query(evidence=MS()) == ()
+    assert len(catalog.query(evidence=RiboSeq())) == 14 and catalog.query(evidence=MS()) == ()
     assert catalog.query(evidence=RiboSeq(min_studies=2)) == ()
 
 
@@ -91,6 +95,13 @@ def test_every_record_binds_to_its_ensembl_107_transcript(catalog, tmp_path):
             bound = record.bind(genome.transcript_by_id(record.transcript_id.split(".")[0]))
             assert bound.protein_sequence == record.protein_sequence and bound.on_source_transcript
         assert extra_orfs(genome, None, catalog=catalog).excluded == ()
+        selected = extra_orfs(genome, None, catalog=catalog, min_protein_length=5)
+        assert len({orf.orf_id for orf in selected}) == 12
+        assert selected.length_filtered == 2 and selected.min_protein_length == 5
+        proteome = Proteome.build(
+            genome, reference_cds=False, nc_orf_sources=catalog, min_protein_length=5)
+        assert dict(proteome.layers[-1])["length_filtered"] == 2
+        assert dict(proteome.layers[-1])["min_protein_length"] == 5
     finally:
         genome.close()
 
@@ -105,3 +116,20 @@ def test_setup_downloads_the_ensembl_gtf_both_mouse_ribo_seq_catalogues_pin_once
     shared = install._shared_sources(manifests, tmp_path, {})
     gtf, = (s for s in manifests[1].sources if s.asset_id == "gtf")
     assert shared == {gtf.sha256: "local"} and fetched == [gtf.url]
+
+
+def test_filtered_release_one_remains_reproducible(tmp_path):
+    packaged = CatalogRegistry()
+    assert packaged.info("riborf-mouse").version == "2"
+    manifest = packaged.info("riborf-mouse", "1")
+    assert manifest.processing["min_protein_length"] == 5
+    sources = tuple(replace(s, url=f"https://example.invalid/{FILES[s.asset_id]}",
+                            sha256=hashlib.sha256((FIXTURES / FILES[s.asset_id]).read_bytes()).hexdigest(),
+                            size=(FIXTURES / FILES[s.asset_id]).stat().st_size) for s in manifest.sources)
+    manifest = replace(manifest, sources=sources, coverage=V1_COVERAGE)
+    release = dict(manifest=manifest.to_dict(), distribution=dict(access_terms="fixture", redistributable=False),
+                   assets={})
+    registry = CatalogRegistry({manifest.catalog_id: dict(default_version="1", versions={"1": release})},
+                               cache_root=tmp_path / "cache")
+    old = registry.build("riborf-mouse", source_paths=PATHS)
+    assert len(old.records) == 12 and min(len(r.protein_sequence) for r in old.records) == 5

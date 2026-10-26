@@ -8,8 +8,8 @@ catalogue release.
   BY 4.0): a uORF, an N-terminal truncation and an extension, ACG and GTG
   starts, ouORF, odORF and noncoding ORFs (one on a transcript in the ncRNA
   FASTA), a 5-residue ORF, two uORFs on different paths with the same start
-  and stop, and ORFs that are not imported: an annotated CDS, a readthrough
-  ORF, a 1- and a 4-residue ORF, and three unresolved ones (a transcript that
+  and stop, a retained 1- and 4-residue ORF, and ORFs that are not imported:
+  an annotated CDS, a readthrough ORF, and three unresolved ones (a transcript that
   changed length since GENCODE vM25, a TEC transcript with no sequence, and a
   transcript whose sequence changed at the same length, on which another ORF
   still places).

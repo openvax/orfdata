@@ -1,3 +1,17 @@
+# 0.37.0
+
+- RibORF catalogue release 2 preserves every short source ORF that passes the
+  same transcript, sequence, start and stop checks as longer records. It adds
+  11,902 mouse, 11,679 human, 5,732 zebrafish, 1,186 C. elegans and 241 yeast
+  ORFs shorter than five residues; failed rows remain individually traceable.
+  Release 1 remains reproducible and addressable by version.
+- ORF length is now an explicit consumer policy. `ORFCatalog.query()`,
+  `extra_orfs()`, `with_extra_orfs()`, `with_nc_orfs()`, `Proteome.build()` and
+  `ReferenceTranscriptome.proteome()` accept `min_protein_length`; both query
+  and proteome CLIs expose `--min-protein-length`. Proteome layers and cache
+  identities record the threshold and the number filtered, while source
+  catalogues stay lossless.
+
 # 0.36.0
 
 - Public names now say what their values are. `ProteinSequence` is one protein

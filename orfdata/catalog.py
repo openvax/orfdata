@@ -588,6 +588,7 @@ class ORFCatalog:
         require_reviewed=False,
         require_resolved=False,
         biotype=None,
+        min_protein_length=None,
         include_initiation_context=False,
     ):
         """Filter records; genomic intervals are 1-based inclusive and spliced.
@@ -602,6 +603,8 @@ class ORFCatalog:
         scope, not unique in every normal human proteome.
         ``require_resolved`` excludes aggregate-only support: MS needs a peptide
         observation and ribosome evidence needs a named study.
+        ``min_protein_length`` is an explicit consumer selection in amino acids;
+        the catalogue itself retains every representable source ORF.
         ``include_initiation_context`` also intersects placed spliced start
         flanks, for example an upstream Kozak SNV. The default remains coding
         blocks only. It does not include introns between context bases.
@@ -619,6 +622,8 @@ class ORFCatalog:
             raise ValueError(f"Expected genome build {self.genome_build}, got {genome_build}")
         rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
                              require_resolved=require_resolved)
+        if min_protein_length is not None:
+            _positive_integer(min_protein_length, "min_protein_length")
 
         return tuple(
             r
@@ -642,6 +647,7 @@ class ORFCatalog:
                 )
             )
             and (biotype is None or any(m.biotype == biotype for m in r.members or (r,)))
+            and (min_protein_length is None or len(r.protein_sequence) >= min_protein_length)
             and (rule is None or rule.matches(r.evidence))
         )
 
