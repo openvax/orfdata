@@ -103,6 +103,11 @@ That writes `ncorfs/annotation.gtf`, `ncorfs/transcripts.fasta` and
 gene, with the spliced coding sequence and the translation. In Python the same
 is `proteome.write_annotation("ncorfs")`.
 
+Catalogue imports preserve short translated ORFs for variant annotation. If a
+particular peptide-search workflow requires a length floor, add
+`--min-protein-length 5`; the generated proteome records the explicit policy and
+its omitted count, while the underlying catalogue remains complete.
+
 ```python
 from pyensembl import Genome
 

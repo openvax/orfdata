@@ -146,6 +146,22 @@ A list of evidence names selects ORFs with any of them:
 MS peptide, unlike `"ms"`, which also counts unclassified MS. For ORFs that
 need two kinds of evidence at once, combine rules with `&`, below.
 
+Length is a separate consumer policy, never an import rule. RibORF catalogues
+retain valid short source ORFs because they can matter for variant annotation
+even when they are unsuitable for a peptide search. Use
+`catalog.query(min_protein_length=5)`, `extra_orfs(...,
+min_protein_length=5)`, or:
+
+```python
+search_reference = transcriptome.proteome(
+    nc_orf_sources="ribosome", min_protein_length=5
+)
+```
+
+The corresponding CLI option is `--min-protein-length 5`. A proteome snapshot's
+ncORF layer records both the threshold and `length_filtered`, so the omission is
+auditable and changes the cache identity. Reference CDS proteins are unaffected.
+
 ### Separate Ribo-seq and MS stringency
 
 For more control, pass a rule. `RiboSeq(min_studies=n)` needs ribosome

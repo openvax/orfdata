@@ -53,11 +53,11 @@ def _builder(manifest):
         from .sources.ncorf_mammals import import_orfs
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
-    if importer == "riborf-v1":
+    if importer in ("riborf-v1", "riborf-v2"):
         from .sources.riborf import import_orfs
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
-    if importer == "riborf-genome-v1":
+    if importer in ("riborf-genome-v1", "riborf-genome-v2"):
         from .sources.riborf import import_genome_orfs
 
         return lambda inputs, output: import_genome_orfs(inputs, output, manifest)

@@ -115,6 +115,8 @@ def test_catalogue_cli_reuses_evidence_locus_and_export_options(tmp_path, capsys
     assert record.protein_sequence in capsys.readouterr().out
     run(query + ["--evidence", "ms", "--require-resolved"])
     assert json.loads(capsys.readouterr().out)["records"] == []
+    run(query + ["--min-protein-length", str(len(record.protein_sequence) + 1)])
+    assert json.loads(capsys.readouterr().out)["records"] == []
     run(query + ["--position", f"{record.contig}:{record.coding_blocks[0][0]}", "--genome-build", record.genome_build])
     assert json.loads(capsys.readouterr().out)["records"][0]["orf_id"] == record.orf_id
     with pytest.raises(SystemExit):
@@ -305,10 +307,14 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
     assert (human.species, human.genome_build) == ("homo_sapiens", "GRCh38")
     assert load_catalog(species="human", genome_build="GRCh38").records == human.records
     with pytest.raises(ValueError, match=r"Catalogues exist for: caenorhabditis_elegans WBcel235 \(riborf-worm 1\); "
-                                         r"danio_rerio GRCz11 \(riborf-zebrafish 1\); homo_sapiens GRCh38 \(bundled\); "
-                                         r"homo_sapiens GRCh38 \(ncorf-mammals-human 1\); homo_sapiens GRCh38 \(riborf-human 1\); "
+                                         r"caenorhabditis_elegans WBcel235 \(riborf-worm 2\); "
+                                         r"danio_rerio GRCz11 \(riborf-zebrafish 1\); danio_rerio GRCz11 \(riborf-zebrafish 2\); "
+                                         r"homo_sapiens GRCh38 \(bundled\); homo_sapiens GRCh38 \(ncorf-mammals-human 1\); "
+                                         r"homo_sapiens GRCh38 \(riborf-human 1\); homo_sapiens GRCh38 \(riborf-human 2\); "
                                          r"mus_musculus GRCm39 \(ncorf-mammals-mouse 1\); mus_musculus GRCm39 \(openprot-mouse 2.2-1\); "
-                                         r"mus_musculus GRCm39 \(riborf-mouse 1\); saccharomyces_cerevisiae R64-1-1 \(riborf-yeast 1\)\."):
+                                         r"mus_musculus GRCm39 \(riborf-mouse 1\); mus_musculus GRCm39 \(riborf-mouse 2\); "
+                                         r"saccharomyces_cerevisiae R64-1-1 \(riborf-yeast 1\); "
+                                         r"saccharomyces_cerevisiae R64-1-1 \(riborf-yeast 2\)\."):
         load_catalog(species="dog")
     with pytest.raises(ValueError, match="need the chain files GRCh38_to_GRCh37 to reach GRCh37 by liftover"):
         load_catalog(species="human", genome_build="GRCh37")

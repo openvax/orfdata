@@ -67,17 +67,20 @@ orfdata proteome --species human --release 115 --nc-orf-sources ms --output huma
 
 | `nc_orf_sources=` | Selects ORFs with | Human ORFs | Encoded in Ensembl 115 |
 | --- | --- | ---: | ---: |
-| `"ribosome"` or `"riboseq"` | Ribosome profiling across all datasets | 57,607 | 57,485 |
+| `"ribosome"` or `"riboseq"` | Ribosome profiling across all datasets | 69,286 | 69,162 |
 | `"ms"` | Any supporting MS peptide | 2,186 | 2,181 |
 | `"immunopeptidomics"` | Peptides eluted from MHC (in human, HLA) molecules | 1,881 | 1,879 |
 | `"proteomics"` | Peptides from digested cellular proteins | 73 | 72 |
-| `"all"` | Every compatible dataset | 57,607 | 57,485 |
+| `"all"` | Every compatible dataset | 69,286 | 69,162 |
 
 Use `nc_orf_sources="bundled"` for the bundled dataset alone, or a list of
 names such as `["bundled", "ncorf-mammals-human"]` for a subset. Evidence presets
 and `"all"` require all compatible datasets; install human's optional datasets
 once with `orfdata setup --species human --catalogs all`. Missing resources
 produce installation instructions. The defaults still add no ncORFs.
+RibORF source catalogues include valid 1–4-residue ORFs. Apply a downstream
+policy explicitly with `min_protein_length=5`, or CLI
+`--min-protein-length 5`, when a peptide-search reference should omit them.
 
 Most MS support in the bundled human catalogue comes from
 immunopeptidomics. A presented peptide shows that the ORF was translated; it
@@ -116,11 +119,11 @@ transcript alongside them.
 
 | Species | Annotated proteins | Noncanonical ORFs |
 | --- | --- | --- |
-| Human | From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and [T2T-CHM13](catalogs.md#t2t-chm13). 57,607 with the [optional Ribo-seq catalogues](catalogs.md#human-ribo-seq-orfs-optional) of Chang et al. and Yang et al. (`nc_orf_sources="all"`) |
-| Mouse | From PyEnsembl | 48,805 ORFs on GRCm39: Ribo-seq ORFs of Chang et al. and Yang et al., and 2,976 MS-supported ones (OpenProt 2.2), [built locally](catalogs.md#mouse) with `orfdata setup --species mouse`; lifted to GRCm38 and NCBIM37 |
-| Zebrafish | From PyEnsembl | 9,759 GRCz11 Ribo-seq ORFs of Yang et al., [built locally](catalogs.md#zebrafish-c-elegans-and-yeast) |
-| C. elegans | From PyEnsembl | 2,849 WBcel235 Ribo-seq ORFs of Yang et al., built locally |
-| Budding yeast | From PyEnsembl | 1,128 R64-1-1 Ribo-seq ORFs of Yang et al., built locally; 171 lie on Ensembl's transcripts |
+| Human | From PyEnsembl; T2T-CHM13 from a pinned Ensembl annotation | 7,264 GRCh38 ORFs, bundled; lifted to GRCh37, NCBI36 and [T2T-CHM13](catalogs.md#t2t-chm13). 69,286 with the [optional Ribo-seq catalogues](catalogs.md#human-ribo-seq-orfs-optional) of Chang et al. and Yang et al. (`nc_orf_sources="all"`) |
+| Mouse | From PyEnsembl | 60,707 ORFs on GRCm39: Ribo-seq ORFs of Chang et al. and Yang et al., and 2,976 MS-supported ones (OpenProt 2.2), [built locally](catalogs.md#mouse) with `orfdata setup --species mouse`; lifted to GRCm38 and NCBIM37 |
+| Zebrafish | From PyEnsembl | 15,491 GRCz11 Ribo-seq ORFs of Yang et al., [built locally](catalogs.md#zebrafish-c-elegans-and-yeast) |
+| C. elegans | From PyEnsembl | 4,035 WBcel235 Ribo-seq ORFs of Yang et al., built locally |
+| Budding yeast | From PyEnsembl | 1,369 R64-1-1 Ribo-seq ORFs of Yang et al., built locally; 171 lie on Ensembl's transcripts |
 | Dog | From PyEnsembl | None: [no public dog Ribo-seq or ncORF MS exists](catalogs.md#dog) |
 
 Other assemblies use a catalogue lifted to them once `orfdata chains download`

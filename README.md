@@ -95,11 +95,11 @@ immunopeptidomics: peptides eluted from HLA molecules.
 
 | Species | Noncanonical ORFs | Sources |
 | --- | ---: | --- |
-| Human | 7,264 bundled; 57,607 with `nc_orf_sources="all"` | GENCODE; optionally Chang et al. 2025 and Yang et al. 2024 Ribo-seq |
-| Mouse | 48,805 | Chang et al. and Yang et al. Ribo-seq, OpenProt 2.2 MS |
-| Zebrafish | 9,759 | Yang et al. Ribo-seq |
-| C. elegans | 2,849 | Yang et al. Ribo-seq |
-| Yeast | 1,128 | Yang et al. Ribo-seq |
+| Human | 7,264 bundled; 69,286 with `nc_orf_sources="all"` | GENCODE; optionally Chang et al. 2025 and Yang et al. 2024 Ribo-seq |
+| Mouse | 60,707 | Chang et al. and Yang et al. Ribo-seq, OpenProt 2.2 MS |
+| Zebrafish | 15,491 | Yang et al. Ribo-seq |
+| C. elegans | 4,035 | Yang et al. Ribo-seq |
+| Yeast | 1,369 | Yang et al. Ribo-seq |
 | Dog | none: no public dog Ribo-seq or ncORF MS exists | |
 
 Human's bundled catalogue needs no setup. For the others, `pip install
@@ -126,6 +126,11 @@ combined.save("human-all-proteins.proteome.json.gz")  # Complete provenance.
 
 nc_only = transcriptome.proteome(reference_cds=False, nc_orf_sources="all")
 nc_only.write_fasta("human-reference-ncorfs.fasta")
+
+# A peptide-search policy can exclude short products without deleting their ORF models.
+search_reference = transcriptome.proteome(
+    nc_orf_sources="all", min_protein_length=5
+)
 ```
 
 For sample-specific altered sequences, `DerivedProtein` records the supplied

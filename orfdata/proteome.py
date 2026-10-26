@@ -22,7 +22,7 @@ from typing import Mapping, Optional
 from urllib.parse import quote
 
 from . import _structure
-from .catalog import ORFCatalog, load_catalog, merge_catalogs
+from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
 from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_assembly, _versioned
 from .reference import ReferenceContext
@@ -696,10 +696,18 @@ class ExtraORFs:
     source_failures: tuple = ()
     genome: object = field(default=None, repr=False, compare=False)
     unlifted: tuple = ()
+    min_protein_length: Optional[int] = None
+    length_filtered: int = 0
 
     def __post_init__(self):
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("ExtraORFs requires its resolved ReferenceContext")
+        if self.min_protein_length is not None:
+            _positive_integer(self.min_protein_length, "min_protein_length")
+        if type(self.length_filtered) is not int or self.length_filtered < 0:
+            raise ValueError("length_filtered must be a nonnegative integer")
+        if self.min_protein_length is None and self.length_filtered:
+            raise ValueError("length_filtered requires min_protein_length")
         if any(o.context != self.reference and o.context.key != self.reference.key for o in self.orfs):
             raise ValueError("Every ORF in a collection must be bound to its reference")
         if any(o.kind != "extra_orf" for o in self.orfs):
@@ -1048,7 +1056,7 @@ class ReferenceTranscriptome:
         return cls(genome, ReferenceContext.from_genome(genome, context=context))
 
     def proteome(self, *, reference_cds=True, isoforms="all", nc_orf_sources=(), viral=(),
-                 derived=(), cache=False, cache_root=None):
+                 derived=(), min_protein_length=None, cache=False, cache_root=None):
         """Reference CDS proteins with optional ncORF and viral sources.
 
         ``isoforms="all"`` keeps every reference protein; ``"longest"`` keeps
@@ -1063,7 +1071,8 @@ class ReferenceTranscriptome:
         """
         return Proteome.build(
             self, reference_cds=reference_cds, isoforms=isoforms, nc_orf_sources=nc_orf_sources,
-            viral=viral, derived=derived, cache=cache, cache_root=cache_root)
+            viral=viral, derived=derived, min_protein_length=min_protein_length,
+            cache=cache, cache_root=cache_root)
 
 
 class Proteome:
@@ -1463,7 +1472,7 @@ class Proteome:
 
     @classmethod
     def build(cls, genome, *, reference_cds=True, isoforms="all", nc_orf_sources=(),
-              viral=(), derived=(), context=None, cache=False, cache_root=None):
+              viral=(), derived=(), min_protein_length=None, context=None, cache=False, cache_root=None):
         """Reference CDS proteins with optional sources, optionally cached.
 
         ``genome`` may be a PyEnsembl genome or ReferenceTranscriptome.
@@ -1480,6 +1489,8 @@ class Proteome:
         records from other datasets. Set ``reference_cds=False`` for ncORFs
         alone. Required datasets and liftover chains must already be installed;
         missing resources raise with installation instructions.
+        ``min_protein_length`` optionally filters only the ncORF additions; the
+        source catalogues and reference CDS layer remain complete.
 
         ``viral`` accepts host-associated virus names, reference IDs or objects;
         ``"all"`` selects every distinct bundled viral protein set for this host.
@@ -1505,13 +1516,18 @@ class Proteome:
             raise TypeError("derived must contain DerivedProtein records")
         catalog, rule = _nc_orf_inputs(reference, nc_orf_sources, cache_root)
         include_nc_orfs = catalog is not None
+        if min_protein_length is not None:
+            _positive_integer(min_protein_length, "min_protein_length")
+            if not include_nc_orfs:
+                raise ValueError("min_protein_length requires nc_orf_sources")
         built = []
 
         def make():
             proteome = (cls.from_genome(genome, isoforms=isoforms, context=context) if reference_cds else
                         cls(reference, (), genome=genome))
             if include_nc_orfs:
-                proteome = proteome.with_extra_orfs(rule, catalog=catalog)
+                proteome = proteome.with_extra_orfs(
+                    rule, catalog=catalog, min_protein_length=min_protein_length)
             for virus in viral:
                 proteome = proteome._with_viral_proteins(virus)
             if derived:
@@ -1524,11 +1540,14 @@ class Proteome:
         from .datasets import _digest
         from .version import __version__
 
+        extra_selection = (dict(evidence=None if rule is None else rule.to_dict(),
+                                catalog=_catalog_identity(catalog)) if include_nc_orfs else None)
+        if extra_selection is not None and min_protein_length is not None:
+            extra_selection["min_protein_length"] = min_protein_length
         key = dict(schema=SNAPSHOT_SCHEMA, orfdata=__version__, pyensembl=_pyensembl_version(),
                    reference=reference.to_dict(), annotation=_annotation_files(genome, include_proteins=reference_cds),
                    annotated=reference_cds, isoforms=isoforms if reference_cds else None,
-                   extra_orfs=dict(evidence=None if rule is None else rule.to_dict(),
-                                   catalog=_catalog_identity(catalog)) if include_nc_orfs else None,
+                   extra_orfs=extra_selection,
                    viral=[_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
                           for virus in viral],
                    derived=[asdict(item) for item in derived])
@@ -1542,23 +1561,27 @@ class Proteome:
         proteome.__dict__["_identity"] = loaded.identity
         return proteome
 
-    def with_nc_orfs(self, nc_orf_sources="all", *, cache_root=None):
+    def with_nc_orfs(self, nc_orf_sources="all", *, min_protein_length=None, cache_root=None):
         """Add ncORFs selected by names, evidence presets/rules or loaded datasets.
 
         Uses the same selector as :meth:`build`; a list takes the union and
         an empty selection returns this proteome unchanged.
         """
         if nc_orf_sources is None or isinstance(nc_orf_sources, (list, tuple)) and not nc_orf_sources:
+            if min_protein_length is not None:
+                raise ValueError("min_protein_length requires nc_orf_sources")
             return self
         if self.genome is None:
             raise ValueError("ncORFs bind to a genome; build this proteome with from_genome")
         catalog, rule = _nc_orf_inputs(self.reference, nc_orf_sources, cache_root)
         if catalog is None:
             return self
-        return self.with_extra_orfs(rule, catalog=catalog, cache_root=cache_root)
+        return self.with_extra_orfs(
+            rule, catalog=catalog, min_protein_length=min_protein_length, cache_root=cache_root)
 
     def with_extra_orfs(self, evidence="ms", *, catalog=None, require_resolved=False,
-                        require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
+                        require_unique=False, require_reviewed=False, min_protein_length=None,
+                        cache_root=None, catalogs=None):
         """Add catalogue ORFs with the chosen evidence that this genome encodes.
 
         ``evidence`` is a rule, an evidence method name, a list of names
@@ -1578,12 +1601,15 @@ class Proteome:
         exact spliced coding path. An ORF whose source transcript is gone or
         changed is still added when another transcript carries it, with
         ``source_binding`` saying why; ORFs found on no transcript are excluded.
+        ``min_protein_length`` is an explicit selection in amino acids. It does
+        not alter the catalogue or the reference CDS proteins already present.
         """
         if self.genome is None:
             raise ValueError("Extra ORFs bind to a genome; build this proteome with from_genome")
         found = extra_orfs(self.genome, evidence, catalog=catalog, context=self.reference,
                            require_resolved=require_resolved, require_unique=require_unique,
-                           require_reviewed=require_reviewed, cache_root=cache_root, catalogs=catalogs)
+                           require_reviewed=require_reviewed, min_protein_length=min_protein_length,
+                           cache_root=cache_root, catalogs=catalogs)
         failures = {f.orf_id: f.reason for f in found.source_failures}
         grouped = {}
         for orf in found:
@@ -1611,6 +1637,9 @@ class Proteome:
                      unlifted=len(found.unlifted),
                      not_on_source_transcript=sum(e.source_binding is not None for e in added),
                      identical_to_annotated=sum(e.sequence in annotated for e in added))
+        if found.min_protein_length is not None:
+            layer["min_protein_length"] = found.min_protein_length
+            layer["length_filtered"] = found.length_filtered
         selection = found.catalog._metadata.get("proteome_selection")
         if selection is not None:
             layer["selection"] = selection
@@ -2097,7 +2126,8 @@ def _onto(catalogs, reference, cache_root=None):
 
 
 def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_resolved=False,
-               require_unique=False, require_reviewed=False, cache_root=None, catalogs=None):
+               require_unique=False, require_reviewed=False, min_protein_length=None,
+               cache_root=None, catalogs=None):
     """Place catalogue ORFs on every transcript of a PyEnsembl genome that carries them.
 
     A transcript carries an ORF when it contains the ORF's exact spliced coding
@@ -2109,6 +2139,8 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     ``cache_root`` is where catalogues and chain files are looked for. ``evidence`` is a rule such as
     ``RiboSeq(min_studies=2) & MS()`` or an evidence method name, as in
     :meth:`Proteome.with_extra_orfs`; ``None`` selects every catalogue ORF.
+    ``min_protein_length`` applies a caller-selected amino-acid floor without
+    changing the source catalogue.
     """
     _require_installed(genome)
     reference = ReferenceContext.from_genome(genome, context=context)
@@ -2124,7 +2156,11 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
         )
     rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
                          require_resolved=require_resolved)
-    records = catalog.query(evidence=rule)
+    if min_protein_length is not None:
+        _positive_integer(min_protein_length, "min_protein_length")
+    selected_records = catalog.query(evidence=rule)
+    records = tuple(r for r in selected_records if min_protein_length is None
+                    or len(r.protein_sequence) >= min_protein_length)
     spans = {r.orf_id: (r.contig, r.strand, r.coding_blocks[0][0], r.coding_blocks[-1][1]) for r in records}
     try:
         containing = _structure.transcripts_containing(genome, spans)
@@ -2194,12 +2230,26 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     from .liftover import unlifted
 
     left_out, seen = [], set()
+    filtered_keys = {_merge_key(record) for record in selected_records if min_protein_length is not None
+                     and len(record.protein_sequence) < min_protein_length}
+    length_filtered = sum(min_protein_length is not None
+                          and len(record.protein_sequence) < min_protein_length
+                          for record in selected_records)
     for record, build, reason in unlifted(catalog.metadata):
-        if (rule is None or rule.matches(record.evidence)) and _merge_key(record) not in seen:
+        if rule is not None and not rule.matches(record.evidence):
+            continue
+        key = _merge_key(record)
+        if min_protein_length is not None and len(record.protein_sequence) < min_protein_length:
+            if key not in filtered_keys:
+                filtered_keys.add(key)
+                length_filtered += 1
+            continue
+        if key not in seen:
             seen.add(_merge_key(record))  # One ORF two merged catalogues failed to lift counts once.
             left_out.append(BindingFailure(record.orf_id, record.transcript_id, f"Did not lift to {build}: {reason}"))
     left_out = tuple(left_out)
-    return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome, left_out)
+    return ExtraORFs(tuple(bound), tuple(excluded), catalog, reference, rule, tuple(failures), genome, left_out,
+                     min_protein_length=min_protein_length, length_filtered=length_filtered)
 
 
 def _binding_reason(error):

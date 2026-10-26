@@ -21,11 +21,11 @@ The packaged registry builds each catalogue from its sources' own files:
 
 | Species | Catalogues | ORFs |
 | --- | --- | ---: |
-| Mouse | [OpenProt's MS-supported ORFs](#mouse-orfs-from-openprot), [Chang et al.'s](#mouse-ribo-seq-orfs-chang-et-al) and [Yang et al.'s](#mouse-riborf-orfs-yang-et-al) Ribo-seq ORFs | 48,805 merged |
-| Human | the bundled GENCODE set; optionally [Chang et al.'s and Yang et al.'s Ribo-seq ORFs](#human-ribo-seq-orfs-optional) | 7,264; 57,607 with both |
-| Zebrafish | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 9,759 |
-| C. elegans | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 2,849 |
-| Yeast | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 1,128 |
+| Mouse | [OpenProt's MS-supported ORFs](#mouse-orfs-from-openprot), [Chang et al.'s](#mouse-ribo-seq-orfs-chang-et-al) and [Yang et al.'s](#mouse-riborf-orfs-yang-et-al) Ribo-seq ORFs | 60,707 merged |
+| Human | the bundled GENCODE set; optionally [Chang et al.'s and Yang et al.'s Ribo-seq ORFs](#human-ribo-seq-orfs-optional) | 7,264; 69,286 with both |
+| Zebrafish | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 15,491 |
+| C. elegans | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 4,035 |
+| Yeast | [Yang et al.'s Ribo-seq ORFs](#zebrafish-c-elegans-and-yeast) | 1,369 |
 | Dog | [none exists](#dog) | 0 |
 
 `orfdata setup --species mouse` (or zebrafish, worm, yeast) installs a
@@ -88,8 +88,8 @@ already installed, repaired or skipped. If one fails, the rest are still
 installed and it exits with status 1, naming each failure; in Python,
 `install_species` raises `InstallError`, whose `result` holds the same
 report. `load_catalog(species="mouse")` then merges the three,
-in this order, into 48,805 ORFs: 2,976 MS-supported OpenProt ORFs, 16,484
-Ribo-seq ORFs of Chang et al. and 40,089 of Yang et al. 10,448 of Chang's and
+in this order, into 60,707 ORFs: 2,976 MS-supported OpenProt ORFs, 16,484
+Ribo-seq ORFs of Chang et al. and 51,991 of Yang et al. 10,448 of Chang's and
 Yang's ORFs are the same ORF (28 of them also in OpenProt), and 296 OpenProt
 ORFs have Ribo-seq support from one or both, 242 from Yang et al. alone. On
 Ensembl 115 (GRCm39):
@@ -97,11 +97,11 @@ Ensembl 115 (GRCm39):
 | Evidence | Selected | Added to the proteome |
 | --- | ---: | ---: |
 | `"ms"` (default) | 2,976 | 2,854 |
-| `RiboSeq()` | 46,207 | 46,094 |
+| `RiboSeq()` | 58,109 | 57,992 |
 | `RiboSeq() & MS()` | 378 | 371 |
-| `None` | 48,805 | 48,577 |
+| `None` | 60,707 | 60,475 |
 
-Loading the merged catalogue takes about 10 seconds and 0.9 GB of memory, once
+Loading the merged catalogue takes about 10 seconds and 1.1 GB of memory, once
 per process, whichever evidence is selected. On GRCm38 and NCBIM37 all three
 are [lifted automatically](#every-assembly-of-a-species).
 
@@ -138,32 +138,39 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 `riborf-mouse` holds the mouse ORFs that RibORF 2.0 identified as translated in
 the Ribo-seq data of Yang et al. (Nat Commun 2024,
 [doi:10.1038/s41467-024-46240-9](https://doi.org/10.1038/s41467-024-46240-9);
-224 samples in 26 GEO series), of at least 5 residues: uORF (20,399), lncORF
-(6,954), dORF (4,075), uoORF (3,037), iORF (2,370), N-terminal truncation
-(2,047) and extension (575), and doORF (632). The source's ouORF, odORF and
+224 samples in 26 GEO series): uORF (26,052), lncORF (8,149), iORF (6,155),
+dORF (5,174), uoORF (3,157), N-terminal truncation (2,059), doORF (670) and
+extension (575). The source's ouORF, odORF and
 noncoding types take Chang et al.'s names, so `--biotype uoORF` finds both
 sources' overlapping uORFs. Annotated CDSs, likely sequencing errors,
-stop-codon readthrough and 12,222 ORFs shorter than Chang et al.'s shortest (5
-residues; 4,505 are a bare start and stop) are not imported.
+and stop-codon readthrough are not imported. Release 2 retains 11,902 valid
+ORFs shorter than five residues. Release 1, which applied a five-residue import
+floor, remains available explicitly as `--version 1`.
 
 - **Placement.** The source gives mm10 / GENCODE vM25 transcript coordinates
   (a 1-based start, an exclusive end) and no proteins. Rather than lift mm10
   through a restricted chain, each ORF is placed on the same transcript in
   Ensembl 107 GRCm39 and translated from that transcript's sequence. Of the
-  41,906 rows long enough, 40,089 resolve. Listed as unresolved, with the
-  reason: 1,393 rows on 633 transcripts that changed length since GENCODE
-  vM25, 338 on 216 TEC transcripts that Ensembl 107 has in its GTF but in
-  neither FASTA, 85 on 51 transcripts that are gone, and one whose
+  54,128 non-skipped source rows, 51,991 resolve. Listed as unresolved, with the
+  reason: 1,642 rows on transcripts that changed length since GENCODE
+  vM25, 399 on transcripts that Ensembl 107 has in its GTF but in
+  neither FASTA, 95 on transcripts that are gone, and one whose
   transcript's sequence changed at the same length. Placing through the
   transcript gives the same coding path as lifting the source's mm10 blocks
   through UCSC's chain for all but 2, in a duplicated region of chr14 where
-  the chain is ambiguous. 39,983 place on Ensembl 115.
+  the chain is ambiguous. Of the 12,222 source rows below five residues,
+  11,902 resolve and 320 carry one of the same explicit failures. In all,
+  51,881 place on Ensembl 115.
 - **Sources.** Supplementary Data 3 (CC BY 4.0) and Ensembl 107's GTF, cDNA
   and ncRNA FASTAs; about 115 MB, of which the 32 MB GTF is the one Chang et
   al.'s catalogue uses, so `orfdata setup` downloads it once. Building needs
   `orfdata[build-data]`.
 - **Evidence.** Presence in the source's set is aggregate Ribo-seq support:
   `RiboSeq()` selects every ORF, `RiboSeq(min_studies=2)` none.
+- **Length policy.** `catalog.query(min_protein_length=5)` and
+  `Proteome.build(..., min_protein_length=5)` reproduce a downstream
+  five-residue selection without removing short models from the catalogue.
+  Proteome layers record the threshold and number filtered.
 - **IDs.** `riborf_` and the GRCm39 start and stop, such as
   `riborf_4_120262600_120262620_+`, never a name Chang et al. use. Two paths
   with the same start and stop add their transcript (`…@ENSMUST00000226495.2`),
@@ -268,8 +275,8 @@ load_catalog(species="human", catalogs=["ncorf-mammals-human"])   # Just one
 such as `nc_orf_sources="ms"` also query every compatible dataset; use
 `nc_orf_sources="bundled"` for only the bundled set. They merge after the bundled
 catalogue, Chang et al.'s before Yang et al.'s as for mouse, so an ORF in
-several keeps the first one's ID. Together they give 57,607 ORFs, of which 57,485 place on Ensembl 115; that
-takes about a minute and 3.2 GB of memory, against about a second for the
+several keeps the first one's ID. Together they give 69,286 ORFs, of which 69,162 place on Ensembl 115; that
+takes about a minute and several GB of memory, against about a second for the
 bundled catalogue alone. Neither adds MS evidence, so `"ms"` selects the same
 ORFs either way.
 
@@ -282,10 +289,11 @@ ORFs either way.
 - **`riborf-human`:** the human ORFs of [Yang et
   al.](#mouse-riborf-orfs-yang-et-al), from 136 samples in 30 GEO series, on
   GENCODE V39, placed through the same Ensembl 105 transcripts (GENCODE V39
-  is Ensembl 105): 51,174 of the 51,275 rows long enough; 101 are on
-  transcripts with no sequence in Ensembl 105's FASTAs. Types: uORF (23,664),
-  lncORF (11,379), uoORF (4,548), dORF (3,747), N-terminal truncation (3,561),
-  iORF (2,547), extension (1,046) and doORF (682).
+  is Ensembl 105): 62,853 of 62,962 non-skipped rows; 109 are on transcripts
+  with no sequence in Ensembl 105's FASTAs. The catalogue includes 11,679
+  valid records below five residues. Types: uORF (28,981), lncORF (12,938),
+  iORF (5,990), dORF (4,907), uoORF (4,679), N-terminal truncation (3,574),
+  extension (1,046) and doORF (738).
 
 `catalogs` takes `None` (the species' default set), `"all"`, or catalogue
 names, `"bundled"` among them. `orfdata catalogs status` marks optional
@@ -298,25 +306,25 @@ orfdata setup --species zebrafish   # or worm, or yeast
 ```
 
 Yang et al.'s RibORF 2.0 ORFs of [the mouse catalogue's
-kind](#mouse-riborf-orfs-yang-et-al), at least 5 residues long, from each
-species' sheet of Supplementary Data 3, imported the same way:
+kind](#mouse-riborf-orfs-yang-et-al), including valid short source models, from
+each species' sheet of Supplementary Data 3, imported the same way:
 
-| Catalogue | Samples (GEO series) | Placed through | ORFs | On Ensembl 115 |
+| Catalogue | Samples (GEO series) | Placed through | ORFs | Below 5 aa |
 | --- | --- | --- | ---: | ---: |
-| `riborf-zebrafish` | 20 (2) | Ensembl 115 GRCz11 transcripts | 9,759 | 9,759 |
-| `riborf-worm` | 39 (1) | Ensembl 105 WBcel235 transcripts | 2,849 | 2,433 |
-| `riborf-yeast` | 5 (1) | the R64-1-1 genome (sacCer3) | 1,128 | 171 |
+| `riborf-zebrafish` | 20 (2) | Ensembl 115 GRCz11 transcripts | 15,491 | 5,732 |
+| `riborf-worm` | 39 (1) | Ensembl 105 WBcel235 transcripts | 4,035 | 1,186 |
+| `riborf-yeast` | 5 (1) | the R64-1-1 genome (sacCer3) | 1,369 | 241 |
 
 - **Zebrafish:** every source transcript has the same length in Ensembl 100
   to 115, so the catalogue uses 115. 18 rows have ambiguous bases in the ORF
-  and are left out. Types: N-terminal truncation (3,805), uORF (3,543), dORF
-  (771), iORF (605), lncORF (411), uoORF (304), extension (224) and doORF (96).
+  and are left out. Types: uORF (6,168), N-terminal truncation (3,816), iORF
+  (2,696), dORF (1,623), lncORF (501), uoORF (343), extension (224) and doORF
+  (120).
 - **C. elegans:** the source's transcripts match Ensembl 100 and 105, and
-  WormBase changed many models after, so the catalogue uses 105; all 2,849
-  place there, 2,433 on 115. Transcript names with dots of their own
-  (`F45H11.11.1`) are kept whole. Types: truncation (614), iORF (596),
-  extension (556), uORF (521), uoORF (217), lncORF (151), doORF (117) and dORF
-  (77).
+  WormBase changed many models after, so the catalogue uses 105; all 4,035
+  place there. Transcript names with dots of their own (`F45H11.11.1`) are
+  kept whole. Types: iORF (1,525), uORF (725), truncation (614), extension
+  (556), lncORF (158), uoORF (249), doORF (121) and dORF (87).
 - **Yeast:** the source's yeast transcripts carry UTRs, and some are unstable
   transcripts (CUTs, SUTs), none of which Ensembl's yeast annotation has; its
   transcripts span only the CDS. So each ORF is placed from its genomic span
@@ -381,9 +389,7 @@ With evidence `None` (every catalogue ORF), each assembly gets:
 | Human Ensembl 75, GRCh37 | lifted, 1 hop | 7,247 | 6,857 | 270 transcripts absent, 108 paths changed, 1 on a transcript with a different protein |
 | Human Ensembl 54, NCBI36 | lifted, 1 hop | 7,253 | 4,195 | 2,708 transcripts absent, 2 on a transcript with a different protein |
 | Human Ensembl rapid 2022_07, T2T-CHM13v2.0 | lifted, 1 hop | 7,208 | 6,767 | 383 on a transcript with a different protein, 58 on no transcript, 56 not lifted |
-| Mouse Ensembl 115, GRCm39 | OpenProt, Chang et al. and Yang et al. | 48,805 | 48,577 | 110 transcripts absent, 109 without sequence |
-| Mouse Ensembl 102, GRCm38 | all three lifted, 1 hop | 48,800 | 48,169 | 434 transcripts absent, 5 not lifted |
-| Mouse Ensembl 67, NCBIM37 | all three lifted, 2 hops | 48,642 | 38,105 | 9,217 transcripts absent, 163 not lifted |
+| Mouse Ensembl 115, GRCm39 | OpenProt, Chang et al. and Yang et al. | 60,707 | 60,475 | 232 fail transcript/path/sequence binding checks |
 
 Older annotations lack many of the transcripts the sources name, so fewer ORFs
 place; the rest, and any that didn't lift, are listed with the reason, never

@@ -24,9 +24,10 @@ from each row's genomic span instead (:func:`import_genome_orfs`), translated
 from the pinned genome.
 
 Annotated CDSs (``canonical``), likely sequencing errors and stop-codon
-readthrough are not imported, nor are proteins shorter than
-``processing["min_protein_length"]``: Chang et al.'s shortest is 5 residues,
-and the source has thousands of 1-4 residue ones, bare start-stops among them.
+readthrough are not imported. The current catalogue retains valid short source
+ORFs; release 1 applied ``processing["min_protein_length"]`` during import.
+Consumers can apply a length threshold explicitly when querying or building a
+proteome.
 Types Chang et al. name differently (ouORF, odORF, noncoding) take Chang's
 names, so a query by type finds both sources' ORFs. IDs are ``riborf_`` and the
 start and stop, never a name Chang et al. use. Presence in the source's set is
@@ -87,19 +88,29 @@ def _versioned(stable, entry):
 
 
 def _parsed(processing, sheet_rows):
-    """The rows to import, as (transcript, length, start, end, type, start codon, row), and how many were short."""
+    """Rows to import and counts before reference validation.
+
+    RibORF catalogue release 1 used ``min_protein_length`` as an import filter.
+    Release 2 reports rows below ``report_protein_lengths_below`` but retains
+    them, so consumer-specific peptide length policy does not erase ORF models.
+    """
     skip_types, names = set(processing["skip_types"]), processing["biotypes"]
-    parsed, short = [], 0
+    minimum = processing.get("min_protein_length")
+    report_below = processing.get("report_protein_lengths_below", minimum)
+    parsed, source_rows, short = [], 0, 0
     for row in sheet_rows:
         transcript, _, coordinates, orf_type, start_codon = row[3].split("|")
         if orf_type in skip_types:
             continue
+        source_rows += 1
         length, start, end = (int(x) for x in coordinates.split(":"))
-        if (end - start) // 3 - 1 < processing["min_protein_length"]:
+        protein_length = (end - start) // 3 - 1
+        if report_below is not None and protein_length < report_below:
             short += 1
+        if minimum is not None and protein_length < minimum:
             continue
         parsed.append((transcript, length, start, end, names.get(orf_type, orf_type), start_codon, row))
-    return parsed, short
+    return parsed, source_rows, short
 
 
 def import_orfs(inputs, output, manifest):
@@ -109,7 +120,7 @@ def import_orfs(inputs, output, manifest):
     # Ensembl IDs carry a version (ENST00000000233.10); C. elegans names have dots of their own (2L52.1a.1).
     versioned = processing.get("versioned_ids", True)
     source_annotation = processing.get("source_annotation", "GENCODE vM25")
-    parsed, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
+    parsed, source_rows, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
 
     def stable_id(source_transcript):
         name = source_transcript.split(":")[0]
@@ -155,7 +166,7 @@ def import_orfs(inputs, output, manifest):
     models = {key: (_versioned(stable, transcripts[stable]), transcripts[stable]["gene_id"],
                     transcripts[stable]["gene_name"], orf_type, found["protein"], found["start_codon"])
               for key, found in paths.items() for stable, orf_type in [min(found["rows"])]}
-    counts = dict(source_rows=len(parsed) + short, short_rows=short, resolved_rows=len(parsed) - len(unresolved),
+    counts = dict(source_rows=source_rows, short_rows=short, resolved_rows=len(parsed) - len(unresolved),
                   unresolved_rows=len(unresolved))
     _write(models, unresolved, counts, output, manifest)
 
@@ -178,7 +189,7 @@ def import_genome_orfs(inputs, output, manifest):
     lie outside them.
     """
     processing = manifest.processing
-    parsed, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
+    parsed, source_rows, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
     suffix = processing.get("transcript_suffix", "")
     names = {p[0].split(":")[0] for p in parsed}
     # Ensembl names most yeast transcripts with the suffix, transposable elements without it.
@@ -240,7 +251,7 @@ def import_genome_orfs(inputs, output, manifest):
         else:  # On the source's longer model of the gene's transcript, outside Ensembl's.
             named = (name, entry["gene_id"], entry["gene_name"])
         models[contig, strand, blocks] = named + (orf_type, found["protein"], found["start_codon"])
-    counts = dict(source_rows=len(parsed) + short, short_rows=short, resolved_rows=len(parsed) - len(unresolved),
+    counts = dict(source_rows=source_rows, short_rows=short, resolved_rows=len(parsed) - len(unresolved),
                   unresolved_rows=len(unresolved))
     _write(models, unresolved, counts, output, manifest)
 
@@ -289,6 +300,9 @@ def _write(models, unresolved, counts, output, manifest):
     reference = manifest.references[0]
     table = next(s for s in manifest.sources if s.asset_id == "table")
     presence = processing.get("presence", PRESENCE)
+    report_below = processing.get("report_protein_lengths_below")
+    if "short_records" in manifest.coverage:
+        counts["short_records"] = sum(len(value[-2]) < report_below for value in models.values())
 
     def locus(contig, strand, blocks):
         first, last = (blocks[0][0], blocks[-1][1]) if strand == "+" else (blocks[-1][1], blocks[0][0])
