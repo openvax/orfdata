@@ -1478,6 +1478,18 @@ known genomic coordinates or a translated ORF. RNA and Ribo measurements of the
 same region can be compared through an explicit <code>same_target</code> relationship;
 such a density ratio describes that region, not a particular uORF inside it.
 Regions do not automatically bind to PyEnsembl or participate in gene/ORF orthology.</p>
+<p>When a source also defines a candidate or partial coding model, connect the two
+with <code>TargetRelation(..., relation="region_orf_context", ...)</code>: the left target
+is the measured <code>region</code>; the right is an <code>orf</code> target created from its
+<code>TranscriptORF</code> with <code>ScopedTarget.from_orf</code>. Annotated and source-defined ORFs
+work without a catalogue record. Supply the source's mapping evidence, such as
+the reported interval relationship, coordinates and source record IDs, and its
+cardinality (<code>one_to_many</code> or <code>unknown</code> when appropriate). Keep each candidate
+as its own relation. This preserves a region's relationship to coding models
+without converting region measurements into ORF abundance or translation
+evidence. <code>MatchedMeasurements.ratio</code> rejects this context relation even if the
+source reports only one candidate. Partial boundary/frame details remain on the
+referenced ORF; the relation does not fill them in.</p>
 <p>For native sources with unreported genomic metadata, use explicit
 <a href="../source-references/">source references and mapping views</a> to retain the original
 observation alongside its mapping to a PyEnsembl target.</p>
