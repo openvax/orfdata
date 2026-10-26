@@ -216,7 +216,8 @@ and partial downloads are deleted and restarted.
 
 A restart skips runs with a marker. To retry them, fix the cause and restart with
 `RETRY_FAILED=1`, which deletes the markers and leftover `RUN_sage/` directories; or delete
-one run's marker by hand. `logs/driver.log` records every start, download (with its
+one run's marker by hand. The driver exits nonzero while any failure marker remains, so batch
+supervisors cannot mistake a partial search for success. `logs/driver.log` records every start, download (with its
 receipt), finished run (with its manifest row), retry, low-disk wait and error.
 
 ### 5. Aggregate
@@ -249,10 +250,13 @@ pools the PSM files of every finished run, so it can run during the search.
 
 ```sh
 python -I check_standards.py
+python -I check_fdr.py
+python -I check_homology.py
 ```
 
-checks the retention-time standard handling of `standards.py` and `build_db.py` on tiny
-made-up inputs, with no network or Ensembl files.
+checks the retention-time standard handling of `standards.py` and `build_db.py`, and the
+tie-safe target-decoy q-value calculation and BLOSUM62 residue normalization, on tiny made-up
+inputs with no network or Ensembl files.
 
 ## Resources
 
@@ -370,8 +374,9 @@ The peptide and ORF files are written only when there is at least one row.
    ncORF matches ride on canonical ones.
 2. **Class-specific FDR.** Within each class, rank-1 PSMs from every run are pooled and ranked
    by Sage's discriminant score; q-values come from target-decoy counts (decoys / targets,
-   made monotone). Peptide-level q-values use each unmodified peptide's best score, separately
-   for targets and decoys.
+   made monotone). Every PSM at a tied score receives the q-value of the complete tie, so row
+   order cannot affect acceptance. Peptide-level q-values use each unmodified peptide's best
+   score, separately for targets and decoys.
 3. **ncORF peptides.** ncORF-class target peptides at peptide-level q ≤ `fdr`.
 4. **Filters**, in this order (`fail_reason` names the first that applies). The dog
    reference is every canonical-class sequence in the database (Ensembl, UniProt, contaminants,
@@ -391,7 +396,8 @@ The peptide and ORF files are written only when there is at least one row.
    (BLOSUM62, gap open −11, extend −1) against the 25 human and the 25 mouse proteins sharing
    the most 6-mers with it. It is homologous to an annotated protein if its best alignment in
    either species scores at least `homology_min_score` with identity at least
-   `homology_min_identity`.
+   `homology_min_identity`. For BLOSUM62 compatibility, selenocysteine (U) is compared as its
+   standard amino-acid analogue C; pyrrolysine (O) as K; and ambiguous I/L (J) as X.
 
 ## Retention-time standards
 
@@ -426,8 +432,22 @@ and the pilot database (without standards):
   (ENSCAFT00845026041) resembling Ly6-family proteins (best mouse hit Ly6g: score 129,
   identity 0.27), supported by one peptide (TCVQSCETLNPMPSR, 9 PSMs in liver and spleen).
 
-`aggregate.py` reproduces those tables byte for byte from the pilot's PSMs and database. No
-run has been searched with `driver.sh` yet.
+`aggregate.py` reproduces those tables byte for byte from the pilot's PSMs and database.
+
+### Real pipeline validation
+
+On 2026-10-26, `driver.sh` completed the smallest deposited run,
+`120619-Canine_plasma_depleted_Wolf_Baseline`, through the real remote Deflate64 archive,
+Sage v0.14.7 and parquet post-processing. The archive member was 179,226,771 compressed
+bytes and 734,760,903 mzML bytes; its CRC-32 was `d3607b49` and its uncompressed SHA-256 was
+`68ab8d8c0b4b2847f52733ed89daec5cf377c76381871afe80f3107129760bd9`. It contained 95,509
+MS2 spectra. Sage produced 60,466 rows, of which 34,099 were rank 1.
+
+The real PSM parquet also completed `aggregate.py`: five ncORF-class target peptides met the
+1% peptide-level class FDR, three passed the sequence filters, and they supported two dORFs.
+These are validation observations from one run, not a released evidence catalogue. Re-running
+the driver found the completed manifest row, downloaded nothing and left the manifest and
+parquet checksums unchanged.
 
 ## Caveats
 
@@ -443,5 +463,6 @@ run has been searched with `driver.sh` yet.
 - **Annotation gaps dominate.** Most supported ORFs in the pilot look like conserved proteins
   that dog Ensembl lacks or mis-models, not new ncORFs.
 - **Contaminants** are only the 499 in PeptideAtlas's FASTA, plus the standards above.
-- **Untested at scale.** `driver.sh` was tested with a stand-in Sage on a local archive, and
-  `aggregate.py` on three runs. Memory and run time for all 132 runs are estimates.
+- **Untested at full scale.** `driver.sh` and `aggregate.py` completed one real deposited run;
+  the entire 132-run collection has not been executed. Memory and total run time remain
+  estimates.

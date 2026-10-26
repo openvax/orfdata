@@ -23,6 +23,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fdr import qvalues  # noqa: E402
+from homology import blosum62_sequence  # noqa: E402
 from standards import STANDARDS  # noqa: E402
 
 with open(sys.argv[1]) as _f:
@@ -43,16 +45,6 @@ def log(s):
     summary.append(s)
 
 
-def qvalues(score, is_decoy):
-    order = np.argsort(-score, kind="mergesort")
-    dec = is_decoy[order]
-    fdr = np.cumsum(dec) / np.maximum(np.cumsum(~dec), 1)
-    q = np.minimum.accumulate(fdr[::-1])[::-1]
-    res = np.empty_like(q)
-    res[order] = q
-    return res
-
-
 STRIP = r"\[[^\]]*\]|[^A-Z]"
 
 
@@ -70,6 +62,8 @@ def tissue_of(run):
 runs = pd.read_csv(cfg["runs_tsv"], sep="\t", header=None,
                    names=["run", "group", "zip_url", "member", "mzml_bytes", "compressed_bytes"])
 files = sorted(glob.glob(os.path.join(cfg["psm_dir"], "*.parquet")))
+if not files:
+    raise SystemExit(f"no per-run PSM parquet files found in {cfg['psm_dir']}")
 NC_COLS = ["run", "filename", "scannr", "peptide", "proteins", "num_proteins", "label", "charge", "expmass", "calcmass",
            "precursor_ppm", "isotope_error", "hyperscore", "delta_next", "matched_peaks", "rt", "ion_mobility",
            "sage_discriminant_score", "spectrum_q", "peptide_q", "posterior_error"]
@@ -312,13 +306,14 @@ orf_hom = {}
 for sp, path in (("human", cfg["human_pep"]), ("mouse", cfg["mouse_pep"])):
     seqs = read_fasta_seqs(path)
     names, sl = list(seqs), list(seqs.values())
+    alignment_seqs = [blosum62_sequence(s) for s in sl]
     qk = collections.defaultdict(set)
     for o in orf_ids:
-        s = cand.at[o, "sequence"]
+        s = blosum62_sequence(cand.at[o, "sequence"])
         for i in range(len(s) - K + 1):
             qk[s[i:i + K]].add(o)
     hits = collections.defaultdict(collections.Counter)
-    for j, s in enumerate(sl):
+    for j, s in enumerate(alignment_seqs):
         seen = set()
         for i in range(len(s) - K + 1):
             k = s[i:i + K]
@@ -327,10 +322,10 @@ for sp, path in (("human", cfg["human_pep"]), ("mouse", cfg["mouse_pep"])):
                 for o in qk[k]:
                     hits[o][j] += 1
     for o in orf_ids:
-        q = cand.at[o, "sequence"]
+        q = blosum62_sequence(cand.at[o, "sequence"])
         bestaln = None
         for j, _ in hits[o].most_common(25):
-            a = aligner.align(q, sl[j])[0]
+            a = aligner.align(q, alignment_seqs[j])[0]
             if bestaln is None or a.score > bestaln[0]:
                 bestaln = (a.score, j, a)
         if bestaln is None:
@@ -338,7 +333,7 @@ for sp, path in (("human", cfg["human_pep"]), ("mouse", cfg["mouse_pep"])):
             continue
         sc, j, a = bestaln
         pairs = [(qs + k, ts + k) for (qs, qe), (ts, te) in zip(*a.aligned) for k in range(qe - qs)]
-        ident = sum(1 for qi, ti in pairs if q[qi] == sl[j][ti]) / max(len(pairs), 1)
+        ident = sum(1 for qi, ti in pairs if q[qi] == alignment_seqs[j][ti]) / max(len(pairs), 1)
         gene = next((t.split(":", 1)[1] for t in names[j].split() if t.startswith("gene_symbol:")), "")
         orf_hom[(o, sp)] = dict(score=float(sc), hit=f"{names[j].split()[0]}({gene})", ident=round(ident, 3),
                                 aln_len=len(pairs))

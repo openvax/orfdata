@@ -224,10 +224,16 @@ search_loop() {
 log "START pid=$$ runs=$n_listed done=$n_done failed=$n_failed to_search=$n_pending nconn=$NCONN threads=$SAGE_THREADS"
 fetch_loop &
 FPID=$!
-search_loop
-wait "$FPID"
+search_status=0
+fetch_status=0
+search_loop || search_status=$?
+wait "$FPID" || fetch_status=$?
 FPID=
 n_marked=$(find "$W" -maxdepth 1 \( -name '*.fetch_failed' -o -name '*.sage_failed' -o -name '*.post_failed' \) | wc -l | tr -d ' ')
 n_rows=0
 [ -f "$MAN" ] && n_rows=$(($(wc -l < "$MAN") - 1))
-log "ALL_DONE searched=$n_rows failed=$n_marked"
+if [ "$search_status" -ne 0 ] || [ "$fetch_status" -ne 0 ] || [ "$n_marked" -ne 0 ]; then
+  log "INCOMPLETE searched=$n_rows failed=$n_marked search_status=$search_status fetch_status=$fetch_status"
+  exit 1
+fi
+log "ALL_DONE searched=$n_rows failed=0"
