@@ -1,6 +1,9 @@
 """Declared NCBI genetic codes bind native mitochondrial ORFs and fail closed otherwise."""
 
+import csv
+import io
 import json
+import zipfile
 from dataclasses import replace
 from pathlib import Path
 
@@ -122,3 +125,54 @@ def test_codon_annotation_uses_the_declared_code(table, expected):
     assert codon["alternate_codon"] == "ATG" and codon["alternate_codon_translation"] == "M"
     with pytest.raises(ValueError, match="translation table"):
         replace(orf, translation_table=4).annotate_initiation_snv(103, "C", "A", genome_build="R64-1-1")
+
+
+@pytest.mark.parametrize("native", FIXTURES[:1], ids=[FIXTURES[0]["name"]], indirect=True)
+def test_native_openprot_import_accepts_only_a_declared_supported_code(native, tmp_path):
+    """Replay the pinned native row; archive wrappers/BED serialization are fixture-only."""
+    from orfdata import CatalogRegistry, load_catalog
+    from orfdata.sources.openprot import import_orfs
+
+    example, original, transcript = native
+    row = example["native"]
+    tsv = io.StringIO()
+    writer = csv.DictWriter(tsv, fieldnames=list(row), delimiter="\t", lineterminator="\n")
+    writer.writeheader()
+    writer.writerow(row)
+    a, b = original.coding_blocks[0]
+    bed = f"chrMT\t{a - 1}\t{b}\t{original.orf_id}\t0\t+\t{a - 1}\t{b}\t0\t1\t{b - a + 1}\t0\n"
+    contents = dict(tsv=tsv.getvalue(), bed=bed,
+                    fasta=example["native_fasta_header"] + "\n" + original.protein_sequence + "\n")
+    inputs = {}
+    for kind, text in contents.items():
+        path = tmp_path / f"fixture.{kind}.zip"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr(f"fixture.{kind}", text)
+        inputs[kind] = path
+    base = CatalogRegistry().info("openprot-mouse")
+    summary = example["summaries"][0]
+    manifest = replace(base, catalog_id="openprot-human-fixture",
+                       references=(original.reference_context,
+                                   ReferenceContext(**summary["target"]["reference"])),
+                       sources=tuple(replace(s, url=summary["source_url"], sha256=summary["source_sha256"])
+                                     if s.asset_id == "tsv" else s for s in base.sources),
+                       processing=dict(base.processing, transcript_prefix="ENST",
+                                       members={kind: f"fixture.{kind}" for kind in contents},
+                                       translation_tables={original.transcript_id: 2}),
+                       coverage=dict(records=1, source_rows=1, resolved_rows=1, unresolved_rows=0,
+                                     accessions=1, resolved_accessions=1))
+    output = tmp_path / "catalog.json.gz"
+    import_orfs(inputs, output, manifest)
+    imported = load_catalog(output).get(original.orf_id)
+    assert imported.translation_table == 2
+    assert imported.coding_blocks == original.coding_blocks
+    assert imported.bind(transcript).protein_sequence == original.protein_sequence
+    assert {s.metric: s.value for s in imported.summaries} == {
+        "MS score": 2, "TE Translation Event score": 0}
+    assert imported.summaries[0].source_sha256 == summary["source_sha256"]
+    for declarations, error in [({}, "is mitochondrial"),
+                                 ({original.transcript_id: 4}, "translation table"),
+                                 ({"missing-transcript": 2}, "absent source transcripts")]:
+        with pytest.raises(ValueError, match=error):
+            import_orfs(inputs, output, replace(manifest, processing=dict(
+                manifest.processing, translation_tables=declarations)))

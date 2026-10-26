@@ -71,3 +71,12 @@ must declare table 2, and a yeast one table 3. See
 products, such as Varcode and Isovar, must translate them with that code.
 For example, OpenProt's IP_306399 on human MT-ND4 begins ATA and ends AGG. It
 binds under table 2; table 1 would read those codons as isoleucine and arginine.
+
+OpenProt import manifests can declare `processing.translation_tables` by exact
+native transcript ID, for example `{"ENST00000361381.2": 2}` for the qualified
+human IP_306399 row. The declaration belongs to the pinned source/reference
+manifest and is retained in catalogue provenance. Mitochondrial rows require
+such a declaration; unsupported codes and IDs absent from the input fail.
+The importer retains the native coordinate conversion and aggregate MS/TE
+counts. Binding still checks the exact transcript sequence and protein.
+This does not publish a complete human or yeast OpenProt catalogue (#18).
