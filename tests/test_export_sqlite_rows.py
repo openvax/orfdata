@@ -1,6 +1,7 @@
 """Native export checkpoints preserve exact values, scope and source identities."""
 
 import copy
+import json
 import sqlite3
 
 import pytest
@@ -137,3 +138,88 @@ def test_batch_and_sqlite_output_budgets_stop_without_false_completion(native, t
     assert not state["complete"] and 3 < state["rows"] < 23
     assert output.path.stat().st_size <= 1024 * 1024
     output.close()
+
+
+def extension_plans(native):
+    database, original = native
+    database.executescript("CREATE TABLE ExtraMembership(workflow,spectrum); CREATE TABLE ExtraMetadata(name);")
+    database.executemany("INSERT INTO ExtraMembership VALUES (?,?)", [(1, 3), (2, 99)])
+    database.execute("INSERT INTO ExtraMetadata VALUES ('additional source definition')")
+    database.commit()
+    old = copy.deepcopy(original)
+    old["source_schema_sha256"] = source_schema(database)[1]
+    new = copy.deepcopy(old)
+    new["tables"].insert(0, dict(table="ExtraMetadata", columns=["name"]))
+    new["tables"].insert(-1, dict(table="ExtraMembership", columns=["workflow", "spectrum"]))
+    new["tables"][-1]["select_from"].append(dict(table="ExtraMembership", columns=["workflow", "spectrum"]))
+    return database, old, new
+
+
+def test_explicit_additive_selection_keeps_checkpoints_and_records_previous_scope(native, tmp_path):
+    database, old, new = extension_plans(native)
+    output = exporter((database, old), tmp_path / "extend", batch_rows=1)
+    previous = output.copy("Peptides", max_batches=1)
+    output.copy("Membership")
+    output.close()
+    with pytest.raises(ValueError, match="another source or selection"):
+        exporter((database, new), tmp_path / "extend")
+    resumed = exporter((database, new), tmp_path / "extend", extend_selection=True)
+    assert resumed.progress("Peptides") == previous
+    history = json.loads(resumed.database.execute("SELECT value FROM _export_metadata WHERE key='selection_history'").fetchone()[0])
+    assert len(history) == 1 and history[0]["previous_configuration"]["plan"] == old
+    assert history[0]["previous_progress"]["Peptides"] == previous
+    assert history[0]["added_tables"] == ["ExtraMetadata", "ExtraMembership"]
+    assert history[0]["expanded_unstarted_selections"] == ["Acquisition"]
+    for name in resumed.tables:
+        resumed.copy(name)
+    state = resumed.progress("Acquisition")
+    assert state["rows"] == 4 and state["selected_keys"] == 4 and state["missing_keys"] == 1
+    assert resumed.summary()["selection_complete"]
+    resumed.close()
+    again = exporter((database, new), tmp_path / "extend")
+    assert again.summary()["selection_complete"]
+    again.close()
+
+
+@pytest.mark.parametrize("progress", ["queued", "started", "complete"])
+def test_expanding_started_acquisitions_never_relabels_existing_scope(native, tmp_path, progress):
+    database, old, new = extension_plans(native)
+    output = exporter((database, old), tmp_path / "started", lookup_keys=1)
+    output.copy("Membership")
+    if progress == "queued":
+        output._queue(output.tables["Acquisition"])
+    else:
+        output.copy("Acquisition", max_batches=1 if progress == "started" else None)
+    previous = output.progress("Acquisition")
+    output.close()
+    with pytest.raises(ValueError, match="after it has started"):
+        exporter((database, new), tmp_path / "started", extend_selection=True)
+    reopened = exporter((database, old), tmp_path / "started")
+    assert reopened.progress("Acquisition") == previous
+    assert reopened.database.execute("SELECT value FROM _export_metadata WHERE key='selection_history'").fetchone() is None
+    reopened.close()
+
+
+def test_selection_extension_failure_is_atomic_and_cannot_remove_prior_facts(native, tmp_path):
+    database, old, new = extension_plans(native)
+    output = exporter((database, old), tmp_path / "atomic")
+    previous = output.copy("Peptides")
+    output.database.execute("CREATE TRIGGER fail_extension BEFORE INSERT ON _export_progress "
+                            "WHEN NEW.name='ExtraMetadata' BEGIN SELECT RAISE(ABORT,'simulated extension failure'); END")
+    output.close()
+    with pytest.raises(sqlite3.IntegrityError, match="extension failure"):
+        exporter((database, new), tmp_path / "atomic", extend_selection=True)
+    reopened = exporter((database, old), tmp_path / "atomic")
+    assert reopened.progress("Peptides") == previous
+    assert reopened.database.execute("SELECT 1 FROM sqlite_master WHERE name='ExtraMetadata'").fetchone() is None
+    assert reopened.database.execute("SELECT value FROM _export_metadata WHERE key='selection_history'").fetchone() is None
+    reopened.database.execute("DROP TRIGGER fail_extension")
+    reopened.close()
+    removed_column = copy.deepcopy(new)
+    removed_column["tables"][1]["columns"].remove("vector")
+    with pytest.raises(ValueError, match="existing columns"):
+        exporter((database, removed_column), tmp_path / "atomic", extend_selection=True)
+    removed_table = copy.deepcopy(new)
+    removed_table["tables"] = [t for t in removed_table["tables"] if t["table"] != "Peptides"]
+    with pytest.raises(ValueError, match="remove or reorder"):
+        exporter((database, removed_table), tmp_path / "atomic", extend_selection=True)

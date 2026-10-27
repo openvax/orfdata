@@ -423,6 +423,18 @@ class QuantitativeDataset:
     def assays(self, *, reference=None):
         return self._records("assay", Assay, reference=reference)
 
+    def source_evidence(self):
+        """Open indexed native canine records, links and FASTA candidates locally.
+
+        This richer source interface is available only for releases that declare
+        the completed canine evidence encoding. It never acquires source files.
+        """
+        if self._storage_version != 6:
+            raise ValueError("This dataset does not contain indexed native canine evidence")
+        from .sources.pfizer_attribution import CanineEvidence
+
+        return CanineEvidence(self.path)
+
     def mappings(self, *, reference=None):
         if self._storage_version < 5:
             return self._records("mapping", TargetMapping, reference=reference)

@@ -54,7 +54,7 @@ The elapsed-time limit applies to each invocation; payload/request counters
 persist. The final export must use the same scratch-budget object for all output
 writes and bound its SQLite output database/journal capacity too.
 
-The selected biological tables are pinned in `dog_result_plan.json` against the
+The 42 selected biological tables (482 columns) are pinned in `dog_result_plan.json` against the
 inspected schema hash. They retain target and decoy identities, peptides/PSMs,
 protein groups and every selected membership/modification link. Only acquisitions
 referenced by those links are selected, using indexed composite-key lookups.
@@ -76,6 +76,20 @@ output marked `selection_complete` has completed only the selected native facts;
 it has not passed normalized dataset acceptance. Output and rollback journal
 capacity are included in the scratch reservation. Do not open another range
 reader on the same cache while an export is live.
+
+The selection includes direct `QuanSpectrumInfoTargetPeptideGroups` links and
+their native `QuanUsage`, as well as PSM-to-quantification links. Both sets drive
+referenced quantification-spectrum and reporter selection. Protein identification
+group metadata preserves the source's processing-node/group names.
+
+An earlier 40-table checkpoint can adopt these additional facts with the explicit
+`--extend-selection` option. Existing table columns, source identity, cursors,
+row counts and hashes remain unchanged. The acquisition selections may expand
+only before their queues or rows exist. The prior configuration and all progress
+records are retained in `selection_history`, atomically with the extension.
+Removing facts, changing source identity, or silently relabeling a begun
+acquisition selection is rejected. Finish or inspect the live process before
+running an extension; never open a second cache owner.
 
 After all selected tables finish, normalize the completed staging file explicitly:
 
@@ -112,6 +126,34 @@ three peptide-group abundance columns keep separate units and record IDs. Source
 protein membership and searched-FASTA candidates remain separate attribution facts.
 The internal flat observation tables are absent in version 6, so direct SQL cannot
 misreport an empty observation set. Ordinary version-5 dataset writes are unchanged.
+
+After `build_attribution` has completed against a checksum-verified complete
+searched FASTA, `dataset.source_evidence()` exposes the indexed source facts:
+
+```python
+native = dataset.source_evidence()
+group = list(native.records("TargetPeptideGroups", key=(8,)))
+memberships = list(native.linked("TargetPeptideGroups", (8,),
+                               via="TargetPeptideGroupsTargetProteins"))
+candidates = list(native.candidates("AAAAAAAAAK"))
+```
+
+Each link retains its exact original fields and both endpoints, including an
+explicit unresolved endpoint. Incoming queries retrieve group/peptide records
+mentioning a native protein. A resolved link means that both source records are
+present; confidence and exclusion policies are not inferred. The searched-reference
+index retains every matching accession and repeated position, labels exact versus
+I/L-compatible matches, and distinguishes no match from a sequence never searched.
+Only target peptide sequences are searched by default. Decoy source records and
+links remain accessible with their native partition; they are not assigned as
+biological detections. All original searched protein entries are available via
+`native.search_protein(accession)`, separate from any detection claim.
+
+On an explicit 100-group benchmark, the public source-evidence interface preserved
+all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
+placements agreed with an independent exhaustive search of the complete FASTA.
+This benchmark contained no full native membership tables and is not a release
+or a substitute for their full-count and representative reconciliation.
 
 Sequential scans use bounded read-ahead; index lookups use individual 4 KiB
 pages. The source control connection can be reused only after a verified FTP

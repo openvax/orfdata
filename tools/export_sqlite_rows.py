@@ -60,12 +60,15 @@ class NativeExport:
     """
 
     def __init__(self, source, output, plan, identity, scratch, *, output_limit,
-                 batch_rows=500, batch_bytes=16 * 1024 * 1024, lookup_keys=32):
+                 batch_rows=500, batch_bytes=16 * 1024 * 1024, lookup_keys=32, extend_selection=False):
         if min(batch_rows, batch_bytes, lookup_keys) < 1:
             raise ValueError("Export batch limits must be positive")
         self.source, self.plan, self.scratch = source, plan, scratch
         self.path = Path(output).resolve()
         self.batch_rows, self.batch_bytes, self.lookup_keys = batch_rows, batch_bytes, lookup_keys
+        if type(extend_selection) is not bool:
+            raise TypeError("Selection extension must be explicit")
+        self.extend_selection = extend_selection
         self.tables = {item["table"]: item for item in plan["tables"]}
         if len(self.tables) != len(plan["tables"]):
             raise ValueError("Duplicate table in native selection")
@@ -120,9 +123,19 @@ class NativeExport:
         """)
         configuration = json.dumps(dict(plan=self.plan, identity=identity), sort_keys=True, separators=(",", ":"))
         previous = db.execute("SELECT value FROM _export_metadata WHERE key='configuration'").fetchone()
+        extension = None
         if previous is not None and previous[0] != configuration:
-            raise ValueError("Export checkpoint belongs to another source or selection")
+            if not self.extend_selection:
+                raise ValueError("Export checkpoint belongs to another source or selection")
+            extension = self._validate_extension(json.loads(previous[0]), json.loads(configuration))
         with db:
+            if extension is not None:
+                row = db.execute("SELECT value FROM _export_metadata WHERE key='selection_history'").fetchone()
+                history = json.loads(row[0]) if row else []
+                history.append(extension)
+                db.execute("INSERT OR REPLACE INTO _export_metadata VALUES ('selection_history',?)",
+                           (json.dumps(history, sort_keys=True, separators=(",", ":")),))
+                db.execute("UPDATE _export_metadata SET value=? WHERE key='configuration'", (configuration,))
             db.execute("INSERT OR IGNORE INTO _export_metadata VALUES ('configuration',?)", (configuration,))
             for item in self.plan["tables"]:
                 columns = ",".join(quoted(c) for c in item["columns"])
@@ -131,6 +144,44 @@ class NativeExport:
                            f"(_source_rowid INTEGER PRIMARY KEY,{columns})")
                 db.execute("INSERT OR IGNORE INTO _export_progress VALUES (?,NULL,0,0,0,?,0)",
                            (item["table"], "0" * 64))
+
+    def _validate_extension(self, previous, current):
+        """Allow only additive facts, without reinterpreting any acquired rows.
+
+        Acquisition selectors may expand only before even their selection queue
+        has been created. A begun/completed acquisition requires a separate
+        explicit reconciliation, not relabeling its existing checkpoint.
+        """
+        before, after = previous["plan"], current["plan"]
+        if (previous["identity"] != current["identity"]
+                or {k: v for k, v in before.items() if k != "tables"}
+                != {k: v for k, v in after.items() if k != "tables"}):
+            raise ValueError("Selection extension cannot change source identity or plan metadata")
+        old = {item["table"]: item for item in before["tables"]}
+        new = {item["table"]: item for item in after["tables"]}
+        if [item["table"] for item in after["tables"] if item["table"] in old] != list(old):
+            raise ValueError("Selection extension cannot remove or reorder existing tables")
+        expanded = []
+        for name, item in old.items():
+            proposed = new[name]
+            if proposed == item:
+                continue
+            if ({k: v for k, v in item.items() if k != "select_from"}
+                    != {k: v for k, v in proposed.items() if k != "select_from"}
+                    or not item.get("select_from")
+                    or proposed.get("select_from", [])[:len(item["select_from"])] != item["select_from"]
+                    or len(proposed.get("select_from", [])) <= len(item["select_from"])):
+                raise ValueError("Selection extension cannot change existing columns, keys or source facts")
+            state = self.progress(name)
+            queued = self.database.execute("SELECT 1 FROM sqlite_master WHERE name=?", ("_selection_" + name,)).fetchone()
+            actual = self.database.execute(f"SELECT 1 FROM {quoted(name)} LIMIT 1").fetchone()
+            if (state != dict(cursor=None, rows=0, selected_keys=0, missing_keys=0, digest="0" * 64, complete=0)
+                    or queued or actual):
+                raise ValueError("Cannot expand acquisition selection after it has started")
+            expanded.append(name)
+        return dict(previous_configuration=previous, added_tables=[name for name in new if name not in old],
+                    expanded_unstarted_selections=expanded, previous_progress={name: self.progress(name) for name in old},
+                    row_export_sha256=CODE_SHA256)
 
     def progress(self, table):
         row = self.database.execute("SELECT cursor,rows,selected_keys,missing_keys,digest,complete "

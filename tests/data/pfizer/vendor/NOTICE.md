@@ -36,6 +36,18 @@ come from the same deposited database and bounded read workflow. They test the
 distinct confidence, ambiguity, quantification and master-protein enum domains,
 source modification specificity, and unaltered native position/record IDs.
 
+`memberships.json` adds exact examples from the first three deposited
+protein-group/protein and peptide-group/protein link rows, their six target
+proteins, three protein groups and peptide groups 1, 2, 3 and 8. Provenance names
+the original sample SQL/file hashes and the staging source checkpoints. Local
+test SQLite rowids are fixture IDs, not claims about the vendor link rowids.
+The fixture is not a complete set of native links. Its seven candidate peptide
+placements were independently checked by exhaustive substring search across the
+complete pinned 20,649-record FASTA. `membership-search-slice.fasta` contains the
+ten complete source entries needed by these examples; its hash is in the JSON.
+Missing endpoints, sequence mismatches, repeated I/L placements and direct
+quantification links in the tests are explicitly synthetic cases.
+
 `search-slice.fasta` contains twelve complete records from the checksum-pinned
 20,649-record searched FASTA. They are the candidate accessions for the eight
 native peptide examples. `search-slice.json` records the full-reference audit,

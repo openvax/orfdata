@@ -164,6 +164,16 @@
       "role": "metadata"
     },
     {
+      "table": "ProteinIdentificationGroups",
+      "columns": [
+        "WorkflowID",
+        "ProteinIdentificationGroupID",
+        "ProcessingNodeNumber",
+        "GroupName"
+      ],
+      "role": "metadata"
+    },
+    {
       "table": "TargetProteins",
       "columns": [
         "UniqueSequenceID",
@@ -620,6 +630,16 @@
       "role": "target_link"
     },
     {
+      "table": "QuanSpectrumInfoTargetPeptideGroups",
+      "columns": [
+        "QuanSpectrumInfoWorkflowID",
+        "QuanSpectrumInfoSpectrumID",
+        "TargetPeptideGroupsPeptideGroupID",
+        "QuanUsage"
+      ],
+      "role": "target_link"
+    },
+    {
       "table": "MSnSpectrumInfo",
       "columns": [
         "WorkflowID",
@@ -723,6 +743,13 @@
             "QuanSpectrumInfoWorkflowID",
             "QuanSpectrumInfoSpectrumID"
           ]
+        },
+        {
+          "table": "QuanSpectrumInfoTargetPeptideGroups",
+          "columns": [
+            "QuanSpectrumInfoWorkflowID",
+            "QuanSpectrumInfoSpectrumID"
+          ]
         }
       ]
     },
@@ -743,6 +770,13 @@
       "select_from": [
         {
           "table": "TargetPsmsQuanSpectrumInfo",
+          "columns": [
+            "QuanSpectrumInfoWorkflowID",
+            "QuanSpectrumInfoSpectrumID"
+          ]
+        },
+        {
+          "table": "QuanSpectrumInfoTargetPeptideGroups",
           "columns": [
             "QuanSpectrumInfoWorkflowID",
             "QuanSpectrumInfoSpectrumID"

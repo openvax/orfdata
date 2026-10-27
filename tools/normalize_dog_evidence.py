@@ -48,6 +48,8 @@ def normalize(source, output, scratch, output_limit, *, batch_rows=500):
         original.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 16 * 1024 * 1024)
         original.execute("BEGIN")
         configuration = json.loads(original.execute("SELECT value FROM _export_metadata WHERE key='configuration'").fetchone()[0])
+        history_row = original.execute("SELECT value FROM _export_metadata WHERE key='selection_history'").fetchone()
+        selection_history = json.loads(history_row[0]) if history_row else []
         if configuration["plan"] != plan:
             raise ValueError("Native source selection differs from the pinned dog extraction plan")
         progress = {name: dict(rows=count, digest=digest, complete=complete, missing_keys=missing)
@@ -76,7 +78,7 @@ def normalize(source, output, scratch, output_limit, *, batch_rows=500):
         destination.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 16 * 1024 * 1024)
         writer = EvidenceWriter(destination, plan, decoder)
         destination.execute("INSERT INTO evidence_metadata VALUES ('source',?)", (json.dumps(dict(
-            source_file_sha256=source_hash, selection=configuration, extraction_progress=progress,
+            source_file_sha256=source_hash, selection=configuration, selection_history=selection_history, extraction_progress=progress,
             integrity_scope="Lossless selected native facts; the vendor database has no authoritative full-file checksum"),
             sort_keys=True, separators=(",", ":")),))
         destination.execute("CREATE TABLE evidence_missing(table_name TEXT NOT NULL, source_key TEXT NOT NULL, "

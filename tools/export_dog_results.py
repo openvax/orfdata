@@ -29,6 +29,8 @@ def main():
     parser.add_argument("--seconds", type=int, default=1200)
     parser.add_argument("--batch-rows", type=int, default=500)
     parser.add_argument("--lookup-keys", type=int, default=32)
+    parser.add_argument("--extend-selection", action="store_true",
+                        help="Explicitly add source tables and expand only unstarted acquisition selections")
     args = parser.parse_args()
     root = args.directory.resolve()
     scratch = ScratchBudget(root, args.scratch_mib * 1024 * 1024)
@@ -47,7 +49,8 @@ def main():
         source_identity = dict(identity=cache.identity, header_sha256=cache.header_sha256)
         export = NativeExport(database, root / "native-evidence.partial.sqlite", plan, source_identity,
                               scratch, output_limit=args.output_mib * 1024 * 1024,
-                              batch_rows=args.batch_rows, lookup_keys=args.lookup_keys)
+                              batch_rows=args.batch_rows, lookup_keys=args.lookup_keys,
+                              extend_selection=args.extend_selection)
         selected = args.tables or list(export.tables)
         for table in selected:
             # Index lookups read only requested pages; sequential native row

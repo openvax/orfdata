@@ -51,6 +51,8 @@ def record_keys(table):
         return ("WorkflowID", "QuanResultID", "QuanChannelID")
     if table == "FoundModifications":
         return ("ModificationID",)
+    if table == "ProteinIdentificationGroups":
+        return ("WorkflowID", "ProteinIdentificationGroupID")
     return ("_source_rowid",)
 
 
