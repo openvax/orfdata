@@ -17,6 +17,7 @@ from orfdata import QuantitativeDataset, SourceAsset
 from orfdata.datasets import build_dataset
 from orfdata.sources import importer, search_references
 from orfdata.sources.pfizer import TABLE_COLUMNS, _audit, protein_manifest
+from orfdata.sources.pfizer_attribution import CanineEvidence
 from orfdata.sources.pfizer_evidence import EvidenceStore
 from orfdata.sources.pfizer_native import IMPORTER, file_sha256, import_native, selection_sha256
 from orfdata.sources.pfizer_vendor import NativeQuantification
@@ -80,7 +81,7 @@ def test_complete_build_preserves_measurements_memberships_and_summary_context(i
     assert dataset.manifest == manifest
     assert list(dataset.measurements()) == expected
     assert dataset.counts["measurement"] == 429
-    evidence = dataset.source_evidence()
+    evidence = CanineEvidence(dataset.path)
     assert evidence.search_reference == search_references(manifest)[0]
     assert list(evidence.records("TargetPsms")) == list(EvidenceStore(paths["evidence.sqlite"]).records("TargetPsms"))
     group = evidence.summary_group("A0A5F4CET6")
@@ -96,6 +97,48 @@ def test_complete_build_preserves_measurements_memberships_and_summary_context(i
         assert receipt["summary"]["IBAQ:missing"] == 13 and receipt["summary"]["IBAQ:zero"] == 13
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
         assert db.execute("SELECT count(*) FROM sqlite_master WHERE name='summary_seen'").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("source", ["synthetic-memberships"], indirect=True)
+def test_common_mapping_and_relationship_queries_preserve_native_assignments(inputs, tmp_path):
+    from orfdata import TargetMapping, TargetRelation
+
+    paths, manifest, _ = inputs
+    dataset = import_native(paths, tmp_path / "common.sqlite", manifest)
+    native = CanineEvidence(dataset.path)
+    records = {table: list(native.records(table)) for table in ("TargetPeptideGroups", "TargetPsms")}
+    all_mappings = list(dataset.mappings())
+    assert len(all_mappings) == dataset.counts["mapping"]
+    assert any(value.status == "unresolved" and len(value.targets) == 2 for value in all_mappings)
+    assert all(TargetMapping.from_dict(value.to_dict()) == value for value in all_mappings)
+    for sequence in sorted({row["Sequence"] for rows in records.values() for row in rows}):
+        mappings = list(dataset.mappings(source_identifier=sequence, source_namespace="amino-acid-sequence"))
+        reported = [value for value in mappings if value.evidence["basis"] == "reported"]
+        candidate, = [value for value in mappings if value.evidence["basis"] == "sequence_compatibility"]
+        assert len(reported) == sum(row["Sequence"] == sequence for rows in records.values() for row in rows)
+        expected = list(native.candidates(sequence))
+        assert {target.identifier for target in candidate.targets} == {
+            hit["accession"] for hit in expected if hit["status"] == "candidate"}
+        assert list(candidate.evidence["placements"]) == [
+            {key: hit[key] for key in ("accession", "start", "end", "basis")}
+            for hit in expected if hit["status"] == "candidate"]
+        assert all(value.evidence["unique_protein_detection"] is False for value in mappings)
+        for mapping in mappings:
+            for target in mapping.targets:
+                selected = list(dataset.mappings(source_identifier=sequence, target=target))
+                assert mapping in selected  # Selecting one destination retains all its fellow candidates.
+                assert all(target in value.targets for value in selected)
+    assert list(dataset.mappings(source_identifier="not-a-sequence")) == []
+    relations = list(dataset.relations())
+    assert relations and len(relations) == dataset.counts["target_relation"]
+    assert all(value.relation == "shared_group_member" for value in relations)
+    for value in relations:
+        assert TargetRelation.from_dict(value.to_dict()) == value
+        assert value in list(dataset.relations(left_target=value.left, right_target=value.right))
+        assert list(dataset.relations(relation_ids=[value.relation_id])) == [value]
+        assert value.evidence["protein_summary"]["dataset_id"] == manifest.processing["protein_summary"]["dataset_id"]
+        assert list(dataset.measurements(target=value.right)) == []  # Group/peptide facts do not quantify a protein.
+    assert list(dataset.relations(relation_ids=[])) == []
     assert not list(tmp_path.glob("canine-evidence-*"))
     with sqlite3.connect(dataset.path) as db:
         db.execute("DELETE FROM metadata WHERE name='canine_build'")
@@ -115,7 +158,7 @@ def test_gzip_component_and_managed_cache_build_are_offline(inputs, tmp_path):
     dataset = build_dataset(manifest, lambda p, o: import_native(p, o, manifest),
                             cache_root=tmp_path / "cache", source_paths=paths)
     assert list(dataset.measurements()) == expected
-    assert dataset.source_evidence().summary_group("A0A5F4CET6")["status"] == "matched_native_records"
+    assert CanineEvidence(dataset.path).summary_group("A0A5F4CET6")["status"] == "matched_native_records"
     assert not list(dataset.path.parent.glob("canine-evidence-*"))
 
 
@@ -161,7 +204,7 @@ def test_release_manifest_factory_refuses_a_partial_fixture_selection(inputs, tm
     assert generated.coverage["proteomexchange_accession"] == "PXD070290"
     dataset = import_native(paths, tmp_path / "generated.sqlite", generated)
     assert dataset.counts["measurement"] == 429
-    assert dataset.source_evidence().summary_group("A0A5F4CET6")["baseline"]["dataset_id"] == baseline.dataset_id
+    assert CanineEvidence(dataset.path).summary_group("A0A5F4CET6")["baseline"]["dataset_id"] == baseline.dataset_id
 
     from orfdata import DatasetRegistry
     from tools.package_sqlite_archive import archive_verified

@@ -200,6 +200,10 @@ def install_projection(connection, manifest, lineage, *, source_asset, reference
         connection.execute("DROP TABLE " + name)
     counts = json.loads(connection.execute("SELECT value FROM metadata WHERE name='counts'").fetchone()[0])
     counts.update(measurement=logical_count, target=connection.execute("SELECT count(*) FROM target").fetchone()[0])
+    from .pfizer_queries import counts as attribution_counts
+
+    for name, count in attribution_counts(connection).items():
+        counts[name] = counts.get(name, 0) + count
     connection.execute("UPDATE metadata SET value=? WHERE name='counts'", (_json(counts),))
     connection.execute("INSERT INTO metadata VALUES ('measurement_storage',?)", (_json(dict(
         driver=DRIVER, state="complete", source_asset=source_asset, reference_key=reference.key, lineage=lineage,

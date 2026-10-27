@@ -23,7 +23,7 @@ FIXTURE = Path(__file__).parent / "data/pfizer/vendor/native.json"
 
 
 @pytest.fixture
-def source(tmp_path, monkeypatch):
+def source(tmp_path, monkeypatch, request):
     original = json.loads(FIXTURE.read_text())["tables"]
     memberships = json.loads(FIXTURE.with_name("memberships.json").read_text())["tables"]
     for name in ("TargetProteinGroups", "TargetProteinGroupsTargetProteins"):
@@ -41,9 +41,20 @@ def source(tmp_path, monkeypatch):
         dict(workflow=-3, spectrum=1, value=0.0, opaque=b"", native_id=9),
         dict(workflow=-2, spectrum=1, value=None, opaque=None, native_id=10),
     ]
+    if getattr(request, "param", None) == "synthetic-memberships":
+        # Deliberately synthetic shared/dangling assignments for common-API
+        # regression. These links are not asserted as biological source facts.
+        peptide, psm = tables["TargetPeptideGroups"][0], tables["TargetPsms"][0]
+        proteins = [row["UniqueSequenceID"] for row in tables["TargetProteins"][:2]]
+        tables["TargetPeptideGroupsTargetProteins"] = [
+            dict(TargetPeptideGroupsPeptideGroupID=peptide["PeptideGroupID"], TargetProteinsUniqueSequenceID=identifier)
+            for identifier in [*proteins, 999999]]
+        tables["TargetPsmsTargetProteins"] = [
+            dict(TargetPsmsWorkflowID=psm["WorkflowID"], TargetPsmsPeptideID=psm["PeptideID"],
+                 TargetProteinsUniqueSequenceID=identifier) for identifier in proteins]
     path = tmp_path / "source.sqlite"
     db = sqlite3.connect(path)
-    plan = dict(scope="Explicit native regression slice with synthetic acquisition ordering", tables=[])
+    plan = dict(scope="Explicit regression slice with synthetic acquisition ordering and optional synthetic memberships", tables=[])
     progress = []
     for name, rows in tables.items():
         columns = list(rows[0])

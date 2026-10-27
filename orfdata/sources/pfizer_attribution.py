@@ -8,6 +8,7 @@ Only the explicit builder uses the optional sequence-matching dependency.
 
 import hashlib
 import json
+import sys
 from contextlib import closing
 from functools import lru_cache
 
@@ -19,6 +20,7 @@ from .pfizer_evidence import EvidenceStore, column_layouts, decode_scalars, reco
 from .pfizer_vendor import peptide_candidates
 
 ENCODING = "orfdata.pfizer-attribution.v1"
+ENDPOINT_CACHE_BYTES = 3 * 1024**3
 # These endpoint columns were verified in the deposited SQLite schema and are
 # retained in dog_result_plan.json. This is not table-name-based schema discovery.
 ENDPOINTS = {
@@ -62,7 +64,37 @@ CREATE INDEX search_peptide_hit_protein ON search_peptide_hit(accession,sequence
 """
 
 
-def build_attribution(connection, searched, *, max_residues=250000, checkpoint=None, defer_checks=False):
+def _endpoint_indexes(connection, tables, names, budget):
+    """Cache complete identity indexes within one conservative memory allowance.
+
+    Each entry reserves its Python string/integer sizes plus 128 bytes for dict
+    slots and resizing. An index that cannot fit falls back to SQLite; partial
+    indexes never make a missing key look like a missing source record.
+    Duplicate keys remain explicit and fail only when an endpoint uses them.
+    """
+    indexes, used = {}, 0
+    for name in dict.fromkeys(names):
+        if name not in tables or budget - used < 128:
+            continue
+        values, size = {}, 128
+        for key, identifier in connection.execute(
+                "SELECT source_key,i FROM evidence_record WHERE table_i=?", (tables[name],)):
+            if key in values:
+                values[key] = None
+                continue
+            cost = sys.getsizeof(key) + sys.getsizeof(identifier) + 128
+            if used + size + cost > budget:
+                break
+            values[key] = identifier
+            size += cost
+        else:
+            indexes[name] = values
+            used += size
+    return indexes, used
+
+
+def build_attribution(connection, searched, *, max_residues=250000, checkpoint=None, defer_checks=False,
+                      endpoint_cache_bytes=ENDPOINT_CACHE_BYTES):
     """Index complete local evidence and every placement in its verified FASTA.
 
     The caller owns the new output, its SQLite/disk limits and failure cleanup.
@@ -77,6 +109,8 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
         raise ValueError("Native canine evidence requires a canine searched reference")
     if type(max_residues) is not int or max_residues < 1:
         raise ValueError("Peptide batch residue limit must be positive")
+    if type(endpoint_cache_bytes) is not int or endpoint_cache_bytes < 0:
+        raise ValueError("Endpoint cache byte limit must be a nonnegative integer")
     state = connection.execute("SELECT value FROM evidence_metadata WHERE name='state'").fetchone()
     if state is None or json.loads(state[0]) != "complete":
         raise ValueError("Finish evidence normalization before building attributions")
@@ -118,12 +152,20 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
             connection.execute("INSERT INTO native_protein_search VALUES (?,?,?)", (index, accession, status))
     connection.commit()
 
+    indexes, absent = {}, object()
+
     @lru_cache(maxsize=8192)
     def endpoint(table, key):
         if table not in tables:
             raise ValueError("Native link endpoint table is absent from the selected evidence: " + table)
+        identity = source_key(key)
+        if table in indexes:
+            value = indexes[table].get(identity, absent)
+            if value is None:
+                raise ValueError("Native endpoint identity is not unique: " + table)
+            return None if value is absent else value
         rows = connection.execute("SELECT i FROM evidence_record WHERE table_i=? AND source_key=?",
-                                  (tables[table], source_key(key))).fetchmany(2)
+                                  (tables[table], identity)).fetchmany(2)
         if len(rows) > 1:
             raise ValueError("Native endpoint identity is not unique: " + table)
         return rows[0][0] if rows else None
@@ -131,6 +173,12 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
     for table, endpoints in ENDPOINTS.items():
         if table not in tables:
             continue
+        endpoint.cache_clear()
+        indexes.clear()
+        indexes, cache_bytes = _endpoint_indexes(connection, tables, endpoints, endpoint_cache_bytes)
+        if checkpoint is not None:
+            checkpoint(dict(stage="endpoint_indexes", table=table, accounted_bytes=cache_bytes,
+                            cached_tables={name: len(values) for name, values in indexes.items()}))
         for identifier, attributes in connection.execute(
                 "SELECT i,attributes FROM evidence_record WHERE table_i=? ORDER BY source_rowid", (tables[table],)):
             native = decode_scalars(attributes, scalar_layouts[table])
@@ -144,6 +192,7 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
                     checkpoint(dict(counts))
         connection.commit()
     endpoint.cache_clear()
+    indexes.clear()
     # A disk-backed primary key deduplicates across modified peptide groups and
     # PSMs without accumulating the full peptide universe in Python memory.
     for table in ("TargetPeptideGroups", "TargetPsms"):

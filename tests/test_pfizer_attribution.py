@@ -36,13 +36,23 @@ def component(path, tables):
     return db
 
 
-@pytest.fixture
-def native(tmp_path):
+@pytest.fixture(params=[0, 1024, 1024 * 1024])
+def native(tmp_path, request):
     path = tmp_path / "native.sqlite"
     searched = fixture_search(DIRECTORY / "membership-search-slice.fasta", MEMBERSHIPS["fixture_fasta_records"])
     with component(path, MEMBERSHIPS["tables"]) as db:
-        counts = build_attribution(db, searched, max_residues=100)
+        counts = build_attribution(db, searched, max_residues=100, endpoint_cache_bytes=request.param)
     return CanineEvidence(path), counts
+
+
+@pytest.mark.parametrize("cache_bytes", [0, 1024 * 1024])
+def test_endpoint_cache_preserves_duplicate_identity_rejection(tmp_path, cache_bytes):
+    tables = copy.deepcopy(MEMBERSHIPS["tables"])
+    tables["TargetProteinGroups"].append(copy.deepcopy(tables["TargetProteinGroups"][0]))
+    searched = fixture_search(DIRECTORY / "membership-search-slice.fasta", MEMBERSHIPS["fixture_fasta_records"])
+    with component(tmp_path / "duplicate.sqlite", tables) as db:
+        with pytest.raises(ValueError, match="Native endpoint identity is not unique"):
+            build_attribution(db, searched, endpoint_cache_bytes=cache_bytes)
 
 
 def test_native_memberships_preserve_ids_positions_and_group_resolution(native):

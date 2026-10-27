@@ -9,6 +9,7 @@ import zlib
 from pathlib import Path
 
 from orfdata import DatasetRegistry, QuantitativeDataset
+from orfdata.sources.pfizer_attribution import CanineEvidence
 from orfdata.sources.pfizer_native import IMPORTER, file_sha256, selection_sha256
 from tools import verify_dog_dataset
 from tools.package_sqlite_archive import archive_verified
@@ -82,7 +83,7 @@ def package(dataset_path, acceptance_path, output, *, url, data_release, max_byt
     dataset_hash = file_sha256(dataset_path)
     dataset = QuantitativeDataset(dataset_path)
     manifest = dataset.manifest
-    evidence = dataset.source_evidence()
+    evidence = CanineEvidence(dataset.path)
     plan = json.loads(PLAN_PATH.read_text())
     if (manifest.processing.get("importer") != IMPORTER
             or manifest.processing["selection_sha256"] != selection_sha256(plan)

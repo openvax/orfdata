@@ -20,7 +20,7 @@ from pathlib import Path
 from ..dataset import QuantitativeDataset, _json
 from ..search_reference import SearchReference, SearchReferenceSpec
 from .pfizer import SAMPLE_COLUMNS, VALUE_COLUMNS, _rows, _value, protein_sample_id
-from .pfizer_attribution import CanineEvidence, build_attribution
+from .pfizer_attribution import ENDPOINT_CACHE_BYTES, CanineEvidence, build_attribution
 from .pfizer_dataset import copy_evidence, install_projection
 from .pfizer_evidence import EvidenceStore
 from .pfizer_lineage import lineage_records
@@ -28,7 +28,7 @@ from .pfizer_lineage import lineage_records
 IMPORTER = "pfizer-canine-evidence-v1"
 ASSETS = {"evidence.sqlite", "lineage.json", "search.fasta", "protein.tsv"}
 METADATA_BYTES = 16 * 1024 * 1024
-BUILD_MODULES = ("pfizer_native.py", "pfizer_dataset.py", "pfizer_attribution.py", "pfizer_evidence.py",
+BUILD_MODULES = ("pfizer_native.py", "pfizer_dataset.py", "pfizer_attribution.py", "pfizer_evidence.py", "pfizer_queries.py",
                  "pfizer_vendor.py", "pfizer_lineage.py", "pfizer.py", "../dataset.py", "../numeric_vector.py",
                  "../search_reference.py")
 
@@ -256,6 +256,7 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
                            software_sha256={name: file_sha256(Path(__file__).parent / name) for name in BUILD_MODULES},
                            limits=dict(limits), sqlite_version=sqlite3.sqlite_version,
                            storage=dict(required_free_bytes=working, journal_mode="off", temp_store="memory",
+                                        endpoint_cache_bytes=ENDPOINT_CACHE_BYTES,
                                         foreign_keys="full check before publication",
                                         publication="validated hard link; no overwrite"))
             db.execute("INSERT INTO metadata VALUES ('canine_build',?)", (_json(receipt),))

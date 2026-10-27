@@ -11,6 +11,7 @@ from test_verify_dog_dataset import check
 
 from orfdata import DatasetRegistry
 from orfdata.search_reference import SearchReference
+from orfdata.sources.pfizer_attribution import CanineEvidence
 from orfdata.sources.pfizer_native import file_sha256
 from tools import package_dog_dataset, verify_dog_dataset
 
@@ -37,7 +38,7 @@ def pack(accepted, output):
 def test_packaged_artifact_and_public_evidence_replay_without_build_inputs(accepted, tmp_path, monkeypatch):
     (dataset, _, inputs), _ = accepted
     expected = list(dataset.measurements())
-    expected_group = dataset.source_evidence().summary_group("A0A5F4CET6")
+    expected_group = CanineEvidence(dataset.path).summary_group("A0A5F4CET6")
     archive = tmp_path / "dataset.sqlite.gz"
     result = pack(accepted, archive)
     registry = DatasetRegistry(result["registry"], cache_root=tmp_path / "installed")
@@ -54,8 +55,8 @@ def test_packaged_artifact_and_public_evidence_replay_without_build_inputs(accep
     installed = registry.open(dataset.manifest.dataset_id)
     assert file_sha256(installed.path) == result["compression"]["installed_sha256"]
     assert list(installed.measurements()) == expected
-    assert installed.source_evidence().summary_group("A0A5F4CET6") == expected_group
-    assert installed.source_evidence().search_protein("A0A5F4CET6") is not None
+    assert CanineEvidence(installed.path).summary_group("A0A5F4CET6") == expected_group
+    assert CanineEvidence(installed.path).search_protein("A0A5F4CET6") is not None
     assert registry.inspect_reference(dataset.manifest.dataset_id).status == "missing"
     assert result["compression"]["download_sha256"] == file_sha256(archive)
 
@@ -72,7 +73,7 @@ def test_verified_canine_artifact_installs_from_split_archive(accepted, tmp_path
     registry.download(dataset.manifest.dataset_id, source_paths={"dataset.sqlite": parts}, show_progress=False)
     installed = registry.open(dataset.manifest.dataset_id)
     assert list(installed.measurements()) == list(dataset.measurements())
-    assert installed.source_evidence().summary_group("A0A5F4CET6") == dataset.source_evidence().summary_group("A0A5F4CET6")
+    assert CanineEvidence(installed.path).summary_group("A0A5F4CET6") == CanineEvidence(dataset.path).summary_group("A0A5F4CET6")
 
 
 def test_stale_acceptance_and_wrong_selection_cannot_be_packaged(accepted, tmp_path, monkeypatch):

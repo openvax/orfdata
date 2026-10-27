@@ -430,39 +430,62 @@ class QuantitativeDataset:
     def assays(self, *, reference=None):
         return self._records("assay", Assay, reference=reference)
 
-    def source_evidence(self):
-        """Open indexed native canine records, links and FASTA candidates locally.
+    def mappings(self, *, reference=None, source_identifier=None, source_namespace=None, target=None):
+        """Stream source assignments as TargetMappings, across sources/species.
 
-        This richer source interface is available only for releases that declare
-        the completed canine evidence encoding. It never acquires source files.
+        Source identifiers and namespaces are exact matches. ``target`` selects
+        mappings containing that destination, while retaining every candidate.
+        Method, evidence and provenance distinguish reported assignments from
+        sequence compatibility; unique mapping is not independent detection.
         """
-        if self._storage_version != 6:
-            raise ValueError("This dataset does not contain indexed native canine evidence")
-        from .sources.pfizer_attribution import CanineEvidence
-
-        return CanineEvidence(self.path)
-
-    def mappings(self, *, reference=None):
-        if self._storage_version < 5:
-            return self._records("mapping", TargetMapping, reference=reference)
-        return self._compact_mappings(reference)
-
-    def _compact_mappings(self, reference):
         scope = self._scope(reference)
-        query = "SELECT reference_key, record FROM mapping"
-        params = ()
+        for name, value in (("source identifier", source_identifier), ("source namespace", source_namespace)):
+            if value is not None:
+                _identifier(value, name)
+        if target is not None:
+            if not isinstance(target, ScopedTarget):
+                raise TypeError("target must be a ScopedTarget")
+            target_scope = self._scope(target.reference)
+            if scope is not None and scope != target_scope:
+                raise ValueError("Mapping target and requested reference disagree")
+            scope = target_scope
+        return self._mapping_records(scope, source_identifier, source_namespace, target)
+
+    def _mapping_records(self, scope, source_identifier, source_namespace, target):
+        query = "SELECT m.reference_key,m.record FROM mapping m"
+        conditions, params = [], []
         if scope is not None:
-            query += " WHERE reference_key=?"
-            params = (scope,)
-        query += " ORDER BY reference_key, id"
+            conditions.append("m.reference_key=?")
+            params.append(scope)
+        for name, value in (("source_identifier", source_identifier), ("source_namespace", source_namespace)):
+            if value is not None:
+                conditions.append("json_extract(m.record,'$." + name + "')=?")
+                params.append(value)
+        if target is not None:
+            fields = ("$[0]", "$[1]", "$[2]") if self._storage_version >= 5 else (
+                "$.kind", "$.identifier", "$.namespace")
+            conditions.append("EXISTS (SELECT 1 FROM json_each(m.record,'$.targets') t WHERE "
+                              + " AND ".join("json_extract(t.value,'" + field + "')=?" for field in fields) + ")")
+            params.extend((target.kind, target.identifier, target.namespace))
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY m.reference_key,m.id"
         with closing(self._connect()) as connection:
             for key, record in connection.execute(query, params):
                 values = json.loads(record)
+                if self._storage_version < 5:
+                    yield TargetMapping.from_dict(values)
+                    continue
                 context = self._references[key]
                 values["reference"] = context
                 values["targets"] = tuple(ScopedTarget(context, kind, identifier, namespace)
                                           for kind, identifier, namespace in values["targets"])
                 yield TargetMapping(**values)
+        if self._storage_version == 6:
+            from .sources.pfizer_queries import mappings
+
+            yield from mappings(self, scope=scope, source_identifier=source_identifier,
+                                source_namespace=source_namespace, target=target)
 
     def reference_mappings(self, *, source_reference=None, target=None):
         """Iterate original source-to-reference mappings, including unresolved IDs."""
@@ -562,7 +585,14 @@ class QuantitativeDataset:
             right_scope = "right_reference_key" if self._storage_version >= 3 else "reference_key"
             filters.extend(((right_scope, right_target.reference.key),
                             ("right_target_key", _target_key(right_target))))
-        return self._records("target_relation", TargetRelation, reference=scope, ids=ids, filters=filters)
+        stored = self._records("target_relation", TargetRelation, reference=scope, ids=ids, filters=filters)
+        if self._storage_version != 6:
+            return stored
+        from itertools import chain
+
+        from .sources.pfizer_queries import relations
+
+        return chain(stored, relations(self, scope=scope, ids=ids, left_target=left_target, right_target=right_target))
 
     def matched_measurements(self, *, allowed_bases, allowed_temporal=("concurrent",),
                              reference=None, pair_ids=None, relation_ids=None,

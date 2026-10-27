@@ -190,7 +190,16 @@ output cap and 17 MiB for the bounded initial metadata journal and overhead.
 For a 32 GiB output cap and already expanded inputs, it requires 34.4 GB free,
 rather than reserving three full outputs. SQLite enforces the output cap.
 The build uses a private, disposable database with disk journaling disabled and
-SQLite temporaries in memory and a 128 MiB page cache. The normalized component's
+SQLite temporaries in memory and a 128 MiB page cache. Membership construction
+caches complete endpoint identity indexes for the current pair of source tables,
+with a conservative 3 GiB allowance for Python keys, values and dictionary
+allocation. An index that does not fit uses the original SQLite lookup; partial
+indexes cannot hide missing or duplicate endpoint identities. The indexes are
+released between table pairs and before candidate matching. A real-source replay
+of 400,000 endpoint lookups produced the same result hash in 3.6 seconds with
+complete in-memory indexes versus 22–36 seconds with SQLite lookups. Loading the
+two indexes took 32 seconds and the benchmark peaked at 753 MB RSS.
+The normalized component's
 schema is checked against the supported schema, then SQLite's backup API copies
 its pages and existing indexes within the output cap. Only bounded, freshly
 created common metadata is replayed; source SQL is never executed.
@@ -207,7 +216,7 @@ A version-6 consumer dataset without its final successful build
 receipt is rejected. No vendor or original supplementary workbook is needed to
 rebuild from these pinned components.
 
-`dataset.source_evidence().summary_group(summary_id)` returns the pinned baseline,
+`CanineEvidence(dataset.path).summary_group(summary_id)` returns the pinned baseline,
 its reported representative, all matching native protein records and their original
 group membership links. Missing native records and missing/unresolved links remain
 explicit. These associations neither make the summary an independent experiment
@@ -323,10 +332,14 @@ The internal flat observation tables are absent in version 6, so direct SQL cann
 misreport an empty observation set. Ordinary version-5 dataset writes are unchanged.
 
 After `build_attribution` has completed against a checksum-verified complete
-searched FASTA, `dataset.source_evidence()` exposes the indexed source facts:
+searched FASTA, common `dataset.mappings()` and `dataset.relations()` queries return
+source-independent assignment and membership records. The low-level source
+adapter exposes the original vendor records:
 
 ```python
-native = dataset.source_evidence()
+from orfdata.sources.pfizer_attribution import CanineEvidence
+
+native = CanineEvidence(dataset.path)
 group = list(native.records("TargetPeptideGroups", key=(8,)))
 memberships = list(native.linked("TargetPeptideGroups", (8,),
                                via="TargetPeptideGroupsTargetProteins"))
@@ -497,7 +510,7 @@ and retries; the final transfer ledger has no unsettled or uncertain reservation
 The retained verified chunk cache is 10,980,405,248 bytes. These are measured
 extraction costs, not consumer-artifact sizes or a checksum of the full vendor file.
 
-`dataset.source_evidence().missing_acquisitions()` streams the requested native
+`CanineEvidence(dataset.path).missing_acquisitions()` streams the requested native
 keys for which extraction found no rows, including absent reporter links, with
 their original reasons. Optional `table` and `key` arguments select a particular
 lookup, for example `missing_acquisitions("QuanSpectrumInfoReporterQuanResults",

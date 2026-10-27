@@ -91,8 +91,11 @@ view fails. Generic dataset creation continues to write version 5, and versions
 The packaged canine importer also requires a final successful build receipt.
 It pins normalized evidence, compiled lineage, searched FASTA and the existing
 protein summary; validates the source selection and counts; builds membership
-and candidate indexes; and projects the native vectors. `source_evidence()`
-exposes the original records and assignments. Its `summary_group()` query connects
+and candidate indexes; and projects the native vectors. Common `mappings()` and
+`relations()` queries project the existing indexes into `TargetMapping` and
+`TargetRelation` records without storing another copy. Counts include those
+logical mappings and relations. Native-table inspection uses the source module's
+`CanineEvidence(dataset.path)` adapter. Its `summary_group()` query connects
 the baseline summary representative to native records and group links without
 duplicating the baseline abundance series or asserting unique protein detection.
 

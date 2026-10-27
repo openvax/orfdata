@@ -4,6 +4,10 @@ The [Oziolor et al. atlas](https://doi.org/10.1038/s41597-026-07512-9) provides
 parallel TMT protein measurements. ORFdata keeps each species in a separate
 dataset, using the same samples, assays, measurements and query API.
 
+The [dog peptide and protein-group evidence](pfizer-peptides.md) extension adds
+native memberships and peptide/PSM quantities while retaining this summary as
+same-study context.
+
 | Dataset | Reported protein groups | Source channels | Source rows |
 |---|---:|---:|---:|
 | `pfizer-atlas-human-protein` | 10,352 | 37 | 325,702 |

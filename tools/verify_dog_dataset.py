@@ -25,7 +25,7 @@ from orfdata import QuantitativeDataset
 from orfdata.dataset import _json
 from orfdata.search_reference import SearchReference
 from orfdata.sources.pfizer import _audit
-from orfdata.sources.pfizer_attribution import ENDPOINTS
+from orfdata.sources.pfizer_attribution import ENDPOINTS, CanineEvidence
 from orfdata.sources.pfizer_dataset import METADATA_TABLES
 from orfdata.sources.pfizer_evidence import EvidenceStore, record_keys, source_key
 from orfdata.sources.pfizer_lineage import lineage_records
@@ -47,7 +47,7 @@ def _native_rows(db, name, columns):
                       ' FROM ' + quoted(name) + ' ORDER BY _source_rowid')
 
 
-def _candidate_sample(evidence, searched, sequence):
+def _candidate_sample(dataset, evidence, searched, sequence):
     def expected():
         found = False
         for protein in sorted(searched.entries(), key=lambda p: p.target.identifier):
@@ -64,11 +64,19 @@ def _candidate_sample(evidence, searched, sequence):
             yield dict(peptide=sequence, accession=None, start=None, end=None,
                        status="no_search_match", basis="exact_or_il_equivalent")
 
+    originals = list(expected())
     count = 0
-    for original, retained in zip_longest(expected(), evidence.candidates(sequence)):
+    for original, retained in zip_longest(originals, evidence.candidates(sequence)):
         if original != retained:
             raise ValueError("Independent full-FASTA search differs for sampled peptide: " + sequence)
         count += original["status"] == "candidate"
+    common = [value for value in dataset.mappings(source_identifier=sequence, source_namespace="amino-acid-sequence")
+              if value.evidence.get("basis") == "sequence_compatibility"]
+    placements = [{key: value[key] for key in ("accession", "start", "end", "basis")}
+                  for value in originals if value["status"] == "candidate"]
+    if (len(common) != 1 or list(common[0].evidence["placements"]) != placements
+            or {target.identifier for target in common[0].targets} != {value["accession"] for value in placements}):
+        raise ValueError("Common mapping query differs from independently searched peptide placements")
     return count
 
 
@@ -116,7 +124,7 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
     manifest = dataset.manifest
     if manifest.processing.get("importer") != IMPORTER:
         raise ValueError("Expected a completed canine evidence generation")
-    evidence = dataset.source_evidence()
+    evidence = CanineEvidence(dataset.path)
     plan = json.loads(PLAN_PATH.read_text())
     native_path = Path(native_path).resolve()
     native_hash, dataset_hash = file_sha256(native_path), file_sha256(dataset.path)
@@ -327,7 +335,33 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
                 group_mismatches.append(dict(group_id=group[0], declared_members=group[1], membership_rows=count))
         if db.execute("PRAGMA foreign_key_check").fetchone() is not None or db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise ValueError("Artifact SQLite integrity check failed")
-    candidate_placements = sum(_candidate_sample(evidence, searched, sequence) for sequence in sorted(sequences))
+        expected_relations = set()
+        for group_id, protein_id, accession, sequence in native.execute(
+                "SELECT g.ProteinGroupID,p.UniqueSequenceID,p.Accession,p.Sequence "
+                "FROM TargetProteinGroupsTargetProteins l JOIN TargetProteinGroups g "
+                "ON g.ProteinGroupID=l.TargetProteinGroupsProteinGroupID JOIN TargetProteins p "
+                "ON p.UniqueSequenceID=l.TargetProteinsUniqueSequenceID"):
+            protein = searched.get(accession)
+            exact = protein is not None and protein.sequence == sequence
+            expected_relations.add((str(group_id), spec.namespace if exact else manifest.dataset_id + ":TargetProteins",
+                                    accession if exact else str(protein_id)))
+        observed_relations = set()
+        common_relations = 0
+        for relation in dataset.relations():
+            if (relation.relation != "shared_group_member" or relation.cardinality != "many_to_many"
+                    or relation.left.reference != spec.reference or relation.right.reference != spec.reference
+                    or relation.left.namespace != manifest.dataset_id + ":TargetProteinGroups"
+                    or relation.evidence.get("basis") != "reported"
+                    or relation.evidence.get("unique_protein_detection") is not False):
+                raise ValueError("Common relationship query changed native group membership semantics")
+            common_relations += 1
+            observed_relations.add((relation.left.identifier, relation.right.namespace, relation.right.identifier))
+        expected_mappings = candidate_counts["peptide_sequences"] + sum(tables[name] for name in (
+            "TargetPeptideGroups", "TargetPsms", "TargetProteinGroups"))
+        if (observed_relations != expected_relations or common_relations != len(expected_relations)
+                or dataset.counts["target_relation"] != common_relations or dataset.counts["mapping"] != expected_mappings):
+            raise ValueError("Common assignment/relationship counts differ from original source facts")
+    candidate_placements = sum(_candidate_sample(dataset, evidence, searched, sequence) for sequence in sorted(sequences))
     if (file_sha256(native_path) != native_hash or file_sha256(dataset.path) != dataset_hash
             or file_sha256(fasta_path) != spec.source.sha256 or file_sha256(summary_path) != assets["protein.tsv"].sha256
             or file_sha256(lineage_path) != assets["lineage.json"].sha256):
@@ -343,6 +377,7 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
                 sampled_common_measurements=sampled_cells, independently_searched_peptides=len(sequences),
                 independently_decoded_native_cells=independent_numeric_cells,
                 independently_checked_candidate_placements=candidate_placements, sample_records_per_table=sample_records,
+                common_mapping_count=expected_mappings, common_group_relations=common_relations,
                 verification_scope="All selected typed native rows, membership indexes, quantity layouts and search entries; "
                                    "public measurement expansion and exhaustive full-FASTA search checked on the declared spread sample",
                 source_integrity_scope="Selected local source facts; no authoritative checksum of the whole vendor database")

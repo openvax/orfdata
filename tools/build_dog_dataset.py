@@ -10,6 +10,7 @@ from pathlib import Path
 from orfdata import DatasetManifest, SourceAsset
 from orfdata.artifact_archives import archive_options
 from orfdata.sources.pfizer import protein_manifest
+from orfdata.sources.pfizer_attribution import CanineEvidence
 from orfdata.sources.pfizer_evidence import EvidenceStore
 from orfdata.sources.pfizer_native import IMPORTER, file_sha256, import_native, selection_sha256
 
@@ -103,7 +104,7 @@ def main():
               "search.fasta": args.search_fasta, "protein.tsv": args.protein_summary}
     dataset = import_native(inputs, args.output_directory / "dataset.sqlite", manifest,
                             checkpoint=lambda state: print(json.dumps(state, sort_keys=True), flush=True))
-    evidence = dataset.source_evidence()
+    evidence = CanineEvidence(dataset.path)
     peak_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if sys.platform == "darwin" else 1024)
     receipt = dict(dataset_id=manifest.dataset_id, version=manifest.version, dataset_sha256=file_sha256(dataset.path),
                    dataset_bytes=dataset.path.stat().st_size, counts=dataset.counts,
