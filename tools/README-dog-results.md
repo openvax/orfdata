@@ -160,6 +160,13 @@ headers support the component's size above 8 GiB. The verifier streams all parts
 and every restored byte without creating another expanded SQLite file. This tool
 alone verifies byte preservation; it does not establish consumer acceptance.
 
+The completed source archive has three parts of 1,992,294,400, 1,992,294,400
+and 1,390,586,643 bytes (5,375,175,443 bytes total). Its assembled compressed
+SHA-256 is `db4077a264ab798c338e8dcf0974b5d4ed664a5e66c3bb51e97dd2b89ad99ba8`.
+Full streamed decompression reproduced the normalized component's size and hash
+above, including gzip trailer validation, in 465 seconds for packaging and
+verification. The distribution remains a draft pending consumer acceptance.
+
 `tools.build_dog_dataset` assembles the normalized evidence, checked `lineage.json`,
 complete searched FASTA and original protein summary. It requires the entire pinned
 42-table selection before creating a release manifest, and pins the already
