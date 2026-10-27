@@ -308,6 +308,8 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
         for a, b in zip_longest(missing, retained):
             if a is None or b is None or tuple(a) != tuple(b):
                 raise ValueError("Native missing-acquisition reports differ")
+        if checkpoint is not None:
+            checkpoint(dict(stage="verification_search_entries"))
         # Every original search entry is retained, including unreported proteins.
         found_proteins = 0
         for accession, serialized in db.execute("SELECT accession,record FROM search_protein"):
@@ -319,6 +321,8 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
             found_proteins += 1
         if found_proteins != len(searched):
             raise ValueError("Incomplete searched-reference entries")
+        if checkpoint is not None:
+            checkpoint(dict(stage="verification_candidate_index"))
         # Full candidate-index completion/digest, independently of sampled searches.
         peptide_tables = tuple(evidence.tables[name][0] for name in converter.COLUMNS)
         for table_i in peptide_tables:
@@ -350,6 +354,8 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
                 candidate_counts[k] != evidence.metadata["attribution_counts"][k] for k in
                 ("peptide_sequences", "no_search_match", "exact_placements", "il_equivalent_placements")):
             raise ValueError("Candidate index digest/counts differ from the completed build")
+        if checkpoint is not None:
+            checkpoint(dict(stage="verification_measurement_samples", records=len(selected)))
         sampled_cells, independent_numeric_cells = 0, 0
         for name, rowid in selected:
             row = dict(native.execute("SELECT * FROM " + quoted(name) + " WHERE _source_rowid=?", (rowid,)).fetchone())
@@ -362,6 +368,8 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
                     raise ValueError("Public common measurements differ from original native values")
                 sampled_cells += len(expected)
                 independent_numeric_cells += _check_numeric_bytes(converter, name, row, column, observed)
+        if checkpoint is not None:
+            checkpoint(dict(stage="verification_summary_memberships"))
         _, groups, summary_counts = _audit(summary_path)
         if summary_counts != dict(manifest.processing["protein_summary"]["source_counts"]):
             raise ValueError("Original summary counts differ from pinned baseline")
@@ -388,8 +396,12 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
             group_sizes[count] += 1
             if count != group[1]:
                 group_mismatches.append(dict(group_id=group[0], declared_members=group[1], membership_rows=count))
+        if checkpoint is not None:
+            checkpoint(dict(stage="verification_integrity"))
         if db.execute("PRAGMA foreign_key_check").fetchone() is not None or db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise ValueError("Artifact SQLite integrity check failed")
+        if checkpoint is not None:
+            checkpoint(dict(stage="verification_common_relations"))
         expected_relations = set()
         for group_id, protein_id, accession, sequence in native.execute(
                 "SELECT g.ProteinGroupID,p.UniqueSequenceID,p.Accession,p.Sequence "
@@ -416,7 +428,11 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
         if (observed_relations != expected_relations or common_relations != len(expected_relations)
                 or dataset.counts["target_relation"] != common_relations or dataset.counts["mapping"] != expected_mappings):
             raise ValueError("Common assignment/relationship counts differ from original source facts")
+    if checkpoint is not None:
+        checkpoint(dict(stage="verification_fasta_samples", peptides=len(sequences)))
     candidate_placements = sum(_candidate_sample(dataset, evidence, searched, sequence) for sequence in sorted(sequences))
+    if checkpoint is not None:
+        checkpoint(dict(stage="verification_final_hashes"))
     if (file_sha256(native_path) != native_hash or file_sha256(dataset.path) != dataset_hash
             or file_sha256(fasta_path) != spec.source.sha256 or file_sha256(summary_path) != assets["protein.tsv"].sha256
             or file_sha256(lineage_path) != assets["lineage.json"].sha256):
