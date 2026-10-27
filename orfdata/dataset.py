@@ -215,22 +215,29 @@ class QuantitativeDataset:
 
     @classmethod
     def create(cls, path, manifest, *, samples, assays, measurements, mappings=(),
-               pairings=(), relations=(), reference_mappings=()):
+               pairings=(), relations=(), reference_mappings=(), max_bytes=None):
         """Write a new dataset from iterators, validating scope and foreign keys.
 
         Never overwrite an existing file. An interrupted/invalid build removes
         only the new file it created. For atomic managed publication, call this
         inside DataCache's materialize builder. Derived observations must follow
         their input observations, preventing cyclic or dangling provenance.
+        max_bytes optionally caps the SQLite file from its first schema write;
+        callers must budget separately for its rollback journal and inputs.
         """
         if not isinstance(manifest, DatasetManifest):
             raise TypeError("manifest must be a DatasetManifest")
+        if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 4096):
+            raise ValueError("Dataset byte limit must allow at least one SQLite page")
         path = Path(path)
         descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         os.close(descriptor)
         connection = None
         try:
             connection = sqlite3.connect(path)
+            if max_bytes is not None:
+                connection.execute("PRAGMA page_size=4096")
+                connection.execute(f"PRAGMA max_page_count={max_bytes // 4096}")
             connection.execute("PRAGMA foreign_keys=ON")
             connection.executescript(_SCHEMA)
             connection.execute("PRAGMA user_version=5")

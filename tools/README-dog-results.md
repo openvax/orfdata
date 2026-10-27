@@ -3,9 +3,10 @@
 This work implements ORFdata #23. The current code supports bounded native-table
 export with durable checkpoints, lossless numeric-vector storage, searched-reference
 peptide matching and checked dog pool/run lineage in the common sample/assay API.
-A completed selected export can be normalized and projected through the common
-measurement API. Full native extraction, member/candidate reconciliation, consumer
-artifact assembly and release are still pending; passing a fixture is not full acceptance.
+A completed selected export can be normalized and assembled into a common
+measurement/source-evidence artifact with the packaged importer. Full native
+extraction, full artifact execution/acceptance and release remain pending;
+passing a fixture is not full acceptance.
 
 Use a separate extraction environment with `.[canine-extraction]` installed.
 The current audit uses APSW 3.54.1.0 (SQLite 3.54.1) and pyahocorasick 2.3.1.
@@ -105,6 +106,41 @@ tables also reproduce the extractor's composite-key digest order. Missing links
 remain explicit. The output's full checksum covers the selected evidence component,
 not the unacquired vendor database. Receipts fingerprint the normalizer and its
 codec/budget modules, and report runtime, peak process RSS and bounded disk use.
+
+`tools.build_dog_dataset` assembles the normalized evidence, checked `lineage.json`,
+complete searched FASTA and original protein summary. It requires the entire pinned
+42-table selection before creating a release manifest, and pins the already
+released summary's dataset ID/version, source hash and counts. Run `python -m
+tools.build_dog_dataset --help` for the explicit local input paths, intended stable
+component URLs, dataset version and output/scratch byte limits. An optional
+`--compressed-evidence` input pins both gzip bytes and expanded SQLite bytes.
+It creates a new output directory containing `manifest.json`, `dataset.sqlite`
+and a successful `build-receipt.json`; it does not publish them or add a registry entry.
+
+The packaged `pfizer-canine-evidence-v1` importer verifies all four inputs before
+and after building, checks native record counts and run identities against lineage,
+retains every candidate and reported membership, and installs all native abundance
+vectors. Its scratch reservation covers inputs, optional expansion and three times
+the SQLite output cap. SQLite enforces the output cap from the first schema write.
+Interrupted/invalid builds remove their owned new output and expanded temporary;
+existing outputs are never overwritten. The receipt retains code/input hashes,
+counts and limits. A version-6 consumer dataset without its final successful build
+receipt is rejected. No vendor or original supplementary workbook is needed to
+rebuild from these pinned components.
+
+`dataset.source_evidence().summary_group(summary_id)` returns the pinned baseline,
+its reported representative, all matching native protein records and their original
+group membership links. Missing native records and missing/unresolved links remain
+explicit. These associations neither make the summary an independent experiment
+nor turn a shared group into unique protein abundance. Every summary row is checked
+for sample identity, duplicates, original iBAQ/rIBAQ missing/zero/positive counts
+and absent matrix cells; abundance values remain in the baseline dataset.
+
+The completed source-group audit reconciled all 15,726 membership rows against
+12,654 native groups: every declared `ProteinCount` equals the membership count.
+All 9,929 summary representatives join one native group each; 1,052 of those
+groups have multiple members. This closes the group/summary reconciliation only;
+the remaining peptide/PSM extraction and full artifact acceptance are still required.
 
 `NumericVector` stores declared int32/int64/float64 values in little-endian bytes
 with separate presence bits. A null vector, a missing element, a measured zero and

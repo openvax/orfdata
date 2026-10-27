@@ -47,6 +47,14 @@ does not contain an empty flat `measurement` view: SQL access to that old intern
 view fails. Generic dataset creation continues to write version 5, and versions
 1–5 remain readable without migration.
 
+The packaged canine importer also requires a final successful build receipt.
+It pins normalized evidence, compiled lineage, searched FASTA and the existing
+protein summary; validates the source selection and counts; builds membership
+and candidate indexes; and projects the native vectors. `source_evidence()`
+exposes the original records and assignments. Its `summary_group()` query connects
+the baseline summary representative to native records and group links without
+duplicating the baseline abundance series or asserting unique protein detection.
+
 A bounded comparison of 100 actual native peptide groups (source row IDs 50,
 100, …, 5000) reproduced all 13,200 cells from their three 44-channel abundance
 vectors, field for field. Flat storage occupied 24,891,392 bytes; vector storage

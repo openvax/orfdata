@@ -47,7 +47,7 @@ def decoder_from_database(connection):
     return DistributionDecoder(*metadata)
 
 
-def copy_evidence(connection, path):
+def copy_evidence(connection, path, *, checkpoint=None):
     """Copy a completed evidence component into a caller-owned bounded build.
 
     The caller owns disk quotas, transactions and removal of an unsuccessful new
@@ -64,9 +64,13 @@ def copy_evidence(connection, path):
             cursor = original.execute("SELECT * FROM " + table)
             fields = [d[0] for d in cursor.description]
             statement = "INSERT INTO " + table + " VALUES (" + ",".join("?" for _ in fields) + ")"
+            count = 0
             while rows := cursor.fetchmany(500):
                 connection.executemany(statement, rows)
                 connection.commit()
+                count += len(rows)
+                if checkpoint is not None:
+                    checkpoint(dict(table=table, rows=count))
 
 
 def install_projection(connection, manifest, lineage, *, source_asset, reference=None, checkpoint=None):
@@ -162,6 +166,11 @@ def install_projection(connection, manifest, lineage, *, source_asset, reference
 
 
 def validate_storage(connection):
+    manifest = json.loads(connection.execute("SELECT value FROM metadata WHERE name='manifest'").fetchone()[0])
+    if manifest["processing"].get("importer") == "pfizer-canine-evidence-v1":
+        row = connection.execute("SELECT value FROM metadata WHERE name='canine_build'").fetchone()
+        if row is None or json.loads(row[0]).get("state") != "complete":
+            raise ValueError("Canine dataset build is incomplete")
     row = connection.execute("SELECT value FROM metadata WHERE name='measurement_storage'").fetchone()
     config = json.loads(row[0]) if row else {}
     if config.get("driver") != DRIVER or config.get("state") != "complete":

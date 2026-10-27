@@ -19,8 +19,12 @@ FIXTURE = Path(__file__).parent / "data/pfizer/vendor/native.json"
 @pytest.fixture
 def source(tmp_path, monkeypatch):
     original = json.loads(FIXTURE.read_text())["tables"]
+    memberships = json.loads(FIXTURE.with_name("memberships.json").read_text())["tables"]
+    for name in ("TargetProteinGroups", "TargetProteinGroupsTargetProteins"):
+        original[name] = memberships[name]
     names = ("DataTypes", "DataTypesColumns", "DataDistributionMaps", "DataDistributionBoxes",
-             "EnumDataTypes", "EnumDataTypeValues", "TargetProteins", "TargetPeptideGroups", "TargetPsms")
+             "EnumDataTypes", "EnumDataTypeValues", "WorkflowInputFiles", "TargetProteins", "TargetPeptideGroups", "TargetPsms",
+             "TargetProteinGroups", "TargetProteinGroupsTargetProteins")
     tables = {name: [{key: base64.b64decode(value["base64"]) if isinstance(value, dict)
                      and value.get("type") == "blob" else value for key, value in row.items()}
                     for row in original[name]] for name in names}

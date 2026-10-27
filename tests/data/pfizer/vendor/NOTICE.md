@@ -58,6 +58,14 @@ itself the complete searched reference. Isoleucine/leucine-equivalent matches
 are distinguished from exact residue matches; neither changes the original
 vendor-reported memberships or supplies evidence of individual protein detection.
 
+The FASTA entries in both slices are from the UniProt Consortium, distributed
+under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/), with attribution
+to UniProt (https://www.uniprot.org/help/license). They retain the original
+headers and sequences; the change here is selection of entries for tests.
+Their source is the deposited `Dog_UP000002254_9615_noisoform.fasta`, SHA-256
+`d8488bf283de653efcff2e5de6d413b116e1ba4a2eb89298bd31205e72fef682`.
+The deposit's CC0 terms do not replace the searched FASTA's UniProt license.
+
 `study-slice.xml` retains the complete FileSets, QuanMethods and Samples elements
 from the deposited 20210614_zoomapdog_nodbsearch.pdStudy. This includes both cyno
 and dog, to check that the dog reconciliation selects only its four file sets.

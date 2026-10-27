@@ -271,6 +271,30 @@ class CanineEvidence(EvidenceStore):
             values["target"] = ScopedTarget(self.search_reference.reference, "protein", accession, self.search_reference.namespace)
             return SearchSequence(**values)
 
+    def summary_group(self, identifier):
+        """The summary representative and every native protein/group association.
+
+        The baseline is explicitly pinned and describes the same study. Its
+        abundance must not be counted again as independent peptide evidence or
+        assigned uniquely to a protein from these membership links.
+        """
+        if "protein_summary" not in self.metadata:
+            raise ValueError("This evidence component has no reconciled protein summary")
+        with closing(self.connect()) as db:
+            row = db.execute("SELECT accession FROM summary_representative WHERE group_id=?", (identifier,)).fetchone()
+            if row is None:
+                return None
+            proteins = []
+            for (record_i,) in db.execute("SELECT record_i FROM summary_native WHERE group_id=? ORDER BY record_i", (identifier,)):
+                record = self._record(db, record_i)
+                links = list(self.linked("TargetProteins", (record["record"]["UniqueSequenceID"],),
+                                         via="TargetProteinGroupsTargetProteins", direction="incoming"))
+                proteins.append(dict(protein=record, group_links=links,
+                                     membership_status="reported_links" if links else "no_reported_group_link"))
+            return dict(group_id=identifier, representative=row[0], baseline=self.metadata["protein_summary"],
+                        native_proteins=proteins, status="matched_native_records" if proteins else "no_native_record",
+                        interpretation="same-study representative context; not unique protein attribution")
+
     def protein_search_match(self, table, key):
         """Validate native target protein identity, retaining decoys and mismatches."""
         if table not in ("TargetProteins", "DecoyProteins"):
