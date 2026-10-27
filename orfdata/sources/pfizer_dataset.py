@@ -13,9 +13,14 @@ from contextlib import closing
 
 from ..dataset import _json, _target_key
 from ..reference import ScopedTarget
-from .pfizer_evidence import ENCODING as EVIDENCE_ENCODING
 from .pfizer_evidence import SCHEMA as EVIDENCE_SCHEMA
-from .pfizer_evidence import EvidenceStore, record_keys
+from .pfizer_evidence import (
+    SUPPORTED_ENCODINGS,
+    EvidenceStore,
+    column_layouts,
+    decode_scalars,
+    record_keys,
+)
 from .pfizer_vendor import DistributionDecoder, NativeQuantification
 
 DRIVER = "orfdata.pfizer-quantification.v1"
@@ -39,11 +44,12 @@ CREATE INDEX peptide_projection_layout ON peptide_projection(layout_i,prefix);
 
 def decoder_from_database(connection):
     metadata = []
+    layouts = column_layouts(connection)
     for name in METADATA_TABLES:
         rows = connection.execute(
             "SELECT r.i,r.source_rowid,r.attributes FROM evidence_record r JOIN evidence_table t ON t.i=r.table_i "
             "WHERE t.name=? ORDER BY r.source_rowid", (name,))
-        metadata.append([EvidenceStore.restore(connection, row) for row in rows])
+        metadata.append([EvidenceStore.restore(connection, row, columns=layouts[name]) for row in rows])
     return DistributionDecoder(*metadata)
 
 
@@ -107,11 +113,12 @@ def install_projection(connection, manifest, lineage, *, source_asset, reference
     assays = {(identifier, sample): index for index, identifier, sample in connection.execute(
         "SELECT i,id,sample_id FROM assay WHERE reference_key=?", (reference.key,))}
     layouts, logical_count, vector_count = {}, 0, 0
+    scalar_layouts = column_layouts(connection)
     for table, columns in converter.COLUMNS.items():
         table_id, = connection.execute("SELECT i FROM evidence_table WHERE name=?", (table,)).fetchone()
         for record in connection.execute("SELECT i,source_rowid,attributes FROM evidence_record WHERE table_i=? "
                                          "ORDER BY source_rowid", (table_id,)):
-            row = json.loads(record[2])
+            row = decode_scalars(record[2], scalar_layouts[table])
             target = ScopedTarget(reference, "peptide", row["Sequence"], "amino-acid-sequence")
             key = _target_key(target)
             connection.execute("INSERT OR IGNORE INTO target(reference_i,reference_key,key,kind,namespace,identifier) "
@@ -177,7 +184,7 @@ def validate_storage(connection):
         raise ValueError("Unsupported or incomplete vector measurement storage")
     evidence = {key: json.loads(value) for key, value in connection.execute(
         "SELECT name,value FROM evidence_metadata WHERE name IN ('state','encoding')")}
-    if evidence != dict(state="complete", encoding=EVIDENCE_ENCODING):
+    if evidence.get("state") != "complete" or evidence.get("encoding") not in SUPPORTED_ENCODINGS:
         raise ValueError("Unsupported or incomplete normalized evidence component")
     if connection.execute("SELECT 1 FROM reference WHERE key=?", (config["reference_key"],)).fetchone() is None:
         raise ValueError("Native vector reference is absent from its dataset")
@@ -206,6 +213,7 @@ def measurements(dataset, *, scope, target, target_keys, sample_id, assay_id, qu
             # and checked lineage, never rows, vectors or query results.
             dataset._peptide_quantification = converter
         reference = converter.reference
+        scalar_layouts = column_layouts(connection)
         conditions, params = [], []
         for value, field in ((scope, "t.reference_key"), (_target_key(target) if target else None, "t.key"),
                              (unit, "p.unit")):
@@ -237,7 +245,7 @@ def measurements(dataset, *, scope, target, target_keys, sample_id, assay_id, qu
             query += " WHERE " + " AND ".join(conditions)
         query += " ORDER BY p.prefix"
         for record in connection.execute(query, params):
-            row = EvidenceStore.restore(connection, record[:3])
+            row = EvidenceStore.restore(connection, record[:3], columns=scalar_layouts[record[3]])
             values = converter.peptide_abundances(record[3], row, record[4])
             for value in sorted(values, key=lambda m: m.measurement_id):
                 if not value.measurement_id.startswith(record[5]):

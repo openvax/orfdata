@@ -8,7 +8,7 @@ import pytest
 from test_pfizer_evidence import source as source
 from test_pfizer_native import inputs as inputs
 
-from orfdata.sources.pfizer_evidence import EvidenceStore
+from orfdata.sources.pfizer_evidence import EvidenceStore, decode_scalars, encode_scalars
 from orfdata.sources.pfizer_native import import_native
 from tools import verify_dog_dataset
 
@@ -71,7 +71,12 @@ def test_data_and_index_corruption_is_detected(assembled, failure, reason):
         peptide = db.execute("SELECT r.i FROM evidence_record r JOIN evidence_table t ON t.i=r.table_i "
                              "WHERE t.name='TargetPeptideGroups' ORDER BY r.source_rowid LIMIT 1").fetchone()[0]
         if failure == "scalar":
-            db.execute("UPDATE evidence_record SET attributes=json_set(attributes,'$.Sequence','CHANGED') WHERE i=?", (peptide,))
+            payload, columns = db.execute("SELECT r.attributes,t.columns_json FROM evidence_record r "
+                                           "JOIN evidence_table t ON t.i=r.table_i WHERE r.i=?", (peptide,)).fetchone()
+            columns = json.loads(columns)
+            attributes = decode_scalars(payload, columns)
+            attributes["Sequence"] = "CHANGED"
+            db.execute("UPDATE evidence_record SET attributes=? WHERE i=?", (encode_scalars(attributes, columns), peptide))
         elif failure == "vector":
             peptide, original = db.execute("SELECT v.record_i,v.values_data FROM evidence_vector v "
                                            "JOIN evidence_record r ON r.i=v.record_i JOIN evidence_table t ON t.i=r.table_i "

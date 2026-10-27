@@ -42,6 +42,14 @@ observations rather than stored vectors. Mapped/paired queries and Parquet expor
 use the same projection. Opening and querying a release never accesses the remote
 vendor file or requires the extraction dependencies.
 
+The native evidence component declares its own encoding version. Version 2
+stores scalar values in source-column order with a hexadecimal presence mask;
+column names are stored once per table. A present null remains distinct from an
+omitted field stored in the binary or numeric-vector tables. Readers reconstruct
+the same original dictionaries and also support version-1 JSON-object records.
+Malformed masks, missing fields and conflicting payloads are rejected. The common
+quantitative storage version remains 6.
+
 Measured-only queries discard source-null vectors in SQL before expanding cells;
 non-null vectors still receive per-cell presence and finite-value checks. Missing
 queries and logical counts retain every null cell. On a 10,000-group spread across

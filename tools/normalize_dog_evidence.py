@@ -123,7 +123,7 @@ def normalize(source, output, scratch, output_limit, *, batch_rows=500):
             restored_digest = bytes(32)
             for row in destination.execute("SELECT i,source_rowid,attributes FROM evidence_record WHERE table_i=? ORDER BY source_rowid",
                                            (writer.tables[name][0],)):
-                restored = EvidenceStore.restore(destination, row)
+                restored = EvidenceStore.restore(destination, row, columns=columns)
                 restored_digest = hashlib.sha256(restored_digest + canonical_row(
                     (restored["_source_rowid"], *(restored[c] for c in columns)))).digest()
             if restored_digest != digest:
@@ -136,7 +136,7 @@ def normalize(source, output, scratch, output_limit, *, batch_rows=500):
                                                      ",".join(keys) + ",source_rowid"):
                     stored = destination.execute("SELECT i,source_rowid,attributes FROM evidence_record "
                                                  "WHERE table_i=? AND source_rowid=?", (writer.tables[name][0], rowid)).fetchone()
-                    restored = EvidenceStore.restore(destination, stored)
+                    restored = EvidenceStore.restore(destination, stored, columns=columns)
                     extraction_digest = hashlib.sha256(extraction_digest + canonical_row(
                         (rowid, *(restored[c] for c in columns)))).digest()
                 if extraction_digest.hex() != progress[name]["digest"]:

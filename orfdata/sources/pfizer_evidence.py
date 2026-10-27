@@ -8,6 +8,7 @@ peptide/protein attribution and the common measurement projection.
 
 import json
 import math
+import re
 import sqlite3
 import struct
 from contextlib import closing
@@ -15,7 +16,8 @@ from pathlib import Path
 
 from ..numeric_vector import NumericVector
 
-ENCODING = "orfdata.pfizer-evidence.v1"
+ENCODING = "orfdata.pfizer-evidence.v2"
+SUPPORTED_ENCODINGS = ("orfdata.pfizer-evidence.v1", ENCODING)
 SCHEMA = """
 CREATE TABLE evidence_metadata(name TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE evidence_table(i INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL,
@@ -64,6 +66,47 @@ def source_key(values):
     return json.dumps([str(v) for v in values], separators=(",", ":"))
 
 
+def encode_scalars(attributes, columns):
+    """Store scalar presence and values in the declared source-column order.
+
+    A present null is different from an omitted binary/vector field. The mask
+    is hexadecimal text, so it never depends on JSON integer precision.
+    """
+    if not set(attributes) <= set(columns):
+        raise ValueError("Scalar fields differ from the declared source columns")
+    mask = sum(1 << index for index, name in enumerate(columns) if name in attributes)
+    values = [attributes[name] for name in columns if name in attributes]
+    return json.dumps([format(mask, "x"), values], separators=(",", ":"), allow_nan=False)
+
+
+def decode_scalars(payload, columns):
+    """Read v2 ordered scalars and the original v1 JSON-object representation."""
+    encoded = json.loads(payload)
+    if isinstance(encoded, dict):
+        if not set(encoded) <= set(columns):
+            raise ValueError("Scalar fields differ from the declared source columns")
+        result = encoded
+    else:
+        if (not isinstance(encoded, list) or len(encoded) != 2 or not isinstance(encoded[0], str)
+                or re.fullmatch(r"0|[1-9a-f][0-9a-f]*", encoded[0]) is None
+                or not isinstance(encoded[1], list)):
+            raise ValueError("Invalid compact scalar presence/value encoding")
+        mask, values = int(encoded[0], 16), encoded[1]
+        if mask.bit_length() > len(columns) or mask.bit_count() != len(values):
+            raise ValueError("Compact scalar presence/value count differs from declared columns")
+        names = (name for index, name in enumerate(columns) if mask & (1 << index))
+        result = dict(zip(names, values, strict=True))
+    if any(type(value) not in (str, int, float, bool, type(None))
+           or isinstance(value, float) and not math.isfinite(value) for value in result.values()):
+        raise ValueError("Scalar payload contains a non-scalar or nonfinite value")
+    return result
+
+
+def column_layouts(connection):
+    return {name: tuple(json.loads(columns)) for name, columns in connection.execute(
+        "SELECT name,columns_json FROM evidence_table")}
+
+
 class EvidenceWriter:
     """Insert into a caller-owned SQLite transaction and explicit disk budget.
 
@@ -108,7 +151,7 @@ class EvidenceWriter:
         cursor = self.connection.execute(
             "INSERT INTO evidence_record(table_i,source_rowid,source_key,sequence,attributes) VALUES (?,?,?,?,?)",
             (index, row["_source_rowid"], key, row.get("Sequence"),
-             json.dumps(attributes, sort_keys=True, separators=(",", ":"), allow_nan=False)))
+             encode_scalars(attributes, columns)))
         identifier = cursor.lastrowid
         self.connection.executemany("INSERT INTO evidence_binary VALUES (?,?,?,?)",
                                     ((identifier, *record) for record in binaries))
@@ -124,7 +167,7 @@ class EvidenceStore:
         self.path = Path(path).resolve()
         with closing(self.connect()) as db:
             self.metadata = {key: json.loads(value) for key, value in db.execute("SELECT name,value FROM evidence_metadata")}
-            if self.metadata.get("encoding") != ENCODING or self.metadata.get("state") != "complete":
+            if self.metadata.get("encoding") not in SUPPORTED_ENCODINGS or self.metadata.get("state") != "complete":
                 raise ValueError("Evidence component is incomplete or uses an unsupported encoding")
             self.tables = {name: (index, tuple(json.loads(columns))) for index, name, columns in db.execute(
                 "SELECT i,name,columns_json FROM evidence_table ORDER BY i")}
@@ -141,15 +184,23 @@ class EvidenceStore:
         return NumericVector(kind, count, values, present, bool(source_null))
 
     @classmethod
-    def restore(cls, db, record):
+    def restore(cls, db, record, *, columns=None):
         """Restore exact native fields; numeric vectors retain original source bytes."""
         from .pfizer_vendor import DistributionDecoder
 
         identifier, source_rowid, attributes = record
-        result = json.loads(attributes)
+        if columns is None:
+            layout = db.execute("SELECT t.columns_json FROM evidence_record r "
+                                "JOIN evidence_table t ON t.i=r.table_i WHERE r.i=?", (identifier,)).fetchone()
+            if layout is None:
+                raise ValueError("Stored evidence record has no declared column layout")
+            columns = tuple(json.loads(layout[0]))
+        result = decode_scalars(attributes, columns)
         result["_source_rowid"] = source_rowid
         for column, kind, data in db.execute("SELECT column_name,value_kind,data FROM evidence_binary WHERE record_i=?",
                                              (identifier,)):
+            if column in result:
+                raise ValueError("Stored evidence field has conflicting scalar/binary/vector payloads")
             if kind == "float64":
                 if len(data) != 8:
                     raise ValueError("Invalid nonfinite scalar encoding")
@@ -158,7 +209,11 @@ class EvidenceStore:
                 result[column] = data
         for row in db.execute("SELECT column_name,value_type,element_count,values_data,presence_data,source_null "
                               "FROM evidence_vector WHERE record_i=?", (identifier,)):
+            if row[0] in result:
+                raise ValueError("Stored evidence field has conflicting scalar/binary/vector payloads")
             result[row[0]] = DistributionDecoder.native_bytes(cls._vector(row[1:]))
+        if set(result) != {*columns, "_source_rowid"}:
+            raise ValueError("Stored evidence fields differ from the declared source selection")
         return result
 
     def records(self, table, *, key=None, sequence=None):
@@ -174,10 +229,7 @@ class EvidenceStore:
         sql = "SELECT i,source_rowid,attributes FROM evidence_record WHERE " + " AND ".join(where) + " ORDER BY source_rowid"
         with closing(self.connect()) as db:
             for record in db.execute(sql, bindings):
-                result = self.restore(db, record)
-                if set(result) != {*columns, "_source_rowid"}:
-                    raise ValueError("Stored evidence fields differ from the declared source selection")
-                yield result
+                yield self.restore(db, record, columns=columns)
 
     def vector(self, table, key, column):
         """Get an independently typed numeric vector for one original record."""

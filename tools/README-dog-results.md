@@ -210,6 +210,22 @@ Offline tests install a compressed version-6 artifact through DatasetRegistry,
 remove its private build inputs, and replay measurements and native group/search
 queries without acquiring those inputs or the separately cached FASTA.
 
+Native evidence encoding version 2 stores scalar values in declared column order
+with an explicit presence mask. Column names remain in the per-table schema;
+null scalar values remain different from omitted binary/vector fields. The
+reader also accepts the original version-1 object encoding. All public native
+records remain dictionaries, and bulk verification uses the original typed-row
+digests. No selected fields are discarded to reduce storage.
+
+With the production writer, the same 10,000-PSM slice and its native metadata
+occupied 22,323,200 bytes as version 1 and 7,340,032 bytes as version 2. A
+10,000-group spread occupied 28,856,320 and 23,498,752 bytes respectively. Every
+selected native field, including numeric and opaque bytes, reconstructed to the
+original typed digests. The rebuilt group measurement artifact retained all
+1,320,000 logical cells and the identical full-field digest of 30,831 measured
+records. These are bounded source slices, not full-artifact acceptance or size
+guarantees.
+
 `NumericVector` stores declared int32/int64/float64 values in little-endian bytes
 with separate presence bits. A null vector, a missing element, a measured zero and
 a nonfinite source value remain distinct. IEEE-754 payloads and signed integer IDs

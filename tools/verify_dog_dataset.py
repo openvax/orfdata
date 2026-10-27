@@ -183,7 +183,7 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
             for original, record in zip_longest(source_rows, artifact_rows):
                 if original is None or record is None:
                     raise ValueError("Artifact/native row count differs: " + name)
-                row, restored = dict(original), EvidenceStore.restore(db, record[:3])
+                row, restored = dict(original), EvidenceStore.restore(db, record[:3], columns=columns)
                 encoded = canonical_row(tuple(original))
                 if set(row) != set(restored) or encoded != canonical_row(tuple(restored[k] for k in original.keys())):
                     raise ValueError(f"Artifact/native typed fields differ: {name} row {row['_source_rowid']}")

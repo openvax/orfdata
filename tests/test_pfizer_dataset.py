@@ -20,7 +20,7 @@ from orfdata import (
 )
 from orfdata.sources.pfizer import protein_manifest
 from orfdata.sources.pfizer_dataset import copy_evidence, install_projection
-from orfdata.sources.pfizer_evidence import EvidenceStore
+from orfdata.sources.pfizer_evidence import EvidenceStore, decode_scalars
 from orfdata.sources.pfizer_lineage import lineage_records
 
 
@@ -75,6 +75,19 @@ def test_all_fields_order_and_logical_counts_match_flat_dataset(projected):
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         with pytest.raises(sqlite3.OperationalError, match="no such table"):
             connection.execute("SELECT count(*) FROM measurement")
+
+
+def test_original_object_encoding_remains_queryable_through_common_api(projected):
+    vector, flat, values, _, _, _ = projected
+    with sqlite3.connect(vector.path) as db:
+        layouts = {index: json.loads(columns) for index, columns in db.execute("SELECT i,columns_json FROM evidence_table")}
+        for identifier, table, payload in db.execute("SELECT i,table_i,attributes FROM evidence_record").fetchall():
+            db.execute("UPDATE evidence_record SET attributes=? WHERE i=?",
+                       (json.dumps(decode_scalars(payload, layouts[table]), sort_keys=True), identifier))
+        db.execute("UPDATE evidence_metadata SET value='\"orfdata.pfizer-evidence.v1\"' WHERE name='encoding'")
+    legacy = QuantitativeDataset(vector.path)
+    assert list(legacy.measurements()) == list(flat.measurements()) == values
+    assert list(legacy.measurements(status="measured")) == list(flat.measurements(status="measured"))
 
 
 def test_native_selectors_and_mapped_paired_views_match_flat_storage(projected):

@@ -15,7 +15,7 @@ from ..dataset import _json
 from ..measurements import DatasetManifest
 from ..reference import ScopedTarget
 from ..search_reference import SearchReference, SearchReferenceSpec, SearchSequence
-from .pfizer_evidence import EvidenceStore, record_keys, source_key
+from .pfizer_evidence import EvidenceStore, column_layouts, decode_scalars, record_keys, source_key
 from .pfizer_vendor import peptide_candidates
 
 ENCODING = "orfdata.pfizer-attribution.v1"
@@ -84,6 +84,7 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
         if manifest is None or searched.reference not in manifest.references:
             raise ValueError("Searched FASTA reference differs from the quantitative dataset")
     tables = {name: index for index, name in connection.execute("SELECT i,name FROM evidence_table")}
+    scalar_layouts = column_layouts(connection)
     connection.executescript(SCHEMA)
     connection.execute("INSERT INTO evidence_metadata VALUES ('attribution_state','\"building\"')")
     connection.execute("INSERT INTO evidence_metadata VALUES ('attribution_encoding',?)", (_json(ENCODING),))
@@ -101,7 +102,7 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
             continue
         for index, attributes in connection.execute("SELECT i,attributes FROM evidence_record WHERE table_i=? ORDER BY source_rowid",
                                                     (tables[table],)):
-            native = json.loads(attributes)
+            native = decode_scalars(attributes, scalar_layouts[table])
             if table == "DecoyProteins":
                 accession, status = None, "decoy_partition"
                 counts["decoy_proteins"] += 1
@@ -130,7 +131,7 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
             continue
         for identifier, attributes in connection.execute(
                 "SELECT i,attributes FROM evidence_record WHERE table_i=? ORDER BY source_rowid", (tables[table],)):
-            native = json.loads(attributes)
+            native = decode_scalars(attributes, scalar_layouts[table])
             linked = [endpoint(name, tuple(native[name + key] for key in record_keys(name))) for name in endpoints]
             connection.execute("INSERT INTO evidence_link VALUES (?,?,?)", (identifier, *linked))
             counts["native_links"] += 1
@@ -213,9 +214,9 @@ class CanineEvidence(EvidenceStore):
     def _record(db, identifier):
         if identifier is None:
             return None
-        row = db.execute("SELECT r.i,r.source_rowid,r.attributes,t.name,t.role FROM evidence_record r "
+        row = db.execute("SELECT r.i,r.source_rowid,r.attributes,t.name,t.role,t.columns_json FROM evidence_record r "
                          "JOIN evidence_table t ON t.i=r.table_i WHERE r.i=?", (identifier,)).fetchone()
-        return dict(table=row[3], role=row[4], record=EvidenceStore.restore(db, row[:3]))
+        return dict(table=row[3], role=row[4], record=EvidenceStore.restore(db, row[:3], columns=json.loads(row[5])))
 
     def linked(self, table, key, *, via=None, direction="outgoing"):
         """Return each original link and both endpoints, including absent endpoints.

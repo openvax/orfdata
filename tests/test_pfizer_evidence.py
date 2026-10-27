@@ -4,11 +4,17 @@ import base64
 import hashlib
 import json
 import sqlite3
+import struct
 from pathlib import Path
 
 import pytest
 
-from orfdata.sources.pfizer_evidence import EvidenceStore, source_key
+from orfdata.sources.pfizer_evidence import (
+    EvidenceStore,
+    decode_scalars,
+    encode_scalars,
+    source_key,
+)
 from tools import normalize_dog_evidence
 from tools.export_sqlite_rows import canonical_row, quoted, source_schema
 from tools.extraction_budget import ScratchBudget
@@ -138,3 +144,59 @@ def test_reader_refuses_building_component_and_normalizer_never_overwrites_exist
         db.execute("UPDATE evidence_metadata SET value='\"building\"' WHERE name='state'")
     with pytest.raises(ValueError, match="incomplete"):
         EvidenceStore(output)
+
+
+def test_compact_scalar_presence_preserves_null_signed_zero_and_int64():
+    columns = ("native_id", "zero", "missing", "external_bytes")
+    attributes = dict(native_id=-9222281927842617047, zero=-0.0, missing=None)
+    payload = encode_scalars(attributes, columns)
+    # Check the specified wire layout independently of the production decoder.
+    assert json.loads(payload) == ["7", [-9222281927842617047, -0.0, None]]
+    restored = decode_scalars(payload, columns)
+    assert restored == attributes and "external_bytes" not in restored
+    assert struct.pack("<d", restored["zero"]) == struct.pack("<d", -0.0)
+    assert decode_scalars('["0",[]]', columns) == {}
+    assert decode_scalars(json.dumps(attributes), columns) == restored
+
+
+@pytest.mark.parametrize("payload", [
+    '["10",[1]]', '["3",[1]]', '["1",[1,2]]', '["00",[]]', '["-1",[]]',
+    '[1,[2]]', '["1",{}]', '["1",[[1]]]', '["1",[NaN]]',
+    '["1",[Infinity]]', 'null', '{"unknown":1}',
+])
+def test_malformed_scalar_layout_cannot_change_or_hide_fields(payload):
+    with pytest.raises(ValueError, match="[Ss]calar"):
+        decode_scalars(payload, ("one", "two", "three", "four"))
+
+
+def test_legacy_object_component_replays_every_native_field(source, tmp_path):
+    output, _ = build(source[0], tmp_path)
+    expected = {name: list(EvidenceStore(output).records(name)) for name in source[1]}
+    with sqlite3.connect(output) as db:
+        layouts = {index: json.loads(columns) for index, columns in db.execute("SELECT i,columns_json FROM evidence_table")}
+        for identifier, table, payload in db.execute("SELECT i,table_i,attributes FROM evidence_record").fetchall():
+            attributes = decode_scalars(payload, layouts[table])
+            db.execute("UPDATE evidence_record SET attributes=? WHERE i=?",
+                       (json.dumps(attributes, sort_keys=True, separators=(",", ":")), identifier))
+        db.execute("UPDATE evidence_metadata SET value='\"orfdata.pfizer-evidence.v1\"' WHERE name='encoding'")
+    legacy = EvidenceStore(output)
+    for name, rows in expected.items():
+        assert list(legacy.records(name)) == rows
+
+
+@pytest.mark.parametrize("corruption", ["missing_vector", "duplicate_vector"])
+def test_scalar_presence_cannot_conceal_missing_or_duplicate_external_fields(source, tmp_path, corruption):
+    output, _ = build(source[0], tmp_path)
+    with sqlite3.connect(output) as db:
+        identifier, payload, layout = db.execute(
+            "SELECT r.i,r.attributes,t.columns_json FROM evidence_record r JOIN evidence_table t ON t.i=r.table_i "
+            "WHERE t.name='TargetPsms' ORDER BY r.source_rowid LIMIT 1").fetchone()
+        if corruption == "missing_vector":
+            db.execute("DELETE FROM evidence_vector WHERE record_i=? AND column_name='Abundances'", (identifier,))
+        else:
+            columns = json.loads(layout)
+            attributes = decode_scalars(payload, columns)
+            attributes["Abundances"] = None
+            db.execute("UPDATE evidence_record SET attributes=? WHERE i=?", (encode_scalars(attributes, columns), identifier))
+    with pytest.raises(ValueError, match="Stored evidence field"):
+        list(EvidenceStore(output).records("TargetPsms"))
