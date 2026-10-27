@@ -19,7 +19,7 @@ Zeros stay measured zeros: 4,218,202 dog observations and 18,019,555 mouse
 observations. Every value retains the native numeric text and source line.
 
 ```sh
-pip install 'orfdata[data]'
+pip install 'orfdata'
 orfdata datasets download pfizer-atlas-dog-rna --version 2026-10-12.1
 orfdata datasets query pfizer-atlas-dog-rna --sample 1 --unit counts
 ```
@@ -74,7 +74,7 @@ and remain candidates for separate releases through the same importer.
 
 `registry.build(name, source_paths=...)` or `orfdata datasets build NAME` rebuilds
 from pinned counts, GEO metadata, factual Table S5 sample records and the
-historical GTF; workbook rebuilding needs `orfdata[build-data]`. Python returns
+historical GTF. Python returns
 a `QuantitativeDataset` ready to query. Reopen it offline with
 `registry.open_build(name)` or inspect it with `registry.inspect_build(name)`.
 The CLI selects that source build explicitly with `orfdata datasets query NAME

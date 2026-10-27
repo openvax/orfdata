@@ -17,7 +17,7 @@ yeast data.
 The download is approximately 397 MB and installs to a 3.86 GB SQLite database.
 
 ```sh
-pip install 'orfdata[data]'
+pip install 'orfdata'
 orfdata datasets download wang-human-tissue-abundance --version 2026-10-12.1
 ```
 

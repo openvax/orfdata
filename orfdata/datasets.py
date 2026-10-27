@@ -13,10 +13,8 @@ from .reference import species_taxon
 
 
 def _datacache():
-    try:
-        import datacache
-    except ImportError as exc:
-        raise ImportError("Install orfdata[data] (OpenVax DataCache) to download, build or cache data files") from exc
+    import datacache
+
     return datacache
 
 

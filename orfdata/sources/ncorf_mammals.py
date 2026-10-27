@@ -47,10 +47,7 @@ def _fasta(path):
 
 
 def _table(path, sheet, species):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as error:
-        raise ImportError("Install orfdata[build-data] to build this catalogue from its spreadsheet") from error
+    from openpyxl import load_workbook
 
     with open(path, "rb") as handle:  # Cached files have no extension for openpyxl to go by.
         workbook = load_workbook(handle, read_only=True)

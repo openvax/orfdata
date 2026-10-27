@@ -68,10 +68,7 @@ def _geo_samples(inputs, assets):
 
 
 def _sample_table(path):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as exc:
-        raise ImportError("Install orfdata[build-data] to read the atlas sample workbook") from exc
+    from openpyxl import load_workbook
     book = load_workbook(path, read_only=True, data_only=True)
     records = {}
     try:

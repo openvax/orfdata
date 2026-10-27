@@ -137,7 +137,7 @@ GDC DNA is the source circle rotated by 864 bases. Both placements retain
 their own SHA256 and ordered, 1-based inclusive coding blocks.
 GDC reference files: https://gdc.cancer.gov/about-data/gdc-data-processing/gdc-reference-files .
 
-Rebuild with `orfdata[build-data]` installed:
+Rebuild with `orfdata` installed:
 
 ```sh
 python tools/build_hpv16_cds.py tests/data/viral/NC_001526.4.gb.gz \

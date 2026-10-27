@@ -3,7 +3,7 @@
 Reported source links and sequence-compatible candidates are independent facts.
 Neither converts a shared peptide or protein group into a uniquely measured
 protein. Decoy records retain their partition and are not biological assignments.
-Only the explicit builder uses the optional sequence-matching dependency.
+Only the explicit builder runs sequence matching; downloaded queries use its retained results.
 """
 
 import hashlib

@@ -2341,10 +2341,8 @@ def _cached_snapshot(key, make, cache_root):
 
 
 def _pyensembl_version():
-    try:
-        from pyensembl import __version__
-    except ImportError:
-        return None
+    from pyensembl import __version__
+
     return __version__
 
 

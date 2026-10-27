@@ -128,8 +128,6 @@ def _install_collections(names, species, *, force, cache_root, timeout, failed):
                                timeout=timeout)
             installed[name] = {"missing": "downloaded",
                                "available": "reinstalled"}.get(state, "repaired")
-        except ImportError as error:  # An optional dependency is a skip, as restricted terms are.
-            installed[name] = f"skipped: {error}"
         except Exception as error:  # Reported with the rest, after everything else is tried.
             installed[name] = f"failed: {error}"
             failed.append((name, str(error)))

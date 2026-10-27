@@ -144,10 +144,8 @@ def peptide_candidates(peptides, search_reference, *, max_residues=250000, equat
             sequences.add(peptide)
     if not sequences:
         return
-    try:
-        import ahocorasick
-    except ImportError:
-        raise ImportError("Peptide extraction requires orfdata[canine-extraction]") from None
+    import ahocorasick
+
     normalized = {}
     for peptide in sorted(sequences):
         key = peptide.replace("I", "L") if equate_il else peptide

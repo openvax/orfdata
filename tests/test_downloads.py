@@ -112,30 +112,22 @@ def test_setup_reports_what_each_collection_needed(monkeypatch):
         "gdc-viruses": "repaired"}
 
 
-def test_a_missing_optional_dependency_is_skipped_and_a_failure_is_reported(monkeypatch):
+@pytest.mark.parametrize("error", [ImportError("missing required dependency"), RuntimeError("NCBI EFetch failed")])
+def test_collection_failures_are_reported_including_missing_required_dependencies(monkeypatch, error):
     from orfdata import downloads
     from orfdata.install import InstallError, _install_collections
 
     monkeypatch.setattr(downloads, "collection_state", lambda name, **options: "missing")
 
     def refuse(name, **options):
-        raise ImportError("needs an optional dependency: pip install 'orfdata[extra]'")
+        raise error
 
     failed = []
     monkeypatch.setattr(downloads, "install_collection", refuse)
     result = _install_collections(["gdc-viruses"], "homo_sapiens", force=False, cache_root=None,
                                   timeout=60, failed=failed)
-    assert result["gdc-viruses"].startswith("skipped: needs an optional dependency")
-    assert failed == []  # A skip is not an install failure.
-
-    def break_down(name, **options):
-        raise RuntimeError("NCBI EFetch failed")
-
-    monkeypatch.setattr(downloads, "install_collection", break_down)
-    result = _install_collections(["gdc-viruses"], "homo_sapiens", force=False, cache_root=None,
-                                  timeout=60, failed=failed)
-    assert result["gdc-viruses"] == "failed: NCBI EFetch failed"
-    assert failed == [("gdc-viruses", "NCBI EFetch failed")]
+    assert result["gdc-viruses"] == f"failed: {error}"
+    assert failed == [("gdc-viruses", str(error))]
     assert issubclass(InstallError, ValueError)
 
 

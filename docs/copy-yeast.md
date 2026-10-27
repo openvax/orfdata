@@ -7,7 +7,7 @@ grown in glucose-limited chemostats. The strain is EUROSCARF Y11335 BY4742,
 with the reported genotype retained on each sample.
 
 ```sh
-pip install 'orfdata[data]'
+pip install 'orfdata'
 orfdata datasets info copy-yeast-abundance
 orfdata datasets download copy-yeast-abundance
 orfdata datasets pairs copy-yeast-abundance --basis condition_aggregate
@@ -101,7 +101,7 @@ between species, and different cultures/calibrations remain different experiment
 See [pairing and orthology](pairing.md).
 
 To rebuild the release from the pinned public workbook, standards, metadata and
-four RNA files, install `orfdata[data,build-data]` and run
+four RNA files, install `orfdata` and run
 `orfdata datasets build copy-yeast-abundance`. Python uses
 `DatasetRegistry().build("copy-yeast-abundance")`. Local verified inputs can be
 supplied with repeated `--source-path ASSET=PATH` or `source_paths={...}`.
