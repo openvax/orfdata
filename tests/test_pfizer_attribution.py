@@ -2,6 +2,7 @@
 
 import base64
 import copy
+import hashlib
 import json
 import sqlite3
 from pathlib import Path
@@ -81,6 +82,44 @@ def test_reported_parent_list_and_full_fasta_candidates_do_not_collapse(native):
     assert counts["peptide_sequences"] == 4 and counts["exact_placements"] == 7
     assert counts["no_search_match"] == 0
     assert list(evidence.candidates("UNSEARCHEDEXAMPLE"))[0]["status"] == "not_searched"
+
+
+def test_native_excluded_parents_remain_linked_without_rewriting_displayed_counts(tmp_path):
+    fixture = json.loads((DIRECTORY / "parent-status.json").read_text())
+    fasta = DIRECTORY / "parent-status-search-slice.fasta"
+    assert hashlib.sha256(fasta.read_bytes()).hexdigest() == fixture["fixture_fasta_sha256"]
+    searched = fixture_search(fasta, fixture["fixture_fasta_records"])
+    path = tmp_path / "excluded-parents.sqlite"
+    with component(path, fixture["tables"]) as db:
+        counts = build_attribution(db, searched)
+    evidence = CanineEvidence(path)
+    assert counts["native_links"] == 13 and counts["unresolved_links"] == 0
+    assert counts["exact_native_proteins"] == 13
+    expected = {160079: (2, "A0A5F4BZH5"), 516803: (4, "E2RSC1"),
+                697816: (2, "J9NZM5"), 993593: (1, "F1PWH3")}
+    observed_candidates = []
+    for original in fixture["tables"]["TargetPeptideGroups"]:
+        key = original["PeptideGroupID"]
+        retained, = evidence.records("TargetPeptideGroups", key=(key,))
+        assert {k: v for k, v in retained.items() if k != "_source_rowid"} == original
+        declared, excluded_accession = expected[key]
+        assert retained["ParentProteinCount"] == declared
+        reported = set(retained["ParentProteinAccessions"].split("; "))
+        links = list(evidence.linked("TargetPeptideGroups", (key,), via="TargetPeptideGroupsTargetProteins"))
+        assert len(links) == declared + 1  # A resolved link does not mean an accepted identification.
+        assert all(link["status"] == "resolved" for link in links)
+        parents = {link["right"]["record"]["Accession"]: link["right"]["record"] for link in links}
+        assert set(parents) == reported | {excluded_accession}
+        assert parents[excluded_accession]["ExcludedBy"] == 3
+        assert parents[excluded_accession]["PeptideGroupCount"] == 0
+        assert all(parents[a]["ExcludedBy"] == -1 for a in reported)
+        originals = [row for row in fixture["tables"]["TargetPeptideGroupsTargetProteins"]
+                     if row["TargetPeptideGroupsPeptideGroupID"] == key]
+        assert [{k: v for k, v in link["source_link"]["record"].items() if k != "_source_rowid"}
+                for link in links] == originals
+        observed_candidates.extend(evidence.candidates(retained["Sequence"]))
+    # Full-reference sequence compatibility is retained even for excluded native parents.
+    assert observed_candidates == fixture["candidate_placements"]
 
 
 def synthetic_tables():

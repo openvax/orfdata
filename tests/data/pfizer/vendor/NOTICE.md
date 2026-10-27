@@ -48,6 +48,17 @@ ten complete source entries needed by these examples; its hash is in the JSON.
 Missing endpoints, sequence mismatches, repeated I/L placements and direct
 quantification links in the tests are explicitly synthetic cases.
 
+`parent-status.json` retains four additional native peptide records (160079,
+516803, 697816 and 993593), all 13 of their protein links, and the corresponding
+13 protein records. The complete source-table checkpoints and original rowids
+are retained separately from the local test rowids. Each displayed parent list
+omits one linked protein with `ExcludedBy=3`; its declared peptide count is zero.
+Both the displayed values and the complete native links must survive. A resolved
+link is not an accepted identification. `parent-status-search-slice.fasta` holds
+the 15 complete searched-reference entries for these peptides. All 15 candidate
+placements were independently enumerated over the full pinned FASTA, including
+the excluded native parents and candidates absent from the native parent links.
+
 `search-slice.fasta` contains twelve complete records from the checksum-pinned
 20,649-record searched FASTA. They are the candidate accessions for the eight
 native peptide examples. `search-slice.json` records the full-reference audit,
@@ -58,7 +69,7 @@ itself the complete searched reference. Isoleucine/leucine-equivalent matches
 are distinguished from exact residue matches; neither changes the original
 vendor-reported memberships or supplies evidence of individual protein detection.
 
-The FASTA entries in both slices are from the UniProt Consortium, distributed
+The FASTA entries in these slices are from the UniProt Consortium, distributed
 under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/), with attribution
 to UniProt (https://www.uniprot.org/help/license). They retain the original
 headers and sequences; the change here is selection of entries for tests.

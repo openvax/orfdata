@@ -269,6 +269,31 @@ links remain accessible with their native partition; they are not assigned as
 biological detections. All original searched protein entries are available via
 `native.search_protein(accession)`, separate from any detection claim.
 
+The complete target peptide membership audit contains 1,145,689 peptide groups,
+1,262,557 peptide/protein links and 170,084 protein-group/peptide links. Every link
+has both endpoints, and every peptide/protein pair has compatible sequence:
+1,258,153 exact-residue matches and 4,404 I/L-equivalent matches. These are source
+relationships, including excluded records, not a filtered set of detections.
+
+Displayed counts do not necessarily count link rows. Across all peptide groups,
+`NumberOfProteinGroups` and `MasterProteinAccessions` agree with the distinct
+linked master proteins (`IsMasterProtein=0` in native enum 14); 458 peptide groups
+have more group-link rows than distinct masters. Across all 12,654 protein groups,
+`PeptideGroupCount` agrees with distinct linked peptide sequences after treating
+I/L as equivalent, also with distinct native `UniqueSequenceID` values. Raw link
+counts differ for 5,190 groups; counting distinct literal sequences leaves 18
+differences. These are measured equalities for this source, not inferred rules
+that replace the deposited counts or collapse the original peptide sequences.
+
+Four peptides have a native parent link absent from their displayed parent lists:
+160079 (`DLYTGLK`), 516803 (`IGDFGLAR`), 697816 (`MPLIGLGTWK`) and 993593
+(`TGTFIAIDR`). In each case the additional protein has `ExcludedBy=3`, while the
+listed proteins have `ExcludedBy=-1`. The `parent-status.json` regression fixture
+retains all four cases, their complete native parent links and full-reference
+sequence candidates. Neither the link index nor the candidate index rewrites
+the displayed count/list. This audit covers the completed target memberships;
+full PSM, control, acquisition and consumer-artifact acceptance remain separate.
+
 On an explicit 100-group benchmark, the public source-evidence interface preserved
 all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
 placements agreed with an independent exhaustive search of the complete FASTA.
