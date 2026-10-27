@@ -48,8 +48,9 @@ def counts(connection):
     relations = connection.execute(
         "SELECT count(*) FROM (SELECT l.left_i,CASE WHEN p.status='exact_sequence' THEN p.accession ELSE r.source_key END target,"
         "CASE WHEN p.status='exact_sequence' THEN 0 ELSE 1 END namespace "
-        "FROM evidence_link l JOIN evidence_record x ON x.i=l.record_i "
-        "JOIN evidence_record r ON r.i=l.right_i LEFT JOIN native_protein_search p ON p.record_i=r.i "
+        # Keep the sparse membership table first even before ANALYZE has run.
+        "FROM evidence_record x CROSS JOIN evidence_link l ON l.record_i=x.i "
+        "CROSS JOIN evidence_record r ON r.i=l.right_i LEFT JOIN native_protein_search p ON p.record_i=r.i "
         "WHERE x.table_i=? AND r.table_i=? AND l.left_i IS NOT NULL GROUP BY l.left_i,target,namespace)",
         (tables[_REPORTS['TargetProteinGroups']], tables['TargetProteins'])).fetchone()[0]
     return dict(mapping=mappings, target_relation=relations)
