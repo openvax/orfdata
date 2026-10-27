@@ -369,12 +369,20 @@ groups and 1,076,028 decoy peptide groups. The peptide groups' native confidence
 labels are Low for 1,065,181, Medium for 9,126 and High for 1,721 records. All
 1,721 High records and all 1,521 decoy protein groups have `ExcludedBy=-1`.
 They retain their decoy partition alongside those source quality fields.
-Protein `ProteinFDRConfidence` uses distribution map 36 with one `Combined`
+Decoy protein `ProteinFDRConfidence` uses distribution map 36 with one `Combined`
 cell: 18,857 null vectors and 1,037/574/128 vectors containing native codes
 1/2/3. These codes retain their own distribution metadata; peptide confidence
 enum 12 does not label them. The complete typed row digests and declared
-protein/peptide sequence lengths reconcile. Decoy PSMs and membership links
-are audited separately as extraction completes.
+protein/peptide-group sequence lengths reconcile.
+
+All 3,320,389 decoy PSMs also reproduce their complete typed source digest.
+Their native confidence labels are Low for 3,268,321, Medium for 43,681 and
+High for 8,387 records. Of the High records, 3,992 have `ExcludedBy=-1` and
+4,395 have `ExcludedBy=3`; all Low and Medium records have `ExcludedBy=3`.
+Every decoy PSM has native `PsmAmbiguity=5` (`Unambiguous`, enum 11). These
+quality labels do not change the control partition. The selected PSM schema
+has no declared sequence-length field, so no such length comparison is claimed.
+Membership links and full consumer-artifact acceptance remain separate audits.
 
 On an explicit 100-group benchmark, the public source-evidence interface preserved
 all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
