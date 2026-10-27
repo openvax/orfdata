@@ -173,6 +173,32 @@ its new receipt. The audit does not claim a checksum of unacquired vendor bytes.
 Sampled numeric values and missingness also undergo independent `struct` decoding
 of the original number/presence bytes, without the builder's NumericVector decoder.
 
+Prepare the compressed archive and registry metadata only after that audit passes:
+
+```sh
+python -m tools.package_dog_dataset /path/to/built/dataset.sqlite \
+  /path/to/acceptance.json /path/to/new-publication-directory \
+  --url https://example.org/REVIEWED-RELEASE/dataset.sqlite.gz \
+  --data-release REVIEWED-RELEASE --max-compressed-mib 1024
+```
+
+The URL above is a placeholder for the actual reviewed distribution destination.
+The command does not publish or update the packaged registry. It requires the
+full source selection and a matching successful receipt from the current verifier.
+It writes a gzip archive with fixed header metadata, checks every decompressed byte
+against the original hash without creating a second expanded file, and checks
+for changed inputs. Compressed output has an explicit byte cap. Failure removes
+only its owned new archive; existing archives are never overwritten.
+`registry-entry.json` records the installed checksum/size used by DataCache and
+the separate compressed checksum/size, data-release identity and source access
+terms. The full searched FASTA's UniProt attribution remains explicit. The
+archive, source components, acceptance receipt and registry entry still require
+publication and real-release installation/consumer acceptance before #23 is done.
+
+Offline tests install a compressed version-6 artifact through DatasetRegistry,
+remove its private build inputs, and replay measurements and native group/search
+queries without acquiring those inputs or the separately cached FASTA.
+
 `NumericVector` stores declared int32/int64/float64 values in little-endian bytes
 with separate presence bits. A null vector, a missing element, a measured zero and
 a nonfinite source value remain distinct. IEEE-754 payloads and signed integer IDs

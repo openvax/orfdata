@@ -215,6 +215,13 @@ def measurements(dataset, *, scope, target, target_keys, sample_id, assay_id, qu
         if target_keys is not None:
             conditions.append("t.key IN (SELECT value FROM json_each(?))")
             params.append(_json(target_keys))
+        if status == "measured":
+            # Every cell of a source-null vector is missing. Skip its expansion
+            # in SQL; non-null vectors still need per-cell presence/finite checks.
+            # NOT EXISTS only skips an explicitly null vector, preserving the
+            # reader's error if a corrupted artifact has lost a required vector.
+            conditions.append("NOT EXISTS (SELECT 1 FROM evidence_vector v WHERE v.record_i=p.record_i "
+                              "AND v.column_name=p.column_name AND v.source_null=1)")
         if sample_id is not None or assay_id is not None:
             query = "SELECT x.layout_i FROM peptide_axis x JOIN assay a ON a.i=x.assay_i WHERE a.reference_key=?"
             params.append(reference.key)

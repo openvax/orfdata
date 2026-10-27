@@ -42,6 +42,14 @@ observations rather than stored vectors. Mapped/paired queries and Parquet expor
 use the same projection. Opening and querying a release never accesses the remote
 vendor file or requires the extraction dependencies.
 
+Measured-only queries discard source-null vectors in SQL before expanding cells;
+non-null vectors still receive per-cell presence and finite-value checks. Missing
+queries and logical counts retain every null cell. On a 10,000-group spread across
+the completed native table, the same 30,831 measured records (identical full-field
+hash) took 30.2 seconds before this filter and 3.4 seconds after it. The query
+expanded 1,758 non-null vectors instead of 30,000 total vectors. This is a bounded
+query benchmark, not a full-dataset performance guarantee.
+
 Version 6 declares its projection encoding and completion state explicitly. It
 does not contain an empty flat `measurement` view: SQL access to that old internal
 view fails. Generic dataset creation continues to write version 5, and versions
