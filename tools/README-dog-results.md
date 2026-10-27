@@ -313,6 +313,22 @@ sequence. Candidate indexing must include PSM-only sequences and retain the
 match basis for each original string. Complete native PSM links and quantities
 are verified separately during full artifact acceptance.
 
+All 4,493,585 native PSM/peptide-group links have both endpoints; each PSM links
+to exactly one group, with no duplicate edges. Their native `UniqueSequenceID`
+values agree on every link. Literal sequences agree on 4,485,319 links; the other
+8,266 are I/L-equivalent and retain both original strings.
+
+The source's displayed `PsmCount` is distinct from an unfiltered link count.
+Across all 1,145,689 peptide groups, every displayed count agrees with this
+comparison: for native group `Confidence=3`, count linked PSMs with
+`MatchConfidence=3`; for other groups, count all links. Thus 131,596 displayed
+counts differ from raw link counts. This is a measured equality in this deposit,
+not a default evidence filter or a general rule for other vendor analyses.
+All 962,755 protein-group/PSM links, by comparison, have `MatchConfidence=3`
+and `ExcludedBy=-1`; their counts agree with every one of the 12,654 groups'
+displayed `PsmCount` values. Lower-confidence source PSMs and their other links
+remain available unchanged.
+
 On an explicit 100-group benchmark, the public source-evidence interface preserved
 all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
 placements agreed with an independent exhaustive search of the complete FASTA.
