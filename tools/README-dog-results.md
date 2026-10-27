@@ -343,26 +343,26 @@ and `ExcludedBy=-1`; their counts agree with every one of the 12,654 groups'
 displayed `PsmCount` values. Lower-confidence source PSMs and their other links
 remain available unchanged.
 
-The complete target modification table contains 10,063,345 links. Every link
-resolves to a native PSM and one of the 1,787 retained modification definitions;
+The complete modification tables contain 10,063,345 target links and 7,644,492
+decoy links. Every link resolves to a native PSM and one of the 1,787 retained modification definitions;
 there are no duplicate `(workflow, peptide, modification, Position)` tuples,
-and every target PSM has at least one modification link. Five definition IDs
-occur in these target links:
+and every target and decoy PSM has at least one modification link. The same five
+definition IDs occur in both partitions:
 
-| Native ID | Name | Native specificity label | Links |
-| --- | --- | --- | ---: |
-| 2 | Acetyl | Protein N-Terminus | 57,330 |
-| 8 | Carbamidomethyl | Any | 1,437,923 |
-| 45 | Oxidation | Any | 1,372,286 |
-| 626 | TMT6plex | Any | 2,702,221 |
-| 628 | TMT6plex | Any N-Terminus | 4,493,585 |
+| Native ID | Name | Native specificity label | Target links | Decoy links |
+| --- | --- | --- | ---: | ---: |
+| 2 | Acetyl | Protein N-Terminus | 57,330 | 44,868 |
+| 8 | Carbamidomethyl | Any | 1,437,923 | 1,274,637 |
+| 45 | Oxidation | Any | 1,372,286 | 1,036,298 |
+| 626 | TMT6plex | Any | 2,702,221 | 1,968,300 |
+| 628 | TMT6plex | Any N-Terminus | 4,493,585 | 3,320,389 |
 
 Specificity labels come from native `PositionType` enum 3. IDs 626 and 628
 share a name and Unimod accession but remain distinct definitions. All native
-`Position` values in these target links are present; their integers are retained
+`Position` values in both partitions are present; their integers are retained
 without converting them to residue offsets or inferring localization certainty.
-These are unfiltered source-link counts, not independent detections. Decoy
-modification links and full consumer-artifact verification remain separate.
+These are unfiltered source-link counts, not independent detections. Full
+consumer-artifact verification remains separate.
 
 The completed control tables contain 20,596 decoy proteins, 1,521 decoy protein
 groups and 1,076,028 decoy peptide groups. The peptide groups' native confidence
@@ -382,7 +382,19 @@ High for 8,387 records. Of the High records, 3,992 have `ExcludedBy=-1` and
 Every decoy PSM has native `PsmAmbiguity=5` (`Unambiguous`, enum 11). These
 quality labels do not change the control partition. The selected PSM schema
 has no declared sequence-length field, so no such length comparison is claimed.
-Membership links and full consumer-artifact acceptance remain separate audits.
+
+The six complete decoy membership tables have no missing endpoints or duplicate
+edges. All 3,637,761 PSM/protein links match exact residues; the 1,179,103
+peptide-group/protein links comprise 1,175,569 exact and 3,534 I/L-equivalent
+matches. Each PSM links to exactly one peptide group with the same native
+sequence ID; 3,880 links have different I/L-equivalent literal strings. All
+original strings and relationships remain separate. There are 171,739 PSMs
+with multiple native protein parents, despite the `Unambiguous` PSM label;
+the largest observed parent count is 256. This is not evidence of a vendor cap.
+All 1,521 protein groups' declared counts reconcile with distinct linked
+proteins, native peptide sequence IDs and PSMs. Their 4,003 PSM links all have
+native `MatchConfidence=3` and `ExcludedBy=-1`. Acquisition records and full
+consumer-artifact acceptance remain separate audits.
 
 On an explicit 100-group benchmark, the public source-evidence interface preserved
 all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
