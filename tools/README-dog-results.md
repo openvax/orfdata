@@ -318,6 +318,20 @@ to exactly one group, with no duplicate edges. Their native `UniqueSequenceID`
 values agree on every link. Literal sequences agree on 4,485,319 links; the other
 8,266 are I/L-equivalent and retain both original strings.
 
+All 5,289,013 target PSM/protein links have both endpoints and exact residue
+matches, with no duplicate edges; every target PSM has at least one parent.
+Their parent sets differ from the linked peptide groups: 114 PSM/protein edges
+across 103 PSMs are absent from their group's parent set, while 45,450 implied
+group-parent edges across 17,221 PSMs are absent from the native PSM links.
+The latter includes identical PSM/group sequence strings and high-confidence
+PSMs. These measured differences do not establish a vendor assignment rule.
+Consumers must preserve each native relationship rather than copy a group's
+parents to its PSMs or replace a group's parents with an individual PSM's set.
+The `psm-parent-sets.json` fixture retains three complete examples, including
+PSM 15032 (`LTEEQAR`) and group 606096 (`ITEEQAR`), whose single native parents
+are different proteins. Independently enumerated full-FASTA candidates retain
+both proteins and their match bases separately from those native assignments.
+
 The source's displayed `PsmCount` is distinct from an unfiltered link count.
 Across all 1,145,689 peptide groups, every displayed count agrees with this
 comparison: for native group `Confidence=3`, count linked PSMs with

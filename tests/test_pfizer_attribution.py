@@ -122,6 +122,53 @@ def test_native_excluded_parents_remain_linked_without_rewriting_displayed_count
     assert observed_candidates == fixture["candidate_placements"]
 
 
+def test_native_psm_and_peptide_group_parent_sets_remain_independent(tmp_path):
+    fixture = json.loads((DIRECTORY / "psm-parent-sets.json").read_text())
+    fasta = DIRECTORY / "psm-parent-sets-search-slice.fasta"
+    assert hashlib.sha256(fasta.read_bytes()).hexdigest() == fixture["fixture_fasta_sha256"]
+    searched = fixture_search(fasta, fixture["fixture_fasta_records"])
+    path = tmp_path / "psm-parent-sets.sqlite"
+    with component(path, fixture["tables"]) as db:
+        counts = build_attribution(db, searched)
+    evidence = CanineEvidence(path)
+    assert counts["native_links"] == 11 and counts["unresolved_links"] == 0
+    assert counts["exact_native_proteins"] == 4 and counts["peptide_sequences"] == 5
+    expected = {
+        1890: (555551, {"E2R5P5"}, {"E2R5P5", "F1P7C2"}),
+        15032: (606096, {"A0A5F4DG83"}, {"A0A5F4D8R9"}),
+        16602: (861841, {"A0A5F4D8R9"}, {"A0A5F4DG83", "A0A5F4D8R9"}),
+    }
+    sequences = set()
+    for peptide, (group, psm_parents, group_parents) in expected.items():
+        psm, = evidence.records("TargetPsms", key=(-160, peptide))
+        pg, = evidence.records("TargetPeptideGroups", key=(group,))
+        for table, record, id_field, identifier in (
+            ("TargetPsms", psm, "PeptideID", peptide),
+            ("TargetPeptideGroups", pg, "PeptideGroupID", group),
+        ):
+            original = next(row for row in fixture["tables"][table] if row[id_field] == identifier)
+            assert {k: v for k, v in record.items() if k != "_source_rowid"} == original
+            sequences.add(record["Sequence"])
+        assert psm["UniqueSequenceID"] == pg["UniqueSequenceID"]
+        assert (psm["Sequence"] == pg["Sequence"]) == (peptide == 1890)
+        group_link, = evidence.linked("TargetPsms", (-160, peptide), via="TargetPsmsTargetPeptideGroups")
+        assert group_link["right"]["record"]["PeptideGroupID"] == group
+        for table, key, via, id_field, identifier, parents in (
+            ("TargetPsms", (-160, peptide), "TargetPsmsTargetProteins", "TargetPsmsPeptideID", peptide, psm_parents),
+            ("TargetPeptideGroups", (group,), "TargetPeptideGroupsTargetProteins",
+             "TargetPeptideGroupsPeptideGroupID", group, group_parents),
+        ):
+            links = list(evidence.linked(table, key, via=via))
+            assert {link["right"]["record"]["Accession"] for link in links} == parents
+            assert all(link["status"] == "resolved" for link in links)
+            originals = [row for row in fixture["tables"][via] if row[id_field] == identifier]
+            assert [{k: v for k, v in link["source_link"]["record"].items() if k != "_source_rowid"}
+                    for link in links] == originals
+    # Sequence-compatible candidates do not replace either set of native assignments.
+    assert [hit for sequence in sorted(sequences) for hit in evidence.candidates(sequence)] == fixture["candidate_placements"]
+    assert {hit["accession"] for hit in evidence.candidates("LTEEQAR")} == {"A0A5F4DG83", "A0A5F4D8R9"}
+
+
 def synthetic_tables():
     return dict(
         TargetProteins=[dict(UniqueSequenceID=-9223372036854775808, Accession="ONE", Sequence="MIIILLLAAA"),

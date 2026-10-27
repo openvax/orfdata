@@ -69,6 +69,15 @@ itself the complete searched reference. Isoleucine/leucine-equivalent matches
 are distinguished from exact residue matches; neither changes the original
 vendor-reported memberships or supplies evidence of individual protein detection.
 
+`psm-parent-sets.json` retains source PSMs 1890, 15032 and 16602, their three
+peptide groups, four proteins and all 11 links connecting these selected records.
+PSM and group parent sets remain independent, including when their native
+sequence IDs agree. It preserves selected source fields, original row IDs and
+completed table checkpoints. `psm-parent-sets-search-slice.fasta` contains all
+four searched entries matching any of the five literal PSM/group sequences;
+all ten placements were independently enumerated against the complete 20,649
+entry deposited FASTA. Fixture row IDs are local to the regression database.
+
 The FASTA entries in these slices are from the UniProt Consortium, distributed
 under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/), with attribution
 to UniProt (https://www.uniprot.org/help/license). They retain the original
