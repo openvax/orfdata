@@ -229,7 +229,8 @@ def test_interruption_and_existing_output_preservation(inputs, tmp_path):
 
     def interrupt(state):
         assert not output.exists()
-        raise KeyboardInterrupt("simulated interrupted copy")
+        if state.get("stage") == "evidence_backup":
+            raise KeyboardInterrupt("simulated interrupted copy")
 
     with pytest.raises(KeyboardInterrupt):
         import_native(paths, output, manifest, checkpoint=interrupt)
@@ -282,6 +283,26 @@ def test_completed_build_never_replaces_a_racing_destination(inputs, tmp_path):
     with pytest.raises(FileExistsError):
         import_native(paths, output, manifest, checkpoint=race)
     assert output.read_bytes() == b"another writer owns this destination"
+    assert not list(tmp_path.glob("canine-evidence-*"))
+
+
+def test_deferred_foreign_key_failure_cannot_publish_a_dataset(inputs, tmp_path, monkeypatch):
+    from orfdata.sources import pfizer_native
+
+    original = pfizer_native.build_attribution
+
+    def corrupt_after_attribution(connection, *args, **kwargs):
+        result = original(connection, *args, **kwargs)
+        assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 0
+        connection.execute("UPDATE evidence_link SET left_i=-777")
+        connection.commit()
+        return result
+
+    monkeypatch.setattr(pfizer_native, "build_attribution", corrupt_after_attribution)
+    output = tmp_path / "invalid.sqlite"
+    with pytest.raises(ValueError, match="SQLite integrity"):
+        import_native(inputs[0], output, inputs[1])
+    assert not output.exists()
     assert not list(tmp_path.glob("canine-evidence-*"))
 
 

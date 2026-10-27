@@ -209,6 +209,8 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
         raise ValueError("Insufficient free disk for the bounded canine build")
     if assets["lineage.json"].size > 1024 * 1024:
         raise ValueError("Compiled canine lineage exceeds its 1 MiB metadata limit")
+    if checkpoint is not None:
+        checkpoint(dict(stage="verify_inputs", required_free_bytes=working))
     _verify_inputs(inputs, assets)
     lineage = json.loads(Path(inputs["lineage.json"]).read_text())
     db = None
@@ -217,6 +219,8 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
             building = Path(temporary) / "dataset.sqlite"
             native_path = _evidence_input(inputs, asset, temporary)
             evidence = EvidenceStore(native_path)
+            if checkpoint is not None:
+                checkpoint(dict(stage="validate_component"))
             _validate_component(evidence, manifest, lineage)
             searched = SearchReference(inputs["search.fasta"], spec)
             samples, assays = lineage_records(lineage, spec.reference)
@@ -226,16 +230,25 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
             if db.execute("PRAGMA journal_mode=OFF").fetchone()[0] != "off":
                 raise ValueError("Private canine build requires journal-free scratch storage")
             db.execute(f"PRAGMA max_page_count={cap // 4096}")
-            db.execute("PRAGMA foreign_keys=ON")
+            # This entire private database is disposable. Check all foreign
+            # keys once, before publication, rather than repeating random
+            # parent-page reads for every row and intermediate stage.
+            db.execute("PRAGMA foreign_keys=OFF")
             db.execute("PRAGMA cache_size=-131072")  # Bound the large-index page cache to 128 MiB.
             db.execute("PRAGMA temp_store=MEMORY")
             db.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 16 * 1024 * 1024)
-            copy_evidence(db, native_path, checkpoint=checkpoint)
-            attribution = build_attribution(db, searched, checkpoint=checkpoint)
+            copy_evidence(db, native_path, checkpoint=checkpoint, defer_checks=True)
+            attribution = build_attribution(db, searched, checkpoint=checkpoint, defer_checks=True)
             summary = _summary_context(db, inputs["protein.tsv"], manifest, lineage)
-            projection = install_projection(db, manifest, lineage, source_asset=asset.asset_id, checkpoint=checkpoint)
+            projection = install_projection(db, manifest, lineage, source_asset=asset.asset_id,
+                                             checkpoint=checkpoint, defer_checks=True)
+            if checkpoint is not None:
+                checkpoint(dict(stage="final_integrity", output_bytes=building.stat().st_size))
+            db.execute("ANALYZE")
             if db.execute("PRAGMA foreign_key_check").fetchone() is not None or db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise ValueError("Canine artifact failed SQLite integrity checks")
+            if checkpoint is not None:
+                checkpoint(dict(stage="verify_inputs_after_build"))
             _verify_inputs(inputs, assets)
             receipt = dict(state="complete", importer=IMPORTER, attribution=attribution, summary=summary,
                            projection=projection, selection_sha256=manifest.processing["selection_sha256"],
@@ -243,6 +256,7 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
                            software_sha256={name: file_sha256(Path(__file__).parent / name) for name in BUILD_MODULES},
                            limits=dict(limits), sqlite_version=sqlite3.sqlite_version,
                            storage=dict(required_free_bytes=working, journal_mode="off", temp_store="memory",
+                                        foreign_keys="full check before publication",
                                         publication="validated hard link; no overwrite"))
             db.execute("INSERT INTO metadata VALUES ('canine_build',?)", (_json(receipt),))
             db.commit()

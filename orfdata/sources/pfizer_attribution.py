@@ -62,12 +62,14 @@ CREATE INDEX search_peptide_hit_protein ON search_peptide_hit(accession,sequence
 """
 
 
-def build_attribution(connection, searched, *, max_residues=250000, checkpoint=None):
+def build_attribution(connection, searched, *, max_residues=250000, checkpoint=None, defer_checks=False):
     """Index complete local evidence and every placement in its verified FASTA.
 
     The caller owns the new output, its SQLite/disk limits and failure cleanup.
     Source records remain unchanged. Dangling native links and unmatched target
     proteins are reported explicitly; they must be reviewed in release acceptance.
+    defer_checks requires the owner to run final foreign-key validation and
+    ANALYZE before publishing its private database.
     """
     if not isinstance(searched, SearchReference):
         raise TypeError("Attribution requires an already checksum-verified SearchReference")
@@ -179,7 +181,7 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
         batch(peptides)
     if connection.execute("SELECT 1 FROM search_peptide WHERE status='pending' LIMIT 1").fetchone():
         raise ValueError("Not all native target peptide sequences were searched")
-    if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+    if not defer_checks and connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
         raise ValueError("Native attribution indexes have invalid references")
     candidate_digest = hashlib.sha256()
     for row in connection.execute(
@@ -190,7 +192,8 @@ def build_attribution(connection, searched, *, max_residues=250000, checkpoint=N
     connection.execute("INSERT INTO evidence_metadata VALUES ('attribution_counts',?)", (_json(counts),))
     connection.execute("INSERT INTO evidence_metadata VALUES ('candidate_digest',?)", (_json(candidate_digest.hexdigest()),))
     connection.execute("UPDATE evidence_metadata SET value='\"complete\"' WHERE name='attribution_state'")
-    connection.execute("ANALYZE")
+    if not defer_checks:
+        connection.execute("ANALYZE")
     connection.commit()
     return counts
 

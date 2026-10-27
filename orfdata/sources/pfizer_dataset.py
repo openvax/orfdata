@@ -54,13 +54,15 @@ def decoder_from_database(connection):
     return DistributionDecoder(*metadata)
 
 
-def copy_evidence(connection, path, *, checkpoint=None):
+def copy_evidence(connection, path, *, checkpoint=None, defer_checks=False):
     """Seed a new dataset with verified evidence pages and existing metadata.
 
     Only the known normalized schema can be copied. The destination must hold
     at most 16 MiB of fresh common metadata, saved as SQL from our own database;
     no SQL from the source is executed. The caller owns the disposable output,
     its limits and failure cleanup. Copying pages retains existing indexes.
+    defer_checks requires the owning builder to check all foreign keys before
+    publishing the completed database.
     """
     evidence = EvidenceStore(path)
     page_size = connection.execute("PRAGMA page_size").fetchone()[0]
@@ -110,17 +112,18 @@ def copy_evidence(connection, path, *, checkpoint=None):
     connection.executescript(metadata)
     connection.execute(f"PRAGMA user_version={user_version}")
     connection.execute(f"PRAGMA foreign_keys={foreign_keys}")
-    if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+    if not defer_checks and connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
         raise ValueError("Seeded canine metadata/evidence has unresolved identities")
 
 
-def install_projection(connection, manifest, lineage, *, source_asset, reference=None, checkpoint=None):
+def install_projection(connection, manifest, lineage, *, source_asset, reference=None, checkpoint=None, defer_checks=False):
     """Install an exact measurement projection in a new dataset with no flat rows.
 
     A complete normalized evidence component and the checked lineage must already
     be present. Sample/assay/mapping records are the ordinary dataset records.
     No source filtering, protein inference or normalization is performed here.
-    The owning builder must publish only after this function succeeds.
+    The owning builder must publish only after this function succeeds. With
+    defer_checks it must run the final foreign-key check and ANALYZE itself.
     """
     if connection.execute("PRAGMA user_version").fetchone()[0] != 5:
         raise ValueError("Install peptide projection only in a new version-5 metadata dataset")
@@ -186,7 +189,7 @@ def install_projection(connection, manifest, lineage, *, source_asset, reference
                 connection.commit()
                 if checkpoint is not None:
                     checkpoint(dict(vectors=vector_count, measurements=logical_count))
-    if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+    if not defer_checks and connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
         raise ValueError("Native peptide projection has unresolved identities")
     # Remove unused flat storage so direct SQL fails explicitly instead of
     # suggesting that this dataset has zero measurements. Public queries use
@@ -202,7 +205,8 @@ def install_projection(connection, manifest, lineage, *, source_asset, reference
         driver=DRIVER, state="complete", source_asset=source_asset, reference_key=reference.key, lineage=lineage,
         vectors=vector_count, measurements=logical_count)),))
     connection.execute("PRAGMA user_version=6")
-    connection.execute("ANALYZE")
+    if not defer_checks:
+        connection.execute("ANALYZE")
     connection.commit()
     return dict(vectors=vector_count, measurements=logical_count, layouts=len(layouts))
 

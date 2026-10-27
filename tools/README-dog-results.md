@@ -200,6 +200,9 @@ file synchronization, an atomic hard link publishes the result without copying
 it or overwriting an existing destination. Interrupted/invalid builds remove
 their owned scratch directory and expanded temporary. The receipt retains
 code/input hashes, counts, limits and storage policy.
+The private bulk load defers per-row foreign-key enforcement and repeated
+intermediate scans. One complete foreign-key and SQLite integrity check is
+mandatory before publication; an invalid final link removes the private build.
 A version-6 consumer dataset without its final successful build
 receipt is rejected. No vendor or original supplementary workbook is needed to
 rebuild from these pinned components.
