@@ -30,6 +30,31 @@ entries. SQLite index statistics are populated during creation so a narrow
 target query can use the target index instead of scanning an entire reference.
 Raw SQL table layouts are internal; use the Python/CLI query and export APIs.
 
+## Native peptide vectors
+
+Canine native-evidence builds use storage version 6 for the common measurement
+API. Numeric vectors preserve their declared type, exact numeric bytes, independent
+presence bits and null-vector state. Sample/assay axes and native source records
+are stored once. Queries expand the requested cells into ordinary `Measurement`
+objects, retaining missing values, source record IDs, native units and provenance.
+Target and assay indexes select vectors before expansion. Counts report logical
+observations rather than stored vectors. Mapped/paired queries and Parquet export
+use the same projection. Opening and querying a release never accesses the remote
+vendor file or requires the extraction dependencies.
+
+Version 6 declares its projection encoding and completion state explicitly. It
+does not contain an empty flat `measurement` view: SQL access to that old internal
+view fails. Generic dataset creation continues to write version 5, and versions
+1–5 remain readable without migration.
+
+A bounded comparison of 100 actual native peptide groups (source row IDs 50,
+100, …, 5000) reproduced all 13,200 cells from their three 44-channel abundance
+vectors, field for field. Flat storage occupied 24,891,392 bytes; vector storage
+occupied 6,557,696 bytes including exact selected source evidence and shared
+sample/assay metadata. Peak benchmark process RSS was 127,729,664 bytes. This
+is a storage slice, not a completed canine dataset release or a guarantee of
+full-dataset size.
+
 ## Actual-source benchmark
 
 The first 100,000 rows of the native Pfizer/GEO RNA table contain four dog

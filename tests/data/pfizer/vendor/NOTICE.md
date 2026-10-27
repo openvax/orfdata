@@ -29,6 +29,13 @@ https://github.com/BenBruyneel/proteinDiscover/blob/main/R/transformRaw.R.
 No implementation from that project is included here; native type/label
 metadata and exact source bytes govern the decoding tests.
 
+`definitions.json` retains the complete selected DataTypes (30), DataTypesColumns
+(577), EnumDataTypes (20) and EnumDataTypeValues (141) metadata records, plus one
+native Acetyl modification definition and its PSM link. These factual records
+come from the same deposited database and bounded read workflow. They test the
+distinct confidence, ambiguity, quantification and master-protein enum domains,
+source modification specificity, and unaltered native position/record IDs.
+
 `search-slice.fasta` contains twelve complete records from the checksum-pinned
 20,649-record searched FASTA. They are the candidate accessions for the eight
 native peptide examples. `search-slice.json` records the full-reference audit,

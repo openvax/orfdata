@@ -1,9 +1,11 @@
 # Canine vendor evidence extraction
 
 This work implements ORFdata #23. The current code supports bounded native-table
-export with durable checkpoints, native numeric-vector decoding, searched-reference
+export with durable checkpoints, lossless numeric-vector storage, searched-reference
 peptide matching and checked dog pool/run lineage in the common sample/assay API.
-The full normalized dataset export, source-count reconciliation and release are pending.
+A completed selected export can be normalized and projected through the common
+measurement API. Full native extraction, member/candidate reconciliation, consumer
+artifact assembly and release are still pending; passing a fixture is not full acceptance.
 
 Use a separate extraction environment with `.[canine-extraction]` installed.
 The current audit uses APSW 3.54.1.0 (SQLite 3.54.1) and pyahocorasick 2.3.1.
@@ -74,6 +76,42 @@ output marked `selection_complete` has completed only the selected native facts;
 it has not passed normalized dataset acceptance. Output and rollback journal
 capacity are included in the scratch reservation. Do not open another range
 reader on the same cache while an export is live.
+
+After all selected tables finish, normalize the completed staging file explicitly:
+
+```sh
+python -m tools.normalize_dog_evidence /path/to/audit/pdResult/native-evidence.partial.sqlite \
+  /path/to/normalized --output-mib 2048 --scratch-mib 8192
+```
+
+The normalizer refuses an incomplete selection or a changed extraction plan. It
+retains every selected scalar, opaque byte field, metadata definition and numeric
+vector, with independent source-row and restored-row digests. Referenced acquisition
+tables also reproduce the extractor's composite-key digest order. Missing links
+remain explicit. The output's full checksum covers the selected evidence component,
+not the unacquired vendor database. Receipts fingerprint the normalizer and its
+codec/budget modules, and report runtime, peak process RSS and bounded disk use.
+
+`NumericVector` stores declared int32/int64/float64 values in little-endian bytes
+with separate presence bits. A null vector, a missing element, a measured zero and
+a nonfinite source value remain distinct. IEEE-754 payloads and signed integer IDs
+round-trip exactly. `NativeDefinitions` uses each source column's own enum domain;
+it never interprets protein confidence with a peptide confidence enum, or converts
+a native modification position into a residue offset without defined semantics.
+
+`EvidenceStore(path).records(table, key=..., sequence=...)` reads the normalized
+component locally. It returns the original selected field names/values; `vector`
+provides their normalized numeric encoding. No APSW, remote range access or vendor
+database is required for these reads.
+
+The version-6 quantitative projection stores one index entry per abundance vector
+and shared sample/assay axes. Public `measurements`, mapped/paired queries and
+Parquet export reconstruct ordinary `Measurement` records on demand, including
+missing cells. Counts describe all logical cells. Native PSM abundance and the
+three peptide-group abundance columns keep separate units and record IDs. Source
+protein membership and searched-FASTA candidates remain separate attribution facts.
+The internal flat observation tables are absent in version 6, so direct SQL cannot
+misreport an empty observation set. Ordinary version-5 dataset writes are unchanged.
 
 Sequential scans use bounded read-ahead; index lookups use individual 4 KiB
 pages. The source control connection can be reused only after a verified FTP

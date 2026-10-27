@@ -195,12 +195,16 @@ class QuantitativeDataset:
         self.path = Path(path).resolve()
         with closing(self._connect()) as connection:
             self._storage_version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if self._storage_version not in (1, 2, 3, 4, 5):
+            if self._storage_version not in (1, 2, 3, 4, 5, 6):
                 raise ValueError("Unsupported quantitative database schema")
             row = connection.execute("SELECT value FROM metadata WHERE name='manifest'").fetchone()
             if row is None:
                 raise ValueError("Missing quantitative manifest")
             self.manifest = DatasetManifest.from_dict(json.loads(row[0]))
+            if self._storage_version == 6:
+                from .sources.pfizer_dataset import validate_storage
+
+                validate_storage(connection)
         self._references = {r.key: r for r in self.manifest.references}
 
     def _connect(self):
@@ -615,6 +619,13 @@ class QuantitativeDataset:
             scope = target_scope
         if scope is None and len(self._references) > 1 and (sample_id or assay_id):
             raise ValueError("An ID query across multiple references requires an explicit reference")
+        if self._storage_version == 6:
+            from .sources.pfizer_dataset import measurements
+
+            yield from measurements(self, scope=scope, target=target, target_keys=target_keys,
+                                    sample_id=sample_id, assay_id=assay_id, quantity=quantity, status=status,
+                                    unit=unit, scale=scale, log_base=log_base)
+            return
         filters = dict(reference_key=scope, target_key=_target_key(target) if target else None,
                        sample_id=sample_id, assay_id=assay_id, quantity=quantity, status=status)
         selected = [(key, value) for key, value in filters.items() if value is not None]
