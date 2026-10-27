@@ -48,6 +48,17 @@ ten complete source entries needed by these examples; its hash is in the JSON.
 Missing endpoints, sequence mismatches, repeated I/L placements and direct
 quantification links in the tests are explicitly synthetic cases.
 
+`acquisition-missingness.json` contains three exact native quantification
+spectra, their 22 reporter links and 22 reporter records. Spectrum 8546281 has
+no reporter-link rows; 8546311 has eleven links despite null raw and normalized
+abundance vectors. Both carry native `QuanInfo=1` (`No Quan Values`). Spectrum
+8546263 retains its measured vectors. The fixture preserves original source
+rowids, typed slice digests, pinned source identity and the extraction checkpoints
+at capture; the reporter table was still being extracted beyond these records.
+This is a bounded regression slice, not a claim of full-source completion.
+Tests normalize its exact scalar/vector fields and retain the original missing
+lookup key/reason separately from records containing null vectors.
+
 `parent-status.json` retains four additional native peptide records (160079,
 516803, 697816 and 993593), all 13 of their protein links, and the corresponding
 13 protein records. The complete source-table checkpoints and original rowids

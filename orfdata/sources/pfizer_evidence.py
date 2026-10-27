@@ -242,3 +242,31 @@ class EvidenceStore:
             if len(rows) != 1:
                 raise ValueError("Expected one native numeric vector for the requested record/column")
             return self._vector(rows[0])
+
+    def missing_acquisitions(self, table=None, *, key=None):
+        """Stream requested acquisition keys for which the source had no rows.
+
+        This includes spectra with no reporter-link rows. It is distinct from
+        a present record with null numeric vectors, which ``records`` and
+        ``vector`` retain normally. Keys are exact native integer tuples;
+        reasons are the extractor's original text. No source access occurs.
+        """
+        where, bindings = [], []
+        if table is not None:
+            if table not in self.tables:
+                raise ValueError("Unknown evidence table: " + str(table))
+            where.append("table_name=?")
+            bindings.append(table)
+        if key is not None:
+            key = tuple(key)
+            if not key or any(type(value) is not int for value in key):
+                raise TypeError("Acquisition key components must be native integers")
+            where.append("source_key=?")
+            bindings.append(json.dumps(key, separators=(",", ":")))
+        query = "SELECT table_name,source_key,reason FROM evidence_missing"
+        if where:
+            query += " WHERE " + " AND ".join(where)
+        query += " ORDER BY table_name,source_key"
+        with closing(self.connect()) as db:
+            for name, encoded, reason in db.execute(query, bindings):
+                yield dict(table=name, key=tuple(json.loads(encoded)), reason=reason)

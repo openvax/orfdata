@@ -1,0 +1,759 @@
+{
+  "cases": {
+    "no_reporter_links": 8546281,
+    "null_with_reporter_links": 8546311,
+    "present": 8546263
+  },
+  "checkpoints": {
+    "QuanSpectrumInfo": {
+      "extraction_checkpoint": {
+        "complete": 1,
+        "cursor": "[-160, 8871857]",
+        "digest": "7e24ac0e15d9167001266a1ddd4f888883c88b7e3a3e5b766fb6adba074b3633",
+        "missing_keys": 0,
+        "name": "QuanSpectrumInfo",
+        "rows": 265430,
+        "selected_keys": 265430
+      },
+      "rows": 3,
+      "typed_sha256": "9b99b15f5dd1a74dab5d9b60ab2d17e6b1af66c20bd98139871abf8765b67803"
+    },
+    "QuanSpectrumInfoReporterQuanResults": {
+      "extraction_checkpoint": {
+        "complete": 1,
+        "cursor": "[-160, 8871857]",
+        "digest": "702ee95f59bf786ebbe41f8ff79b587c38ec19ddfadc036345c813a1bdc38ad5",
+        "missing_keys": 525,
+        "name": "QuanSpectrumInfoReporterQuanResults",
+        "rows": 2913955,
+        "selected_keys": 265430
+      },
+      "rows": 22,
+      "typed_sha256": "7b36d3479daf994e6874e7d9ce05eca6e6777bc39636984fed2499da2cd354ab"
+    },
+    "ReporterQuanResults": {
+      "extraction_checkpoint": {
+        "complete": 0,
+        "cursor": "[-160, 8809493, 2]",
+        "digest": "744df8a85baba2caced3cfe8b71885571115078288d946f14de3c50fd19b6e58",
+        "missing_keys": 0,
+        "name": "ReporterQuanResults",
+        "rows": 2367488,
+        "selected_keys": 2367488
+      },
+      "rows": 22,
+      "typed_sha256": "341f100174383be216126d06e4e641686ba1037332630787696156ebcda743ea"
+    }
+  },
+  "metadata_additions": {
+    "DataDistributionBoxes": [
+      {
+        "BoxID": 226,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 126",
+        "IsFirstInGroup": 0,
+        "Name": "126",
+        "Position": 1,
+        "SemanticTerms": "",
+        "_source_rowid": 226
+      },
+      {
+        "BoxID": 227,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 127N",
+        "IsFirstInGroup": 0,
+        "Name": "127N",
+        "Position": 2,
+        "SemanticTerms": "",
+        "_source_rowid": 227
+      },
+      {
+        "BoxID": 228,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 127C",
+        "IsFirstInGroup": 0,
+        "Name": "127C",
+        "Position": 3,
+        "SemanticTerms": "",
+        "_source_rowid": 228
+      },
+      {
+        "BoxID": 229,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 128N",
+        "IsFirstInGroup": 0,
+        "Name": "128N",
+        "Position": 4,
+        "SemanticTerms": "",
+        "_source_rowid": 229
+      },
+      {
+        "BoxID": 230,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 128C",
+        "IsFirstInGroup": 0,
+        "Name": "128C",
+        "Position": 5,
+        "SemanticTerms": "",
+        "_source_rowid": 230
+      },
+      {
+        "BoxID": 231,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 129N",
+        "IsFirstInGroup": 0,
+        "Name": "129N",
+        "Position": 6,
+        "SemanticTerms": "",
+        "_source_rowid": 231
+      },
+      {
+        "BoxID": 232,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 129C",
+        "IsFirstInGroup": 0,
+        "Name": "129C",
+        "Position": 7,
+        "SemanticTerms": "",
+        "_source_rowid": 232
+      },
+      {
+        "BoxID": 233,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 130N",
+        "IsFirstInGroup": 0,
+        "Name": "130N",
+        "Position": 8,
+        "SemanticTerms": "",
+        "_source_rowid": 233
+      },
+      {
+        "BoxID": 234,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 130C",
+        "IsFirstInGroup": 0,
+        "Name": "130C",
+        "Position": 9,
+        "SemanticTerms": "",
+        "_source_rowid": 234
+      },
+      {
+        "BoxID": 235,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 131N",
+        "IsFirstInGroup": 0,
+        "Name": "131N",
+        "Position": 10,
+        "SemanticTerms": "",
+        "_source_rowid": 235
+      },
+      {
+        "BoxID": 236,
+        "DataDistributionMapID": 44,
+        "Description": "The quan value for channel 131C",
+        "IsFirstInGroup": 0,
+        "Name": "131C",
+        "Position": 11,
+        "SemanticTerms": "",
+        "_source_rowid": 236
+      }
+    ],
+    "DataDistributionMaps": [
+      {
+        "CustomDataType": 3,
+        "Description": "Shows the normalized abundance values of the samples",
+        "ID": 44,
+        "LevelCategoryName": "level",
+        "MaximumValue": null,
+        "MinimumValue": null,
+        "Name": "Abundances (Normalized)",
+        "PluralCategoryName": "samples",
+        "SemanticTerms": "ResultItemDataPurpose/QuanNormalizedAbundances",
+        "SingularCategoryName": "sample",
+        "_source_rowid": 44
+      }
+    ],
+    "DataTypes": [
+      {
+        "Creators": "0",
+        "DataTypeID": 20,
+        "DataTypeIdentifier": "3BF37F53-1E82-4D23-AFA1-4F3387340DFC",
+        "Description": "",
+        "DisplayName": "Quan Spectra",
+        "Name": "QuanSpectrumInfo",
+        "TableName": "QuanSpectrumInfo",
+        "Version": 1,
+        "_source_rowid": 20
+      }
+    ],
+    "DataTypesColumns": [
+      {
+        "ColumnID": 510,
+        "CustomDataType": 6,
+        "DBColumnName": "Abundances",
+        "DataTypeID": 20,
+        "DefaultValue": null,
+        "Nullable": 1,
+        "Property_Description": "The abundances for the quan channels",
+        "Property_DisplayName": "Abundances",
+        "Property_FormatString": "0.000e-0",
+        "Property_Guid": "",
+        "Property_SemanticDescription": "ResultItemDataPurpose/QuanRawValue",
+        "SpecialValueType": "DataDistribution",
+        "SpecialValueTypeID": 43,
+        "ValueType": "201943E9-897D-4761-B9F2-F1A1E91E49D1",
+        "_source_rowid": 510
+      },
+      {
+        "ColumnID": 524,
+        "CustomDataType": 6,
+        "DBColumnName": "AbundancesNormalized",
+        "DataTypeID": 20,
+        "DefaultValue": null,
+        "Nullable": 1,
+        "Property_Description": "Shows the normalized abundance values of the samples",
+        "Property_DisplayName": "Abundances (Normalized)",
+        "Property_FormatString": "0.000e-0",
+        "Property_Guid": "",
+        "Property_SemanticDescription": "ResultItemDataPurpose/QuanNormalizedAbundances",
+        "SpecialValueType": "DataDistribution",
+        "SpecialValueTypeID": 44,
+        "ValueType": "201943E9-897D-4761-B9F2-F1A1E91E49D1",
+        "_source_rowid": 524
+      }
+    ]
+  },
+  "missing_acquisitions": [
+    {
+      "name": "QuanSpectrumInfoReporterQuanResults",
+      "reason": "No native row for the referenced key",
+      "source_key": "[-160,8546281]"
+    }
+  ],
+  "scope": "Three exact native quantification spectra: abundance present, absent reporter links with null vectors, and present reporter links with null vectors. A bounded regression slice, not source completeness.",
+  "source": {
+    "header_sha256": "70021fa50d79f75ef431754b289d3aab547b5098f9dddebcba52af4dd857d7ba",
+    "identity": {
+      "host": "massive-ftp.ucsd.edu",
+      "mdtm": "213 20251028233329",
+      "path": "/v11/MSV000099744/search/search/IQP_1269_Dog_P1toP4.pdResult",
+      "size": 86023450624
+    }
+  },
+  "source_schema_sha256": "4748720e8b75b1399c7dee6b40bd9a24ddff8a734e39c07a01835b1fab5ed9c1",
+  "tables": {
+    "QuanSpectrumInfo": [
+      {
+        "Abundances": {
+          "base64": "Ld80PA9IvUABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "type": "blob"
+        },
+        "AbundancesNormalized": {
+          "base64": "3i1pWNFj0UABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "type": "blob"
+        },
+        "ActivationTypes": 32,
+        "AverageReporterSN": 3.6909089521928267,
+        "Charge": 3,
+        "CreatingProcessingNodeNumber": 4,
+        "FirstScan": 7,
+        "Intensity": 78186.9296875,
+        "IonInjectTime": 250.0,
+        "LastScan": 7,
+        "MSOrder": 3,
+        "Mass": 1396.666657474859,
+        "MassAnalyzer": 2,
+        "MassOverCharge": 466.227070244953,
+        "MasterScanNumbers": "2",
+        "NumberOfMasterScanNumbers": 1,
+        "NumberOfScanNumbers": 1,
+        "OriginalPrecursorCharge": 3,
+        "OriginalPrecursorMass": 466.2270693486384,
+        "PeptideMatchesCount": 1,
+        "PercentIsolationInterference": 8.382794380187988,
+        "ProteoformMatchesCount": 0,
+        "QuanInfo": null,
+        "QuanInfoDetails": null,
+        "RetentionTime": 0.023185064266666666,
+        "ScanNumbers": "7",
+        "SearchID": "A",
+        "SpectrumFileID": 2793,
+        "SpectrumFileName": "IQP1-19058_1269D-P1-F1-RTS.raw",
+        "SpectrumID": 8546263,
+        "StudyFileId": "F5.1",
+        "WorkflowID": -160,
+        "_source_rowid": 1
+      },
+      {
+        "Abundances": null,
+        "AbundancesNormalized": null,
+        "ActivationTypes": 32,
+        "AverageReporterSN": 0.0,
+        "Charge": 2,
+        "CreatingProcessingNodeNumber": 4,
+        "FirstScan": 1921,
+        "Intensity": 154260.625,
+        "IonInjectTime": 250.0,
+        "LastScan": 1921,
+        "MSOrder": 3,
+        "Mass": 1117.5909232808494,
+        "MassAnalyzer": 2,
+        "MassOverCharge": 559.2990999554247,
+        "MasterScanNumbers": "1907",
+        "NumberOfMasterScanNumbers": 1,
+        "NumberOfScanNumbers": 1,
+        "OriginalPrecursorCharge": 2,
+        "OriginalPrecursorMass": 559.299099375266,
+        "PeptideMatchesCount": 0,
+        "PercentIsolationInterference": 0.0,
+        "ProteoformMatchesCount": 0,
+        "QuanInfo": 1,
+        "QuanInfoDetails": null,
+        "RetentionTime": 8.201031982683334,
+        "ScanNumbers": "1921",
+        "SearchID": "A",
+        "SpectrumFileID": 2793,
+        "SpectrumFileName": "IQP1-19058_1269D-P1-F1-RTS.raw",
+        "SpectrumID": 8546281,
+        "StudyFileId": "F5.1",
+        "WorkflowID": -160,
+        "_source_rowid": 19
+      },
+      {
+        "Abundances": null,
+        "AbundancesNormalized": null,
+        "ActivationTypes": 32,
+        "AverageReporterSN": 0.0,
+        "Charge": 2,
+        "CreatingProcessingNodeNumber": 4,
+        "FirstScan": 2669,
+        "Intensity": 410630.15625,
+        "IonInjectTime": 250.0,
+        "LastScan": 2669,
+        "MSOrder": 3,
+        "Mass": 1067.5231351015866,
+        "MassAnalyzer": 2,
+        "MassOverCharge": 534.2652058657933,
+        "MasterScanNumbers": "2654",
+        "NumberOfMasterScanNumbers": 1,
+        "NumberOfScanNumbers": 1,
+        "OriginalPrecursorCharge": 2,
+        "OriginalPrecursorMass": 534.265205297542,
+        "PeptideMatchesCount": 0,
+        "PercentIsolationInterference": 0.0,
+        "ProteoformMatchesCount": 0,
+        "QuanInfo": 1,
+        "QuanInfoDetails": null,
+        "RetentionTime": 9.20615646375,
+        "ScanNumbers": "2669",
+        "SearchID": "A",
+        "SpectrumFileID": 2793,
+        "SpectrumFileName": "IQP1-19058_1269D-P1-F1-RTS.raw",
+        "SpectrumID": 8546311,
+        "StudyFileId": "F5.1",
+        "WorkflowID": -160,
+        "_source_rowid": 49
+      }
+    ],
+    "QuanSpectrumInfoReporterQuanResults": [
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 1,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 1
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 2,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 2
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 3,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 3
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 4,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 4
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 5,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 5
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 6,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 6
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 7,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 7
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 8,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 8
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 9,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 9
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 10,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 10
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546263,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 11,
+        "ReporterQuanResultsQuanResultID": 8546263,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 11
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 1,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 518
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 2,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 519
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 3,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 520
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 4,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 521
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 5,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 522
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 6,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 523
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 7,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 524
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 8,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 525
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 9,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 526
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 10,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 527
+      },
+      {
+        "QuanSpectrumInfoSpectrumID": 8546311,
+        "QuanSpectrumInfoWorkflowID": -160,
+        "ReporterQuanResultsQuanChannelID": 11,
+        "ReporterQuanResultsQuanResultID": 8546311,
+        "ReporterQuanResultsWorkflowID": -160,
+        "_source_rowid": 528
+      }
+    ],
+    "ReporterQuanResults": [
+      {
+        "FileID": 2793,
+        "Height": 6979.5712890625,
+        "Mass": 126.12773895263672,
+        "QuanChannelID": 1,
+        "QuanResultID": 8546263,
+        "SN": 40.599998474121094,
+        "WorkflowID": -160,
+        "_source_rowid": 1
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 2,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 2
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 3,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 3
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 4,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 4
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 5,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 5
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 6,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 6
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 7,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 7
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 8,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 8
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 9,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 9
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 10,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 10
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 11,
+        "QuanResultID": 8546263,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 11
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 1,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 518
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 2,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 519
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 3,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 520
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 4,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 521
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 5,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 522
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 6,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 523
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 7,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 524
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 8,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 525
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 9,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 526
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 10,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 527
+      },
+      {
+        "FileID": 2793,
+        "Height": 0.0,
+        "Mass": 0.0,
+        "QuanChannelID": 11,
+        "QuanResultID": 8546311,
+        "SN": null,
+        "WorkflowID": -160,
+        "_source_rowid": 528
+      }
+    ]
+  }
+}

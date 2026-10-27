@@ -105,6 +105,77 @@ def test_normalized_evidence_reconstructs_every_selected_field_and_native_checkp
         assert db.execute("SELECT count(*) FROM sqlite_master WHERE name='normalization_order'").fetchone()[0] == 0
 
 
+def test_native_absent_reporters_and_present_null_vectors_remain_distinct(source, tmp_path):
+    fixture = json.loads(FIXTURE.with_name("acquisition-missingness.json").read_text())
+    native_plan = json.loads((Path(__file__).parents[1] / "tools/dog_result_plan.json").read_text())
+    selected = {item["table"]: item for item in native_plan["tables"]}
+    path, _ = source
+    originals = {}
+    with sqlite3.connect(path) as db:
+        configuration = json.loads(db.execute("SELECT value FROM _export_metadata WHERE key='configuration'").fetchone()[0])
+        for name, records in fixture["metadata_additions"].items():
+            item = next(t for t in configuration["plan"]["tables"] if t["table"] == name)
+            # The old probe fixture also contained UI fields outside the actual
+            # extraction selection. Use the shared selected metadata columns.
+            for column in set(item["columns"]) - set(records[0]):
+                db.execute(f"ALTER TABLE {quoted(name)} DROP COLUMN {quoted(column)}")
+            columns = item["columns"] = [c for c in item["columns"] if c in records[0]]
+            last_rowid = db.execute(f"SELECT max(_source_rowid) FROM {quoted(name)}").fetchone()[0]
+            for index, row in enumerate(records, last_rowid + 1):
+                values = index, *(row[c] for c in columns)
+                db.execute(f"INSERT INTO {quoted(name)} VALUES (" + ",".join("?" for _ in values) + ")", values)
+            digest, count = bytes(32), 0
+            for row in db.execute(f"SELECT * FROM {quoted(name)} ORDER BY _source_rowid"):
+                digest = hashlib.sha256(digest + canonical_row(row)).digest()
+                count += 1
+            db.execute("UPDATE _export_progress SET rows=?,digest=? WHERE name=?", (count, digest.hex(), name))
+        for name, records in fixture["tables"].items():
+            item = dict(selected[name], select_from=[dict(table="explicit regression selection")])
+            columns = item["columns"]
+            rows = [{k: base64.b64decode(v["base64"]) if isinstance(v, dict) and v.get("type") == "blob"
+                     else v for k, v in row.items()} for row in records]
+            originals[name] = rows
+            configuration["plan"]["tables"].append(item)
+            db.execute(f"CREATE TABLE {quoted(name)}(_source_rowid INTEGER PRIMARY KEY," +
+                       ",".join(quoted(c) for c in columns) + ")")
+            digest = bytes(32)
+            for row in sorted(rows, key=lambda r: (*[r[k] for k in item["keys"]], r["_source_rowid"])):
+                values = row["_source_rowid"], *(row[c] for c in columns)
+                digest = hashlib.sha256(digest + canonical_row(values)).digest()
+                db.execute(f"INSERT INTO {quoted(name)} VALUES (" + ",".join("?" for _ in values) + ")", values)
+            assert digest.hex() == fixture["checkpoints"][name]["typed_sha256"]
+            missing = [r for r in fixture["missing_acquisitions"] if r["name"] == name]
+            db.execute("INSERT INTO _export_progress VALUES (?,?,?,?,?)", (name, len(rows), digest.hex(), 1, len(missing)))
+            db.executemany("INSERT INTO _export_missing VALUES (?,?,?)",
+                           ((r["name"], r["source_key"], r["reason"]) for r in missing))
+        db.execute("UPDATE _export_metadata SET value=? WHERE key='configuration'", (json.dumps(configuration),))
+    normalize_dog_evidence.PLAN_PATH.write_text(json.dumps(configuration["plan"]))
+    output, _ = build(path, tmp_path)
+    evidence = EvidenceStore(output)
+    for name, rows in originals.items():
+        assert list(evidence.records(name)) == rows
+    table = "QuanSpectrumInfoReporterQuanResults"
+    expected = [dict(table=table, key=(-160, 8546281), reason="No native row for the referenced key")]
+    assert list(evidence.missing_acquisitions()) == expected
+    assert list(evidence.missing_acquisitions(table, key=(-160, 8546281))) == expected
+    assert list(evidence.missing_acquisitions("ReporterQuanResults")) == []
+    assert list(evidence.missing_acquisitions(table, key=(-160, 8546311))) == []
+    # Both null cases retain the native No Quan Values flag. Only one lacks links.
+    for identifier in (8546281, 8546311):
+        record, = evidence.records("QuanSpectrumInfo", key=(-160, identifier))
+        assert record["QuanInfo"] == 1
+        assert record["Abundances"] is record["AbundancesNormalized"] is None
+        assert evidence.vector("QuanSpectrumInfo", (-160, identifier), "Abundances").source_null
+    links = list(evidence.records(table))
+    assert {r["QuanSpectrumInfoSpectrumID"] for r in links} == {8546263, 8546311}
+    assert len([r for r in links if r["QuanSpectrumInfoSpectrumID"] == 8546311]) == 11
+    assert not evidence.vector("QuanSpectrumInfo", (-160, 8546263), "Abundances").source_null
+    with pytest.raises(ValueError, match="Unknown evidence table"):
+        list(evidence.missing_acquisitions("unknown"))
+    with pytest.raises(TypeError, match="native integers"):
+        list(evidence.missing_acquisitions(table, key=(-160, 8546281.0)))
+
+
 @pytest.mark.parametrize("table", ["TargetPsms", "AcquisitionFixture"])
 def test_changed_checkpoint_digest_is_rejected_for_rowid_and_composite_orders(source, tmp_path, table):
     path, _ = source

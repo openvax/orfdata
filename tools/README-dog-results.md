@@ -4,9 +4,10 @@ This work implements ORFdata #23. The current code supports bounded native-table
 export with durable checkpoints, lossless numeric-vector storage, searched-reference
 peptide matching and checked dog pool/run lineage in the common sample/assay API.
 A completed selected export can be normalized and assembled into a common
-measurement/source-evidence artifact with the packaged importer. Full native
-extraction, full artifact execution/acceptance and release remain pending;
-passing a fixture is not full acceptance.
+measurement/source-evidence artifact with the packaged importer. All 42 selected
+native tables have completed extraction; source reconciliation results are below.
+Full artifact execution/acceptance and release remain pending; passing a fixture
+is not full acceptance.
 
 Use a separate extraction environment with `.[canine-extraction]` installed.
 The current audit uses APSW 3.54.1.0 (SQLite 3.54.1) and pyahocorasick 2.3.1.
@@ -395,6 +396,47 @@ All 1,521 protein groups' declared counts reconcile with distinct linked
 proteins, native peptide sequence IDs and PSMs. Their 4,003 PSM links all have
 native `MatchConfidence=3` and `ExcludedBy=-1`. Acquisition records and full
 consumer-artifact acceptance remain separate audits.
+
+The completed MSn acquisition selection contains 7,813,974 distinct referenced
+spectra, with no missing requested keys. A full independent pass reproduced its
+typed extraction digest and checked every native workflow/file ID, study-file ID
+and spectrum filename against the reconciled run metadata. All 96 raw runs are
+represented. Every selected record has `MSOrder=2`, a single-scan interval and
+a retention time. These checks establish MSn acquisition identity and run lineage;
+consumer-artifact acceptance remains a separate gate.
+
+All 265,430 selected quantification spectra and 2,913,955 spectrum/reporter
+links also reproduce their typed extraction digests. Their workflow/file IDs,
+study-file IDs and filenames match the checked lineage; 93 raw runs contribute
+selected quantification spectra, all with `MSOrder=3`. Exactly 264,905 spectra
+have eleven distinct reporter-channel links, and 525 have no reporter links.
+Every absent-link spectrum has native `QuanInfo=1` (`No Quan Values`, enum 17),
+null raw and normalized abundance vectors, and zero average reporter S/N.
+Another 1,496 spectra with that flag and null vectors retain all eleven links.
+These are different source states. Native reporter heights must not be substituted
+for missing abundance vectors. The 27,009 `Rejected By Method` spectra also
+remain in the selection with their source flags.
+
+All 2,913,955 selected reporter records reproduce their typed extraction digest,
+have unique composite keys, and resolve to the corresponding quantification
+spectrum's raw file and the checked native run/channel definitions. They include
+264,905 bridge-channel and 127,487 empty-channel records, retained with those roles.
+There are 192,700 zero reporter heights and 192,700 null S/N values. These source
+fields remain distinct from abundance-vector presence flags and values.
+
+The full 42-table extraction completed with 70,280,798 selected rows in a
+6,835,097,600-byte staging SQLite file. Across checkpointed invocations it received
+21,979,284,150 payload bytes in 16,167 requests, including overlap verification
+and retries; the final transfer ledger has no unsettled or uncertain reservations.
+The retained verified chunk cache is 10,980,405,248 bytes. These are measured
+extraction costs, not consumer-artifact sizes or a checksum of the full vendor file.
+
+`dataset.source_evidence().missing_acquisitions()` streams the requested native
+keys for which extraction found no rows, including absent reporter links, with
+their original reasons. Optional `table` and `key` arguments select a particular
+lookup, for example `missing_acquisitions("QuanSpectrumInfoReporterQuanResults",
+key=(-160, 8546281))`. Present records with null vectors remain accessible through
+`records` and `vector`; they are not reported as absent acquisitions.
 
 On an explicit 100-group benchmark, the public source-evidence interface preserved
 all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
