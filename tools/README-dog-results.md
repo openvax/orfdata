@@ -5,7 +5,8 @@ export with durable checkpoints, lossless numeric-vector storage, searched-refer
 peptide matching and checked dog pool/run lineage in the common sample/assay API.
 A completed selected export can be normalized and assembled into a common
 measurement/source-evidence artifact with the packaged importer. All 42 selected
-native tables have completed extraction; source reconciliation results are below.
+native tables have completed extraction and lossless normalization; source
+reconciliation results are below.
 Full artifact execution/acceptance and release remain pending; passing a fixture
 is not full acceptance.
 
@@ -127,6 +128,17 @@ remain explicit. The output's full checksum covers the selected evidence compone
 not the unacquired vendor database. Receipts fingerprint the normalizer and its
 codec/budget modules, and report runtime, peak process RSS and bounded disk use.
 
+The full run normalized **70,280,798 rows across all 42 selected tables**.
+Every restored typed-row digest matched the selected source, and the four
+acquisition tables also reproduced their original composite-key-order digests.
+The 525 absent acquisition-link keys remain explicit. Final foreign-key and
+SQLite integrity checks passed, and the selected input's checksum remained
+unchanged. This run used Python 3.12.6 and SQLite 3.46.0, with a peak process RSS
+of 105,775,104 bytes. The normalized component is 18,662,281,216 bytes, with SHA-256
+`dace2a88acf31e6013b590854be5d5f6bd869786beefba3c8cad856245766b5f`.
+That is the complete normalized source component, not the assembled consumer
+artifact; compressed and final installed artifact sizes still require measurement.
+
 `tools.build_dog_dataset` assembles the normalized evidence, checked `lineage.json`,
 complete searched FASTA and original protein summary. It requires the entire pinned
 42-table selection before creating a release manifest, and pins the already
@@ -160,7 +172,7 @@ The completed source-group audit reconciled all 15,726 membership rows against
 12,654 native groups: every declared `ProteinCount` equals the membership count.
 All 9,929 summary representatives join one native group each; 1,052 of those
 groups have multiple members. This closes the group/summary reconciliation only;
-the remaining peptide/PSM extraction and full artifact acceptance are still required.
+full consumer artifact acceptance is still required.
 
 After assembly, audit the consumer artifact against the original selected native
 SQLite export, full searched FASTA and protein summary:
