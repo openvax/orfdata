@@ -45,7 +45,7 @@ source FASTA. After installation:
 
 ```python
 from itertools import islice
-from orfdata import DatasetRegistry, ScopedTarget
+from orfdata import DatasetRegistry
 
 dataset = DatasetRegistry().open("pfizer-atlas-dog-peptide-evidence")
 target = next(dataset.measurements(status="measured")).target
@@ -77,8 +77,8 @@ Measurement units name the original column: `PD2.4 TargetPeptideGroups.Abundance
 `PD2.4 TargetPeptideGroups.AbundancesScaled` or `PD2.4 TargetPsms.Abundances`.
 These are distinct series, not calibrated copies per cell or the summary's iBAQ.
 Numeric zeros remain measured zeros. Null and nonfinite values remain explicitly
-missing, with their native state preserved in provenance. `missing_acquisitions()`
-reports requested acquisition keys with no source row, which differs from a
+missing, with their native state preserved in provenance. The low-level adapter’s
+`missing_acquisitions()` reports requested acquisition keys with no source row, which differs from a
 present row with missing quantities. Queries stream observations from compact
 vectors rather than loading a dense matrix.
 
@@ -111,8 +111,11 @@ for compressed parts and their installed logical file.
 Rebuilding from the pinned normalized sources is explicit:
 
 ```python
-DatasetRegistry().build("pfizer-atlas-dog-peptide-evidence")
+dataset = DatasetRegistry().build("pfizer-atlas-dog-peptide-evidence")
 ```
+
+The returned dataset uses the same query API. Use `open_build()` to reopen a
+local rebuild, whose own output checksum is recorded in its build receipt.
 
 The builder creates one private database and publishes it only after complete
 integrity checks. With the 32 GiB output cap, an already expanded source requires

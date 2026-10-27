@@ -9,6 +9,11 @@
   confidence/modification definitions, decoys, missingness, ambiguity and
   tissue-pool/run/channel provenance. A compact quantitative driver retains
   native numeric vectors and exposes their cells through the measurement API.
+- Expose reported assignments and sequence-compatible candidates through the
+  common `mappings()` API and protein-group memberships through `relations()`.
+  Preserve all candidates when filtering by a destination; incomplete source
+  assignments remain explicitly `unresolved`. Source-specific details stay in
+  the lower-level adapter.
 - Support pinned split tar.gz source components and dataset artifacts through
   DataCache >=1.29.3, with verified logical-file installation, offline inspection
   and reuse, and preservation of existing cached generations on failed refresh.

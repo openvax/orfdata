@@ -29,8 +29,9 @@ def check(assembled, **options):
                                      lineage_path=paths["lineage.json"], **options)
 
 
-def test_all_native_fields_indexes_and_public_measurements_are_checked(assembled):
-    receipt = check(assembled)
+@pytest.mark.parametrize("cache_bytes", [0, 1024, 1024**2])
+def test_all_native_fields_indexes_and_public_measurements_are_checked(assembled, cache_bytes):
+    receipt = check(assembled, endpoint_cache_bytes=cache_bytes)
     assert receipt["state"] == "verified"
     assert receipt["native_counts"]["TargetPsms"] == 3
     assert receipt["native_counts"]["WorkflowInputFiles"] == 97
@@ -42,7 +43,30 @@ def test_all_native_fields_indexes_and_public_measurements_are_checked(assembled
     assert receipt["native_group_size_histogram"] == {1: 3}
     assert receipt["native_group_count_mismatches"] == []
     assert receipt["independently_searched_peptides"] == 6
+    assert receipt["resources"]["peak_endpoint_accounted_bytes"] <= cache_bytes
     assert check(assembled, sample_records=1)["sampled_quantitative_records"] == 2
+
+
+@pytest.mark.parametrize("budget", [0, 128, 1024**2])
+def test_audit_endpoint_cache_retains_sql_missing_and_ambiguous_identity_semantics(budget):
+    with sqlite3.connect(":memory:") as db:
+        db.execute("CREATE TABLE evidence_record(i INTEGER PRIMARY KEY, table_i INTEGER, source_key TEXT)")
+        db.executemany("INSERT INTO evidence_record VALUES (?,?,?)", [
+            (1, 1, "a"), (2, 1, "duplicate"), (3, 1, "duplicate"), (4, 1, "duplicate"), (5, 2, "a")])
+        caches, used = verify_dog_dataset._cache_endpoints(db, {"left": 1, "right": 2}, ("left", "right"), budget)
+        assert used <= budget
+        for name, table, expected in (("left", 1, 1), ("right", 2, 5)):
+            cached = caches.get(name)
+            assert verify_dog_dataset._lookup_endpoint(db, table, "a", cached) == expected
+            assert verify_dog_dataset._lookup_endpoint(db, table, "missing", cached) is None
+        with pytest.raises(ValueError, match="not unique"):
+            verify_dog_dataset._lookup_endpoint(db, 1, "duplicate", caches.get("left"))
+
+
+@pytest.mark.parametrize("budget", [-1, True, 1.5])
+def test_audit_endpoint_memory_allowance_is_explicit(budget):
+    with pytest.raises(ValueError, match="nonnegative integer"):
+        verify_dog_dataset.verify(None, None, None, None, lineage_path=None, endpoint_cache_bytes=budget)
 
 
 def test_independent_numeric_decoder_detects_a_shared_converter_error(assembled, monkeypatch):

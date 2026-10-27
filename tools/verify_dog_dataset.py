@@ -34,6 +34,48 @@ from orfdata.sources.pfizer_vendor import DistributionDecoder, NativeQuantificat
 from tools.export_sqlite_rows import canonical_row, quoted
 
 PLAN_PATH = Path(__file__).with_name("dog_result_plan.json")
+ENDPOINT_CACHE_BYTES = 3 * 1024**3
+SQLITE_CACHE_KIB = 128 * 1024
+
+
+def _cache_endpoints(connection, tables, names, limit):
+    """Read complete lookup tables sequentially within a conservative RAM bound.
+
+    This audit keeps up to two actual row IDs per key, independently of the
+    builder's endpoint resolver. Ambiguous used keys still fail. A table that
+    cannot fit is discarded in full and uses the original SQL lookup instead.
+    """
+    cached, used = {}, 0
+    for name in dict.fromkeys(names):
+        if limit - used < 128:
+            continue
+        members, size = {}, 128
+        for key, identifier in connection.execute(
+                "SELECT source_key,i FROM evidence_record WHERE table_i=? ORDER BY source_key,i", (tables[name],)):
+            previous = members.get(key, ())
+            if len(previous) == 2:
+                continue
+            found = previous + (identifier,)
+            cost = sys.getsizeof(found) + sys.getsizeof(identifier)
+            cost += -sys.getsizeof(previous) if previous else sys.getsizeof(key) + 128
+            if used + size + cost > limit:
+                members.clear()
+                break
+            members[key] = found
+            size += cost
+        else:
+            cached[name] = members
+            used += size
+    return cached, used
+
+
+def _lookup_endpoint(connection, table, key, cached):
+    found = (tuple(row[0] for row in connection.execute(
+        "SELECT i FROM evidence_record WHERE table_i=? AND source_key=?", (table, key)).fetchmany(2))
+        if cached is None else cached.get(key, ()))
+    if len(found) > 1:
+        raise ValueError("Native endpoint identity is not unique")
+    return found[0] if found else None
 
 
 def _spread(total, limit):
@@ -117,9 +159,12 @@ def _check_numeric_bytes(converter, table, row, column, observed):
     return len(boxes)
 
 
-def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path, sample_records=100, checkpoint=None):
+def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path, sample_records=100,
+           endpoint_cache_bytes=ENDPOINT_CACHE_BYTES, checkpoint=None):
     if type(sample_records) is not int or not 1 <= sample_records <= 1000:
         raise ValueError("Audit sample must be between 1 and 1000 records per quantitative table")
+    if type(endpoint_cache_bytes) is not int or endpoint_cache_bytes < 0:
+        raise ValueError("Endpoint cache byte limit must be a nonnegative integer")
     dataset = QuantitativeDataset(dataset_path)
     manifest = dataset.manifest
     if manifest.processing.get("importer") != IMPORTER:
@@ -139,11 +184,12 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
     spec, = search_references(manifest)
     searched = SearchReference(fasta_path, spec)
     tables, selected, digests, sequences = {}, [], {}, set()
+    peak_endpoint_bytes = 0
     counters = Counter(native_rows=0, links=0, unresolved_links=0, projection_vectors=0, logical_cells=0)
     with closing(sqlite3.connect(native_path.as_uri() + "?mode=ro", uri=True)) as native, closing(evidence.connect()) as db:
         for connection in (native, db):
             connection.execute("PRAGMA query_only=ON")
-            connection.execute("PRAGMA cache_size=-8192")
+            connection.execute(f"PRAGMA cache_size=-{SQLITE_CACHE_KIB}")
             connection.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 16 * 1024 * 1024)
             connection.execute("BEGIN")
         configuration = json.loads(native.execute("SELECT value FROM _export_metadata WHERE key='configuration'").fetchone()[0])
@@ -170,19 +216,24 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
             "SELECT x.position,x.box_id,a.id,a.sample_id FROM peptide_axis x JOIN assay a ON a.i=x.assay_i "
             "WHERE x.layout_i=? ORDER BY x.position", (index,))) for (index,) in db.execute("SELECT i FROM peptide_layout")}
 
+        table_ids = {name: value[0] for name, value in evidence.tables.items()}
+        cached_endpoints = {}
+
         @lru_cache(maxsize=8192)
         def endpoint(name, values):
-            found = db.execute("SELECT i FROM evidence_record WHERE table_i=? AND source_key=?",
-                               (evidence.tables[name][0], source_key(values))).fetchmany(2)
-            if len(found) > 1:
-                raise ValueError("Native endpoint identity is not unique")
-            return found[0][0] if found else None
+            return _lookup_endpoint(db, table_ids[name], source_key(values), cached_endpoints.get(name))
 
         for item in plan["tables"]:
             name, columns = item["table"], item["columns"]
             index, stored_columns = evidence.tables[name]
             if tuple(columns) != stored_columns or db.execute("SELECT role FROM evidence_table WHERE i=?", (index,)).fetchone()[0] != item["role"]:
                 raise ValueError("Native columns or partition differ: " + name)
+            if name in ENDPOINTS:
+                cached_endpoints, accounted = _cache_endpoints(db, table_ids, ENDPOINTS[name], endpoint_cache_bytes)
+                peak_endpoint_bytes = max(peak_endpoint_bytes, accounted)
+                if checkpoint is not None:
+                    checkpoint(dict(stage="verification_endpoint_cache", table=name,
+                                    cached_tables=sorted(cached_endpoints), accounted_bytes=accounted))
             source_rows = _native_rows(native, name, columns)
             artifact_rows = db.execute("SELECT i,source_rowid,attributes,source_key,sequence FROM evidence_record "
                                        "WHERE table_i=? ORDER BY source_rowid", (index,))
@@ -234,6 +285,10 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
                         selected.append((name, row["_source_rowid"]))
                         sequences.add(row["Sequence"])
                 count += 1
+                if checkpoint is not None and count % 50000 == 0:
+                    checkpoint(dict(stage="native_rows", table=name, rows=count, expected_rows=progress[name]["rows"]))
+            cached_endpoints.clear()
+            endpoint.cache_clear()
             tables[name], digests[name] = count, digest.hex()
             if count != progress[name]["rows"] or digest.hex() != evidence.metadata["reconciliation"]["native_rowid_order_sha256"][name]:
                 raise ValueError("Native row count/digest differs from normalization: " + name)
@@ -378,6 +433,8 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
                 independently_decoded_native_cells=independent_numeric_cells,
                 independently_checked_candidate_placements=candidate_placements, sample_records_per_table=sample_records,
                 common_mapping_count=expected_mappings, common_group_relations=common_relations,
+                resources=dict(endpoint_cache_bytes=endpoint_cache_bytes, peak_endpoint_accounted_bytes=peak_endpoint_bytes,
+                               sqlite_cache_bytes_per_connection=SQLITE_CACHE_KIB * 1024),
                 verification_scope="All selected typed native rows, membership indexes, quantity layouts and search entries; "
                                    "public measurement expansion and exhaustive full-FASTA search checked on the declared spread sample",
                 source_integrity_scope="Selected local source facts; no authoritative checksum of the whole vendor database")
@@ -392,12 +449,15 @@ def main():
     parser.add_argument("protein_summary", type=Path)
     parser.add_argument("receipt", type=Path)
     parser.add_argument("--sample-records", type=int, default=100)
+    parser.add_argument("--endpoint-cache-mib", type=int, default=ENDPOINT_CACHE_BYTES // 1024**2,
+                        help="RAM allowance for complete endpoint indexes; 0 uses SQL lookups")
     args = parser.parse_args()
     if args.receipt.exists():
         raise FileExistsError(args.receipt)
     started = time.monotonic()
     result = verify(args.dataset, args.native_export, args.search_fasta, args.protein_summary,
                     lineage_path=args.lineage, sample_records=args.sample_records,
+                    endpoint_cache_bytes=args.endpoint_cache_mib * 1024**2,
                     checkpoint=lambda state: print(json.dumps(state, sort_keys=True), flush=True))
     result.update(tool_sha256=file_sha256(__file__), elapsed_seconds=time.monotonic() - started,
                   peak_process_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if sys.platform == "darwin" else 1024))

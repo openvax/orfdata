@@ -261,6 +261,14 @@ its new receipt. The audit does not claim a checksum of unacquired vendor bytes.
 Sampled numeric values and missingness also undergo independent `struct` decoding
 of the original number/presence bytes, without the builder's NumericVector decoder.
 
+The verifier reads complete endpoint indexes sequentially within a 3 GiB RAM
+allowance and keeps at most the current pair of endpoint tables. It independently
+retains up to two row IDs per key, so ambiguous identities remain errors when
+used. A table that cannot fit uses SQL lookups; `--endpoint-cache-mib 0` disables
+this cache without changing any checks. Each SQLite read connection has a
+128 MiB page cache. The receipt records the cache allowance, accounted peak and
+measured process RSS.
+
 Prepare the compressed archive and registry metadata only after that audit passes:
 
 ```sh
