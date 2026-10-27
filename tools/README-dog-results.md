@@ -402,8 +402,12 @@ placements agreed with an independent exhaustive search of the complete FASTA.
 This benchmark contained no full native membership tables and is not a release
 or a substitute for their full-count and representative reconciliation.
 
-Sequential scans use bounded read-ahead; index lookups use individual 4 KiB
-pages. The source control connection can be reused only after a verified FTP
+Sequential scans use `--read-ahead-kib`; index lookups default to individual
+4 KiB pages. `--lookup-read-ahead-kib` can independently increase the indexed
+window when measured page locality warrants it. Both options accept multiples
+of 4 KiB up to 16 MiB, stop before existing cached segments, and retain the same
+cumulative transfer/cache limits and exact record selection. Receipts record
+both settings. The source control connection can be reused only after a verified FTP
 completion (including MassIVE's specifically observed bounded-transfer reset),
 a successful NOOP and fresh SIZE/MDTM checks. Each acquired chunk still gets
 independent offset/overlap verification. Permission errors, other transfer

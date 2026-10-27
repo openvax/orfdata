@@ -14,6 +14,13 @@ PLAN_PATH = Path(__file__).with_name("dog_result_plan.json")
 CODE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
+def read_ahead_kib(value):
+    value = int(value)
+    if value < 4 or value > 16384 or value % 4:
+        raise argparse.ArgumentTypeError("Read-ahead must be a multiple of 4 KiB between 4 and 16384 KiB")
+    return value
+
+
 def main():
     plan_data = PLAN_PATH.read_bytes()
     plan = json.loads(plan_data)
@@ -24,7 +31,9 @@ def main():
     parser.add_argument("--cache-mib", type=int, default=512)
     parser.add_argument("--scratch-mib", type=int, default=4096)
     parser.add_argument("--output-mib", type=int, default=1024)
-    parser.add_argument("--read-ahead-kib", type=int, default=256)
+    parser.add_argument("--read-ahead-kib", type=read_ahead_kib, default=256)
+    parser.add_argument("--lookup-read-ahead-kib", type=read_ahead_kib, default=4,
+                        help="Bounded window for indexed acquisitions; default 4 KiB, independent of scan read-ahead")
     parser.add_argument("--requests", type=int, default=30000)
     parser.add_argument("--seconds", type=int, default=1200)
     parser.add_argument("--batch-rows", type=int, default=500)
@@ -53,9 +62,11 @@ def main():
                               extend_selection=args.extend_selection)
         selected = args.tables or list(export.tables)
         for table in selected:
-            # Index lookups read only requested pages; sequential native row
-            # scans can acquire a bounded window, cut before any cached segment.
-            cache.read_ahead = 4096 if export.tables[table].get("select_from") else args.read_ahead_kib * 1024
+            # Index lookups default to individual pages. A separately bounded
+            # window can exploit measured locality without changing selection.
+            # Both windows stop before any existing cached segment.
+            window = args.lookup_read_ahead_kib if export.tables[table].get("select_from") else args.read_ahead_kib
+            cache.read_ahead = window * 1024
             reported_rows = export.progress(table)["rows"]
 
             def report(name, progress):
@@ -73,6 +84,8 @@ def main():
             receipt = dict(acquisition=cache.receipt(), result=export.summary() if export else None,
                            failure=failure, tool_sha256=CODE_SHA256, row_export_sha256=ROW_EXPORT_SHA256,
                            export_options=dict(batch_rows=args.batch_rows, lookup_keys=args.lookup_keys,
+                                               read_ahead_kib=args.read_ahead_kib,
+                                               lookup_read_ahead_kib=args.lookup_read_ahead_kib,
                                                batch_bytes=export.batch_bytes if export else None,
                                                requested_tables=args.tables or [p["table"] for p in plan["tables"]]),
                            selection_sha256=hashlib.sha256(plan_data).hexdigest())

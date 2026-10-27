@@ -52,6 +52,13 @@ class LocalSource(FTPSRanges):
             def transfercmd(self, command):
                 return Stream(self.offset)
 
+            def voidresp(self):
+                return "226 Transfer complete"
+
+            def voidcmd(self, command):
+                assert command == "NOOP"
+                return "200 OK"
+
             def close(self):
                 pass
 
