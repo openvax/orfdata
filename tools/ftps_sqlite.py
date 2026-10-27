@@ -149,6 +149,7 @@ class FTPSRanges:
             ftp, stream = None, None
             initial_bytes = self.payload_bytes
             status = "failed"
+            interrupted = False
             try:
                 ftp = self._get_control() if self.reuse_control else self._connect()
                 self.check(ftp)
@@ -183,6 +184,12 @@ class FTPSRanges:
                                           error=type(error).__name__))
                 if attempt == self.retries:
                     raise
+            except (KeyboardInterrupt, SystemExit, GeneratorExit):
+                # An asynchronous interruption may arrive between recv and its
+                # counter update. Preserve the full durable reservation rather
+                # than claim a precise received-byte count that is not known.
+                interrupted = True
+                raise
             finally:
                 try:
                     if stream is not None:
@@ -192,7 +199,7 @@ class FTPSRanges:
                         if self._control is ftp:
                             self._control = None
                 finally:
-                    if reservation is not None:
+                    if reservation is not None and not interrupted:
                         self.ledger.settle(reservation, self.payload_bytes - initial_bytes, status=status)
         raise AssertionError("Unreachable retry state")
 

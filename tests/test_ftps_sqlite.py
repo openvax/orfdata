@@ -265,6 +265,55 @@ def test_remote_metadata_change_is_not_retried(monkeypatch):
     assert source.requests == 1 and source.payload_bytes == 0 and not source.failures
 
 
+@pytest.mark.parametrize("interruption", [KeyboardInterrupt, SystemExit])
+def test_interrupted_receive_retains_full_durable_reservation(tmp_path, monkeypatch, interruption):
+    from tools.extraction_budget import TransferLedger
+
+    source = FTPSRanges(Identity("fixture", "/db", 10, "213 pinned"), transfer_limit=10)
+    ledger_path = tmp_path / "transfers.sqlite"
+    source.ledger = TransferLedger(ledger_path, asdict(source.identity))
+
+    class Stream:
+        calls = 0
+
+        def recv(self, length):
+            self.calls += 1
+            if self.calls == 1:
+                return b"12"
+            raise interruption()  # Receipt of another partial buffer is uncertain.
+
+        def close(self):
+            pass
+
+    class FTP:
+        def size(self, path):
+            return 10
+
+        def sendcmd(self, command):
+            return "213 pinned" if command.startswith("MDTM") else "350 Restart accepted"
+
+        def transfercmd(self, command):
+            return Stream()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(source, "_connect", FTP)
+    with pytest.raises(interruption):
+        source.read(0, 10)
+    assert source.requests == 1 and source.payload_bytes == 2
+    source.ledger.close()
+    source.ledger = TransferLedger(ledger_path, asdict(source.identity))
+    try:
+        assert source.ledger.summary() == dict(charged_payload_bytes=10, verified_received_payload_bytes=0,
+                                               range_requests=1, unsettled_requests=1, uncertain_reserved_bytes=10)
+        with pytest.raises(LimitExceeded, match="payload"):
+            source.read(0, 1)
+        assert source.requests == 1
+    finally:
+        source.ledger.close()
+
+
 def test_cache_lock_and_invalid_manifest_offsets(sqlite_bytes, tmp_path):
     data, _ = sqlite_bytes
     cache = ChunkCache(LocalSource(data, transfer_limit=100000), tmp_path / "cache", chunk_size=8192)

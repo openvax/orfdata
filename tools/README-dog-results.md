@@ -40,7 +40,9 @@ overflow traversal through a read-only APSW VFS; no second page parser is used.
 Transfer and request limits are cumulative for a cache. Each range is durably
 reserved before opening the stream; a crash leaves its full reservation charged
 until actual receipt is known. Completed and failed attempts settle to their
-received payload. Reopening a cache does not reset these counters. Migrating an
+received payload. An asynchronous interrupt during a receive preserves its full
+reservation too, because the interruption can precede a received-byte counter
+update. Reopening a cache does not reset these counters. Migrating an
 older cache requires every prior receipt explicitly with `--prior-receipt`;
 duplicate receipts or a different source identity are rejected. Never supply
 both a numbered receipt and its identical latest-receipt copy.
