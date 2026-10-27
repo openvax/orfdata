@@ -56,10 +56,13 @@ def main():
             # Index lookups read only requested pages; sequential native row
             # scans can acquire a bounded window, cut before any cached segment.
             cache.read_ahead = 4096 if export.tables[table].get("select_from") else args.read_ahead_kib * 1024
+            reported_rows = export.progress(table)["rows"]
 
             def report(name, progress):
-                if progress["complete"] or progress["rows"] % (args.batch_rows * 10) == 0:
+                nonlocal reported_rows
+                if progress["complete"] or progress["rows"] - reported_rows >= args.batch_rows * 10:
                     print(json.dumps(dict(table=name, **progress)), flush=True)
+                    reported_rows = progress["rows"]
 
             export.copy(table, on_batch=report)
     except BaseException as error:
@@ -69,6 +72,9 @@ def main():
         try:
             receipt = dict(acquisition=cache.receipt(), result=export.summary() if export else None,
                            failure=failure, tool_sha256=CODE_SHA256, row_export_sha256=ROW_EXPORT_SHA256,
+                           export_options=dict(batch_rows=args.batch_rows, lookup_keys=args.lookup_keys,
+                                               batch_bytes=export.batch_bytes if export else None,
+                                               requested_tables=args.tables or [p["table"] for p in plan["tables"]]),
                            selection_sha256=hashlib.sha256(plan_data).hexdigest())
             print(json.dumps(dict(failure=failure, result=receipt["result"])), flush=True)
             scratch.atomic_write(root / f"export-receipt-{invocation:04d}.json",

@@ -66,6 +66,14 @@ The elapsed-time limit applies to each invocation; payload/request counters
 persist. The final export must use the same scratch-budget object for all output
 writes and bound its SQLite output database/journal capacity too.
 
+`--batch-rows` controls rows per atomic checkpoint, with a separate 16 MiB
+serialized-row ceiling. It can change on resumption without changing the selected
+facts or logical digest. A local replay of all 962,755 native group/PSM links
+at 500 and 5,000 rows produced the same typed digest, with 1,927 and 194 commits
+respectively. Larger batches reduce repeated scratch-tree accounting; they do
+not change transfer/cache/output limits. Receipts retain the requested table and
+batch options, and progress reporting measures rows added since resumption.
+
 The 42 selected biological tables (482 columns) are pinned in `dog_result_plan.json` against the
 inspected schema hash. They retain target and decoy identities, peptides/PSMs,
 protein groups and every selected membership/modification link. Only acquisitions
