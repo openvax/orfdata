@@ -265,8 +265,11 @@ The verifier reads complete endpoint indexes sequentially within a 3 GiB RAM
 allowance and keeps at most the current pair of endpoint tables. It independently
 retains up to two row IDs per key, so ambiguous identities remain errors when
 used. A table that cannot fit uses SQL lookups; `--endpoint-cache-mib 0` disables
-this cache without changing any checks. Each SQLite read connection has a
-128 MiB page cache. The receipt records the cache allowance, accounted peak and
+this cache without changing any checks. Each SQLite read connection normally
+has a 128 MiB page cache. After releasing the endpoint indexes, the artifact's
+final foreign-key and integrity scan reuses their allowance for parent pages
+(with a 128 MiB minimum), then restores its normal cache size. No extra disk file
+is created. The receipt records both cache allowances, accounted peak and
 measured process RSS.
 
 Prepare the compressed archive and registry metadata only after that audit passes:

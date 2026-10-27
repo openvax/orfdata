@@ -185,6 +185,7 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
     searched = SearchReference(fasta_path, spec)
     tables, selected, digests, sequences = {}, [], {}, set()
     peak_endpoint_bytes = 0
+    integrity_cache_kib = max(SQLITE_CACHE_KIB, endpoint_cache_bytes // 1024)
     counters = Counter(native_rows=0, links=0, unresolved_links=0, projection_vectors=0, logical_cells=0)
     with closing(sqlite3.connect(native_path.as_uri() + "?mode=ro", uri=True)) as native, closing(evidence.connect()) as db:
         for connection in (native, db):
@@ -396,10 +397,14 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
             group_sizes[count] += 1
             if count != group[1]:
                 group_mismatches.append(dict(group_id=group[0], declared_members=group[1], membership_rows=count))
+        # Endpoint dictionaries are empty here. Reuse their allowance for the
+        # parent-page reads of the full foreign-key scan, without another file.
+        db.execute(f"PRAGMA cache_size=-{integrity_cache_kib}")
         if checkpoint is not None:
-            checkpoint(dict(stage="verification_integrity"))
+            checkpoint(dict(stage="verification_integrity", sqlite_cache_bytes=integrity_cache_kib * 1024))
         if db.execute("PRAGMA foreign_key_check").fetchone() is not None or db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise ValueError("Artifact SQLite integrity check failed")
+        db.execute(f"PRAGMA cache_size=-{SQLITE_CACHE_KIB}")
         if checkpoint is not None:
             checkpoint(dict(stage="verification_common_relations"))
         expected_relations = set()
@@ -450,7 +455,8 @@ def verify(dataset_path, native_path, fasta_path, summary_path, *, lineage_path,
                 independently_checked_candidate_placements=candidate_placements, sample_records_per_table=sample_records,
                 common_mapping_count=expected_mappings, common_group_relations=common_relations,
                 resources=dict(endpoint_cache_bytes=endpoint_cache_bytes, peak_endpoint_accounted_bytes=peak_endpoint_bytes,
-                               sqlite_cache_bytes_per_connection=SQLITE_CACHE_KIB * 1024),
+                               sqlite_cache_bytes_per_connection=SQLITE_CACHE_KIB * 1024,
+                               integrity_sqlite_cache_bytes=integrity_cache_kib * 1024),
                 verification_scope="All selected typed native rows, membership indexes, quantity layouts and search entries; "
                                    "public measurement expansion and exhaustive full-FASTA search checked on the declared spread sample",
                 source_integrity_scope="Selected local source facts; no authoritative checksum of the whole vendor database")
@@ -466,7 +472,7 @@ def main():
     parser.add_argument("receipt", type=Path)
     parser.add_argument("--sample-records", type=int, default=100)
     parser.add_argument("--endpoint-cache-mib", type=int, default=ENDPOINT_CACHE_BYTES // 1024**2,
-                        help="RAM allowance for complete endpoint indexes; 0 uses SQL lookups")
+                        help="RAM allowance for endpoint indexes, reused by the final integrity scan; 0 uses SQL lookups")
     args = parser.parse_args()
     if args.receipt.exists():
         raise FileExistsError(args.receipt)
