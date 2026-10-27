@@ -227,7 +227,7 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
                 raise ValueError("Private canine build requires journal-free scratch storage")
             db.execute(f"PRAGMA max_page_count={cap // 4096}")
             db.execute("PRAGMA foreign_keys=ON")
-            db.execute("PRAGMA cache_size=-8192")
+            db.execute("PRAGMA cache_size=-131072")  # Bound the large-index page cache to 128 MiB.
             db.execute("PRAGMA temp_store=MEMORY")
             db.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 16 * 1024 * 1024)
             copy_evidence(db, native_path, checkpoint=checkpoint)

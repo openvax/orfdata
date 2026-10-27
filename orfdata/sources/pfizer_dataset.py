@@ -9,8 +9,8 @@ is needed to open or query this representation.
 
 import hashlib
 import json
+import sqlite3
 from contextlib import closing
-from pathlib import Path
 
 from ..dataset import _json, _target_key
 from ..reference import ScopedTarget
@@ -55,39 +55,63 @@ def decoder_from_database(connection):
 
 
 def copy_evidence(connection, path, *, checkpoint=None):
-    """Copy a completed evidence component into a caller-owned bounded build.
+    """Seed a new dataset with verified evidence pages and existing metadata.
 
-    The caller owns disk quotas, transactions and removal of an unsuccessful new
-    output, and opens its connection with uri=True for the read-only attachment.
-    Schema definitions come from this module, never executable source SQL.
+    Only the known normalized schema can be copied. The destination must hold
+    at most 16 MiB of fresh common metadata, saved as SQL from our own database;
+    no SQL from the source is executed. The caller owns the disposable output,
+    its limits and failure cleanup. Copying pages retains existing indexes.
     """
-    EvidenceStore(path)  # Require a completed, supported normalized component.
-    connection.executescript(EVIDENCE_SCHEMA)
-    connection.execute("CREATE TABLE evidence_missing(table_name TEXT NOT NULL, source_key TEXT NOT NULL, "
-                       "reason TEXT NOT NULL, PRIMARY KEY(table_name,source_key)) WITHOUT ROWID")
-    connection.execute("ATTACH DATABASE ? AS native_component", (Path(path).resolve().as_uri() + "?mode=ro",))
-    try:
-        for table in ("evidence_metadata", "evidence_table", "evidence_record", "evidence_binary",
-                      "evidence_vector", "evidence_missing"):
-            statement = "INSERT INTO " + table + " SELECT * FROM native_component." + table
-            key = "i" if table == "evidence_record" else "record_i" if table in ("evidence_binary", "evidence_vector") else None
-            maximum = connection.execute("SELECT max(" + key + ") FROM native_component." + table).fetchone()[0] if key else None
-            count = 0
-            # SQLite copies native values directly, without materializing tens
-            # of millions of strings/blobs in Python. Key ranges bound each
-            # transaction and keep interruption/progress checkpoints frequent.
-            for start in range(0, (maximum or 0) + 1, 50000) if key else (None,):
-                if key:
-                    connection.execute(statement + " WHERE " + key + ">? AND " + key + "<=?", (start, start + 50000))
-                else:
-                    connection.execute(statement)
-                count += connection.execute("SELECT changes()").fetchone()[0]
-                connection.commit()
-                if checkpoint is not None:
-                    checkpoint(dict(table=table, rows=count))
-    finally:
-        if not connection.in_transaction:
-            connection.execute("DETACH DATABASE native_component")
+    evidence = EvidenceStore(path)
+    page_size = connection.execute("PRAGMA page_size").fetchone()[0]
+    cap = page_size * connection.execute("PRAGMA max_page_count").fetchone()[0]
+    if page_size * connection.execute("PRAGMA page_count").fetchone()[0] > 16 * 1024**2:
+        raise ValueError("Canine evidence seeding requires bounded fresh metadata")
+    # ANALYZE's implementation table may already exist in the evidence seed.
+    metadata = "\n".join(statement for statement in connection.iterdump()
+                         if not statement.startswith(('ANALYZE ', 'INSERT INTO "sqlite_stat1"')))
+    if len(metadata.encode()) > 32 * 1024**2:
+        raise ValueError("Canine metadata SQL exceeds its memory bound")
+    journal = connection.execute("PRAGMA journal_mode").fetchone()[0]
+    user_version = connection.execute("PRAGMA user_version").fetchone()[0]
+    foreign_keys = connection.execute("PRAGMA foreign_keys").fetchone()[0]
+    if connection.in_transaction:
+        raise ValueError("Finish metadata writes before seeding native evidence")
+
+    def schema(db):
+        return {(kind, name): "".join(sql.split()) if sql else None
+                for kind, name, sql in db.execute("SELECT type,name,sql FROM sqlite_master")}
+
+    with closing(evidence.connect()) as original, closing(sqlite3.connect(":memory:")) as expected:
+        expected.executescript(EVIDENCE_SCHEMA)
+        expected.execute("CREATE TABLE evidence_missing(table_name TEXT NOT NULL, source_key TEXT NOT NULL, "
+                         "reason TEXT NOT NULL, PRIMARY KEY(table_name,source_key)) WITHOUT ROWID")
+        expected.execute("ANALYZE")
+        original.execute("BEGIN")
+        if schema(original) != schema(expected):
+            raise ValueError("Normalized evidence schema differs from the supported schema")
+        source_pages = original.execute("PRAGMA page_count").fetchone()[0]
+        source_page_size = original.execute("PRAGMA page_size").fetchone()[0]
+        if source_page_size != page_size or source_pages * source_page_size > cap:
+            raise ValueError("Normalized evidence pages exceed the output limit or differ in page size")
+
+        def progress(status, remaining, total):
+            if total != source_pages:
+                raise ValueError("Normalized evidence snapshot changed during backup")
+            if checkpoint is not None:
+                checkpoint(dict(stage="evidence_backup", pages=total-remaining, total_pages=total))
+
+        connection.execute("PRAGMA foreign_keys=OFF")
+        original.backup(connection, pages=4096, progress=progress)
+    # Backup restores the source header; reapply the caller's size/storage policy
+    # before adding the bounded common metadata and derived indexes.
+    connection.execute(f"PRAGMA max_page_count={cap // page_size}")
+    connection.execute("PRAGMA journal_mode=" + journal)
+    connection.executescript(metadata)
+    connection.execute(f"PRAGMA user_version={user_version}")
+    connection.execute(f"PRAGMA foreign_keys={foreign_keys}")
+    if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+        raise ValueError("Seeded canine metadata/evidence has unresolved identities")
 
 
 def install_projection(connection, manifest, lineage, *, source_asset, reference=None, checkpoint=None):

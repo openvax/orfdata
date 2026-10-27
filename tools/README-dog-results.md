@@ -190,7 +190,11 @@ output cap and 17 MiB for the bounded initial metadata journal and overhead.
 For a 32 GiB output cap and already expanded inputs, it requires 34.4 GB free,
 rather than reserving three full outputs. SQLite enforces the output cap.
 The build uses a private, disposable database with disk journaling disabled and
-SQLite temporaries in memory. An error discards that database; it never attempts
+SQLite temporaries in memory and a 128 MiB page cache. The normalized component's
+schema is checked against the supported schema, then SQLite's backup API copies
+its pages and existing indexes within the output cap. Only bounded, freshly
+created common metadata is replayed; source SQL is never executed.
+An error discards that database; it never attempts
 to recover and publish a partially rolled-back transaction. After validation and
 file synchronization, an atomic hard link publishes the result without copying
 it or overwriting an existing destination. Interrupted/invalid builds remove

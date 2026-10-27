@@ -183,7 +183,7 @@ def test_release_manifest_factory_refuses_a_partial_fixture_selection(inputs, tm
     assert list(rebuilt.measurements()) == list(dataset.measurements())
 
 
-@pytest.mark.parametrize("failure", ["hash", "selection", "incomplete", "count", "lineage", "lineage_rowid", "summary", "scratch", "output"])
+@pytest.mark.parametrize("failure", ["hash", "selection", "incomplete", "count", "schema", "seed_limit", "lineage", "lineage_rowid", "summary", "scratch", "output"])
 def test_invalid_inputs_never_leave_a_consumer_dataset(inputs, tmp_path, failure):
     paths, manifest, _ = inputs
     processing = manifest.to_dict()["processing"]
@@ -191,13 +191,18 @@ def test_invalid_inputs_never_leave_a_consumer_dataset(inputs, tmp_path, failure
         paths["protein.tsv"].write_text("changed")
     elif failure == "selection":
         processing["selection_sha256"] = "0" * 64
-    elif failure in ("incomplete", "count"):
+    elif failure in ("incomplete", "count", "schema", "seed_limit"):
         with sqlite3.connect(paths["evidence.sqlite"]) as db:
             if failure == "incomplete":
                 db.execute("UPDATE evidence_metadata SET value='\"building\"' WHERE name='state'")
-            else:
+            elif failure == "count":
                 db.execute("DELETE FROM evidence_record WHERE table_i=(SELECT i FROM evidence_table WHERE name='WorkflowInputFiles') "
                            "AND source_rowid=1")
+            elif failure == "schema":
+                db.execute("CREATE VIEW unexpected_source_sql AS SELECT * FROM evidence_record")
+            else:
+                db.execute("INSERT INTO evidence_metadata VALUES ('large_fixture',?)", (json.dumps('x' * 8 * 1024**2),))
+                processing["limits"]["output_bytes"] = 4 * 1024**2
         manifest = repin(manifest, "evidence.sqlite", paths["evidence.sqlite"])
     elif failure in ("lineage", "lineage_rowid"):
         lineage = json.loads(paths["lineage.json"].read_text())
