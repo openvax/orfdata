@@ -294,6 +294,17 @@ sequence candidates. Neither the link index nor the candidate index rewrites
 the displayed count/list. This audit covers the completed target memberships;
 full PSM, control, acquisition and consumer-artifact acceptance remain separate.
 
+The completed target PSM table contains 4,493,585 records and 953,980 distinct
+sequences. All 952,678 distinct peptide-group sequences occur among them, but
+7,575 PSMs supply 1,302 additional residue strings. Each has an I/L-equivalent
+peptide-group sequence; none is replaced by that group's literal sequence.
+Independent exhaustive searching of all 1,302 additions against the complete
+FASTA found 9,380 placements. The combined target sequence audit therefore has
+1,171,840 placements: 1,132,603 exact and 39,237 I/L-equivalent, with no unmatched
+sequence. Candidate indexing must include PSM-only sequences and retain the
+match basis for each original string. Complete native PSM links and quantities
+are verified separately during full artifact acceptance.
+
 On an explicit 100-group benchmark, the public source-evidence interface preserved
 all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
 placements agreed with an independent exhaustive search of the complete FASTA.

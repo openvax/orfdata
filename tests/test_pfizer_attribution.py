@@ -129,7 +129,8 @@ def synthetic_tables():
                         dict(UniqueSequenceID=10, Accession="ABSENT", Sequence="AAAA")],
         DecoyProteins=[dict(UniqueSequenceID=1, Accession="ONE", Sequence="AAALLLIIIM")],
         TargetPeptideGroups=[dict(PeptideGroupID=i, Sequence=s) for i, s in enumerate(("II", "AA", "ZZZ"), 1)],
-        TargetPsms=[dict(WorkflowID=-160, PeptideID=1, Sequence="II")],
+        TargetPsms=[dict(WorkflowID=-160, PeptideID=1, Sequence="II"),
+                    dict(WorkflowID=-160, PeptideID=2, Sequence="IL")],
         TargetPeptideGroupsTargetProteins=[
             dict(TargetPeptideGroupsPeptideGroupID=1, TargetProteinsUniqueSequenceID=-9223372036854775808),
             dict(TargetPeptideGroupsPeptideGroupID=1, TargetProteinsUniqueSequenceID=999999)],
@@ -150,13 +151,18 @@ def test_repeated_il_candidates_missing_matches_dangling_links_and_decoys(tmp_pa
         with component(path, synthetic_tables()) as db:
             counts = build_attribution(db, searched, max_residues=size)
         evidence = CanineEvidence(path)
-        assert counts["peptide_sequences"] == 3  # Duplicate PSM sequence searched once.
+        assert counts["peptide_sequences"] == 4  # Duplicate II once, PSM-only IL separately.
         assert counts["no_search_match"] == 1 and counts["unresolved_links"] == 1
         assert counts["exact_native_proteins"] == 1 and counts["unmatched_native_proteins"] == 2
         assert counts["decoy_proteins"] == 1
         ii = list(evidence.candidates("II"))
         assert [(r["start"], r["end"]) for r in ii] == [(1, 3), (2, 4), (3, 5), (4, 6), (5, 7)]
         assert [r["basis"] for r in ii] == ["exact_residues"] * 2 + ["isoleucine_leucine_equivalent"] * 3
+        il = list(evidence.candidates("IL"))
+        assert [(r["start"], r["end"]) for r in il] == [(r["start"], r["end"]) for r in ii]
+        assert [r["start"] for r in il if r["basis"] == "exact_residues"] == [3]
+        psm_only, = evidence.records("TargetPsms", key=(-160, 2))
+        assert psm_only["Sequence"] == "IL"  # Never canonicalize the native residue string.
         assert len(list(evidence.candidates("AA"))) == 5
         assert list(evidence.candidates("ZZZ"))[0]["status"] == "no_search_match"
         assert list(evidence.candidates("MIIILLLAAA"))[0]["status"] == "not_searched"  # Decoy-only sequence.
