@@ -158,6 +158,25 @@ def test_release_manifest_factory_refuses_a_partial_fixture_selection(inputs, tm
     assert dataset.counts["measurement"] == 429
     assert dataset.source_evidence().summary_group("A0A5F4CET6")["baseline"]["dataset_id"] == baseline.dataset_id
 
+    from orfdata import DatasetRegistry
+    from tools.package_sqlite_archive import archive_verified
+
+    archived = archive_verified(paths["evidence.sqlite"], tmp_path / "parts", member="evidence.sqlite",
+                                url_prefix="https://example.invalid/release/", part_bytes=65536, max_bytes=16 * 1024**2)
+    distributed = build_dog_dataset.manifest_for(paths["evidence.sqlite"], paths["lineage.json"],
+                                                evidence_archive=archived["archive"], **options)
+    asset = next(a for a in distributed.sources if a.asset_id == "evidence.sqlite")
+    assert asset.sha256 == file_sha256(paths["evidence.sqlite"])
+    assert asset.to_dict()["metadata"]["archive"] == archived["archive"]
+    definitions = {distributed.dataset_id: dict(default_version=distributed.version, versions={distributed.version: dict(
+        manifest=distributed.to_dict(), assets={}, distribution=dict(access_terms="Fixture", redistributable=False))})}
+    registry = DatasetRegistry(definitions, cache_root=tmp_path / "distributed-cache")
+    supplied = dict(paths)
+    supplied["evidence.sqlite"] = [tmp_path / "parts" / p["url"].rsplit("/", 1)[-1] for p in archived["archive"]["parts"]]
+    rebuilt = registry.build(distributed.dataset_id, source_paths=supplied, download_options=dict(show_progress=False))
+    assert rebuilt.counts == dataset.counts
+    assert list(rebuilt.measurements()) == list(dataset.measurements())
+
 
 @pytest.mark.parametrize("failure", ["hash", "selection", "incomplete", "count", "lineage", "summary", "scratch", "output"])
 def test_invalid_inputs_never_leave_a_consumer_dataset(inputs, tmp_path, failure):

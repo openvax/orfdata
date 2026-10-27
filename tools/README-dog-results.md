@@ -136,8 +136,29 @@ SQLite integrity checks passed, and the selected input's checksum remained
 unchanged. This run used Python 3.12.6 and SQLite 3.46.0, with a peak process RSS
 of 105,775,104 bytes. The normalized component is 18,662,281,216 bytes, with SHA-256
 `dace2a88acf31e6013b590854be5d5f6bd869786beefba3c8cad856245766b5f`.
-That is the complete normalized source component, not the assembled consumer
-artifact; compressed and final installed artifact sizes still require measurement.
+The complete gzip is 5,375,174,192 bytes, with SHA-256
+`e185f99edc4717c32e61191a846679565d98e9d8e8f6e50572b2d84d175f298a`;
+full decompression reproduced every original byte in 484 seconds including
+compression, hashing and round-trip verification. That is the complete normalized
+source component, not the assembled consumer artifact. The final installed
+artifact size still requires measurement.
+
+The component exceeds GitHub's [2 GiB per-release-file limit](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
+Package a split tar.gz for distribution instead of uploading the single gzip:
+
+```sh
+python -m tools.package_sqlite_archive /path/to/normalized/evidence.sqlite \
+  /path/to/new-source-parts --member evidence.sqlite \
+  --url-prefix https://github.com/openvax/orfdata/releases/download/REVIEWED-RELEASE/ \
+  --part-mib 1900 --max-compressed-mib 8192 \
+  --expected-sha256 dace2a88acf31e6013b590854be5d5f6bd869786beefba3c8cad856245766b5f
+```
+
+This writes deterministic parts, `archive.json` and a round-trip receipt into a
+new directory. The total compressed bytes and each part are bounded. GNU tar
+headers support the component's size above 8 GiB. The verifier streams all parts
+and every restored byte without creating another expanded SQLite file. This tool
+alone verifies byte preservation; it does not establish consumer acceptance.
 
 `tools.build_dog_dataset` assembles the normalized evidence, checked `lineage.json`,
 complete searched FASTA and original protein summary. It requires the entire pinned
@@ -146,6 +167,11 @@ released summary's dataset ID/version, source hash and counts. Run `python -m
 tools.build_dog_dataset --help` for the explicit local input paths, intended stable
 component URLs, dataset version and output/scratch byte limits. An optional
 `--compressed-evidence` input pins both gzip bytes and expanded SQLite bytes.
+For split source distribution, use `--evidence-archive /path/to/source-parts/archive.json`
+instead, with `--evidence-url` naming the published archive metadata. The source
+asset pins the extracted component and declares all part URLs/hashes explicitly.
+The packaged registry's explicit `build` uses DataCache to install that component
+before passing its verified local bytes to the importer.
 It creates a new output directory containing `manifest.json`, `dataset.sqlite`
 and a successful `build-receipt.json`; it does not publish them or add a registry entry.
 
@@ -226,6 +252,13 @@ the separate compressed checksum/size, data-release identity and source access
 terms. The full searched FASTA's UniProt attribution remains explicit. The
 archive, source components, acceptance receipt and registry entry still require
 publication and real-release installation/consumer acceptance before #23 is done.
+
+For a consumer artifact that needs split distribution, add `--part-mib 1900`
+and supply the release URL prefix ending in `/` as `--url`. The acceptance gate
+is the same. Parts go into the publication directory's `archive/` child;
+`registry-entry.json` declares their order and checksums plus the independent
+installed SQLite hash. DataCache verifies and installs the one logical artifact
+atomically, with a one-member extraction limit and the pinned expanded size.
 
 Offline tests install a compressed version-6 artifact through DatasetRegistry,
 remove its private build inputs, and replay measurements and native group/search

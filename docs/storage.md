@@ -25,6 +25,31 @@ a different storage layout and therefore a different file checksum while
 returning the same records. Registry downloads always verify the exact published
 artifact's hash; source builds retain their own DataCache receipts.
 
+Large releases can distribute a tar.gz archive in ordered, checksummed parts.
+`DatasetRegistry.download()` installs these through DataCache's transactional
+archive support and still returns one `dataset.sqlite`. The registry pins every
+part, the assembled compressed archive, and the extracted SQLite bytes separately.
+Only that one regular file is permitted; extraction has an explicit size limit.
+The extracted hash and embedded dataset manifest are checked before publication
+and when an existing installation is reused. A failed refresh preserves readers
+of the previous installation. This requires DataCache 1.29.3 or later.
+
+`download_metadata()` includes an `archive` definition for these releases.
+Local overrides use `source_paths={"dataset.sqlite": [part0, part1, ...]}` in
+the declared order. After installation, `open()` and `inspect()` remain offline
+and need neither the parts nor original build inputs. Checks use the registry's
+independent SQLite hash, so changing both cached bytes and a cache receipt cannot
+repin a release. `verify_files=False` skips content hashing but checks file type
+and size, and never reports cryptographic verification. Historical single-file
+releases retain their existing download paths.
+
+A source asset may likewise declare `metadata.archive`, with its own hash and
+size describing the extracted file. Explicit source builds can acquire that
+component, or accept an ordered list of local part paths for its source override.
+A local extracted-file override still works. Opening a built dataset never
+acquires a component, and an already verified source build can be reused after
+the separate component cache has been removed.
+
 The implementation streams observations and bounds its target cache to 131,072
 entries. SQLite index statistics are populated during creation so a narrow
 target query can use the target index instead of scanning an entire reference.

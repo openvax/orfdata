@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from orfdata import DatasetManifest, SourceAsset
+from orfdata.artifact_archives import archive_options
 from orfdata.sources.pfizer import protein_manifest
 from orfdata.sources.pfizer_evidence import EvidenceStore
 from orfdata.sources.pfizer_native import IMPORTER, file_sha256, import_native, selection_sha256
@@ -16,7 +17,7 @@ PLAN_PATH = Path(__file__).with_name("dog_result_plan.json")
 
 
 def manifest_for(evidence_path, lineage_path, *, version, evidence_url, lineage_url,
-                 output_bytes, scratch_bytes, compressed_evidence=None):
+                 output_bytes, scratch_bytes, compressed_evidence=None, evidence_archive=None):
     """Pin a full selection; regression slices cannot become release manifests."""
     evidence = EvidenceStore(evidence_path)
     source = evidence.metadata["source"]
@@ -33,6 +34,12 @@ def manifest_for(evidence_path, lineage_path, *, version, evidence_url, lineage_
     native_path = Path(compressed_evidence or evidence_path)
     metadata = dict(scope="Complete selected native source facts; no spectra/peak arrays",
                     integrity_scope=source["integrity_scope"])
+    if evidence_archive is not None:
+        if compressed_evidence is not None:
+            raise ValueError("Choose either a gzip component or an archive of the normalized component")
+        archive_options(evidence_archive, "evidence.sqlite", dict(
+            sha256=file_sha256(evidence_path), size=Path(evidence_path).stat().st_size))
+        metadata["archive"] = evidence_archive
     if compressed_evidence is not None:
         metadata.update(compression="gzip", uncompressed_size=Path(evidence_path).stat().st_size,
                         uncompressed_sha256=file_sha256(evidence_path))
@@ -77,14 +84,17 @@ def main():
     parser.add_argument("--version", required=True)
     parser.add_argument("--evidence-url", required=True, help="Stable intended source-component distribution URL")
     parser.add_argument("--lineage-url", required=True, help="Stable intended compiled-lineage distribution URL")
-    parser.add_argument("--compressed-evidence", type=Path, help="Optional gzip of the exact normalized input")
+    distribution = parser.add_mutually_exclusive_group()
+    distribution.add_argument("--compressed-evidence", type=Path, help="Optional gzip of the exact normalized input")
+    distribution.add_argument("--evidence-archive", type=Path, help="Pinned split tar.gz archive JSON for the normalized input")
     parser.add_argument("--output-mib", required=True, type=int)
     parser.add_argument("--scratch-mib", required=True, type=int)
     args = parser.parse_args()
     started = time.monotonic()
     manifest = manifest_for(args.evidence, args.lineage, version=args.version, evidence_url=args.evidence_url,
                             lineage_url=args.lineage_url, output_bytes=args.output_mib * 1024 * 1024,
-                            scratch_bytes=args.scratch_mib * 1024 * 1024, compressed_evidence=args.compressed_evidence)
+                            scratch_bytes=args.scratch_mib * 1024 * 1024, compressed_evidence=args.compressed_evidence,
+                            evidence_archive=None if args.evidence_archive is None else json.loads(args.evidence_archive.read_text()))
     args.output_directory.mkdir(parents=True, exist_ok=False)
     with (args.output_directory / "manifest.json").open("x") as handle:
         json.dump(manifest.to_dict(), handle, indent=2, sort_keys=True)

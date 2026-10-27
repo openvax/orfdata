@@ -11,6 +11,7 @@ from pathlib import Path
 from orfdata import DatasetRegistry, QuantitativeDataset
 from orfdata.sources.pfizer_native import IMPORTER, file_sha256, selection_sha256
 from tools import verify_dog_dataset
+from tools.package_sqlite_archive import archive_verified
 
 PLAN_PATH = Path(__file__).with_name("dog_result_plan.json")
 
@@ -72,7 +73,7 @@ def compress_verified(source, output, *, max_bytes):
         raise
 
 
-def package(dataset_path, acceptance_path, output, *, url, data_release, max_bytes):
+def package(dataset_path, acceptance_path, output, *, url, data_release, max_bytes, part_bytes=None):
     """Create a local archive/registry entry only after full-source verification.
 
     Does not upload, publish, mutate the packaged registry or replace an existing
@@ -99,13 +100,22 @@ def package(dataset_path, acceptance_path, output, *, url, data_release, max_byt
             or acceptance.get("native_group_count_mismatches") != []
             or acceptance.get("logical_cells") != dataset.counts["measurement"]):
         raise ValueError("Artifact lacks its matching successful current full-source acceptance receipt")
-    if not isinstance(url, str) or not url.startswith("https://") or not url.endswith(".gz"):
+    if part_bytes is None and (not isinstance(url, str) or not url.startswith("https://") or not url.endswith(".gz")):
         raise ValueError("Supply the intended stable HTTPS gzip distribution URL")
     if not isinstance(data_release, str) or not data_release.strip():
         raise ValueError("Data release identity is required")
-    result = compress_verified(dataset.path, output, max_bytes=max_bytes)
+    if part_bytes is None:
+        result = compress_verified(dataset.path, output, max_bytes=max_bytes)
+    else:
+        result = archive_verified(dataset.path, output, member="dataset.sqlite", url_prefix=url,
+                                  part_bytes=part_bytes, max_bytes=max_bytes)
+        result.update(download_size=result["archive"]["size"], download_sha256=result["archive"]["sha256"])
     if result["installed_sha256"] != dataset_hash or file_sha256(acceptance_path) != acceptance_hash:
-        Path(output).unlink()  # Only the new archive successfully created above.
+        if part_bytes is None:
+            Path(output).unlink()  # Only the new archive successfully created above.
+        else:
+            for part in result["archive"]["parts"]:
+                (Path(output) / part["url"].rsplit("/", 1)[-1]).unlink()
         raise ValueError("Verified inputs changed while preparing publication")
     distribution = dict(
         access_terms="Native deposited analysis facts: MassIVE CC0-1.0, Oziolor et al./Pfizer. "
@@ -115,8 +125,12 @@ def package(dataset_path, acceptance_path, output, *, url, data_release, max_byt
         redistributable=True, download_size=result["download_size"], download_sha256=result["download_sha256"],
         installed_size=result["installed_size"], data_release=data_release,
         acceptance_sha256=acceptance_hash)
-    release = dict(manifest=manifest.to_dict(), distribution=distribution, assets={"dataset.sqlite": dict(
-        url=url, size=result["installed_size"], sha256=result["installed_sha256"], decompress=True)})
+    asset = dict(size=result["installed_size"], sha256=result["installed_sha256"])
+    if part_bytes is None:
+        asset.update(url=url, decompress=True)
+    release = dict(manifest=manifest.to_dict(), distribution=distribution, assets={"dataset.sqlite": asset})
+    if part_bytes is not None:
+        release["archive"] = result["archive"]
     definitions = {manifest.dataset_id: dict(default_version=manifest.version, versions={manifest.version: release})}
     DatasetRegistry(definitions)  # Metadata validation only; no acquisition.
     return dict(registry=definitions, compression=result, tool_sha256=file_sha256(__file__))
@@ -127,13 +141,16 @@ def main():
     parser.add_argument("dataset", type=Path)
     parser.add_argument("acceptance", type=Path)
     parser.add_argument("directory", type=Path, help="New directory for reviewed publication artifacts")
-    parser.add_argument("--url", required=True)
+    parser.add_argument("--url", required=True, help="HTTPS gzip URL, or release URL prefix ending in / with --part-mib")
     parser.add_argument("--data-release", required=True)
     parser.add_argument("--max-compressed-mib", required=True, type=int)
+    parser.add_argument("--part-mib", type=int, help="Create tar.gz parts smaller than 2048 MiB, retaining one logical dataset.sqlite")
     args = parser.parse_args()
     args.directory.mkdir(parents=True, exist_ok=False)
-    result = package(args.dataset, args.acceptance, args.directory / "dataset.sqlite.gz", url=args.url,
-                     data_release=args.data_release, max_bytes=args.max_compressed_mib * 1024 * 1024)
+    output = args.directory / ("archive" if args.part_mib is not None else "dataset.sqlite.gz")
+    result = package(args.dataset, args.acceptance, output, url=args.url,
+                     data_release=args.data_release, max_bytes=args.max_compressed_mib * 1024 * 1024,
+                     part_bytes=None if args.part_mib is None else args.part_mib * 1024 * 1024)
     for name, value in (("registry-entry.json", result["registry"]),
                         ("compression-receipt.json", {k: v for k, v in result.items() if k != "registry"})):
         with (args.directory / name).open("x") as handle:

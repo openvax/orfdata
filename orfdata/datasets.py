@@ -6,6 +6,7 @@ from dataclasses import replace
 from importlib.resources import files
 from pathlib import Path
 
+from . import artifact_archives
 from .dataset import QuantitativeDataset
 from .measurements import DatasetManifest
 from .reference import species_taxon
@@ -65,7 +66,11 @@ class DatasetRegistry:
                 if release["assets"]:
                     if set(release["assets"]) != {"dataset.sqlite"}:
                         raise ValueError("A quantitative release must contain dataset.sqlite")
+                    if "archive" in release:
+                        artifact_archives.archive_options(release["archive"], "dataset.sqlite", release["assets"]["dataset.sqlite"])
                 else:
+                    if "archive" in release:
+                        raise ValueError("An archive requires its extracted dataset.sqlite integrity pin")
                     from .sources import importer
 
                     importer(manifest.processing.get("importer"))  # A release with nothing to download must be buildable.
@@ -105,7 +110,7 @@ class DatasetRegistry:
         """Return a JSON copy of artifact access terms, locations and integrity pins."""
         version = self._version(name, version)
         release = self._definitions[name]["versions"][version]
-        return json.loads(json.dumps({key: release[key] for key in ("distribution", "assets")}))
+        return json.loads(json.dumps({key: release[key] for key in ("distribution", "assets", "archive") if key in release}))
 
     def search_references(self, name, version=None):
         """Discover declared native search FASTAs without downloading any files."""
@@ -172,7 +177,7 @@ class DatasetRegistry:
         if self._registry is None:
             definitions = {}
             for name, entry in self._definitions.items():
-                published = {v: r["assets"] for v, r in entry["versions"].items() if r["assets"]}
+                published = {v: r["assets"] for v, r in entry["versions"].items() if r["assets"] and "archive" not in r}
                 if published:  # Every call names its version; the default only has to be a published one.
                     default = entry["default_version"]
                     definitions[name] = dict(default_version=default if default in published else min(published),
@@ -185,6 +190,10 @@ class DatasetRegistry:
             self._registry = _datacache().VersionedDatasetRegistry(definitions, store_path=store_path)
         return self._registry
 
+    def _archive_store(self, name, version):
+        release = self._definitions[name]["versions"][version]
+        return get_data_dir(self._cache_root) / "datasets" / name / version / _digest(release)
+
     def inspect(self, name, version=None, *, verify_files=True):
         """Inspect local bytes offline; never download or repair a bad cache.
 
@@ -192,6 +201,12 @@ class DatasetRegistry:
         """
         if not self.published(name, version):
             return self.inspect_build(name, version, verify_files=verify_files)
+        version = self._published(name, version)
+        release = self._definitions[name]["versions"][version]
+        if "archive" in release:
+            return artifact_archives.inspect_archive(self._archive_store(name, version), release["archive"],
+                                                      "dataset.sqlite", release["assets"]["dataset.sqlite"],
+                                                      verify_files=verify_files)
         return self._data_registry().inspect(name, self._published(name, version), verify_files=verify_files)
 
     def download(self, name, version=None, *, force=False, source_paths=None, **options):
@@ -199,7 +214,23 @@ class DatasetRegistry:
 
         source_paths accepts user-downloaded files while retaining declared URLs
         and hashes. force installs a fresh bundle without deleting readers' files.
+        For an archive, source_paths["dataset.sqlite"] is the ordered part paths.
         """
+        version = self._published(name, version)
+        release = self._definitions[name]["versions"][version]
+        if "archive" in release:
+            if source_paths is not None and set(source_paths) != {"dataset.sqlite"}:
+                raise ValueError("Archive overrides require dataset.sqlite's ordered part paths")
+
+            def validate(path):
+                if QuantitativeDataset(path).manifest.to_dict() != self.info(name, version).to_dict():
+                    raise ValueError("Installed dataset manifest disagrees with registered release")
+
+            path = artifact_archives.install_archive(
+                self._archive_store(name, version), release["archive"], "dataset.sqlite", release["assets"]["dataset.sqlite"],
+                source_paths=None if source_paths is None else source_paths["dataset.sqlite"], force=force,
+                download_options=options, validator=validate)
+            return {"dataset.sqlite": path}
         return self._data_registry().download(name, self._published(name, version), force=force,
                                              source_paths=source_paths, **options)
 
@@ -225,8 +256,16 @@ class DatasetRegistry:
                     "has no published artifact", "hasn't been built, and has no published artifact"))
             return self.open_build(name, version, verify_files=verify_files)
         version = self._published(name, version)
-        path = self._data_registry().local_path(name, version, asset="dataset.sqlite",
-                                                verify_files=verify_files)
+        if "archive" in self._definitions[name]["versions"][version]:
+            inspected = self.inspect(name, version, verify_files=verify_files)
+            if inspected.status == "missing":
+                raise FileNotFoundError(inspected.path)
+            if inspected.status != "available":
+                raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
+            path = inspected.files["dataset.sqlite"].path
+        else:
+            path = self._data_registry().local_path(name, version, asset="dataset.sqlite",
+                                                  verify_files=verify_files)
         dataset = QuantitativeDataset(path)
         if dataset.manifest.to_dict() != self.info(name, version).to_dict():
             raise ValueError("Installed dataset manifest disagrees with registered release")
@@ -241,24 +280,7 @@ class DatasetRegistry:
         in ``sources``. Inspection never reads or reacquires those source files.
         """
         manifest = self.info(name, version)
-        inspected = _datacache().inspect_materialization(_build_store(manifest, self._cache_root),
-                                                        verify_files=verify_files)
-        if inspected.status != "available":
-            return inspected
-        try:
-            expected = {source.asset_id: source for source in manifest.sources}
-            if set(inspected.sources) != set(expected) or set(inspected.files) != {"dataset.sqlite"}:
-                raise ValueError("Built source/output inventory disagrees with the registered release")
-            for name, source in expected.items():
-                recorded = inspected.sources[name]
-                if (recorded["sha256"] != source.sha256 or recorded["size"] != source.size
-                        or recorded["verified"] is not True):
-                    raise ValueError("Built source integrity pins disagree with the registered release")
-            if inspected.transform != dict(version=manifest.schema, options=manifest.to_dict()):
-                raise ValueError("Built transform/manifest disagrees with the registered release")
-        except (KeyError, TypeError, ValueError) as exc:
-            return replace(inspected, status="invalid", verified=False, error=exc)
-        return inspected
+        return _inspect_build(manifest, self._cache_root, verify_files=verify_files)
 
     def open_build(self, name, version=None, *, verify_files=True):
         """Open a local source materialization explicitly, without artifact fallback."""
@@ -271,6 +293,27 @@ class DatasetRegistry:
         if dataset.manifest.to_dict() != self.info(name, version).to_dict():
             raise ValueError("Built dataset manifest disagrees with the registered release")
         return dataset
+
+
+def _inspect_build(manifest, cache_root, *, verify_files=True):
+    inspected = _datacache().inspect_materialization(_build_store(manifest, cache_root),
+                                                    verify_files=verify_files)
+    if inspected.status != "available":
+        return inspected
+    try:
+        expected = {source.asset_id: source for source in manifest.sources}
+        if set(inspected.sources) != set(expected) or set(inspected.files) != {"dataset.sqlite"}:
+            raise ValueError("Built source/output inventory disagrees with the registered release")
+        for name, source in expected.items():
+            recorded = inspected.sources[name]
+            if (recorded["sha256"] != source.sha256 or recorded["size"] != source.size
+                    or recorded["verified"] is not True):
+                raise ValueError("Built source integrity pins disagree with the registered release")
+        if inspected.transform != dict(version=manifest.schema, options=manifest.to_dict()):
+            raise ValueError("Built transform/manifest disagrees with the registered release")
+    except (KeyError, TypeError, ValueError) as exc:
+        return replace(inspected, status="invalid", verified=False, error=exc)
+    return inspected
 
 
 def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, force=False,
@@ -287,11 +330,35 @@ def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, forc
     source_paths = {} if source_paths is None else dict(source_paths)
     if set(source_paths) - {s.asset_id for s in manifest.sources}:
         raise ValueError("Unknown local source asset override")
+    if any(value is None for value in source_paths.values()):
+        raise ValueError("Local source overrides must name a file or ordered archive parts")
+    for asset in manifest.sources:
+        if "archive" in asset.metadata:
+            artifact_archives.archive_options(asset.metadata["archive"], asset.asset_id,
+                                              dict(sha256=asset.sha256, size=asset.size))
+    if not force and any("archive" in asset.metadata for asset in manifest.sources):
+        cached = _inspect_build(manifest, cache_root)
+        if cached.status == "available":
+            dataset = QuantitativeDataset(cached.files["dataset.sqlite"].path)
+            if dataset.manifest.to_dict() != manifest.to_dict():
+                raise ValueError("Built dataset manifest disagrees with registered release")
+            return dataset
+        if cached.status != "missing":
+            raise _datacache().FileValidationError(cached.path, cached.status) from cached.error
     sources = {}
     for asset in manifest.sources:
         source = dict(sha256=asset.sha256, size=asset.size)
-        if asset.asset_id in source_paths:
-            source["path"] = str(source_paths[asset.asset_id])
+        supplied = source_paths.get(asset.asset_id)
+        if "archive" in asset.metadata and (supplied is None or isinstance(supplied, (list, tuple))):
+            # Explicit builds may acquire a distributed source component. Queries
+            # and open/inspect paths never call this acquisition branch.
+            path = artifact_archives.install_archive(
+                get_data_dir(cache_root) / "components" / _digest(asset.to_dict()),
+                asset.metadata["archive"], asset.asset_id, source, source_paths=supplied,
+                download_options=download_options)
+            source["path"] = str(path)
+        elif supplied is not None:
+            source["path"] = str(supplied)
         else:
             source["url"] = asset.url
         sources[asset.asset_id] = source

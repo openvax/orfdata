@@ -60,6 +60,21 @@ def test_packaged_artifact_and_public_evidence_replay_without_build_inputs(accep
     assert result["compression"]["download_sha256"] == file_sha256(archive)
 
 
+def test_verified_canine_artifact_installs_from_split_archive(accepted, tmp_path):
+    (dataset, _, _), receipt = accepted
+    result = package_dog_dataset.package(dataset.path, receipt, tmp_path / "parts",
+                                         url="https://example.invalid/release/", data_release="regression-only",
+                                         max_bytes=2 * 1024**2, part_bytes=4096)
+    release = result["registry"][dataset.manifest.dataset_id]["versions"][dataset.manifest.version]
+    assert len(release["archive"]["parts"]) > 1
+    parts = [tmp_path / "parts" / p["url"].rsplit("/", 1)[-1] for p in release["archive"]["parts"]]
+    registry = DatasetRegistry(result["registry"], cache_root=tmp_path / "installed")
+    registry.download(dataset.manifest.dataset_id, source_paths={"dataset.sqlite": parts}, show_progress=False)
+    installed = registry.open(dataset.manifest.dataset_id)
+    assert list(installed.measurements()) == list(dataset.measurements())
+    assert installed.source_evidence().summary_group("A0A5F4CET6") == dataset.source_evidence().summary_group("A0A5F4CET6")
+
+
 def test_stale_acceptance_and_wrong_selection_cannot_be_packaged(accepted, tmp_path, monkeypatch):
     _, receipt = accepted
     original = receipt.read_text()
