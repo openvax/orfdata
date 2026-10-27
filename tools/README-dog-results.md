@@ -343,6 +343,27 @@ and `ExcludedBy=-1`; their counts agree with every one of the 12,654 groups'
 displayed `PsmCount` values. Lower-confidence source PSMs and their other links
 remain available unchanged.
 
+The complete target modification table contains 10,063,345 links. Every link
+resolves to a native PSM and one of the 1,787 retained modification definitions;
+there are no duplicate `(workflow, peptide, modification, Position)` tuples,
+and every target PSM has at least one modification link. Five definition IDs
+occur in these target links:
+
+| Native ID | Name | Native specificity label | Links |
+| --- | --- | --- | ---: |
+| 2 | Acetyl | Protein N-Terminus | 57,330 |
+| 8 | Carbamidomethyl | Any | 1,437,923 |
+| 45 | Oxidation | Any | 1,372,286 |
+| 626 | TMT6plex | Any | 2,702,221 |
+| 628 | TMT6plex | Any N-Terminus | 4,493,585 |
+
+Specificity labels come from native `PositionType` enum 3. IDs 626 and 628
+share a name and Unimod accession but remain distinct definitions. All native
+`Position` values in these target links are present; their integers are retained
+without converting them to residue offsets or inferring localization certainty.
+These are unfiltered source-link counts, not independent detections. Decoy
+modification links and full consumer-artifact verification remain separate.
+
 On an explicit 100-group benchmark, the public source-evidence interface preserved
 all 13,200 quantitative cells and all 20,649 searched proteins. All 120 candidate
 placements agreed with an independent exhaustive search of the complete FASTA.
