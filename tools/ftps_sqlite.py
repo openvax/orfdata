@@ -198,7 +198,12 @@ class FTPSRanges:
 
 
 class ChunkCache:
-    """Persistent checksummed chunks, with verified shifted overlap per chunk."""
+    """Checksummed disk chunks and one immutable, verified in-memory chunk.
+
+    Disk loads always verify the full hash. Repeated page reads can reuse the
+    same verified bytes while the file identity/size/timestamps are unchanged.
+    A changed file or evicted chunk is fully verified before reuse.
+    """
 
     def __init__(self, source, directory, *, chunk_size=1024 * 1024,
                  cache_limit=64 * 1024 * 1024, prior_receipts=(), scratch=None, read_ahead=None):
@@ -219,6 +224,9 @@ class ChunkCache:
         self.cache_limit = cache_limit
         self.hits = 0
         self.read_calls = 0
+        self._verified_chunk = None
+        self.verified_memory_hits = 0
+        self.peak_verified_memory_bytes = 0
         self.identity = asdict(source.identity)
         self.manifest_path = self.directory / "chunks.json"
         self.ledger = None
@@ -335,11 +343,24 @@ class ChunkCache:
         path = self.directory / (key + ".bin")
         if key in self.chunks:
             entry = self.chunks[key]
-            data = path.read_bytes() if path.stat().st_size == entry["length"] else b""
+            stat = path.stat()
+            signature = self._file_signature(stat)
+            if self._verified_chunk is not None and self._verified_chunk[:2] == (key, signature):
+                self.hits += 1
+                self.verified_memory_hits += 1
+                return self._verified_chunk[2]
+            self._verified_chunk = None
+            data = path.read_bytes() if stat.st_size == entry["length"] else b""
             if len(data) != entry["length"] or sha256(data) != entry["sha256"]:
                 raise ValueError("Cached chunk checksum/length mismatch")
+            # The bytes are hash-verified even if the file changed during the
+            # read, but only remember a buffer whose file stayed unchanged.
+            if self._file_signature(path.stat()) == signature:
+                self._verified_chunk = key, signature, data
+                self.peak_verified_memory_bytes = max(self.peak_verified_memory_bytes, len(data))
             self.hits += 1
             return data
+        self._verified_chunk = None
         length = min(self.read_ahead, self.source.identity.size - offset)
         following = bisect_right(self.chunk_offsets, offset)
         if following < len(self.chunk_offsets):
@@ -377,6 +398,12 @@ class ChunkCache:
         self.cached_bytes += length
         self._save()
         return data
+
+    @staticmethod
+    def _file_signature(stat):
+        # Timestamps invalidate an already verified buffer; they never certify
+        # unverified disk bytes. ctime also catches edits with restored mtime.
+        return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
 
     def read(self, offset, length):
         self.read_calls += 1
@@ -421,6 +448,10 @@ class ChunkCache:
                     peak_process_rss_bytes=peak if sys.platform == "darwin" else peak * 1024,
                     elapsed_seconds=time.monotonic() - self.source.started,
                     cache_hits=self.hits, sqlite_reads=self.read_calls,
+                    verified_memory=dict(maximum_chunks=1, maximum_payload_bytes=16 * 1024 * 1024,
+                                         resident_payload_bytes=len(self._verified_chunk[2]) if self._verified_chunk else 0,
+                                         peak_payload_bytes=self.peak_verified_memory_bytes,
+                                         hits=self.verified_memory_hits),
                     transfer_limit=self.source.transfer_limit, cache_limit=self.cache_limit,
                     request_limit=self.source.request_limit, seconds_limit=self.source.seconds_limit,
                     chunk_size=self.chunk_size, read_ahead=self.read_ahead,
@@ -430,6 +461,7 @@ class ChunkCache:
                     accounting="recv data payload, including overlap/retries; excludes network/TLS overhead and server read-ahead")
 
     def close(self):
+        self._verified_chunk = None
         self.source.close()
         if self.ledger is not None:
             self.ledger.close()

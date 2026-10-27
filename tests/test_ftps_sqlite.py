@@ -1,8 +1,10 @@
 """Bounded source access: independent SQLite traversal and hostile transports."""
 
 import json
+import os
 import sqlite3
 from dataclasses import asdict
+from pathlib import Path
 
 import pytest
 
@@ -123,6 +125,54 @@ def test_source_identity_header_and_cache_corruption(sqlite_bytes, tmp_path):
     source.data = b"changed" + data[7:]
     with pytest.raises(SourceChanged, match="header changed"):
         ChunkCache(source, directory, chunk_size=8192)
+
+
+def test_verified_page_buffer_avoids_reloads_and_rechecks_after_eviction(sqlite_bytes, tmp_path, monkeypatch):
+    data, _ = sqlite_bytes
+    cache = ChunkCache(LocalSource(data, transfer_limit=100000), tmp_path / "cache", chunk_size=8192)
+    original = Path.read_bytes
+    loaded = []
+
+    def observe(path):
+        if path.parent == cache.directory and path.suffix == ".bin":
+            loaded.append(path.name)
+        return original(path)
+
+    monkeypatch.setattr(Path, "read_bytes", observe)
+    try:
+        assert cache.read(0, 100) == data[:100]  # Newly acquired, overlap-verified.
+        assert cache.read(0, 100) == data[:100]  # First disk load verifies its hash.
+        for offset in (100, 4096, 8000):
+            assert cache.read(offset, 100) == data[offset:offset + 100]
+        assert loaded == ["0.bin"]
+        assert cache.read(8192, 100) == data[8192:8292]
+        assert cache.read(8192, 100) == data[8192:8292]
+        assert cache.read(0, 100) == data[:100]  # The first buffer was evicted.
+        assert loaded == ["0.bin", "8192.bin", "0.bin"]
+        receipt = cache.receipt()["verified_memory"]
+        assert receipt["peak_payload_bytes"] == receipt["resident_payload_bytes"] == 8192
+        assert receipt["hits"] == 3
+    finally:
+        cache.close()
+    assert cache._verified_chunk is None
+
+
+def test_same_size_disk_edit_with_restored_mtime_invalidates_verified_buffer(sqlite_bytes, tmp_path):
+    data, _ = sqlite_bytes
+    cache = ChunkCache(LocalSource(data, transfer_limit=100000), tmp_path / "cache", chunk_size=8192)
+    try:
+        assert cache.read(0, 100) == data[:100]
+        assert cache.read(0, 100) == data[:100]
+        path = cache.directory / "0.bin"
+        stat = path.stat()
+        changed = bytearray(path.read_bytes())
+        changed[40] ^= 1
+        path.write_bytes(changed)
+        os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+        with pytest.raises(ValueError, match="checksum/length"):
+            cache.read(0, 100)
+    finally:
+        cache.close()
 
 
 def test_budgets_bounds_and_resumption(sqlite_bytes, tmp_path):

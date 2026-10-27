@@ -25,7 +25,16 @@ MassIVE MSV000099744. The small views contain subset/sorting IDs; the main
 database contains the biological evidence. The source size and MDTM are checked
 before and after range acquisition. Each new chunk is checked against an
 independent shifted overlapping request before entering the checksum cache.
-Cached bytes are checked on every reuse. SQLite performs all page, index and
+Every disk-loaded chunk is checked against its full hash. One immutable verified
+chunk (at most 16 MiB) can serve repeated SQLite page reads while the cached file's
+identity, size, mtime and ctime remain unchanged. A changed file or an evicted
+buffer requires full disk verification again; resumption starts with no memory
+buffer. Receipts report this buffer's residency, peak size and hits.
+An offline replay of 4,096 page reads from one acquired 4 MiB chunk returned
+identical 16 MiB output hashes in 7.85 seconds with repeated disk verification
+and 0.048 seconds with this buffer. That measures cached page reads only;
+remote transfer and complete extraction performance remain separate.
+SQLite performs all page, index and
 overflow traversal through a read-only APSW VFS; no second page parser is used.
 
 Transfer and request limits are cumulative for a cache. Each range is durably
