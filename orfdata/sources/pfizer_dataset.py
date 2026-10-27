@@ -10,6 +10,7 @@ is needed to open or query this representation.
 import hashlib
 import json
 from contextlib import closing
+from pathlib import Path
 
 from ..dataset import _json, _target_key
 from ..reference import ScopedTarget
@@ -57,26 +58,36 @@ def copy_evidence(connection, path, *, checkpoint=None):
     """Copy a completed evidence component into a caller-owned bounded build.
 
     The caller owns disk quotas, transactions and removal of an unsuccessful new
-    output. Schema definitions come from this module, never executable source SQL.
+    output, and opens its connection with uri=True for the read-only attachment.
+    Schema definitions come from this module, never executable source SQL.
     """
-    evidence = EvidenceStore(path)
+    EvidenceStore(path)  # Require a completed, supported normalized component.
     connection.executescript(EVIDENCE_SCHEMA)
     connection.execute("CREATE TABLE evidence_missing(table_name TEXT NOT NULL, source_key TEXT NOT NULL, "
                        "reason TEXT NOT NULL, PRIMARY KEY(table_name,source_key)) WITHOUT ROWID")
-    with closing(evidence.connect()) as original:
-        original.execute("BEGIN")
+    connection.execute("ATTACH DATABASE ? AS native_component", (Path(path).resolve().as_uri() + "?mode=ro",))
+    try:
         for table in ("evidence_metadata", "evidence_table", "evidence_record", "evidence_binary",
                       "evidence_vector", "evidence_missing"):
-            cursor = original.execute("SELECT * FROM " + table)
-            fields = [d[0] for d in cursor.description]
-            statement = "INSERT INTO " + table + " VALUES (" + ",".join("?" for _ in fields) + ")"
+            statement = "INSERT INTO " + table + " SELECT * FROM native_component." + table
+            key = "i" if table == "evidence_record" else "record_i" if table in ("evidence_binary", "evidence_vector") else None
+            maximum = connection.execute("SELECT max(" + key + ") FROM native_component." + table).fetchone()[0] if key else None
             count = 0
-            while rows := cursor.fetchmany(500):
-                connection.executemany(statement, rows)
+            # SQLite copies native values directly, without materializing tens
+            # of millions of strings/blobs in Python. Key ranges bound each
+            # transaction and keep interruption/progress checkpoints frequent.
+            for start in range(0, (maximum or 0) + 1, 50000) if key else (None,):
+                if key:
+                    connection.execute(statement + " WHERE " + key + ">? AND " + key + "<=?", (start, start + 50000))
+                else:
+                    connection.execute(statement)
+                count += connection.execute("SELECT changes()").fetchone()[0]
                 connection.commit()
-                count += len(rows)
                 if checkpoint is not None:
                     checkpoint(dict(table=table, rows=count))
+    finally:
+        if not connection.in_transaction:
+            connection.execute("DETACH DATABASE native_component")
 
 
 def install_projection(connection, manifest, lineage, *, source_asset, reference=None, checkpoint=None):

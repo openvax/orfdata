@@ -6,6 +6,7 @@ import json
 import sqlite3
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from test_pfizer_evidence import build
@@ -37,6 +38,10 @@ def inputs(source, tmp_path):
     native, result = build(source[0], tmp_path)
     evidence = EvidenceStore(native)
     lineage, tables, original = quantification()
+    source_rows = {(r["WorkflowID"], r["FileID"]): r["_source_rowid"]
+                   for r in evidence.records("WorkflowInputFiles")}
+    for run in lineage["runs"]:
+        run["vendor"]["_source_rowid"] = source_rows[run["workflow_id"], run["file_id"]]
     summary = tmp_path / "protein.tsv"
     with summary.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, sorted(TABLE_COLUMNS), delimiter="\t")
@@ -178,7 +183,7 @@ def test_release_manifest_factory_refuses_a_partial_fixture_selection(inputs, tm
     assert list(rebuilt.measurements()) == list(dataset.measurements())
 
 
-@pytest.mark.parametrize("failure", ["hash", "selection", "incomplete", "count", "lineage", "summary", "scratch", "output"])
+@pytest.mark.parametrize("failure", ["hash", "selection", "incomplete", "count", "lineage", "lineage_rowid", "summary", "scratch", "output"])
 def test_invalid_inputs_never_leave_a_consumer_dataset(inputs, tmp_path, failure):
     paths, manifest, _ = inputs
     processing = manifest.to_dict()["processing"]
@@ -194,9 +199,9 @@ def test_invalid_inputs_never_leave_a_consumer_dataset(inputs, tmp_path, failure
                 db.execute("DELETE FROM evidence_record WHERE table_i=(SELECT i FROM evidence_table WHERE name='WorkflowInputFiles') "
                            "AND source_rowid=1")
         manifest = repin(manifest, "evidence.sqlite", paths["evidence.sqlite"])
-    elif failure == "lineage":
+    elif failure in ("lineage", "lineage_rowid"):
         lineage = json.loads(paths["lineage.json"].read_text())
-        lineage["runs"][0]["vendor"]["FileSize"] += 1
+        lineage["runs"][0]["vendor"]["FileSize" if failure == "lineage" else "_source_rowid"] += 1
         paths["lineage.json"].write_text(json.dumps(lineage))
         manifest = repin(manifest, "lineage.json", paths["lineage.json"])
     elif failure == "summary":
@@ -218,6 +223,7 @@ def test_interruption_and_existing_output_preservation(inputs, tmp_path):
     output = tmp_path / "dataset.sqlite"
 
     def interrupt(state):
+        assert not output.exists()
         raise KeyboardInterrupt("simulated interrupted copy")
 
     with pytest.raises(KeyboardInterrupt):
@@ -227,6 +233,51 @@ def test_interruption_and_existing_output_preservation(inputs, tmp_path):
     with pytest.raises(FileExistsError):
         import_native(paths, output, manifest)
     assert output.read_bytes() == b"preserve existing local work"
+
+
+def test_one_output_reservation_builds_privately_without_disk_journal(inputs, tmp_path, monkeypatch):
+    from orfdata.sources import pfizer_native
+
+    paths, manifest, expected = inputs
+    output = tmp_path / "dataset.sqlite"
+    cap = manifest.processing["limits"]["output_bytes"]
+    # Enough for one capped output and small metadata journal, but not two.
+    reserve = cap + pfizer_native.METADATA_BYTES + 1024**2
+    assert reserve < 2 * cap
+    monkeypatch.setattr(pfizer_native.shutil, "disk_usage", lambda _: SimpleNamespace(free=reserve))
+    input_hashes = {name: file_sha256(path) for name, path in paths.items()}
+    observed = []
+
+    def inspect(state):
+        assert not output.exists()
+        assert not list(tmp_path.glob("canine-evidence-*/*-journal"))
+        observed.append(state)
+
+    dataset = import_native(paths, output, manifest, checkpoint=inspect)
+    assert observed and list(dataset.measurements()) == expected
+    assert {name: file_sha256(path) for name, path in paths.items()} == input_hashes
+    with sqlite3.connect(output) as db:
+        receipt = json.loads(db.execute("SELECT value FROM metadata WHERE name='canine_build'").fetchone()[0])
+        assert receipt["storage"]["required_free_bytes"] == reserve
+    assert not list(tmp_path.glob("canine-evidence-*"))
+    monkeypatch.setattr(pfizer_native.shutil, "disk_usage", lambda _: SimpleNamespace(free=cap))
+    with pytest.raises(ValueError, match="Insufficient free disk"):
+        import_native(paths, tmp_path / "insufficient.sqlite", manifest)
+    assert not (tmp_path / "insufficient.sqlite").exists()
+
+
+def test_completed_build_never_replaces_a_racing_destination(inputs, tmp_path):
+    paths, manifest, _ = inputs
+    output = tmp_path / "dataset.sqlite"
+
+    def race(state):
+        if not output.exists():
+            output.write_bytes(b"another writer owns this destination")
+
+    with pytest.raises(FileExistsError):
+        import_native(paths, output, manifest, checkpoint=race)
+    assert output.read_bytes() == b"another writer owns this destination"
+    assert not list(tmp_path.glob("canine-evidence-*"))
 
 
 @pytest.mark.parametrize("cap", [True, 0, 4095, 4096.0, 4096])

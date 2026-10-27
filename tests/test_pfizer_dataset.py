@@ -55,7 +55,7 @@ def projected(source, tmp_path):
     common = dict(samples=samples, assays=assays, reference_mappings=(mapping,), pairings=(pair,), relations=(relation,))
     flat = QuantitativeDataset.create(tmp_path / "flat.sqlite", manifest, measurements=values, **common)
     vector = QuantitativeDataset.create(tmp_path / "vector.sqlite", manifest, measurements=(), **common)
-    with sqlite3.connect(vector.path) as connection:
+    with sqlite3.connect(vector.path, uri=True) as connection:
         connection.execute("PRAGMA foreign_keys=ON")
         copy_evidence(connection, evidence_path)
         result = install_projection(connection, manifest, lineage, source_asset="native.json", reference=reference)

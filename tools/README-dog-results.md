@@ -185,11 +185,18 @@ and a successful `build-receipt.json`; it does not publish them or add a registr
 The packaged `pfizer-canine-evidence-v1` importer verifies all four inputs before
 and after building, checks native record counts and run identities against lineage,
 retains every candidate and reported membership, and installs all native abundance
-vectors. Its scratch reservation covers inputs, optional expansion and three times
-the SQLite output cap. SQLite enforces the output cap from the first schema write.
-Interrupted/invalid builds remove their owned new output and expanded temporary;
-existing outputs are never overwritten. The receipt retains code/input hashes,
-counts and limits. A version-6 consumer dataset without its final successful build
+vectors. Its scratch reservation covers inputs, optional expansion, one SQLite
+output cap and 17 MiB for the bounded initial metadata journal and overhead.
+For a 32 GiB output cap and already expanded inputs, it requires 34.4 GB free,
+rather than reserving three full outputs. SQLite enforces the output cap.
+The build uses a private, disposable database with disk journaling disabled and
+SQLite temporaries in memory. An error discards that database; it never attempts
+to recover and publish a partially rolled-back transaction. After validation and
+file synchronization, an atomic hard link publishes the result without copying
+it or overwriting an existing destination. Interrupted/invalid builds remove
+their owned scratch directory and expanded temporary. The receipt retains
+code/input hashes, counts, limits and storage policy.
+A version-6 consumer dataset without its final successful build
 receipt is rejected. No vendor or original supplementary workbook is needed to
 rebuild from these pinned components.
 

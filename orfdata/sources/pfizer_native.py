@@ -9,6 +9,7 @@ import gzip
 import hashlib
 import json
 import math
+import os
 import shutil
 import sqlite3
 import tempfile
@@ -26,6 +27,7 @@ from .pfizer_lineage import lineage_records
 
 IMPORTER = "pfizer-canine-evidence-v1"
 ASSETS = {"evidence.sqlite", "lineage.json", "search.fasta", "protein.tsv"}
+METADATA_BYTES = 16 * 1024 * 1024
 BUILD_MODULES = ("pfizer_native.py", "pfizer_dataset.py", "pfizer_attribution.py", "pfizer_evidence.py",
                  "pfizer_vendor.py", "pfizer_lineage.py", "pfizer.py", "../dataset.py", "../numeric_vector.py",
                  "../search_reference.py")
@@ -96,12 +98,18 @@ def _validate_component(evidence, manifest, lineage):
         raise ValueError("Lineage and evidence identify different native source databases")
     if lineage["counts"] != dict(channels=44, runs=96, tissue_pool=38, bridge=4, empty=2):
         raise ValueError("Canine lineage must retain all channels, controls and 96 runs")
-    files = {(r["WorkflowID"], r["FileID"]): {k: v for k, v in r.items() if k != "_source_rowid"}
+    files = {(r["WorkflowID"], r["FileID"]): r
              for r in evidence.records("WorkflowInputFiles") if r["FileType"] == "XcaliburRawfile"}
     if len(files) != len(lineage["runs"]) or len(files) != 96:
         raise ValueError("Native raw run coverage differs from lineage")
     for run in lineage["runs"]:
-        if files.get((run["workflow_id"], run["file_id"])) != run["vendor"]:
+        native = files.get((run["workflow_id"], run["file_id"]))
+        # The source exporter retains its SQLite row ID; older compiled
+        # lineage can omit it. Validate it when supplied, alongside every
+        # vendor field, rather than stripping it only from the native side.
+        if native is not None and "_source_rowid" not in run["vendor"]:
+            native = {k: v for k, v in native.items() if k != "_source_rowid"}
+        if native != run["vendor"]:
             raise ValueError("Native run record differs from checked lineage")
     with closing(evidence.connect()) as db:
         for name, (index, _) in evidence.tables.items():
@@ -188,9 +196,13 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
     expanded = asset.metadata.get("uncompressed_size", 0) if asset.metadata.get("compression") else 0
     if type(expanded) is not int or expanded < 0:
         raise ValueError("Expanded evidence must have a nonnegative pinned size")
-    # Reserve a full output, rollback journal and index/temp allowance, plus
-    # all pinned inputs and the optional expanded component. No hidden download.
-    working = expanded + 3 * cap + 1024 * 1024
+    # Build one disposable database privately, with no disk rollback journal
+    # and in-memory SQLite temporaries. Any failure discards the whole build;
+    # no transaction rollback is used to recover or publish partial results.
+    # Initial metadata creation is separately capped at 16 MiB; reserve that
+    # much for its ordinary rollback journal plus 1 MiB of headers/slack.
+    # Inputs are never modified.
+    working = expanded + cap + METADATA_BYTES + 1024 * 1024
     if sum(a.size for a in assets.values()) + working > scratch:
         raise ValueError("Canine scratch limit cannot hold pinned inputs and bounded output")
     if shutil.disk_usage(output.parent).free < working:
@@ -199,17 +211,20 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
         raise ValueError("Compiled canine lineage exceeds its 1 MiB metadata limit")
     _verify_inputs(inputs, assets)
     lineage = json.loads(Path(inputs["lineage.json"]).read_text())
-    created, db = False, None
+    db = None
     try:
         with tempfile.TemporaryDirectory(prefix="canine-evidence-", dir=output.parent) as temporary:
+            building = Path(temporary) / "dataset.sqlite"
             native_path = _evidence_input(inputs, asset, temporary)
             evidence = EvidenceStore(native_path)
             _validate_component(evidence, manifest, lineage)
             searched = SearchReference(inputs["search.fasta"], spec)
             samples, assays = lineage_records(lineage, spec.reference)
-            QuantitativeDataset.create(output, manifest, samples=samples, assays=assays, measurements=(), max_bytes=cap)
-            created = True
-            db = sqlite3.connect(output)
+            QuantitativeDataset.create(building, manifest, samples=samples, assays=assays, measurements=(),
+                                       max_bytes=min(cap, METADATA_BYTES))
+            db = sqlite3.connect(building, uri=True)
+            if db.execute("PRAGMA journal_mode=OFF").fetchone()[0] != "off":
+                raise ValueError("Private canine build requires journal-free scratch storage")
             db.execute(f"PRAGMA max_page_count={cap // 4096}")
             db.execute("PRAGMA foreign_keys=ON")
             db.execute("PRAGMA cache_size=-8192")
@@ -226,20 +241,26 @@ def import_native(inputs, output, manifest, *, checkpoint=None):
                            projection=projection, selection_sha256=manifest.processing["selection_sha256"],
                            input_sha256={name: a.sha256 for name, a in assets.items()},
                            software_sha256={name: file_sha256(Path(__file__).parent / name) for name in BUILD_MODULES},
-                           limits=dict(limits), sqlite_version=sqlite3.sqlite_version)
+                           limits=dict(limits), sqlite_version=sqlite3.sqlite_version,
+                           storage=dict(required_free_bytes=working, journal_mode="off", temp_store="memory",
+                                        publication="validated hard link; no overwrite"))
             db.execute("INSERT INTO metadata VALUES ('canine_build',?)", (_json(receipt),))
             db.commit()
             db.close()
             db = None
-        dataset = QuantitativeDataset(output)
-        CanineEvidence(output)
-        return dataset
+            # Validate the private completed file before making it visible.
+            # A hard link is atomic, adds no second copy and refuses a racing
+            # destination. TemporaryDirectory removes only our private name.
+            QuantitativeDataset(building)
+            CanineEvidence(building)
+            with building.open("rb") as handle:
+                os.fsync(handle.fileno())
+            os.link(building, output)
+        return QuantitativeDataset(output)
     except BaseException:
         if db is not None:
             db.close()
             db = None
-        if created:
-            output.unlink()
         raise
     finally:
         if db is not None:
