@@ -1,11 +1,12 @@
 include lint.sh test.sh deploy.sh docs.sh mkdocs.yml
-recursive-include tools *.py
+recursive-include tools *.py *.json *.md
 recursive-include tests/data/viral *.gz
 recursive-include docs *.md *.css
 recursive-include tests *.py *.json *.md *.tsv *.fasta
 recursive-include tests/data/copy *.xlsx *.gz *.soft *.xml *.pdf
 recursive-include tests/data/storage *.sqlite
 recursive-include tests/data/pfizer_rna *.gz *.xlsx
+recursive-include tests/data/pfizer/vendor *.xml
 recursive-include tests/data/search_reference *.gz
 recursive-include tests/data/wang *.zip *.gz
 recursive-include tests/data/ingolia *.gz *.txt
