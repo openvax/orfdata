@@ -142,6 +142,37 @@ All 9,929 summary representatives join one native group each; 1,052 of those
 groups have multiple members. This closes the group/summary reconciliation only;
 the remaining peptide/PSM extraction and full artifact acceptance are still required.
 
+After assembly, audit the consumer artifact against the original selected native
+SQLite export, full searched FASTA and protein summary:
+
+```sh
+python -m tools.verify_dog_dataset /path/to/built/dataset.sqlite \
+  /path/to/audit/pdResult/native-evidence.partial.sqlite \
+  /path/to/lineage.json /path/to/search.fasta /path/to/protein.tsv /path/to/acceptance.json
+```
+
+This read-only command requires the full pinned selection. It compares **every
+selected native field** with the artifact, including original BLOB/float bytes,
+signed record IDs, confidence/modification definitions and target/decoy partitions.
+It checks identity/sequence indexes, all reported membership endpoints (including
+missing endpoints), native protein/search identity, all quantitative projection
+targets/units/sample axes, original missing-acquisition reports and logical counts.
+All common sample/assay records must match the pinned compiled lineage input.
+It also verifies every retained searched protein, candidate-index coverage and
+digest, summary representatives/native associations, original summary counts and
+native declared group sizes versus membership counts. Source-declared group-count
+inconsistencies are reported for review, without erasing the source facts.
+
+Public measurement expansion and independent exhaustive substring searches of the
+complete FASTA use a deterministic spread of at most 100 records per quantitative
+table by default, including the first and last records. `--sample-records` changes
+that explicitly (1–1,000). The receipt states full-scan versus sampled scope,
+source/artifact hashes, compared counts, peak RSS and tool hash. Inputs are checked
+for changes before completion. The command acquires no vendor data and writes only
+its new receipt. The audit does not claim a checksum of unacquired vendor bytes.
+Sampled numeric values and missingness also undergo independent `struct` decoding
+of the original number/presence bytes, without the builder's NumericVector decoder.
+
 `NumericVector` stores declared int32/int64/float64 values in little-endian bytes
 with separate presence bits. A null vector, a missing element, a measured zero and
 a nonfinite source value remain distinct. IEEE-754 payloads and signed integer IDs

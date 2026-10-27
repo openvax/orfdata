@@ -152,6 +152,8 @@ def test_release_manifest_factory_refuses_a_partial_fixture_selection(inputs, tm
                        coverage=dict(search_sequences=10, source_counts=dict(manifest.processing["protein_summary"]["source_counts"])))
     monkeypatch.setattr(build_dog_dataset, "protein_manifest", lambda species: baseline)
     generated = build_dog_dataset.manifest_for(paths["evidence.sqlite"], paths["lineage.json"], **options)
+    assert generated.coverage["accession"] == "MSV000099744"
+    assert generated.coverage["proteomexchange_accession"] == "PXD070290"
     dataset = import_native(paths, tmp_path / "generated.sqlite", generated)
     assert dataset.counts["measurement"] == 429
     assert dataset.source_evidence().summary_group("A0A5F4CET6")["baseline"]["dataset_id"] == baseline.dataset_id
