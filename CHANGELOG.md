@@ -1,3 +1,28 @@
+# 0.40.0
+
+- Add bounded, resumable FTPS extraction and lossless normalization of Pfizer
+  canine peptide, PSM, protein-group and acquisition evidence. Preserve source
+  identity checks, cumulative transfer accounting and explicit resource limits
+  across interrupted runs (#23).
+- Add native evidence queries, reported memberships, separate searched-FASTA
+  candidates and links to the existing same-study protein summary. Preserve
+  confidence/modification definitions, decoys, missingness, ambiguity and
+  tissue-pool/run/channel provenance. A compact quantitative driver retains
+  native numeric vectors and exposes their cells through the measurement API.
+- Expose reported assignments and sequence-compatible candidates through the
+  common `mappings()` API and protein-group memberships through `relations()`.
+  Preserve all candidates when filtering by a destination; incomplete source
+  assignments remain explicitly `unresolved`. Source-specific details stay in
+  the lower-level adapter.
+- Support pinned split tar.gz source components and dataset artifacts through
+  DataCache >=1.29.3, with verified logical-file installation, offline inspection
+  and reuse, and preservation of existing cached generations on failed refresh.
+- Publish the complete canine consumer dataset: 70,280,798 selected source rows
+  across 42 tables, 953,980 target peptide sequences and 1,171,840 compatible
+  placements. Full-source acceptance verifies the native facts, common queries
+  and frozen independent candidate digest. Download 6.90 GB; installed size
+  24.71 GB. The bounded build reserves 34.4 GB rather than 103.1 GB of free space.
+
 # 0.39.1
 
 - Allow `ScopedTarget.from_orf` to identify annotated and source-defined

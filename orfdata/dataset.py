@@ -195,12 +195,16 @@ class QuantitativeDataset:
         self.path = Path(path).resolve()
         with closing(self._connect()) as connection:
             self._storage_version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if self._storage_version not in (1, 2, 3, 4, 5):
+            if self._storage_version not in (1, 2, 3, 4, 5, 6):
                 raise ValueError("Unsupported quantitative database schema")
             row = connection.execute("SELECT value FROM metadata WHERE name='manifest'").fetchone()
             if row is None:
                 raise ValueError("Missing quantitative manifest")
             self.manifest = DatasetManifest.from_dict(json.loads(row[0]))
+            if self._storage_version == 6:
+                from .sources.pfizer_dataset import validate_storage
+
+                validate_storage(connection)
         self._references = {r.key: r for r in self.manifest.references}
 
     def _connect(self):
@@ -211,22 +215,29 @@ class QuantitativeDataset:
 
     @classmethod
     def create(cls, path, manifest, *, samples, assays, measurements, mappings=(),
-               pairings=(), relations=(), reference_mappings=()):
+               pairings=(), relations=(), reference_mappings=(), max_bytes=None):
         """Write a new dataset from iterators, validating scope and foreign keys.
 
         Never overwrite an existing file. An interrupted/invalid build removes
         only the new file it created. For atomic managed publication, call this
         inside DataCache's materialize builder. Derived observations must follow
         their input observations, preventing cyclic or dangling provenance.
+        max_bytes optionally caps the SQLite file from its first schema write;
+        callers must budget separately for its rollback journal and inputs.
         """
         if not isinstance(manifest, DatasetManifest):
             raise TypeError("manifest must be a DatasetManifest")
+        if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 4096):
+            raise ValueError("Dataset byte limit must allow at least one SQLite page")
         path = Path(path)
         descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         os.close(descriptor)
         connection = None
         try:
             connection = sqlite3.connect(path)
+            if max_bytes is not None:
+                connection.execute("PRAGMA page_size=4096")
+                connection.execute(f"PRAGMA max_page_count={max_bytes // 4096}")
             connection.execute("PRAGMA foreign_keys=ON")
             connection.executescript(_SCHEMA)
             connection.execute("PRAGMA user_version=5")
@@ -419,27 +430,62 @@ class QuantitativeDataset:
     def assays(self, *, reference=None):
         return self._records("assay", Assay, reference=reference)
 
-    def mappings(self, *, reference=None):
-        if self._storage_version < 5:
-            return self._records("mapping", TargetMapping, reference=reference)
-        return self._compact_mappings(reference)
+    def mappings(self, *, reference=None, source_identifier=None, source_namespace=None, target=None):
+        """Stream source assignments as TargetMappings, across sources/species.
 
-    def _compact_mappings(self, reference):
+        Source identifiers and namespaces are exact matches. ``target`` selects
+        mappings containing that destination, while retaining every candidate.
+        Method, evidence and provenance distinguish reported assignments from
+        sequence compatibility; unique mapping is not independent detection.
+        """
         scope = self._scope(reference)
-        query = "SELECT reference_key, record FROM mapping"
-        params = ()
+        for name, value in (("source identifier", source_identifier), ("source namespace", source_namespace)):
+            if value is not None:
+                _identifier(value, name)
+        if target is not None:
+            if not isinstance(target, ScopedTarget):
+                raise TypeError("target must be a ScopedTarget")
+            target_scope = self._scope(target.reference)
+            if scope is not None and scope != target_scope:
+                raise ValueError("Mapping target and requested reference disagree")
+            scope = target_scope
+        return self._mapping_records(scope, source_identifier, source_namespace, target)
+
+    def _mapping_records(self, scope, source_identifier, source_namespace, target):
+        query = "SELECT m.reference_key,m.record FROM mapping m"
+        conditions, params = [], []
         if scope is not None:
-            query += " WHERE reference_key=?"
-            params = (scope,)
-        query += " ORDER BY reference_key, id"
+            conditions.append("m.reference_key=?")
+            params.append(scope)
+        for name, value in (("source_identifier", source_identifier), ("source_namespace", source_namespace)):
+            if value is not None:
+                conditions.append("json_extract(m.record,'$." + name + "')=?")
+                params.append(value)
+        if target is not None:
+            fields = ("$[0]", "$[1]", "$[2]") if self._storage_version >= 5 else (
+                "$.kind", "$.identifier", "$.namespace")
+            conditions.append("EXISTS (SELECT 1 FROM json_each(m.record,'$.targets') t WHERE "
+                              + " AND ".join("json_extract(t.value,'" + field + "')=?" for field in fields) + ")")
+            params.extend((target.kind, target.identifier, target.namespace))
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY m.reference_key,m.id"
         with closing(self._connect()) as connection:
             for key, record in connection.execute(query, params):
                 values = json.loads(record)
+                if self._storage_version < 5:
+                    yield TargetMapping.from_dict(values)
+                    continue
                 context = self._references[key]
                 values["reference"] = context
                 values["targets"] = tuple(ScopedTarget(context, kind, identifier, namespace)
                                           for kind, identifier, namespace in values["targets"])
                 yield TargetMapping(**values)
+        if self._storage_version == 6:
+            from .sources.pfizer_queries import mappings
+
+            yield from mappings(self, scope=scope, source_identifier=source_identifier,
+                                source_namespace=source_namespace, target=target)
 
     def reference_mappings(self, *, source_reference=None, target=None):
         """Iterate original source-to-reference mappings, including unresolved IDs."""
@@ -539,7 +585,14 @@ class QuantitativeDataset:
             right_scope = "right_reference_key" if self._storage_version >= 3 else "reference_key"
             filters.extend(((right_scope, right_target.reference.key),
                             ("right_target_key", _target_key(right_target))))
-        return self._records("target_relation", TargetRelation, reference=scope, ids=ids, filters=filters)
+        stored = self._records("target_relation", TargetRelation, reference=scope, ids=ids, filters=filters)
+        if self._storage_version != 6:
+            return stored
+        from itertools import chain
+
+        from .sources.pfizer_queries import relations
+
+        return chain(stored, relations(self, scope=scope, ids=ids, left_target=left_target, right_target=right_target))
 
     def matched_measurements(self, *, allowed_bases, allowed_temporal=("concurrent",),
                              reference=None, pair_ids=None, relation_ids=None,
@@ -615,6 +668,13 @@ class QuantitativeDataset:
             scope = target_scope
         if scope is None and len(self._references) > 1 and (sample_id or assay_id):
             raise ValueError("An ID query across multiple references requires an explicit reference")
+        if self._storage_version == 6:
+            from .sources.pfizer_dataset import measurements
+
+            yield from measurements(self, scope=scope, target=target, target_keys=target_keys,
+                                    sample_id=sample_id, assay_id=assay_id, quantity=quantity, status=status,
+                                    unit=unit, scale=scale, log_base=log_base)
+            return
         filters = dict(reference_key=scope, target_key=_target_key(target) if target else None,
                        sample_id=sample_id, assay_id=assay_id, quantity=quantity, status=status)
         selected = [(key, value) for key, value in filters.items() if value is not None]

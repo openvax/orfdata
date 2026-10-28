@@ -137,6 +137,36 @@ def test_protein_group_mapping_remains_ambiguous(tmp_path, experiment):
         replace(mapping, targets=(candidates[0], replace(candidates[1], reference=experiment[0].references[1])))
 
 
+def test_mapping_selectors_use_the_same_models_across_species(tmp_path, experiment):
+    mappings = []
+    for context in experiment[0].references:
+        targets = tuple(ScopedTarget(context, "protein", name, "source-fasta") for name in ("p1", "p2"))
+        mappings.append(TargetMapping("same", "amino-acid-sequence", "PEPTIDE", context, targets,
+                                      "ambiguous", "source-reported assignment", evidence={"basis": "reported"}))
+    dataset = write_dataset(tmp_path / "mappings.sqlite", experiment, mappings=mappings)
+    assert set(m.reference.taxon_id for m in dataset.mappings(source_identifier="PEPTIDE")) == {
+        context.taxon_id for context in experiment[0].references}
+    for mapping in mappings:
+        selected = list(dataset.mappings(reference=mapping.reference, source_identifier="PEPTIDE",
+                                         source_namespace="amino-acid-sequence", target=mapping.targets[0]))
+        assert selected == [mapping]
+        assert len(selected[0].targets) == 2
+        assert list(dataset.mappings(target=replace(mapping.targets[0], identifier="missing"))) == []
+    with pytest.raises(ValueError, match="disagree"):
+        list(dataset.mappings(reference=mappings[0].reference, target=mappings[1].targets[0]))
+    assert list(dataset.mappings(source_namespace="another-source")) == []
+
+
+def test_incomplete_source_assignment_retains_known_candidates_and_reason(experiment):
+    context = experiment[0].references[0]
+    target = ScopedTarget(context, "protein", "p1", "source-fasta")
+    mapping = TargetMapping("partial", "vendor", "record-1", context, (target,), "unresolved",
+                            "source-reported assignment", "Another reported endpoint is missing")
+    assert TargetMapping.from_dict(mapping.to_dict()) == mapping
+    with pytest.raises(ValueError, match="requires a reason"):
+        replace(mapping, reason=None)
+
+
 @pytest.mark.parametrize("changes", (
     {"assay_id": "unknown"}, {"sample_id": "unknown"},
     {"dataset_version": "2"}, {"provenance": {"source_asset": "unknown"}}, {"provenance": {}},

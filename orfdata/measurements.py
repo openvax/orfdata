@@ -397,14 +397,14 @@ class TargetMapping(_Record):
             raise ValueError("Mappings cannot cross reference contexts; orthology/liftover is separate")
         if len({t.key for t in targets}) != len(targets):
             raise ValueError("Duplicate mapping targets")
-        if self.status not in ("unique", "ambiguous", "unmapped"):
+        if self.status not in ("unique", "ambiguous", "unmapped", "unresolved"):
             raise ValueError("Unknown mapping status")
         if ((self.status == "unique" and len(targets) != 1)
                 or (self.status == "ambiguous" and len(targets) < 2)
                 or (self.status == "unmapped" and targets)):
             raise ValueError("Mapping status disagrees with candidate targets")
-        if self.status == "unmapped" and not self.reason:
-            raise ValueError("An unmapped identifier requires a reason")
+        if self.status in ("unmapped", "unresolved") and not self.reason:
+            raise ValueError("An unmapped or unresolved identifier requires a reason")
         if self.status != "unmapped" and not self.method:
             raise ValueError("Mapped identifiers require an attribution method")
         object.__setattr__(self, "targets", targets)

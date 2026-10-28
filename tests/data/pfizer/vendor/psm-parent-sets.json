@@ -1,0 +1,413 @@
+{
+  "candidate_placements": [
+    {
+      "accession": "A0A5F4D8R9",
+      "basis": "exact_residues",
+      "end": 692,
+      "peptide": "ITEEQAR",
+      "start": 685,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4DG83",
+      "basis": "isoleucine_leucine_equivalent",
+      "end": 886,
+      "peptide": "ITEEQAR",
+      "start": 879,
+      "status": "candidate"
+    },
+    {
+      "accession": "E2R5P5",
+      "basis": "exact_residues",
+      "end": 163,
+      "peptide": "LMDDLDR",
+      "start": 156,
+      "status": "candidate"
+    },
+    {
+      "accession": "F1P7C2",
+      "basis": "isoleucine_leucine_equivalent",
+      "end": 831,
+      "peptide": "LMDDLDR",
+      "start": 824,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4D8R9",
+      "basis": "isoleucine_leucine_equivalent",
+      "end": 692,
+      "peptide": "LTEEQAR",
+      "start": 685,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4DG83",
+      "basis": "exact_residues",
+      "end": 886,
+      "peptide": "LTEEQAR",
+      "start": 879,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4D8R9",
+      "basis": "exact_residues",
+      "end": 692,
+      "peptide": "RITEEQAR",
+      "start": 684,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4DG83",
+      "basis": "isoleucine_leucine_equivalent",
+      "end": 886,
+      "peptide": "RITEEQAR",
+      "start": 878,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4D8R9",
+      "basis": "isoleucine_leucine_equivalent",
+      "end": 692,
+      "peptide": "RLTEEQAR",
+      "start": 684,
+      "status": "candidate"
+    },
+    {
+      "accession": "A0A5F4DG83",
+      "basis": "exact_residues",
+      "end": 886,
+      "peptide": "RLTEEQAR",
+      "start": 878,
+      "status": "candidate"
+    }
+  ],
+  "complete_search_source": {
+    "dataset_id": "pfizer-atlas-dog-protein",
+    "dataset_version": "2026-10-12.1",
+    "expected_sequences": 20649,
+    "format": "uniprot-fasta",
+    "namespace": "uniprot",
+    "reference": {
+      "annotation_name": "uniprot",
+      "annotation_version": null,
+      "assembly_accession": null,
+      "genome_build": null,
+      "sequence_sha256": "d8488bf283de653efcff2e5de6d413b116e1ba4a2eb89298bd31205e72fef682",
+      "source_sha256": null,
+      "species": "dog",
+      "strain": null,
+      "strain_taxon_id": null,
+      "taxon_id": 9615,
+      "taxonomy_version": "ncbi-2026-10-12"
+    },
+    "source": {
+      "access_terms": "UniProt Consortium CC-BY-4.0; deposited search FASTA",
+      "asset_id": "search.fasta",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "metadata": {
+        "attribution": "UniProt Consortium",
+        "deposit": "https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?task=062b109e9adf461ba619369dd0d85aa9",
+        "source_update": "deposited original FASTA; UniProt release unspecified",
+        "terms_verified": "2026-10-12"
+      },
+      "redistributable": true,
+      "sha256": "d8488bf283de653efcff2e5de6d413b116e1ba4a2eb89298bd31205e72fef682",
+      "size": 14659832,
+      "url": "https://massive.ucsd.edu/ProteoSAFe/DownloadResultFile?file=f.MSV000099744/sequence/Dog_UP000002254_9615_noisoform.fasta"
+    }
+  },
+  "fixture_fasta_records": 4,
+  "fixture_fasta_sha256": "2bc4e40553acb599ba1898ec10a437385c19885da4e786db7fcdeebb15b05322",
+  "native_checkpoints": {
+    "TargetPeptideGroups": {
+      "complete": 1,
+      "cursor": "1145689",
+      "digest": "c6f9176a231c61a7871111cb534d74ce8962fe90a380baae391a919df0b41453",
+      "missing_keys": 0,
+      "name": "TargetPeptideGroups",
+      "rows": 1145689,
+      "selected_keys": 0
+    },
+    "TargetPeptideGroupsTargetProteins": {
+      "complete": 1,
+      "cursor": "1262614",
+      "digest": "98f625d645155d9cce36505cb8b769bf378ae64944222ce4a86796acd918eab6",
+      "missing_keys": 0,
+      "name": "TargetPeptideGroupsTargetProteins",
+      "rows": 1262557,
+      "selected_keys": 0
+    },
+    "TargetProteins": {
+      "complete": 1,
+      "cursor": "20598",
+      "digest": "990da607d9c05706b397afc92ac09f50104ebf571ec7b5e73e84513ef19337fe",
+      "missing_keys": 0,
+      "name": "TargetProteins",
+      "rows": 20598,
+      "selected_keys": 0
+    },
+    "TargetPsms": {
+      "complete": 1,
+      "cursor": "4493585",
+      "digest": "f9240fa7981da748e37c29a637b1e499405cb9584e9edbedbbbacc40eee91ea9",
+      "missing_keys": 0,
+      "name": "TargetPsms",
+      "rows": 4493585,
+      "selected_keys": 0
+    },
+    "TargetPsmsTargetPeptideGroups": {
+      "complete": 1,
+      "cursor": "4493585",
+      "digest": "812acd698727c0665b67d6e18b351e8b51140bdd5b5a7ed9412e3acf8e4c7d5b",
+      "missing_keys": 0,
+      "name": "TargetPsmsTargetPeptideGroups",
+      "rows": 4493585,
+      "selected_keys": 0
+    },
+    "TargetPsmsTargetProteins": {
+      "complete": 1,
+      "cursor": "5289013",
+      "digest": "64c3b46bfe28d25fcc743fdf6cecbb38049cb8e0037b715eec74fcf654f13f12",
+      "missing_keys": 0,
+      "name": "TargetPsmsTargetProteins",
+      "rows": 5289013,
+      "selected_keys": 0
+    }
+  },
+  "native_source": {
+    "header_sha256": "70021fa50d79f75ef431754b289d3aab547b5098f9dddebcba52af4dd857d7ba",
+    "identity": {
+      "host": "massive-ftp.ucsd.edu",
+      "mdtm": "213 20251028233329",
+      "path": "/v11/MSV000099744/search/search/IQP_1269_Dog_P1toP4.pdResult",
+      "size": 86023450624
+    }
+  },
+  "scope": "Three native PSMs, their peptide groups and complete independent parent sets. Original selected fields and source row IDs retained; full-FASTA placements independently enumerated for these sequences only.",
+  "source_rowids": {
+    "TargetPeptideGroups": [
+      555551,
+      606096,
+      861841
+    ],
+    "TargetPeptideGroupsTargetProteins": [
+      613126,
+      613127,
+      669341,
+      948463,
+      948464
+    ],
+    "TargetProteins": [
+      9520,
+      9711,
+      16332,
+      20229
+    ],
+    "TargetPsms": [
+      213,
+      1573,
+      1723
+    ],
+    "TargetPsmsTargetPeptideGroups": [
+      2278523,
+      2471114,
+      3449923
+    ],
+    "TargetPsmsTargetProteins": [
+      241,
+      1810,
+      1997
+    ]
+  },
+  "tables": {
+    "TargetPeptideGroups": [
+      {
+        "Confidence": 3,
+        "ExcludedBy": -1,
+        "Modifications": "1\u00d7TMT6plex [N-Term]",
+        "ParentProteinAccessions": "E2R5P5; F1P7C2",
+        "ParentProteinCount": 2,
+        "PeptideGroupID": 555551,
+        "Sequence": "LMDDLDR",
+        "UniqueSequenceID": 480228
+      },
+      {
+        "Confidence": 3,
+        "ExcludedBy": -1,
+        "Modifications": "1\u00d7TMT6plex [N-Term]",
+        "ParentProteinAccessions": "A0A5F4D8R9",
+        "ParentProteinCount": 1,
+        "PeptideGroupID": 606096,
+        "Sequence": "ITEEQAR",
+        "UniqueSequenceID": 522863
+      },
+      {
+        "Confidence": 3,
+        "ExcludedBy": -1,
+        "Modifications": "1\u00d7TMT6plex [N-Term]",
+        "ParentProteinAccessions": "A0A5F4DG83; A0A5F4D8R9",
+        "ParentProteinCount": 2,
+        "PeptideGroupID": 861841,
+        "Sequence": "RLTEEQAR",
+        "UniqueSequenceID": 707114
+      }
+    ],
+    "TargetPeptideGroupsTargetProteins": [
+      {
+        "PeptideGroupModificationsPositioninProteins": "",
+        "PeptideGroupModificationsPositioninProteinsallSites": "",
+        "PositionsinProteins": "[157-163]",
+        "QuanUsage": 1,
+        "SequenceinProtein": "K.LMDDLDR.N",
+        "TargetPeptideGroupsPeptideGroupID": 555551,
+        "TargetProteinsUniqueSequenceID": -696243185539058401
+      },
+      {
+        "PeptideGroupModificationsPositioninProteins": "",
+        "PeptideGroupModificationsPositioninProteinsallSites": "",
+        "PositionsinProteins": "[825-831]",
+        "QuanUsage": 0,
+        "SequenceinProtein": "K.IMDDLDR.A",
+        "TargetPeptideGroupsPeptideGroupID": 555551,
+        "TargetProteinsUniqueSequenceID": -534265028077569844
+      },
+      {
+        "PeptideGroupModificationsPositioninProteins": "",
+        "PeptideGroupModificationsPositioninProteinsallSites": "",
+        "PositionsinProteins": "[686-692]",
+        "QuanUsage": 1,
+        "SequenceinProtein": "R.ITEEQAR.K",
+        "TargetPeptideGroupsPeptideGroupID": 606096,
+        "TargetProteinsUniqueSequenceID": 8870096628810618668
+      },
+      {
+        "PeptideGroupModificationsPositioninProteins": "",
+        "PeptideGroupModificationsPositioninProteinsallSites": "",
+        "PositionsinProteins": "[879-886]",
+        "QuanUsage": 0,
+        "SequenceinProtein": "K.RLTEEQAR.K",
+        "TargetPeptideGroupsPeptideGroupID": 861841,
+        "TargetProteinsUniqueSequenceID": 5371914008713706319
+      },
+      {
+        "PeptideGroupModificationsPositioninProteins": "",
+        "PeptideGroupModificationsPositioninProteinsallSites": "",
+        "PositionsinProteins": "[685-692]",
+        "QuanUsage": 1,
+        "SequenceinProtein": "K.RITEEQAR.K",
+        "TargetPeptideGroupsPeptideGroupID": 861841,
+        "TargetProteinsUniqueSequenceID": 8870096628810618668
+      }
+    ],
+    "TargetProteins": [
+      {
+        "Accession": "E2R5P5",
+        "ExcludedBy": -1,
+        "IsMasterProtein": 0,
+        "PeptideGroupCount": 3,
+        "Sequence": "VLGRPAGAHPGPRGPGLPGRVRFPSGSPVFPGPFWLPSVCFFGHFLLGGFQERFSFPSSLGLILDGDPGDTVFGKFGWPGGGGGSGTEQPLHPQLPAQCSAMACPLDQAIGLLVAIFHKYSGKEGDKNTLSKKELKELIQKELTIGPKLQDADIAKLMDDLDRNKDQVVNFQEYVTFLGALALIYNDALKG",
+        "UniqueSequenceID": -696243185539058401
+      },
+      {
+        "Accession": "F1P7C2",
+        "ExcludedBy": -1,
+        "IsMasterProtein": 0,
+        "PeptideGroupCount": 36,
+        "Sequence": "MDSTLTASEIRQRFIDFFKRNEHTYVHSSATIPLDDPTLLFANAGMNQFKPIFLNTIDPSHPMAKLSRAANTQKCIRAGGKHNDLDDVGKDVYHHTFFEMLGSWSFGDYFKELACKMALELLTQEFGIPVERLYVTYFGGDEAAGLEPDLECKQIWQNLGLDDTKILPGNMKDNFWEMGDTGPCGPCSEIHYDRIGGRDAAHLVNQDDPNVLEIWNLVFIQYNRESDGILKPLPKKSIDTGMGLERLVSVLQNKMSNYDTDLFVPYFEAIQKGTGARPYTGKVGADDADGIDMAYRVLADHARTITVALADGGRPDNTGRGYVLRRILRRAVRYSHEKLNASRGFFATLVDVVVQSLGDAFPELKKDPDMVKDIINEEEVQFLKTLSRGRRILDRKIQSLGDCNTIPGDTAWLLYDTYGFPVDLTGLIAEEKGMVVDMDGFEEERKLAQLKSQGKGAGGEDLIMLDIYAIEELREKGLEATEDSPKYNYHSDSSGSYTFENVVATVVALRRDKMFVEEVSTGQECGVVLDKTCFYAEQGGQIYDEGYLVKVEDNSEDKMEFTVKNAQVRGGYVLHIGTIYGSLRVGDQVRLFIDEPRRRPIMSNHTATHILNFALRSVLGEADQKGSLVAPDRLRFDFTAKGAMSTQQIKKAEEIANGMIEAAKPVYTQDCPLAAAKAIQGLRAVFDETYPDPVRVVSIGVPVSELLEDPSGPAGSLTSVEFCGGTHLQNSSHAGAFVIVSEEAIAKGIRRIVAVTGAEAQKALRKAESLKNSLSVMEAKVKAQTAPNKDVQREIADLGEVLATAVIPQWQKDEFRENLKSLKKIMDDLDRASKADVQKRVLEKTKQLIDSNPNQPLVILEMESGASAKALNEALKLFKTHSPETSAMLFTVDNEAGRITCLCQVPQNAANRGLKASEWVQQVSGLMDGKGGGKDVSAQATGKNVGCLQEALQLATSFAQLHLGDVKN",
+        "UniqueSequenceID": -534265028077569844
+      },
+      {
+        "Accession": "A0A5F4DG83",
+        "ExcludedBy": -1,
+        "IsMasterProtein": 0,
+        "PeptideGroupCount": 27,
+        "Sequence": "MPVRKQDTQRALHLLEEYRSKLSQTEDRQLRSSIERVINIFQSNLFQALIDIQEFYEVTLLDNPKCIDRSKQSEPIQPVNTWEISSLPSTTVTSETLPSSLSPSVEKYRYQDEDTPPQEHISPQITNEVIGPELVHVSEKNLSEIENVHGFVSHSHISPIKPTEAVPPSSPTVPVIPVLPVPAENTVILPTIPQANPPPVLVNTDSLETSTYVNGTDADYEYEEITLERGNSGLGFSIAGGTDNPHIGDDSSIFITKIIAGGAAAQDGRLRVNDCILRVNEVDVRDVTHSKAVEALKEAGSIVRLYVKRRKPVSEKIMEIKLIKGPKGLGFSIAGGVGNQHIPGDNSIYVTKIIEGGAAHKDGKLQIGDKLLAVNSVCLEEVTHEEAVTALKNTSDFVYLKVAKPTSMYMNDGYAPPDITNSSSQPVDNHVSPSSYLGHTPASPARYSPVSKAMLGDDEITREPRKVVLHRGSTGLGFNIVGGEDGEGIFISFILAGGPADLSGELRKGDRIISVNSVDLRTASHEQAAAALKNAGQAVTIVAQYRPEEYSRFEAKIHDLREQMMNSSISSGSGSLRTSQKRSLYVRALFDYDKTKDSGLPSQGLNFKFGDILHVINASDDEWWQARQVTPDGESDEVGVIPSKRRVEKKERARLKTVKFNSKTRGDKGQSFNDKRKKNLFSRKFPFYKNKDQSEQETSDADQHITSNASDSESSYLILITDEYGCSKGGQEEYVLSYEPVNQQEVNYTRPVIILGPMKDRINDDLISEFPDKFGSCVPHTTRPKRDYEVDGRDYHFVTSREQMEKDIQEHKFIEAGQYNNHLYGTSVQSVREVAEKGKHCILDVSGNAIKRLQIAQLYPISIFIKPKSMENIMEMNKRLTEEQARKTFERAMKLEQEFTEHFTAIVQGDTLEDIYNQVKQIIEEQSGPYIWVPAKEKL",
+        "UniqueSequenceID": 5371914008713706319
+      },
+      {
+        "Accession": "A0A5F4D8R9",
+        "ExcludedBy": -1,
+        "IsMasterProtein": 0,
+        "PeptideGroupCount": 27,
+        "Sequence": "MSERPRAPRSALWLLAPPLLRWAPPLLAVLHSDLFQALLDILDYYEASISESQANSPPVIVNTDTLEAPGYELQVNGTEGEMEYEEITLERGNSGLGFSIAGGTDNPHIGDDPSIFITKIIPGGAAAQDGRLRVNDSILFVNEVDVREVTHSAAVEALKEAGSIVRLYVMRRKPPAEKLMEIKLIKGPKGLGFSIAGGVGNQHIPGDNSIYVTKIIEGGAAHKDGRLQIGDKILAVNSVGLEDVMHEDAVAALKNTYDVVYLKVAKPSNAYLSDSYAPPDITTSYSQHLDNEISHSSYLGTDYPTAMTPTSPGRYSPVAKALLGEEDIPREPRRIVIHRGSTGLGFNIVGGEDGEGIFISFILAGGPADLSGELRKGDQILSVNGVDLRSASHEQAAIALKNAGQTVTIIAQYKPEEYSRFEAKIHDLREQLMNSSLGSGTASLRSNPKRGFYIRALFDYDKTKDCGFLSQALSFRFGDVLHVIDASDEEWWQARRVHSDSETDDIGFIPSKRRVERREWSRLKAKDWGSSSGSQGREDSVLSYETVTQMEVHYARPIIILGPTKDRANDDLLSEFPDKFGSCVPHTTRPKREYEIDGRDYHFVSSREKMEKDIQAHKFIEAGQYNSHLYGTSVQSVREVAEQGKHCILDVSANAVRRLQAAHLHPIAIFIRPRSLENVLEINKRITEEQARKAFDRATKLEQFTECFSVIVEGDSFEEIYHKVKRVIEDLSGPYIWVPARERL",
+        "UniqueSequenceID": 8870096628810618668
+      }
+    ],
+    "TargetPsms": [
+      {
+        "ExcludedBy": 3,
+        "MatchConfidence": 1,
+        "Modifications": "N-Term(TMT6plex)",
+        "PeptideID": 1890,
+        "Sequence": "LMDDLDR",
+        "UniqueSequenceID": 480228,
+        "WorkflowID": -160
+      },
+      {
+        "ExcludedBy": 3,
+        "MatchConfidence": 1,
+        "Modifications": "N-Term(TMT6plex)",
+        "PeptideID": 15032,
+        "Sequence": "LTEEQAR",
+        "UniqueSequenceID": 522863,
+        "WorkflowID": -160
+      },
+      {
+        "ExcludedBy": -1,
+        "MatchConfidence": 3,
+        "Modifications": "N-Term(TMT6plex)",
+        "PeptideID": 16602,
+        "Sequence": "RITEEQAR",
+        "UniqueSequenceID": 707114,
+        "WorkflowID": -160
+      }
+    ],
+    "TargetPsmsTargetPeptideGroups": [
+      {
+        "TargetPeptideGroupsPeptideGroupID": 555551,
+        "TargetPsmsPeptideID": 1890,
+        "TargetPsmsWorkflowID": -160
+      },
+      {
+        "TargetPeptideGroupsPeptideGroupID": 606096,
+        "TargetPsmsPeptideID": 15032,
+        "TargetPsmsWorkflowID": -160
+      },
+      {
+        "TargetPeptideGroupsPeptideGroupID": 861841,
+        "TargetPsmsPeptideID": 16602,
+        "TargetPsmsWorkflowID": -160
+      }
+    ],
+    "TargetPsmsTargetProteins": [
+      {
+        "PSMModificationPositionsinProteins": null,
+        "PSMModificationPositionsinProteinsallSites": null,
+        "PositionsinProteins": null,
+        "SequenceinProtein": null,
+        "TargetProteinsUniqueSequenceID": -696243185539058401,
+        "TargetPsmsPeptideID": 1890,
+        "TargetPsmsWorkflowID": -160
+      },
+      {
+        "PSMModificationPositionsinProteins": null,
+        "PSMModificationPositionsinProteinsallSites": null,
+        "PositionsinProteins": null,
+        "SequenceinProtein": null,
+        "TargetProteinsUniqueSequenceID": 5371914008713706319,
+        "TargetPsmsPeptideID": 15032,
+        "TargetPsmsWorkflowID": -160
+      },
+      {
+        "PSMModificationPositionsinProteins": "",
+        "PSMModificationPositionsinProteinsallSites": "",
+        "PositionsinProteins": "[685-692]",
+        "SequenceinProtein": "K.RITEEQAR.K",
+        "TargetProteinsUniqueSequenceID": 8870096628810618668,
+        "TargetPsmsPeptideID": 16602,
+        "TargetPsmsWorkflowID": -160
+      }
+    ]
+  },
+  "tool_sha256": "a364e7370571d832f687bff8e0b040ac971e7909e2585598d62afcd179993d68"
+}

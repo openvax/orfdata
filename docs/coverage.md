@@ -13,18 +13,22 @@ data coverage, independently of what the API can represent.
 
 ## Peptides and MHC ligands
 
-Dog has two peptide-level datasets ([guide](dog-peptides.md)):
+Dog has three peptide-level datasets:
 
-- **Canine PeptideAtlas** (build 573): 149,546 tryptic peptides with PSM counts
+- **Pfizer native peptide evidence** ([guide](pfizer-peptides.md)): 953,980 target
+  peptide sequences, native peptide/PSM reporter quantities and reported protein-group
+  memberships. The 96 runs retain 38 tissue pools, four bridge channels and two
+  empty channels; source memberships and searched-FASTA candidates stay separate.
+- **Canine PeptideAtlas** ([guide](dog-peptides.md), build 573): 149,546 tryptic peptides with PSM counts
   in 18 Labrador tissue, plasma and urine samples, every protein location, and
   17,795 protein calls, 17,110 of them mapped to Ensembl 110 proteins with an
   identical sequence. PeptideAtlas states no licence,
   so this dataset is built locally from its download and never redistributed.
-- **DLA class I ligands** (Kaabinejadian et al.): 76,550 PEAKS rows from four
+- **DLA class I ligands** ([guide](dog-peptides.md), Kaabinejadian et al.): 76,550 PEAKS rows from four
   dog tumours, each searched against four protein databases, and from three
   human HCT 116 lines that each express one DLA-88 allele.
 
-Both searched known proteins only. Other species have no peptide-level
+All three searched known proteins only. Other species have no peptide-level
 measurement dataset yet; the human and mouse ORF catalogues carry pooled
 peptide evidence for their noncanonical ORFs.
 

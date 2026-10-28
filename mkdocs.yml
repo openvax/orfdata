@@ -39,6 +39,7 @@ nav:
   - Datasets:
       - Human tissue RNA and protein: human-tissue.md
       - Human, mouse and dog protein: pfizer-protein.md
+      - Pfizer dog peptide and group evidence: pfizer-peptides.md
       - Dog and mouse RNA: pfizer-rna.md
       - Yeast protein and RNA: copy-yeast.md
       - Yeast RNA and ribosome occupancy: ingolia-yeast.md

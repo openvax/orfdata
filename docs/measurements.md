@@ -14,6 +14,7 @@ Released datasets, each with its own guide:
 - [Yeast protein and RNA abundance](copy-yeast.md) (CoPY)
 - [Yeast RNA and ribosome occupancy](ingolia-yeast.md) (Ingolia et al.)
 - [Dog MHC ligands and PeptideAtlas peptides](dog-peptides.md) (Kaabinejadian et al.; Kusebauch et al.)
+- [Pfizer dog peptide and protein-group evidence](pfizer-peptides.md) (Oziolor et al.)
 
 See [released coverage and gaps](coverage.md); the
 [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
@@ -141,10 +142,28 @@ an estimate; an intensity/TPM ratio does not acquire molecule-ratio units.
 records technical replicates, runs, fractions, TMT plex/channel/bridge,
 normalization and calibration. A sample's strain/breed belongs in its attributes;
 it need not be the strain used to assemble its reference genome. `TargetMapping`
-retains all candidate assignments or an unmapped reason. A protein-group
+retains all candidate assignments, an unmapped reason, or known candidates with
+an explicit `unresolved` reason when source endpoints are missing. A protein-group
 representative does not become a uniquely measured protein. See
 [pairing and orthology comparisons](pairing.md) for explicit experimental
 relationships and derived RNA/protein ratios.
+
+The public query shapes are shared across sources and species:
+`samples()`, `assays()`, `measurements()`, `mappings()`, `relations()` and
+`reference_mappings()`. Source-specific fields stay in evidence and provenance;
+native-table inspection belongs in the source modules. For example:
+
+```python
+assignments = dataset.mappings(source_identifier=peptide_sequence)
+for assignment in assignments:
+    print(assignment.status, assignment.targets, assignment.method)
+```
+
+`mappings()` also accepts an exact `source_namespace`, `reference` or destination
+`target`. Selecting one destination preserves all candidates in each returned
+mapping. Reported assignments and computed sequence compatibility remain
+separate records with explicit methods and evidence. Mapping status describes
+the assignment's cardinality or completeness, not independent protein detection.
 
 ## Importing a source
 

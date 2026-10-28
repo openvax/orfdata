@@ -7,6 +7,10 @@ def importer(name):
         from .pfizer import import_protein
 
         return import_protein
+    if name == "pfizer-canine-evidence-v1":
+        from .pfizer_native import import_native
+
+        return import_native
     if name == "copy-yeast-v1":
         from .copy import import_copy
 
@@ -40,6 +44,10 @@ def search_references(manifest):
         from .pfizer import search_references as pfizer_references
 
         return pfizer_references(manifest)
+    if manifest.processing.get("importer") == "pfizer-canine-evidence-v1":
+        from .pfizer_native import search_references as native_references
+
+        return native_references(manifest)
     if manifest.processing.get("importer") == "wang-human-tissue-v1":
         from .wang import search_references as wang_references
 

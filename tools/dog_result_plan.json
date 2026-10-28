@@ -1,0 +1,817 @@
+{
+  "format": "orfdata.pfizer-native-selection.v1",
+  "source_schema_sha256": "4748720e8b75b1399c7dee6b40bd9a24ddff8a734e39c07a01835b1fab5ed9c1",
+  "source_accession": "MSV000099744",
+  "tables": [
+    {
+      "table": "SchemaInfo",
+      "columns": [
+        "Version",
+        "Kind",
+        "Date",
+        "SoftwareVersion",
+        "Comment"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "ReportInfo",
+      "columns": [
+        "Guid"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "WorkflowInputFiles",
+      "columns": [
+        "WorkflowID",
+        "WorkflowLevel",
+        "FileID",
+        "FileName",
+        "FileSize",
+        "FileSizeUnit",
+        "ChildWorkflowID",
+        "PhysicalFileName",
+        "FileType",
+        "StudyFileID",
+        "CreationDate",
+        "RetentionTimeRange",
+        "InstrumentDescription",
+        "SoftwareRevision",
+        "InstrumentHardware"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "DataTypes",
+      "columns": [
+        "DataTypeID",
+        "Name",
+        "TableName",
+        "DisplayName",
+        "Description",
+        "DataTypeIdentifier",
+        "Version",
+        "Creators"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "DataTypesColumns",
+      "columns": [
+        "ColumnID",
+        "DataTypeID",
+        "DBColumnName",
+        "CustomDataType",
+        "Nullable",
+        "ValueType",
+        "SpecialValueType",
+        "SpecialValueTypeID",
+        "DefaultValue",
+        "Property_Guid",
+        "Property_DisplayName",
+        "Property_Description",
+        "Property_FormatString",
+        "Property_SemanticDescription"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "DataDistributionMaps",
+      "columns": [
+        "ID",
+        "Name",
+        "SingularCategoryName",
+        "PluralCategoryName",
+        "LevelCategoryName",
+        "Description",
+        "SemanticTerms",
+        "CustomDataType",
+        "MinimumValue",
+        "MaximumValue"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "DataDistributionLevels",
+      "columns": [
+        "LevelID",
+        "DataDistributionMapID",
+        "Position",
+        "Name",
+        "Description",
+        "SemanticTerms",
+        "Threshold"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "DataDistributionBoxes",
+      "columns": [
+        "BoxID",
+        "DataDistributionMapID",
+        "Position",
+        "Name",
+        "Description",
+        "SemanticTerms",
+        "IsFirstInGroup"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "EnumDataTypes",
+      "columns": [
+        "EnumID",
+        "EnumType",
+        "IsFlagsEnum",
+        "CVReference",
+        "CVTermId",
+        "CVTermName",
+        "CVTermDefinition"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "EnumDataTypeValues",
+      "columns": [
+        "EnumID",
+        "Value",
+        "DisplayName",
+        "Abbreviation",
+        "CVReference",
+        "CVTermId",
+        "CVTermName",
+        "CVTermDefinition"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "FoundModifications",
+      "columns": [
+        "ModificationID",
+        "Name",
+        "Abbreviation",
+        "DeltaMonoisotopicMass",
+        "DeltaAverageMass",
+        "Substitution",
+        "LeavingGroup",
+        "IsSubstitution",
+        "PositionType",
+        "UnimodAccession",
+        "IsCrosslink",
+        "ExtendedProperties"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "ProteinIdentificationGroups",
+      "columns": [
+        "WorkflowID",
+        "ProteinIdentificationGroupID",
+        "ProcessingNodeNumber",
+        "GroupName"
+      ],
+      "role": "metadata"
+    },
+    {
+      "table": "TargetProteins",
+      "columns": [
+        "UniqueSequenceID",
+        "IsoelectricPoint",
+        "Coverage",
+        "Accession",
+        "Sequence",
+        "FastaTitleLines",
+        "Description",
+        "NumberOfAminoAcids",
+        "MolecularWeight",
+        "PsmCount",
+        "PrsmCount",
+        "PeptideGroupCount",
+        "UniquePeptidesCount",
+        "GroupUniquePeptidesCount",
+        "ExcludedBy",
+        "CoveragebySearchEngine",
+        "NumberOfPSMsbySearchEngine",
+        "NumberOfPeptidesbySearchEngine",
+        "ScoreSequestHT",
+        "SumPEPScore",
+        "ProteinFDRConfidence",
+        "NumberOfDecoyProteins",
+        "Expqvalue",
+        "IsMasterProtein",
+        "NumberOfProteinGroups",
+        "ProteinGroupIDs",
+        "NumberOfRazorPeptides"
+      ],
+      "role": "target"
+    },
+    {
+      "table": "TargetProteinGroups",
+      "columns": [
+        "ProteinGroupID",
+        "ProteinCount",
+        "UniquePeptidesCount",
+        "PeptideGroupCount",
+        "PsmCount",
+        "MasterProteinDescription",
+        "ExcludedBy",
+        "FoundinFiles",
+        "FoundinFractions",
+        "FoundinSamples",
+        "FoundinSampleGroups"
+      ],
+      "role": "target"
+    },
+    {
+      "table": "TargetPeptideGroups",
+      "columns": [
+        "PeptideGroupID",
+        "Sequence",
+        "UniqueSequenceID",
+        "SequenceLength",
+        "PsmAmbiguity",
+        "PsmCount",
+        "ParentProteinCount",
+        "ParentProteinAccessions",
+        "TheoreticalMass",
+        "MissedCleavages",
+        "ExcludedBy",
+        "ConfidencebySearchEngine",
+        "ChargebySearchEngine",
+        "DeltaScorebySearchEngine",
+        "DeltaCnbySearchEngine",
+        "RankbySearchEngine",
+        "SearchEngineRankbySearchEngine",
+        "ConcatenatedRankbySearchEngine",
+        "mzDabySearchEngine",
+        "DeltaMppmbySearchEngine",
+        "DeltamzDabySearchEngine",
+        "RTminbySearchEngine",
+        "PercolatorqValuebySearchEngine",
+        "PercolatorPEPbySearchEngine",
+        "PercolatorSVMScorebySearchEngine",
+        "XCorrbySearchEngine",
+        "Modifications",
+        "Modificationsallpossiblesites",
+        "SVM_Score",
+        "QvalityPEP",
+        "Qvalityqvalue",
+        "Confidence",
+        "NumberOfProteinGroups",
+        "MasterProteinAccessions",
+        "AnnotatedSequence",
+        "PositionsinMasterProteins",
+        "ModificationsinMasterProteinsallSites",
+        "ModificationsinMasterProteins",
+        "QuanInfo",
+        "Abundances",
+        "AbundancesCounts",
+        "AbundancesNormalized",
+        "AbundancesScaled",
+        "AbundancesGrouped",
+        "AbundancesGroupedCounts",
+        "AbundancesGroupedCVs",
+        "AbundanceRatios",
+        "AbundanceRatioslog2",
+        "AbundanceRatioPValue",
+        "AbundanceRatioAdjPValue",
+        "AbundanceRatioWeights",
+        "FoundinFiles",
+        "FoundinFractions",
+        "FoundinSamples",
+        "FoundinSampleGroups"
+      ],
+      "role": "target"
+    },
+    {
+      "table": "TargetPsms",
+      "columns": [
+        "WorkflowID",
+        "PeptideID",
+        "DeltaScore",
+        "ActivationTypes",
+        "PercentIsolationInterference",
+        "IonInjectTime",
+        "Intensity",
+        "MasterScanNumbers",
+        "MSOrderTypes",
+        "IdentifyingNodeTypeName",
+        "IdentifyingNodeName",
+        "IdentifyingNodeNumber",
+        "IdentifyingNodeSearchID",
+        "UniqueSequenceID",
+        "Sequence",
+        "ModifiedSequence",
+        "PsmAmbiguity",
+        "MatchConfidence",
+        "Modifications",
+        "ParentProteinCount",
+        "ParentProteinAccessions",
+        "DeltaCn",
+        "Rank",
+        "SearchEngineRank",
+        "ConcatenatedRank",
+        "MissedCleavages",
+        "Charge",
+        "OriginalPrecursorCharge",
+        "MassOverCharge",
+        "Mass",
+        "DeltaMassInDa",
+        "DeltaMassInPPM",
+        "TheoreticalMass",
+        "MatchedIonsCount",
+        "TotalIonsCount",
+        "RetentionTime",
+        "FirstScan",
+        "LastScan",
+        "SpectrumFileName",
+        "SpectrumFileId",
+        "StudyFileId",
+        "ExcludedBy",
+        "PeptidesMatched",
+        "XCorr",
+        "PercolatorqValue",
+        "PercolatorPEP",
+        "PercolatorSVMScore",
+        "NumberOfProteinGroups",
+        "BackupPSMAmbiguity",
+        "MasterProteinAccessions",
+        "Abundances",
+        "AverageReporterSN",
+        "SPSMassMatches",
+        "QuanInfo"
+      ],
+      "role": "target"
+    },
+    {
+      "table": "TargetPeptideGroupsTargetProteins",
+      "columns": [
+        "TargetPeptideGroupsPeptideGroupID",
+        "TargetProteinsUniqueSequenceID",
+        "SequenceinProtein",
+        "PositionsinProteins",
+        "PeptideGroupModificationsPositioninProteins",
+        "PeptideGroupModificationsPositioninProteinsallSites",
+        "QuanUsage"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "TargetProteinGroupsTargetProteins",
+      "columns": [
+        "TargetProteinGroupsProteinGroupID",
+        "TargetProteinsUniqueSequenceID"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "TargetProteinGroupsTargetPeptideGroups",
+      "columns": [
+        "TargetProteinGroupsProteinGroupID",
+        "TargetPeptideGroupsPeptideGroupID"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "TargetProteinGroupsTargetPsms",
+      "columns": [
+        "TargetProteinGroupsProteinGroupID",
+        "TargetPsmsWorkflowID",
+        "TargetPsmsPeptideID"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "TargetPsmsTargetPeptideGroups",
+      "columns": [
+        "TargetPsmsWorkflowID",
+        "TargetPsmsPeptideID",
+        "TargetPeptideGroupsPeptideGroupID"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "TargetPsmsTargetProteins",
+      "columns": [
+        "TargetPsmsWorkflowID",
+        "TargetPsmsPeptideID",
+        "TargetProteinsUniqueSequenceID",
+        "SequenceinProtein",
+        "PositionsinProteins",
+        "PSMModificationPositionsinProteins",
+        "PSMModificationPositionsinProteinsallSites"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "FoundModificationsTargetPsms",
+      "columns": [
+        "FoundModificationsModificationID",
+        "TargetPsmsWorkflowID",
+        "TargetPsmsPeptideID",
+        "Position"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "TargetPsmsMSnSpectrumInfo",
+      "columns": [
+        "TargetPsmsWorkflowID",
+        "TargetPsmsPeptideID",
+        "MSnSpectrumInfoWorkflowID",
+        "MSnSpectrumInfoSpectrumID"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "DecoyProteins",
+      "columns": [
+        "UniqueSequenceID",
+        "Coverage",
+        "Accession",
+        "Sequence",
+        "FastaTitleLines",
+        "Description",
+        "NumberOfAminoAcids",
+        "MolecularWeight",
+        "PsmCount",
+        "PrsmCount",
+        "PeptideGroupCount",
+        "UniquePeptidesCount",
+        "GroupUniquePeptidesCount",
+        "ExcludedBy",
+        "ScoreSequestHT",
+        "SumPEPScore",
+        "ProteinFDRConfidence",
+        "IsMasterProtein",
+        "NumberOfProteinGroups",
+        "ProteinGroupIDs"
+      ],
+      "role": "decoy"
+    },
+    {
+      "table": "DecoyProteinGroups",
+      "columns": [
+        "ProteinGroupID",
+        "ProteinCount",
+        "UniquePeptidesCount",
+        "PeptideGroupCount",
+        "PsmCount",
+        "MasterProteinDescription",
+        "ExcludedBy"
+      ],
+      "role": "decoy"
+    },
+    {
+      "table": "DecoyPeptideGroups",
+      "columns": [
+        "PeptideGroupID",
+        "Sequence",
+        "UniqueSequenceID",
+        "SequenceLength",
+        "PsmAmbiguity",
+        "PsmCount",
+        "ParentProteinCount",
+        "ParentProteinAccessions",
+        "TheoreticalMass",
+        "MissedCleavages",
+        "ExcludedBy",
+        "ConfidencebySearchEngine",
+        "ChargebySearchEngine",
+        "DeltaCnbySearchEngine",
+        "RankbySearchEngine",
+        "SearchEngineRankbySearchEngine",
+        "ConcatenatedRankbySearchEngine",
+        "mzDabySearchEngine",
+        "DeltaMppmbySearchEngine",
+        "DeltamzDabySearchEngine",
+        "RTminbySearchEngine",
+        "PercolatorqValuebySearchEngine",
+        "PercolatorPEPbySearchEngine",
+        "PercolatorSVMScorebySearchEngine",
+        "XCorrbySearchEngine",
+        "Modifications",
+        "Modificationsallpossiblesites",
+        "SVM_Score",
+        "QvalityPEP",
+        "Qvalityqvalue",
+        "Confidence",
+        "NumberOfProteinGroups"
+      ],
+      "role": "decoy"
+    },
+    {
+      "table": "DecoyPsms",
+      "columns": [
+        "WorkflowID",
+        "PeptideID",
+        "IdentifyingNodeTypeName",
+        "IdentifyingNodeName",
+        "IdentifyingNodeNumber",
+        "IdentifyingNodeSearchID",
+        "UniqueSequenceID",
+        "Sequence",
+        "ModifiedSequence",
+        "PsmAmbiguity",
+        "MatchConfidence",
+        "Modifications",
+        "ParentProteinCount",
+        "ParentProteinAccessions",
+        "DeltaCn",
+        "Rank",
+        "SearchEngineRank",
+        "ConcatenatedRank",
+        "MissedCleavages",
+        "Charge",
+        "OriginalPrecursorCharge",
+        "MassOverCharge",
+        "Mass",
+        "DeltaMassInDa",
+        "DeltaMassInPPM",
+        "TheoreticalMass",
+        "MatchedIonsCount",
+        "TotalIonsCount",
+        "RetentionTime",
+        "FirstScan",
+        "LastScan",
+        "SpectrumFileName",
+        "SpectrumFileId",
+        "StudyFileId",
+        "ExcludedBy",
+        "DecoyPeptidesMatched",
+        "XCorr",
+        "PercolatorqValue",
+        "PercolatorPEP",
+        "PercolatorSVMScore",
+        "NumberOfProteinGroups"
+      ],
+      "role": "decoy"
+    },
+    {
+      "table": "DecoyPeptideGroupsDecoyProteins",
+      "columns": [
+        "DecoyPeptideGroupsPeptideGroupID",
+        "DecoyProteinsUniqueSequenceID"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "DecoyProteinGroupsDecoyProteins",
+      "columns": [
+        "DecoyProteinGroupsProteinGroupID",
+        "DecoyProteinsUniqueSequenceID"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "DecoyProteinGroupsDecoyPeptideGroups",
+      "columns": [
+        "DecoyProteinGroupsProteinGroupID",
+        "DecoyPeptideGroupsPeptideGroupID"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "DecoyProteinGroupsDecoyPsms",
+      "columns": [
+        "DecoyProteinGroupsProteinGroupID",
+        "DecoyPsmsWorkflowID",
+        "DecoyPsmsPeptideID"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "DecoyPsmsDecoyPeptideGroups",
+      "columns": [
+        "DecoyPsmsWorkflowID",
+        "DecoyPsmsPeptideID",
+        "DecoyPeptideGroupsPeptideGroupID"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "DecoyPsmsDecoyProteins",
+      "columns": [
+        "DecoyPsmsWorkflowID",
+        "DecoyPsmsPeptideID",
+        "DecoyProteinsUniqueSequenceID"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "FoundModificationsDecoyPsms",
+      "columns": [
+        "FoundModificationsModificationID",
+        "DecoyPsmsWorkflowID",
+        "DecoyPsmsPeptideID",
+        "Position"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "DecoyPsmsMSnSpectrumInfo",
+      "columns": [
+        "DecoyPsmsWorkflowID",
+        "DecoyPsmsPeptideID",
+        "MSnSpectrumInfoWorkflowID",
+        "MSnSpectrumInfoSpectrumID"
+      ],
+      "role": "decoy_link"
+    },
+    {
+      "table": "TargetPsmsQuanSpectrumInfo",
+      "columns": [
+        "TargetPsmsWorkflowID",
+        "TargetPsmsPeptideID",
+        "QuanSpectrumInfoWorkflowID",
+        "QuanSpectrumInfoSpectrumID"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "QuanSpectrumInfoTargetPeptideGroups",
+      "columns": [
+        "QuanSpectrumInfoWorkflowID",
+        "QuanSpectrumInfoSpectrumID",
+        "TargetPeptideGroupsPeptideGroupID",
+        "QuanUsage"
+      ],
+      "role": "target_link"
+    },
+    {
+      "table": "MSnSpectrumInfo",
+      "columns": [
+        "WorkflowID",
+        "SpectrumID",
+        "SpectrumFileID",
+        "SearchID",
+        "CreatingProcessingNodeNumber",
+        "StudyFileId",
+        "RetentionTime",
+        "FirstScan",
+        "LastScan",
+        "MasterScanNumbers",
+        "NumberOfMasterScanNumbers",
+        "ScanNumbers",
+        "NumberOfScanNumbers",
+        "MassAnalyzer",
+        "ActivationTypes",
+        "MSOrder",
+        "PeptideMatchesCount",
+        "ProteoformMatchesCount",
+        "PercentIsolationInterference",
+        "IonInjectTime",
+        "MassOverCharge",
+        "Mass",
+        "OriginalPrecursorMass",
+        "Charge",
+        "OriginalPrecursorCharge",
+        "Intensity",
+        "SpectrumFileName",
+        "NumberOfPrecursors",
+        "NumberOfIdentifiedPrecursors",
+        "NumberOfPeptideGroups"
+      ],
+      "role": "referenced_acquisition",
+      "keys": [
+        "WorkflowID",
+        "SpectrumID"
+      ],
+      "select_from": [
+        {
+          "table": "TargetPsmsMSnSpectrumInfo",
+          "columns": [
+            "MSnSpectrumInfoWorkflowID",
+            "MSnSpectrumInfoSpectrumID"
+          ]
+        },
+        {
+          "table": "DecoyPsmsMSnSpectrumInfo",
+          "columns": [
+            "MSnSpectrumInfoWorkflowID",
+            "MSnSpectrumInfoSpectrumID"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "QuanSpectrumInfo",
+      "columns": [
+        "WorkflowID",
+        "SpectrumID",
+        "SpectrumFileID",
+        "SearchID",
+        "CreatingProcessingNodeNumber",
+        "StudyFileId",
+        "RetentionTime",
+        "FirstScan",
+        "LastScan",
+        "MasterScanNumbers",
+        "NumberOfMasterScanNumbers",
+        "ScanNumbers",
+        "NumberOfScanNumbers",
+        "MassAnalyzer",
+        "ActivationTypes",
+        "MSOrder",
+        "PeptideMatchesCount",
+        "ProteoformMatchesCount",
+        "PercentIsolationInterference",
+        "IonInjectTime",
+        "MassOverCharge",
+        "Mass",
+        "OriginalPrecursorMass",
+        "Charge",
+        "OriginalPrecursorCharge",
+        "Intensity",
+        "SpectrumFileName",
+        "Abundances",
+        "AverageReporterSN",
+        "QuanInfo",
+        "QuanInfoDetails",
+        "AbundancesNormalized"
+      ],
+      "role": "referenced_acquisition",
+      "keys": [
+        "WorkflowID",
+        "SpectrumID"
+      ],
+      "select_from": [
+        {
+          "table": "TargetPsmsQuanSpectrumInfo",
+          "columns": [
+            "QuanSpectrumInfoWorkflowID",
+            "QuanSpectrumInfoSpectrumID"
+          ]
+        },
+        {
+          "table": "QuanSpectrumInfoTargetPeptideGroups",
+          "columns": [
+            "QuanSpectrumInfoWorkflowID",
+            "QuanSpectrumInfoSpectrumID"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "QuanSpectrumInfoReporterQuanResults",
+      "columns": [
+        "QuanSpectrumInfoWorkflowID",
+        "QuanSpectrumInfoSpectrumID",
+        "ReporterQuanResultsWorkflowID",
+        "ReporterQuanResultsQuanResultID",
+        "ReporterQuanResultsQuanChannelID"
+      ],
+      "role": "referenced_acquisition",
+      "keys": [
+        "QuanSpectrumInfoWorkflowID",
+        "QuanSpectrumInfoSpectrumID"
+      ],
+      "select_from": [
+        {
+          "table": "TargetPsmsQuanSpectrumInfo",
+          "columns": [
+            "QuanSpectrumInfoWorkflowID",
+            "QuanSpectrumInfoSpectrumID"
+          ]
+        },
+        {
+          "table": "QuanSpectrumInfoTargetPeptideGroups",
+          "columns": [
+            "QuanSpectrumInfoWorkflowID",
+            "QuanSpectrumInfoSpectrumID"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "ReporterQuanResults",
+      "columns": [
+        "WorkflowID",
+        "QuanResultID",
+        "QuanChannelID",
+        "Mass",
+        "Height",
+        "FileID",
+        "SN"
+      ],
+      "role": "referenced_acquisition",
+      "keys": [
+        "WorkflowID",
+        "QuanResultID",
+        "QuanChannelID"
+      ],
+      "select_from": [
+        {
+          "table": "QuanSpectrumInfoReporterQuanResults",
+          "columns": [
+            "ReporterQuanResultsWorkflowID",
+            "ReporterQuanResultsQuanResultID",
+            "ReporterQuanResultsQuanChannelID"
+          ]
+        }
+      ]
+    }
+  ],
+  "scope": "All target/decoy peptide, PSM and protein/group records and memberships. Only their referenced acquisition metadata and reporter measurements. No spectrum/peak arrays, chromatograms, UI state or full workflow payloads. Protein summary abundance remains the separate existing release."
+}

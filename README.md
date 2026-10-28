@@ -188,6 +188,7 @@ orfdata datasets download ingolia-yeast-rna-ribo
 | Guide | Species | Measurements |
 | --- | --- | --- |
 | [Protein abundance](https://openvax.github.io/orfdata/pfizer-protein/) | Human, mouse, dog | TMT protein groups (Oziolor et al.) |
+| [Native peptide evidence](https://openvax.github.io/orfdata/pfizer-peptides/) | Dog | Peptide/PSM quantities and reported protein-group memberships (Oziolor et al.) |
 | [RNA abundance](https://openvax.github.io/orfdata/pfizer-rna/) | Dog, mouse | Native gene counts (Oziolor et al.) |
 | [Matched human tissues](https://openvax.github.io/orfdata/human-tissue/) | Human | RNA and protein from adjacent cryosections (Wang et al.) |
 | [Yeast protein and RNA](https://openvax.github.io/orfdata/copy-yeast/) | Budding yeast | Calibrated protein and RNA abundance (CoPY) |
