@@ -3,8 +3,48 @@
 ORFdata has one common entry point for data acquisition:
 
 ```sh
-orfdata download list
-orfdata download status
+orfdata data list
+orfdata data list --species dog
+orfdata data info pfizer-atlas-dog-peptide-evidence
+orfdata data fetch pfizer-atlas-dog-peptide-evidence
+orfdata data fetch peptideatlas-dog-peptides openprot-mouse
+orfdata data path pfizer-atlas-dog-peptide-evidence
+orfdata data status
+```
+
+`data`, `downloads` and `download` are aliases for the same command group.
+The `list/info/fetch/path` vocabulary follows other OpenVax download tools.
+`fetch` accepts one or more explicit resource names and chooses the registered
+acquisition route: download an artifact when available, otherwise build locally
+from checksum-pinned source files. All names and required terms are checked
+before the first acquisition. There is no implicit download-all operation.
+
+`info NAME` reports the version, source/coverage manifest and distribution
+metadata, including sizes and redistribution terms where declared. `path NAME`
+prints an installed file or directory for scripts; missing data is an error,
+and never triggers a download. Use `--verify` on reads to validate local bytes,
+`--cache-root DIR` to select a cache, and `--json` for machine output.
+`fetch --json` returns one result per distinct requested name.
+
+Use `--kind` to disambiguate colliding resource names. For one resource,
+`--version VERSION` selects a historical release and `--source-path ASSET=PATH`
+provides already downloaded catalogue/dataset sources or genome files. Source
+overrides remain checksum-checked. `--force` installs a fresh generation.
+Restricted chain downloads require `--accept-terms` after reviewing `info`.
+
+The same operations are available in Python:
+
+```python
+from orfdata import data_info, data_path, fetch_data
+
+details = data_info("openprot-mouse")  # Offline; shows the build route and terms.
+result = fetch_data("openprot-mouse")  # Explicit source download and processing.
+path = data_path("openprot-mouse")    # Offline file/directory lookup.
+```
+
+The focused forms remain available for additional resource-specific options:
+
+```sh
 orfdata download viral --species human
 orfdata download catalog NAME
 orfdata download dataset NAME
@@ -14,8 +54,7 @@ orfdata download chains --species human
 ```
 
 The operation comes first so the same discovery and installation model applies
-to every resource kind. `orfdata download viral` is therefore the primary
-command. Focused command groups such as `orfdata viral coverage` and
+to every resource kind. Focused command groups such as `orfdata viral coverage` and
 `orfdata viral summary` remain useful for domain-specific inspection.
 
 `list` shows every bundled, downloadable or locally buildable primary resource

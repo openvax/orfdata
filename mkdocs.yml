@@ -44,6 +44,7 @@ nav:
       - Yeast protein and RNA: copy-yeast.md
       - Yeast RNA and ribosome occupancy: ingolia-yeast.md
       - Dog MHC ligands and PeptideAtlas: dog-peptides.md
+      - Dog paired-data and Ribo-seq source audit: dog-data-sources.md
   - Project:
       - Release notes: https://github.com/openvax/orfdata/blob/main/CHANGELOG.md
       - Data roadmap: https://github.com/openvax/orfdata/issues/3

@@ -65,7 +65,7 @@ def _registry(genome, cache_root):
         store_path=lambda name, version: get_data_dir(cache_root) / "genomes" / name / _digest(assets))
 
 
-def install_genome(name, *, force=False, source_paths=None, cache_root=None):
+def install_genome(name, *, force=False, source_paths=None, cache_root=None, download_options=None):
     """Download a pinned annotation, check each file's size and SHA-256, and index it for PyEnsembl.
 
     ``source_paths`` maps ``"gtf"``, ``"transcripts"`` or ``"proteins"`` to
@@ -79,7 +79,8 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None):
         if unknown:
             raise ValueError(f"Unknown genome files {sorted(unknown)}; use {', '.join(_ROLES)}")
         paths = {_files(genome)[role]: str(path) for role, path in source_paths.items()}
-    _registry(genome, cache_root).download(genome.name, "1", force=force, source_paths=paths)
+    _registry(genome, cache_root).download(genome.name, "1", force=force, source_paths=paths,
+                                         **(download_options or {}))
     return _open(genome, cache_root, rebuild=force)
 
 

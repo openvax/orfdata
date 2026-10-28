@@ -5,6 +5,9 @@ spectrometry has observed. Neither searched for noncanonical ORFs, so they
 don't add ORFs to the dog proteome
 ([why dog has no ncORF catalogue](catalogs.md#dog)).
 
+For a verified paired RNA/protein study and the latest bounded search for dog
+Ribo-seq, see the [canine source audit](dog-data-sources.md).
+
 | Dataset | What it holds | How to get it |
 |---|---|---|
 | `kaabinejadian-dog-dla-ligands` | DLA class I ligands from four dog tumours and three DLA-88 monoallelic cell lines | `orfdata datasets download` (CC0, 25 MB) |

@@ -17,6 +17,7 @@ from .catalog import (
 )
 from .catalog_manifest import CatalogManifest
 from .catalogs import CatalogRegistry, build_catalog
+from .data_resources import data_info, data_path, fetch_data
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
 from .downloads import DataStatus, list_data
@@ -176,6 +177,9 @@ __all__ = [
     "build_dataset",
     "DataStatus",
     "list_data",
+    "data_info",
+    "data_path",
+    "fetch_data",
     "DatasetManifest",
     "SourceAsset",
     "Sample",

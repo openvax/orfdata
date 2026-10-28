@@ -70,7 +70,7 @@ def test_setup_chooses_collections_like_catalogues():
 def test_cli_listings_are_readable_and_machine_readable(capsys):
     run(["download", "list"])
     output = capsys.readouterr().out
-    assert "KIND" in output and "gdc-viruses" in output and "orfdata download viral" in output
+    assert "KIND" in output and "gdc-viruses" in output and "orfdata data fetch" in output
 
     run(["download", "list", "--kind", "viral", "--json"])
     rows = json.loads(capsys.readouterr().out)
