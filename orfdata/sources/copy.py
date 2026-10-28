@@ -43,10 +43,7 @@ def _quantity(value):
 
 
 def _workbook(path, expected_counts):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as exc:
-        raise ImportError("Install orfdata[build-data] to rebuild the CoPY workbook") from exc
+    from openpyxl import load_workbook
     workbook = load_workbook(path, read_only=True, data_only=True)
     tables = {}
     try:

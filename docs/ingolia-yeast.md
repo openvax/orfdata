@@ -6,7 +6,7 @@ measurements from [Ingolia et al. (2009)](https://doi.org/10.1126/science.116897
 It uses the same dataset API as human, mouse and dog.
 
 ```sh
-pip install 'orfdata[data]'
+pip install 'orfdata'
 orfdata datasets info ingolia-yeast-rna-ribo
 orfdata datasets download ingolia-yeast-rna-ribo
 ```
@@ -56,7 +56,7 @@ libraries and creates no assay pairs or translation-efficiency ratios. It also
 does not pair these cultures with the separate [CoPY protein study](copy-yeast.md).
 [Issue #11](https://github.com/openvax/orfdata/issues/11) tracks these source gaps.
 
-To rebuild, install `orfdata[data,build-data]` and run
+To rebuild, install `orfdata` and run
 `orfdata datasets build ingolia-yeast-rna-ribo`, or
 `DatasetRegistry().build("ingolia-yeast-rna-ribo")`. All 17 source inputs have
 pinned URLs, sizes and checksums. Verified local inputs can be supplied through

@@ -10,21 +10,26 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{name = "OpenVax"}]
-dependencies = ["datacache>=1.29.3,<2", "pandas>=3,<4", "pyyaml>=6,<7"]
+dependencies = [
+    "datacache>=1.29.3,<2",
+    "pandas>=3,<4",
+    "pyyaml>=6,<7",
+    "pyensembl>=2.27.2",
+    "openpyxl>=3.1,<4",
+    "pyarrow>=14",
+    # Python 3.11 resolves to 1.6; current Biotite 2 requires Python >=3.12.
+    "biotite>=1.6,<3",
+    "pyahocorasick>=2.3,<3",
+]
 
 [project.optional-dependencies]
-pyensembl = ["pyensembl>=2.27.2"]
-build-data = ["openpyxl>=3.1"]
-canine-extraction = ["apsw>=3.54,<4", "pyahocorasick>=2.3,<3"]
-# Viral support needs nothing beyond the base install; the extra stays valid for
-# existing instructions, and the viral *data* is acquired with
-# 'orfdata download viral'.
-viral = []
-data = ["datacache>=1.29.3,<2"]
-columnar = ["pyarrow>=14"]
+# APSW's custom VFS is needed only for explicit vendor-database extraction.
+# Downloaded dataset queries and rebuilds from normalized sources do not use it.
+canine-extraction = ["apsw>=3.54,<4"]
 # gb-io is a development dependency only: tests compare ORFdata's GenBank
 # reader with an independent implementation of the format.
-dev = ["pytest", "ruff", "build", "twine", "openpyxl>=3.1", "pyensembl>=2.27.2", "datacache>=1.29.3,<2", "gb-io>=0.4,<0.5", "apsw>=3.54,<4", "pyahocorasick>=2.3,<3"]
+# Biopython independently checks the Biotite migration's scores and tie order.
+dev = ["pytest", "ruff", "build", "twine", "gb-io>=0.4,<0.5", "apsw>=3.54,<4", "biopython>=1.88,<2"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10"]
 
 [project.scripts]

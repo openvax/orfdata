@@ -722,12 +722,10 @@ class QuantitativeDataset:
         return result
 
     def export_parquet(self, path, **query):
-        """Export query results in bounded batches; requires orfdata[columnar]."""
-        try:
-            import pyarrow as pa
-            import pyarrow.parquet as pq
-        except ImportError as exc:
-            raise ImportError("Install orfdata[columnar] to export Parquet") from exc
+        """Export query results to Parquet in bounded batches."""
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
         schema = pa.schema([(name, pa.string()) for name in
                             ("dataset_id", "version", "reference_key", "measurement_id",
                              "sample_id", "assay_id", "target_kind", "target_namespace",

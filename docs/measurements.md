@@ -23,7 +23,7 @@ Its pooled PSM counts describe spectra, not sample-level protein abundance.
 
 ## Discover, download and query
 
-Install `orfdata[data]` to manage datasets. Creating a registry and listing
+Install `orfdata` to manage datasets. Creating a registry and listing
 releases reads metadata only:
 
 ```python
@@ -252,7 +252,7 @@ composite foreign keys, so human, mouse, dog, yeast and arbitrary other taxa use
 the same schema. [Compact storage and compatibility](storage.md) describes new
 SQLite v4 writes, legacy readers and actual-source size/query benchmarks.
 
-The core API needs neither pandas nor PyArrow. The optional `orfdata[columnar]`
-extra enables `dataset.export_parquet(path)`. Its query columns accompany the
+The normal installation includes pandas and PyArrow. Use
+`dataset.export_parquet(path)` to export query columns alongside the
 full measurement JSON, preserving exact values and provenance even when a
 floating-point analysis column cannot represent an integer exactly.

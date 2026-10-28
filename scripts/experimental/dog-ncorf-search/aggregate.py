@@ -24,7 +24,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fdr import qvalues  # noqa: E402
-from homology import blosum62_sequence  # noqa: E402
+from homology import blosum62_sequence, local_alignment  # noqa: E402
 from standards import STANDARDS  # noqa: E402
 
 with open(sys.argv[1]) as _f:
@@ -291,16 +291,8 @@ if len(P):
 log("filter outcome for peptide-level ncORF peptides: " + json.dumps(P.fail_reason.replace("", "pass").value_counts().to_dict() if len(P) else {}))
 
 # ---------------- ORF-level homology (secondary evidence) ----------------
-from Bio import Align  # noqa: E402
-from Bio.Align import substitution_matrices  # noqa: E402
-
 ok = P[P.passes] if len(P) else P
 orf_ids = sorted({o for x in ok.orf_ids for o in x.split(",")}) if len(ok) else []
-aligner = Align.PairwiseAligner()
-aligner.mode = "local"
-aligner.substitution_matrix = substitution_matrices.load("BLOSUM62")
-aligner.open_gap_score = -11
-aligner.extend_gap_score = -1
 K = 6
 orf_hom = {}
 for sp, path in (("human", cfg["human_pep"]), ("mouse", cfg["mouse_pep"])):
@@ -325,14 +317,16 @@ for sp, path in (("human", cfg["human_pep"]), ("mouse", cfg["mouse_pep"])):
         q = blosum62_sequence(cand.at[o, "sequence"])
         bestaln = None
         for j, _ in hits[o].most_common(25):
-            a = aligner.align(q, alignment_seqs[j])[0]
+            a = local_alignment(q, alignment_seqs[j])
+            if a is None:
+                continue
             if bestaln is None or a.score > bestaln[0]:
                 bestaln = (a.score, j, a)
         if bestaln is None:
             orf_hom[(o, sp)] = dict(score=0.0, hit="", ident=0.0, aln_len=0)
             continue
         sc, j, a = bestaln
-        pairs = [(qs + k, ts + k) for (qs, qe), (ts, te) in zip(*a.aligned) for k in range(qe - qs)]
+        pairs = [(qi, ti) for qi, ti in a.trace if qi >= 0 and ti >= 0]
         ident = sum(1 for qi, ti in pairs if q[qi] == alignment_seqs[j][ti]) / max(len(pairs), 1)
         gene = next((t.split(":", 1)[1] for t in names[j].split() if t.startswith("gene_symbol:")), "")
         orf_hom[(o, sp)] = dict(score=float(sc), hit=f"{names[j].split()[0]}({gene})", ident=round(ident, 3),

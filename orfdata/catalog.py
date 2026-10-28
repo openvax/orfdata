@@ -1040,10 +1040,7 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     root = getattr(registry, "_cache_root", None)
     needs = [_install_hint(c) for c, _ in plan if c.registry is not None and _installed(c) in (None, "damaged")]
     chains = list(dict.fromkeys(c for _, route in plan for c in route))
-    try:
-        missing = [c for c in chains if not chain_downloaded(c, cache_root=root)]
-    except ImportError:  # Without DataCache no chain can have been downloaded.
-        missing = chains
+    missing = [c for c in chains if not chain_downloaded(c, cache_root=root)]
     cli_root = "" if root is None else f" --cache-root {root}"
     if missing:
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
@@ -1052,17 +1049,10 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
                      f"download_chains(species={species!r}{', accept_terms=True' if accept else ''}"
                      f"{'' if root is None else f', cache_root={str(root)!r}'})")
     if needs:
-        try:
-            from .datasets import _datacache
-
-            _datacache()
-            step = ""
-        except ImportError:
-            step = "orfdata[data] installed, then "
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
         chosen = ("" if catalogs is None else " --catalogs " + (
             catalogs if isinstance(catalogs, str) else ",".join(catalogs)))
-        raise ValueError(f"{species} {genome_build} ORFs need {step}" + "; and ".join(needs)
+        raise ValueError(f"{species} {genome_build} ORFs need " + "; and ".join(needs)
                          + f". Or install everything at once with 'orfdata setup --species {species}{chosen}{accept}"
                          f"{cli_root}'")
     # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
@@ -1235,16 +1225,13 @@ def _releases(found):
 def _installed(choice):
     """How a registered release is installed: "downloaded", "built", "damaged" or None. Offline, unhashed."""
     registry, name, version = choice.registry, choice.name, choice.version
-    try:
-        damaged = False
-        if registry.published(name, version):
-            status = registry.inspect(name, version, verify_files=False).status
-            if status == "available":
-                return "downloaded"
-            damaged = status != "missing"
-        status = registry.inspect_build(name, version, verify_files=False).status
-    except ImportError:  # Without DataCache nothing can have been downloaded or built.
-        return None
+    damaged = False
+    if registry.published(name, version):
+        status = registry.inspect(name, version, verify_files=False).status
+        if status == "available":
+            return "downloaded"
+        damaged = status != "missing"
+    status = registry.inspect_build(name, version, verify_files=False).status
     if status == "available":
         return "built"
     return "damaged" if damaged or status != "missing" else None
@@ -1260,12 +1247,6 @@ def _open_registered(choice, expected_sha256):
         how = (f"{verb} it{when} with CatalogRegistry().{verb}({name!r}, {version!r}"
                f"{', force=True' if installed else ''}) or 'orfdata catalogs {verb} {name} --version {version}"
                f"{' --force' if installed else ''}'")
-        try:
-            from .datasets import _datacache
-
-            _datacache()
-        except ImportError:
-            how = "install orfdata[data], then " + how
         state = "damaged" if installed else "not installed"
         raise ValueError(f"The {name} {version} ORF catalogue is {state}; {how}")
     if installed == "built":
@@ -1334,10 +1315,7 @@ def catalog_status(*, registry=None):
         return plans[species, build, catalogs]
 
     def downloaded(chain):
-        try:
-            return chain_downloaded(chain, cache_root=root)
-        except ImportError:  # Without DataCache nothing can be downloaded.
-            return False
+        return chain_downloaded(chain, cache_root=root)
 
     rows = []
     for c in choices:

@@ -30,12 +30,28 @@ modules (`standards.py`, `remotezip.py`) in its own directory.
   macOS arm64 build used here is `sage-v0.14.7-aarch64-apple-darwin.tar.gz` (SHA-256
   `6dc2270f311c6f3405bd7baff7ee1d478422ffc19574504af9c5dc5562fa2ac4`). Its binary reports
   version 0.14.6.
-- **Python 3** with pandas, pyarrow, numpy, biopython, pyensembl and inflate64. The PXD052932
+- **Python 3.11+** with `orfdata` and inflate64. The normal ORFdata installation
+  includes pandas, PyArrow, NumPy, Biotite and PyEnsembl. The PXD052932
   archives compress with Deflate64, which Python's `zipfile` can't decompress, so
-  `fetch_member.py` uses inflate64. Tested with pandas 3.0.6, pyarrow 26.0.0, numpy 2.5.4,
-  biopython 1.84, pyensembl 2.27.2 and inflate64 1.0.4.
+  `fetch_member.py` uses inflate64. Biotite 2 requires Python 3.12 or later;
+  Python 3.11 installs compatible Biotite 1.6. Reference downloads remain explicit.
+  Local BLOSUM62 homology keeps affine gaps (-11 opening, -1 extension), unpenalized
+  local overhangs and the previous alignment tie order. More than 10,000 tied
+  optima raises instead of silently changing identity or aligned length. No
+  positive-scoring alignment is reported as no homology. Biopython is used only
+  as an independent test oracle, not by the search pipeline.
 - About 10 GB of free memory while Sage runs, and at least `MIN_FREE_GB` + 4 GB of free disk
   (see [Resources](#resources)).
+
+The sequence-operation audit retains the source-specific FASTA readers: they
+preserve full headers, source identifiers and input order used for provenance
+and tie breaking. ORF translation also retains its explicit initiation,
+genetic-code, recoding and incomplete-ORF rules; the experimental candidate
+builder keeps its documented ATG-to-stop rules. The A/C/G/T reverse complement
+used for reference-bound edits remains a direct character mapping. These
+operations do not need a new generic sequence abstraction. Only generic local
+protein alignment changes backend; peptide occurrence mapping and evidence
+classification keep their existing semantics.
 
 ### 1. Get the reference files
 

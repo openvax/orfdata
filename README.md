@@ -16,11 +16,18 @@ evidence.
 Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl,build-data]'
+python -m pip install 'orfdata'
 pyensembl install --release 115 --species human
 # For the ncORF evidence presets and "all":
 orfdata setup --species human --catalogs all
 ```
+
+The normal installation includes PyEnsembl, spreadsheet source readers, PyArrow
+exports and Biotite alignment support. Reference and measurement data are still
+downloaded explicitly and checked against their pinned checksums. The
+`canine-extraction` extra adds APSW only for extracting the original vendor
+database through its custom VFS; released dataset queries and rebuilds from
+normalized sources do not need it.
 
 List every bundled, downloadable or buildable resource and what is installed:
 
@@ -103,7 +110,7 @@ immunopeptidomics: peptides eluted from HLA molecules.
 | Dog | none: no public dog Ribo-seq or ncORF MS exists | |
 
 Human's bundled catalogue needs no setup. For the others, `pip install
-"orfdata[data,build-data]"`, then `orfdata setup --species mouse` (or
+"orfdata"`, then `orfdata setup --species mouse` (or
 `zebrafish`, `worm`, `yeast`, or `human --catalogs all`) builds the catalogues
 from their sources' own files ([details](https://openvax.github.io/orfdata/catalogs/)).
 After `orfdata chains download` (add
@@ -176,11 +183,10 @@ Promoting further source records into the curated
 ## Measurement datasets
 
 RNA, ribosome and protein measurements are separate, downloadable datasets with
-the same species-scoped API. Install the `data` extra, then download and query
-one:
+the same species-scoped API. Download and query one explicitly:
 
 ```sh
-pip install 'orfdata[data]'
+pip install 'orfdata'
 orfdata datasets list
 orfdata datasets download ingolia-yeast-rna-ribo
 ```

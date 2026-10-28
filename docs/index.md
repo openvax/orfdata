@@ -12,7 +12,7 @@ is a recorded host of the virus.
 Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata[pyensembl,build-data]'
+python -m pip install 'orfdata'
 pyensembl install --release 115 --species human
 orfdata setup --species human --catalogs all  # For ncORF presets and "all"
 ```

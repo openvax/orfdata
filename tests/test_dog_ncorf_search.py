@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import random
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,68 @@ def test_dog_search_normalizes_non_blosum_residues():
     assert normalize("ACUOJX*") == "ACCKXX*"
     with pytest.raises(ValueError, match="unsupported"):
         normalize("AC-")
+
+
+@pytest.mark.parametrize("query,target", [
+    ("AAAA", "AAAAAAAA"),
+    ("ACDEFGACDEFG", "ACDEFG"),
+    ("ACDEFWWWWGHIK", "ACDEFGHIK"),
+    ("ACDEFAAAAGHIK", "ACDEFAAAAAGHIK"),
+    ("AX*", "AX*"),
+    ("WY", "AA"),
+    ("TRFSATV*TYS*XAEDEPIRPDFQCANIMSGKAARMKAXRKAL",
+     "TRFSATV*TIRYS*XAEDEPXACQANIMAARMKAXRKAL"),
+    ("MARYAGGSNDGHHRXRRIYSSLSSNVFWDAFW*MARAPXAVVAWCVQRELAAQT",
+     "MARYAGGSNDGHHRXRRIYSSLSSNVLFALWAFW*MARAPXAVVAWCVQRELAAQT"),
+])
+def test_biotite_local_alignment_preserves_scores_gaps_and_ties(query, target):
+    from Bio import Align
+    from Bio.Align import substitution_matrices
+
+    previous = Align.PairwiseAligner(mode="local", substitution_matrix=substitution_matrices.load("BLOSUM62"),
+                                     open_gap_score=-11, extend_gap_score=-1)
+    expected = previous.align(query, target)
+    actual = _load("homology").local_alignment(query, target)
+    if not expected:
+        assert actual is None
+        return
+    expected = expected[0]
+    assert actual.score == expected.score
+    assert [(q, t) for q, t in actual.trace if q >= 0 and t >= 0] == [
+        (qs + k, ts + k) for (qs, qe), (ts, te) in zip(*expected.aligned) for k in range(qe - qs)]
+
+
+def test_biotite_alignment_matches_independent_oracle_for_seeded_sequence_pairs():
+    randomizer = random.Random(131)
+    alphabet = "AAAAACDEFGHIKLMNPQRSTVWYX*"
+    for index in range(200):
+        query = "".join(randomizer.choices(alphabet, k=randomizer.randrange(5, 60)))
+        target = list(query if index % 2 else "".join(randomizer.choices(alphabet, k=randomizer.randrange(5, 60))))
+        for _ in range(randomizer.randrange(1, 7)):
+            if not target:
+                break
+            position = randomizer.randrange(len(target))
+            target[position:position + randomizer.randrange(0, 5)] = randomizer.choices(alphabet, k=randomizer.randrange(0, 5))
+        if target:
+            test_biotite_local_alignment_preserves_scores_gaps_and_ties(query, "".join(target))
+
+
+def test_biotite_alignment_does_not_silently_truncate_optimal_ties():
+    align = _load("homology").local_alignment
+    with pytest.raises(ValueError, match="complete tie handling"):
+        align("AAAA", "AAAAAAAA", max_alignments=1)
+    assert align("", "AAAA") is None
+    assert align("AAAA", "") is None
+
+
+def test_biotite_blosum62_matrix_matches_previous_matrix():
+    from Bio.Align import substitution_matrices
+
+    homology = _load("homology")
+    previous = substitution_matrices.load("BLOSUM62")
+    for first in homology.BLOSUM62_ALPHABET:
+        for second in homology.BLOSUM62_ALPHABET:
+            assert homology._BLOSUM62.get_score(first, second) == previous[first, second]
 
 
 def test_dog_search_driver_fails_when_a_run_has_a_failure_marker(tmp_path):

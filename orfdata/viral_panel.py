@@ -1189,12 +1189,8 @@ def viral_genome(
     """
     if not isinstance(reference_set, ViralReferenceFiles):
         raise TypeError("viral_genome needs ViralReferenceFiles")
-    try:
-        from pyensembl import Genome
-    except ImportError as error:
-        raise ImportError(
-            "Opening viral references as a genome needs PyEnsembl: pip install 'orfdata[pyensembl]'"
-        ) from error
+    from pyensembl import Genome
+
     from .datasets import get_data_dir
 
     collection = viral_collection(reference_set.collection)

@@ -77,7 +77,7 @@ existing standalone local-file workflow.
 ## Mouse
 
 ```sh
-pip install "orfdata[data,build-data]"
+pip install "orfdata"
 orfdata setup --species mouse --accept-terms   # Three catalogues and the chains; about 130 MB of sources
 ```
 
@@ -116,8 +116,7 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 (1,950), iORF (1,749), dORF (741) and doORF (174).
 
 - **Sources.** The authors' BED and protein FASTA (MIT, pinned commit), the
-  paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF; about 40 MB. Building
-  needs `orfdata[build-data]` for the spreadsheet.
+  paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF; about 40 MB.
 - **Coding paths.** The BED garbles multi-exon block sizes, so each ORF's
   path comes from its representative transcript and transcript coordinates
   in Ensembl 107, checked against its genomic start, stop, BED span and
@@ -163,8 +162,7 @@ floor, remains available explicitly as `--version 1`.
   51,881 place on Ensembl 115.
 - **Sources.** Supplementary Data 3 (CC BY 4.0) and Ensembl 107's GTF, cDNA
   and ncRNA FASTAs; about 115 MB, of which the 32 MB GTF is the one Chang et
-  al.'s catalogue uses, so `orfdata setup` downloads it once. Building needs
-  `orfdata[build-data]`.
+  al.'s catalogue uses, so `orfdata setup` downloads it once.
 - **Evidence.** Presence in the source's set is aggregate Ribo-seq support:
   `RiboSeq()` selects every ORF, `RiboSeq(min_studies=2)` none.
 - **Length policy.** `catalog.query(min_protein_length=5)` and
@@ -430,7 +428,7 @@ silently dropped.
 
 PyEnsembl's `EnsemblRelease` has no T2T-CHM13 annotation, so orfdata pins
 Ensembl's rapid-release one (2022_07) and installs it on request, checking each
-file's size and SHA-256 (it needs `orfdata[pyensembl]`). The T2T Consortium's
+file's size and SHA-256. The T2T Consortium's
 GRCh38-to-CHM13 chain is public domain (CC0):
 
 ```sh
@@ -481,8 +479,7 @@ orfdata lift --species human --to GRCh37 --output orfs-grch37.json.gz
 error. `--catalog FILE` lifts a local catalogue instead, and `--chain FILE` uses
 your own chain file instead of a downloaded pin. Pass the result back with
 `--nc-orf-sources` for `orfdata proteome`; JSON and TSV exports include
-each record's original and the chain. Downloading chains needs the
-`orfdata[data]` extra, which adds DataCache. In Python:
+each record's original and the chain. In Python:
 
 ```python
 from orfdata import download_chain, lift_catalog, load_catalog, load_chain

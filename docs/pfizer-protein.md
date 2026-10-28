@@ -21,7 +21,7 @@ copies per cell. These are pooled tissue samples; rodent condition labels also
 include sex. Channels and technical runs do not count as independent donors.
 
 ```sh
-pip install 'orfdata[data]'
+pip install 'orfdata'
 orfdata datasets list --species dog
 orfdata datasets download pfizer-atlas-dog-protein
 orfdata datasets query pfizer-atlas-dog-protein --quantity protein_abundance --unit iBAQ --scale linear

@@ -87,10 +87,7 @@ def chains(argv=None, prog=None):
         if args.command == "list":
             output = []
             for chain in pinned_chains(species=args.species):
-                try:
-                    downloaded = chain_downloaded(chain, cache_root=args.cache_root)
-                except ImportError:
-                    downloaded = False
+                downloaded = chain_downloaded(chain, cache_root=args.cache_root)
                 output.append(dict(asdict(chain), downloaded=downloaded))
         elif args.source_build is None:
             if args.source_path:

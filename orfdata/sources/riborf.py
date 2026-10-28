@@ -53,10 +53,7 @@ STOPS = {"TAA", "TAG", "TGA"}
 
 
 def _rows(path, sheet):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as error:
-        raise ImportError("Install orfdata[build-data] to build this catalogue from its spreadsheet") from error
+    from openpyxl import load_workbook
 
     with open(path, "rb") as handle:  # Cached files have no extension for openpyxl to go by.
         workbook = load_workbook(handle, read_only=True)

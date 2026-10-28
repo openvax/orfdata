@@ -41,10 +41,7 @@ def search_references(manifest):
 
 
 def _sheet(path, member, sheet):
-    try:
-        from openpyxl import load_workbook
-    except ImportError as exc:
-        raise ImportError("Install orfdata[build-data] to read healthy-tissue workbooks") from exc
+    from openpyxl import load_workbook
     with zipfile.ZipFile(path) as archive, archive.open(member) as stream:
         book = load_workbook(stream, read_only=True, data_only=True)
         try:
