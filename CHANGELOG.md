@@ -1,3 +1,17 @@
+# 0.41.0
+
+- Include PyEnsembl, spreadsheet readers, Parquet exports and sequence matching
+  in normal installations. Remove the redundant `pyensembl`, `build-data`,
+  `columnar`, `data` and `viral` extras and their obsolete runtime install
+  branches. Reference and measurement downloads remain explicit and pinned.
+- Use Biotite for the experimental dog search's BLOSUM62 local alignments,
+  preserving scores, affine gaps, free local overhangs and optimal-alignment
+  tie order. Refuse incomplete tie enumeration. Biopython remains a development
+  dependency for independent comparisons; evidence states are unchanged.
+- Retain `canine-extraction` only for APSW's vendor-database VFS. Published
+  dataset queries and normalized-source rebuilds work with a normal install.
+  Python 3.11 uses compatible Biotite 1.6; Python 3.12+ supports Biotite 2.
+
 # 0.40.0
 
 - Add bounded, resumable FTPS extraction and lossless normalization of Pfizer
