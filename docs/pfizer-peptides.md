@@ -6,10 +6,10 @@ MassIVE **MSV000099744 / PXD070290**. Its companion
 [`pfizer-atlas-dog-protein`](pfizer-protein.md) retains the published iBAQ/rIBAQ
 summary. They describe the same experiment.
 
-**Release preparation:** the full consumer build and source verification are in
-progress in [PR #133](https://github.com/openvax/orfdata/pull/133). The commands
-below require its published registry entry. Final download and installed sizes
-will be recorded before release.
+Release **2026-10-27.1**, available with ORFdata **0.40.0** or later, downloads
+6.90 GB in 4 compressed parts and installs a 24.71 GB SQLite
+artifact. The full build and native-source acceptance receipts are included in
+[the data release](https://github.com/openvax/orfdata/releases/tag/data-pfizer-dog-peptide-evidence-2026-10-27.1).
 
 ## Coverage and interpretation
 
@@ -120,7 +120,8 @@ local rebuild, whose own output checksum is recorded in its build receipt.
 The builder creates one private database and publishes it only after complete
 integrity checks. With the 32 GiB output cap, an already expanded source requires
 34.4 GB of additional free space; this is a safety reservation, not the measured
-artifact size. Compressed source acquisition also needs space for its expansion.
+artifact size. This release measured 24.71 GB of additional build files at peak.
+Compressed source acquisition also needs space for its expansion.
 Interrupted builds remove their own private output and preserve existing datasets.
 See the [extraction and build guide](https://github.com/openvax/orfdata/blob/main/tools/README-dog-results.md)
 for the selected tables, resource receipts and provenance.

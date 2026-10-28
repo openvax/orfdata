@@ -7,8 +7,10 @@ A completed selected export can be normalized and assembled into a common
 measurement/source-evidence artifact with the packaged importer. All 42 selected
 native tables have completed extraction and lossless normalization; source
 reconciliation results are below.
-Full artifact execution/acceptance and release remain pending; passing a fixture
-is not full acceptance.
+The complete consumer artifact passed full native-source acceptance, including
+common mapping/relation queries and the frozen independent candidate digest.
+See the [consumer guide](../docs/pfizer-peptides.md) and [release receipts](https://github.com/openvax/orfdata/releases/tag/data-pfizer-dog-peptide-evidence-2026-10-27.1)
+for measured sizes, exact hashes and full-scan versus sampled validation scope.
 
 Use a separate extraction environment with `.[canine-extraction]` installed.
 The current audit uses APSW 3.54.1.0 (SQLite 3.54.1) and pyahocorasick 2.3.1.
@@ -140,8 +142,8 @@ The complete gzip is 5,375,174,192 bytes, with SHA-256
 `e185f99edc4717c32e61191a846679565d98e9d8e8f6e50572b2d84d175f298a`;
 full decompression reproduced every original byte in 484 seconds including
 compression, hashing and round-trip verification. That is the complete normalized
-source component, not the assembled consumer artifact. The final installed
-artifact size still requires measurement.
+source component, not the assembled consumer artifact. Its final installed size
+is recorded separately in the consumer guide and release receipts.
 
 The component exceeds GitHub's [2 GiB per-release-file limit](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases).
 Package a split tar.gz for distribution instead of uploading the single gzip:
@@ -165,7 +167,7 @@ and 1,390,586,643 bytes (5,375,175,443 bytes total). Its assembled compressed
 SHA-256 is `db4077a264ab798c338e8dcf0974b5d4ed664a5e66c3bb51e97dd2b89ad99ba8`.
 Full streamed decompression reproduced the normalized component's size and hash
 above, including gzip trailer validation, in 465 seconds for packaging and
-verification. The distribution remains a draft pending consumer acceptance.
+verification. The source parts accompany the verified consumer data release.
 
 `tools.build_dog_dataset` assembles the normalized evidence, checked `lineage.json`,
 complete searched FASTA and original protein summary. It requires the entire pinned
@@ -291,8 +293,9 @@ only its owned new archive; existing archives are never overwritten.
 `registry-entry.json` records the installed checksum/size used by DataCache and
 the separate compressed checksum/size, data-release identity and source access
 terms. The full searched FASTA's UniProt attribution remains explicit. The
-archive, source components, acceptance receipt and registry entry still require
-publication and real-release installation/consumer acceptance before #23 is done.
+archive, source components, acceptance receipt and registry entry accompany the
+release. Closure of #23 additionally requires a real released-wheel managed
+installation and offline consumer acceptance.
 
 For a consumer artifact that needs split distribution, add `--part-mib 1900`
 and supply the release URL prefix ending in `/` as `--url`. The acceptance gate

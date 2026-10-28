@@ -14,7 +14,7 @@ Released datasets, each with its own guide:
 - [Yeast protein and RNA abundance](copy-yeast.md) (CoPY)
 - [Yeast RNA and ribosome occupancy](ingolia-yeast.md) (Ingolia et al.)
 - [Dog MHC ligands and PeptideAtlas peptides](dog-peptides.md) (Kaabinejadian et al.; Kusebauch et al.)
-- [Pfizer dog peptide and protein-group evidence](pfizer-peptides.md) (Oziolor et al.; release preparation)
+- [Pfizer dog peptide and protein-group evidence](pfizer-peptides.md) (Oziolor et al.)
 
 See [released coverage and gaps](coverage.md); the
 [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
