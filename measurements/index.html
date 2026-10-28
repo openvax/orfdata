@@ -959,6 +959,8 @@
       
         
       
+        
+      
     
     
     
@@ -1044,6 +1046,34 @@
     
   
     Human, mouse and dog protein
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pfizer-peptides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pfizer dog peptide and group evidence
   
 
     
@@ -1409,6 +1439,7 @@ ORF in that gene.</p>
 <li><a href="../copy-yeast/">Yeast protein and RNA abundance</a> (CoPY)</li>
 <li><a href="../ingolia-yeast/">Yeast RNA and ribosome occupancy</a> (Ingolia et al.)</li>
 <li><a href="../dog-peptides/">Dog MHC ligands and PeptideAtlas peptides</a> (Kaabinejadian et al.; Kusebauch et al.)</li>
+<li><a href="../pfizer-peptides/">Pfizer dog peptide and protein-group evidence</a> (Oziolor et al.)</li>
 </ul>
 <p>See <a href="../coverage/">released coverage and gaps</a>; the
 <a href="https://github.com/openvax/orfdata/issues/3">data roadmap</a> tracks further
@@ -1532,10 +1563,24 @@ an estimate; an intensity/TPM ratio does not acquire molecule-ratio units.</p>
 records technical replicates, runs, fractions, TMT plex/channel/bridge,
 normalization and calibration. A sample's strain/breed belongs in its attributes;
 it need not be the strain used to assemble its reference genome. <code>TargetMapping</code>
-retains all candidate assignments or an unmapped reason. A protein-group
+retains all candidate assignments, an unmapped reason, or known candidates with
+an explicit <code>unresolved</code> reason when source endpoints are missing. A protein-group
 representative does not become a uniquely measured protein. See
 <a href="../pairing/">pairing and orthology comparisons</a> for explicit experimental
 relationships and derived RNA/protein ratios.</p>
+<p>The public query shapes are shared across sources and species:
+<code>samples()</code>, <code>assays()</code>, <code>measurements()</code>, <code>mappings()</code>, <code>relations()</code> and
+<code>reference_mappings()</code>. Source-specific fields stay in evidence and provenance;
+native-table inspection belongs in the source modules. For example:</p>
+<div class="highlight"><pre><span></span><code><span class="n">assignments</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">mappings</span><span class="p">(</span><span class="n">source_identifier</span><span class="o">=</span><span class="n">peptide_sequence</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">assignment</span> <span class="ow">in</span> <span class="n">assignments</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">assignment</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">assignment</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">assignment</span><span class="o">.</span><span class="n">method</span><span class="p">)</span>
+</code></pre></div>
+<p><code>mappings()</code> also accepts an exact <code>source_namespace</code>, <code>reference</code> or destination
+<code>target</code>. Selecting one destination preserves all candidates in each returned
+mapping. Reported assignments and computed sequence compatibility remain
+separate records with explicit methods and evidence. Mapping status describes
+the assignment's cardinality or completeness, not independent protein detection.</p>
 <h2 id="importing-a-source">Importing a source<a class="headerlink" href="#importing-a-source" title="Permanent link">&para;</a></h2>
 <p>Define a <code>DatasetManifest</code> with exact reference contexts, raw source URLs,
 SHA-256 hashes and byte sizes, citations, file-specific access/redistribution

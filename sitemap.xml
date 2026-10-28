@@ -2,86 +2,90 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://openvax.github.io/orfdata/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/catalogs/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/copy-yeast/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/coverage/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/dog-peptides/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/downloads/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/downstream/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/examples/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/human-tissue/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/ingolia-yeast/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/measurements/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/pairing/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
+    </url>
+    <url>
+         <loc>https://openvax.github.io/orfdata/pfizer-peptides/</loc>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/pfizer-protein/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/pfizer-rna/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/proteome/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/reference/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/search-references/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/source-references/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/species/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/storage/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
     <url>
          <loc>https://openvax.github.io/orfdata/viral/</loc>
-         <lastmod>2026-10-26</lastmod>
+         <lastmod>2026-10-28</lastmod>
     </url>
 </urlset>
