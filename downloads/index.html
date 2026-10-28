@@ -950,6 +950,8 @@
       
         
       
+        
+      
     
     
     
@@ -1188,6 +1190,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dog-data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dog paired-data and Ribo-seq source audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1405,9 +1435,40 @@
 
 <h1 id="discover-and-download-data">Discover and download data<a class="headerlink" href="#discover-and-download-data" title="Permanent link">&para;</a></h1>
 <p>ORFdata has one common entry point for data acquisition:</p>
-<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>download<span class="w"> </span>list
-orfdata<span class="w"> </span>download<span class="w"> </span>status
-orfdata<span class="w"> </span>download<span class="w"> </span>viral<span class="w"> </span>--species<span class="w"> </span>human
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>data<span class="w"> </span>list
+orfdata<span class="w"> </span>data<span class="w"> </span>list<span class="w"> </span>--species<span class="w"> </span>dog
+orfdata<span class="w"> </span>data<span class="w"> </span>info<span class="w"> </span>pfizer-atlas-dog-peptide-evidence
+orfdata<span class="w"> </span>data<span class="w"> </span>fetch<span class="w"> </span>pfizer-atlas-dog-peptide-evidence
+orfdata<span class="w"> </span>data<span class="w"> </span>fetch<span class="w"> </span>peptideatlas-dog-peptides<span class="w"> </span>openprot-mouse
+orfdata<span class="w"> </span>data<span class="w"> </span>path<span class="w"> </span>pfizer-atlas-dog-peptide-evidence
+orfdata<span class="w"> </span>data<span class="w"> </span>status
+</code></pre></div>
+<p><code>data</code>, <code>downloads</code> and <code>download</code> are aliases for the same command group.
+The <code>list/info/fetch/path</code> vocabulary follows other OpenVax download tools.
+<code>fetch</code> accepts one or more explicit resource names and chooses the registered
+acquisition route: download an artifact when available, otherwise build locally
+from checksum-pinned source files. All names and required terms are checked
+before the first acquisition. There is no implicit download-all operation.</p>
+<p><code>info NAME</code> reports the version, source/coverage manifest and distribution
+metadata, including sizes and redistribution terms where declared. <code>path NAME</code>
+prints an installed file or directory for scripts; missing data is an error,
+and never triggers a download. Use <code>--verify</code> on reads to validate local bytes,
+<code>--cache-root DIR</code> to select a cache, and <code>--json</code> for machine output.
+<code>fetch --json</code> returns one result per distinct requested name.</p>
+<p>Use <code>--kind</code> to disambiguate colliding resource names. For one resource,
+<code>--version VERSION</code> selects a historical release and <code>--source-path ASSET=PATH</code>
+provides already downloaded catalogue/dataset sources or genome files. Source
+overrides remain checksum-checked. <code>--force</code> installs a fresh generation.
+Restricted chain downloads require <code>--accept-terms</code> after reviewing <code>info</code>.</p>
+<p>The same operations are available in Python:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_info</span><span class="p">,</span> <span class="n">data_path</span><span class="p">,</span> <span class="n">fetch_data</span>
+
+<span class="n">details</span> <span class="o">=</span> <span class="n">data_info</span><span class="p">(</span><span class="s2">"openprot-mouse"</span><span class="p">)</span>  <span class="c1"># Offline; shows the build route and terms.</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="p">(</span><span class="s2">"openprot-mouse"</span><span class="p">)</span>  <span class="c1"># Explicit source download and processing.</span>
+<span class="n">path</span> <span class="o">=</span> <span class="n">data_path</span><span class="p">(</span><span class="s2">"openprot-mouse"</span><span class="p">)</span>    <span class="c1"># Offline file/directory lookup.</span>
+</code></pre></div>
+<p>The focused forms remain available for additional resource-specific options:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>download<span class="w"> </span>viral<span class="w"> </span>--species<span class="w"> </span>human
 orfdata<span class="w"> </span>download<span class="w"> </span>catalog<span class="w"> </span>NAME
 orfdata<span class="w"> </span>download<span class="w"> </span>dataset<span class="w"> </span>NAME
 orfdata<span class="w"> </span>download<span class="w"> </span>reference<span class="w"> </span>DATASET
@@ -1415,8 +1476,7 @@ orfdata<span class="w"> </span>download<span class="w"> </span>genome<span class
 orfdata<span class="w"> </span>download<span class="w"> </span>chains<span class="w"> </span>--species<span class="w"> </span>human
 </code></pre></div>
 <p>The operation comes first so the same discovery and installation model applies
-to every resource kind. <code>orfdata download viral</code> is therefore the primary
-command. Focused command groups such as <code>orfdata viral coverage</code> and
+to every resource kind. Focused command groups such as <code>orfdata viral coverage</code> and
 <code>orfdata viral summary</code> remain useful for domain-specific inspection.</p>
 <p><code>list</code> shows every bundled, downloadable or locally buildable primary resource
 and its current state, including native protein search references declared by
