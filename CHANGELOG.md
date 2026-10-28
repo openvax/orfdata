@@ -1,3 +1,16 @@
+# 0.42.0
+
+- Add `orfdata data info/fetch/path` for resources named in `data list`;
+  `downloads` and `download` address the same command group. Fetch automatically
+  chooses a published artifact or a build from pinned sources, supports multiple
+  explicit names, and checks all names and restricted terms before acquiring.
+- Add matching `data_info()`, `fetch_data()` and `data_path()` Python functions.
+  Preserve version selection, cache roots, checksums, existing generations and
+  explicit downloads. Bundled catalogues now expose their installed file path.
+- Document verified processed canine paired-study sources and the outstanding
+  dog Ribo-seq/ncORF evidence gap. No new experimental dataset or inferred
+  sample pairing is silently added to the registry.
+
 # 0.41.0
 
 - Include PyEnsembl, spreadsheet readers, Parquet exports and sequence matching

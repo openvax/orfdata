@@ -32,9 +32,17 @@ normalized sources do not need it.
 List every bundled, downloadable or buildable resource and what is installed:
 
 ```sh
-orfdata download list
-orfdata download status
+orfdata data list
+orfdata data status
+orfdata data info pfizer-atlas-dog-peptide-evidence
+orfdata data fetch pfizer-atlas-dog-peptide-evidence
+orfdata data path pfizer-atlas-dog-peptide-evidence
 ```
+
+`data fetch NAME` downloads a published artifact or builds from pinned sources
+when no artifact is distributed. The same command handles optional catalogues
+such as `openprot-mouse` and datasets such as `peptideatlas-dog-peptides`.
+`downloads` and `download` are aliases for `data`; `info` and `path` stay offline.
 
 `orfdata setup --species human` also installs `gdc-viruses`, the default
 200-reference GDC viral screen for human transcriptome analysis;

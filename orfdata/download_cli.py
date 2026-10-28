@@ -1,6 +1,8 @@
 """Discover and acquire ORFdata resources through one command."""
 
 import argparse
+import sys
+from contextlib import redirect_stdout
 
 from .cli_output import print_fields, print_json, print_table
 from .downloads import list_data
@@ -88,6 +90,23 @@ def run(argv=None, prog="orfdata download"):
     status = commands.add_parser("status", help="Show resources already available locally")
     _add_discovery(status, status=True)
 
+    for verb, description in (("info", "Describe a resource's source pins and download/build route"),
+                              ("path", "Print the installed path without downloading"),
+                              ("fetch", "Install named resources, downloading or building as needed")):
+        command = commands.add_parser(verb, help=description)
+        command.add_argument("names", metavar="NAME", nargs="+" if verb == "fetch" else None)
+        command.add_argument("--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain"))
+        command.add_argument("--version", help="Exact resource version; defaults to its registered version")
+        _add_cache(command)
+        _add_json(command)
+        if verb == "fetch":
+            _add_force_timeout(command)
+            command.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
+            command.add_argument("--quiet", action="store_true")
+            command.add_argument("--accept-terms", action="store_true")
+        else:
+            command.add_argument("--verify", action="store_true", help="Hash and validate installed files")
+
     viral = commands.add_parser(
         "viral", help="Download the current human-targeted viral collection and paired FASTAs")
     viral.add_argument("--species", default="human",
@@ -167,6 +186,36 @@ def run(argv=None, prog="orfdata download"):
 
     args = parser.parse_args(argv)
     try:
+        if args.command in ("info", "path", "fetch"):
+            from .data_resources import data_info, data_path, fetch_data
+
+            options = dict(kind=args.kind, version=args.version, cache_root=args.cache_root)
+            if args.command == "info":
+                _show_result(data_info(args.names, verify_files=args.verify, **options), args.json)
+            elif args.command == "path":
+                path = str(data_path(args.names, verify_files=args.verify, **options))
+                print_json(dict(path=path)) if args.json else print(path)
+            else:
+                names = list(dict.fromkeys(args.names))
+                if len(names) > 1 and (args.source_path or args.version):
+                    raise ValueError("--source-path and --version require exactly one resource")
+                # Resolve every name and terms requirement before starting any downloads.
+                for name in names:
+                    info = data_info(name, **options)
+                    if info["restricted"] and not args.accept_terms:
+                        raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
+                paths = _source_paths(args.source_path, "Source overrides")
+                # Source processors may print progress; keep stdout machine-readable.
+                with redirect_stdout(sys.stderr):
+                    output = [fetch_data(name, **options, force=args.force, source_paths=paths,
+                                         timeout=args.timeout, show_progress=not args.quiet and not args.json,
+                                         accept_terms=args.accept_terms) for name in names]
+                if args.json:
+                    print_json(output)
+                else:
+                    for result in output:
+                        print_fields(result)
+            return
         if args.command in ("list", "status"):
             rows = list_data(
                 kind=args.kind, species=args.species, contexts=args.context,

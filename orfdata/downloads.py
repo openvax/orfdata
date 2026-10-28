@@ -1,8 +1,9 @@
 """Discover ORFdata resources and their local installation state."""
 
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from os import PathLike
+from shlex import join
 from typing import Optional
 
 from .reference import canonical_species, species_taxon
@@ -46,6 +47,17 @@ def default_collections(species: str | int) -> tuple[str, ...]:
     from .viral_registry import viral_collections
 
     return tuple(collection.name for collection in viral_collections(species=species))
+
+
+def _fetch_command(row):
+    if row.acquire is None:
+        return None
+    args = ["orfdata", "data", "fetch", row.name, "--kind", row.kind]
+    if row.version is not None:
+        args.extend(["--version", row.version])
+    if row.restricted:
+        args.append("--accept-terms")
+    return join(args)
 
 
 def collection_state(
@@ -121,13 +133,15 @@ def _viral(cache_root, verify_files):
             path=str(_bundle_path(cache_root, species, collection)),
             origin="download" if status == "available" else None,
             acquire="download",
-            command=f"orfdata download viral --collection {collection.name}",
+            command=None,
         ))
     return tuple(rows)
 
 
 def _catalogs(cache_root, verify_files):
-    from .catalog import catalog_status
+    from importlib.resources import files
+
+    from .catalog import _BUNDLED, catalog_status
     from .catalogs import CatalogRegistry
 
     registry = CatalogRegistry(cache_root=cache_root)
@@ -139,9 +153,6 @@ def _catalogs(cache_root, verify_files):
         else:
             inspection = registry.inspect(item.name, item.version, verify_files=verify_files)
             status = inspection.status
-        command = None
-        if item.acquire is not None:
-            command = f"orfdata download catalog {item.name} --version {item.version}"
         rows.append(DataStatus(
             kind="catalog",
             name=item.name,
@@ -151,10 +162,11 @@ def _catalogs(cache_root, verify_files):
             taxon_ids=(species_taxon(item.species),),
             contexts=(),
             status=status,
-            path=str(inspection.path) if inspection is not None else None,
+            path=(str(inspection.path) if inspection is not None else
+                  str(files("orfdata").joinpath(f"data/{_BUNDLED[item.species, item.genome_build]}/catalog.json.gz"))),
             origin=item.installed if status == "available" else None,
             acquire=item.acquire,
-            command=command,
+            command=None,
         ))
     return tuple(rows)
 
@@ -184,7 +196,7 @@ def _datasets(cache_root, verify_files):
             path=str(inspection.path),
             origin=("download" if published else "build") if inspection.status == "available" else None,
             acquire=acquire,
-            command=f"orfdata download dataset {name} --version {version}",
+            command=None,
         ))
     return tuple(rows)
 
@@ -211,8 +223,7 @@ def _references(cache_root, verify_files):
                 path=str(inspection.path),
                 origin="download" if inspection.status == "available" else None,
                 acquire="download",
-                command=(f"orfdata download reference {manifest.dataset_id} --version {manifest.version} "
-                         f"--reference {spec.reference.key} --asset {spec.source.asset_id}"),
+                command=None,
             ))
     return tuple(rows)
 
@@ -236,7 +247,7 @@ def _genomes(cache_root, verify_files):
             path=str(inspection.path),
             origin="download" if inspection.status == "available" else None,
             acquire="download",
-            command=f"orfdata download genome {genome.name}",
+            command=None,
         ))
     return tuple(rows)
 
@@ -248,7 +259,6 @@ def _chains(cache_root, verify_files):
     for chain in pinned_chains():
         inspection = _chain_registry(chain, cache_root).inspect(
             chain.name, "1", verify_files=verify_files)
-        accept = " --accept-terms" if chain.restricted else ""
         rows.append(DataStatus(
             kind="chain",
             name=chain.name,
@@ -261,8 +271,7 @@ def _chains(cache_root, verify_files):
             path=str(inspection.path),
             origin="download" if inspection.status == "available" else None,
             acquire="download",
-            command=(f"orfdata download chains {chain.source_build} {chain.target_build} "
-                     f"--species {chain.species}{accept}"),
+            command=None,
             restricted=chain.restricted,
         ))
     return tuple(rows)
@@ -327,4 +336,5 @@ def list_data(
                 if predicate(context in row.contexts for context in selected_contexts)]
     if installed is not None:
         rows = [row for row in rows if row.installed is installed]
-    return tuple(sorted(rows, key=lambda row: (row.kind, row.name, row.version or "")))
+    return tuple(replace(row, command=_fetch_command(row)) for row in
+                 sorted(rows, key=lambda row: (row.kind, row.name, row.version or "")))

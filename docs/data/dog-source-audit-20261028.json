@@ -1,0 +1,469 @@
+{
+  "breed_normalizations": {
+    "Basset": "Bassett",
+    "Vizsla": "Viszla",
+    "n.d.": "not disclosed"
+  },
+  "date": "2026-10-28",
+  "excluded_proteomics_case": "7",
+  "excluded_rna_case": "127",
+  "exclusion_basis": "article says original case 7 block unavailable; case 127 is the unmatched GEO case",
+  "limitations": [
+    "Separate LCM preparations from the same archived FFPE cases; not identical aliquots",
+    "Clinical metadata-derived ID crosswalk, not an explicit deposited crosswalk",
+    "Protein groups and contaminants/decoys retained; LFQ is not copies per cell",
+    "Deposited protein-search FASTA is not among the 31 PRIDE files",
+    "No ncORF search or translation claim"
+  ],
+  "metadata_sources": [
+    {
+      "bytes": 9644,
+      "final_url": "https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD023023",
+      "name": "PXD023023.json",
+      "sha256": "966899b74c15fdefc03e9482b05a6a34fa786b24f23137a5d594c8348a00a5be",
+      "state": "fetched",
+      "url": "https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD023023"
+    },
+    {
+      "bytes": 36769,
+      "final_url": "https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD023023/files?pageSize=100",
+      "name": "PXD023023-files.json",
+      "sha256": "dba588b5552419ff01a08837c280c82e4d6a0bb08c6fc6a513922cf2749f49f7",
+      "state": "fetched",
+      "url": "https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD023023/files?pageSize=100"
+    },
+    {
+      "bytes": 4022,
+      "final_url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE135nnn/GSE135183/soft/GSE135183_family.soft.gz",
+      "name": "GSE135183_family.soft.gz",
+      "sha256": "a199bafcc51fefdd3a4231710d0ad6b157a3f9d6c25ae42c26b0bac0c44667c2",
+      "state": "fetched",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE135nnn/GSE135183/soft/GSE135183_family.soft.gz"
+    },
+    {
+      "bytes": 156278,
+      "final_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8042244/fullTextXML",
+      "name": "PMC8042244.xml",
+      "sha256": "c933efb05e263a4d6106c93b2e5344f9ecec08e7875633ec38eef069dfad171a",
+      "state": "fetched",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8042244/fullTextXML"
+    },
+    {
+      "bytes": 841,
+      "final_url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&retmode=json&retmax=100&term=txid9615%5BOrganism%3Aexp%5D+AND+%28%22ribosome+profiling%22+OR+%22ribosome+footprinting%22+OR+%22Ribo-seq%22+OR+%22ribosome+protected%22%29",
+      "name": "dog-riboseq-sra.json",
+      "sha256": "bcb534dc4ccadf3af135825d5e835c4548f7d015486218f70bd3742ed812f761",
+      "state": "fetched",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&retmode=json&retmax=100&term=txid9615%5BOrganism%3Aexp%5D+AND+%28%22ribosome+profiling%22+OR+%22ribosome+footprinting%22+OR+%22Ribo-seq%22+OR+%22ribosome+protected%22%29"
+    },
+    {
+      "bytes": 110,
+      "final_url": "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&query=tax_tree%289615%29+AND+%28library_strategy%3D%22RIBO-SEQ%22+OR+study_title%3D%22%2Aribosom%2A%22%29&fields=run_accession%2Cstudy_accession%2Csample_accession%2Cscientific_name%2Clibrary_strategy%2Clibrary_selection%2Cstudy_title&format=tsv&limit=1000",
+      "name": "dog-riboseq-ena.tsv",
+      "sha256": "720ac9b2bd27f10fba0eb57ad469b417b1aa307b69428d1235b39ecca97abeaa",
+      "state": "fetched",
+      "url": "https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&query=tax_tree%289615%29+AND+%28library_strategy%3D%22RIBO-SEQ%22+OR+study_title%3D%22%2Aribosom%2A%22%29&fields=run_accession%2Cstudy_accession%2Csample_accession%2Cscientific_name%2Clibrary_strategy%2Clibrary_selection%2Cstudy_title&format=tsv&limit=1000"
+    },
+    {
+      "bytes": 6153227,
+      "sha256": "241399d904169fe3e0b3a631cd229b325ebd6cf25fe0230f2a02faa3cc72b626",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8042244/supplementaryFiles"
+    }
+  ],
+  "pairs": [
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "1",
+      "proteomics_run": "20191101_002_S206437_1_N_Control",
+      "rna_case": "135",
+      "rna_gsm": "GSM3993121",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "1",
+      "proteomics_run": "20191101_034_S206436_1_C_Diseased",
+      "rna_case": "135",
+      "rna_gsm": "GSM3993122",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "2",
+      "proteomics_run": "20191101_014_S206439_2_N_Control",
+      "rna_case": "134",
+      "rna_gsm": "GSM3993119",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "2",
+      "proteomics_run": "20191101_030_S206438_2_C_Diseased",
+      "rna_case": "134",
+      "rna_gsm": "GSM3993120",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "3",
+      "proteomics_run": "20191101_009_S206441_3_N_Control",
+      "rna_case": "121",
+      "rna_gsm": "GSM3993103",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "3",
+      "proteomics_run": "20191101_013_S206440_3_C_Diseased",
+      "rna_case": "121",
+      "rna_gsm": "GSM3993104",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "4",
+      "proteomics_run": "20191101_015_S206443_4_N_Control",
+      "rna_case": "123",
+      "rna_gsm": "GSM3993105",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "4",
+      "proteomics_run": "20191101_029_S206442_4_C_Diseased",
+      "rna_case": "123",
+      "rna_gsm": "GSM3993106",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "5",
+      "proteomics_run": "20191101_018_S206445_5_N_Control",
+      "rna_case": "126",
+      "rna_gsm": "GSM3993107",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "5",
+      "proteomics_run": "20191101_028_S206444_5_C_Diseased",
+      "rna_case": "126",
+      "rna_gsm": "GSM3993108",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "6",
+      "proteomics_run": "20191101_023_S206447_6_N_Control",
+      "rna_case": "109",
+      "rna_gsm": "GSM3993101",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "6",
+      "proteomics_run": "20191101_010_S206446_6_C_Diseased",
+      "rna_case": "109",
+      "rna_gsm": "GSM3993102",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "8",
+      "proteomics_run": "20191101_005_S206449_8_N_Control",
+      "rna_case": "128",
+      "rna_gsm": "GSM3993111",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "8",
+      "proteomics_run": "20191101_007_S206448_8_C_Diseased",
+      "rna_case": "128",
+      "rna_gsm": "GSM3993112",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "9",
+      "proteomics_run": "20191101_017_S206451_9_N_Control",
+      "rna_case": "131",
+      "rna_gsm": "GSM3993115",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "9",
+      "proteomics_run": "20191101_027_S206450_9_C_Diseased",
+      "rna_case": "131",
+      "rna_gsm": "GSM3993116",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "10",
+      "proteomics_run": "20191101_032_S206453_10_N_Control",
+      "rna_case": "130",
+      "rna_gsm": "GSM3993113",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "10",
+      "proteomics_run": "20191101_024_S206452_10_C_Diseased",
+      "rna_case": "130",
+      "rna_gsm": "GSM3993114",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "11",
+      "proteomics_run": "20191101_003_S206455_11_N_Control",
+      "rna_case": "132",
+      "rna_gsm": "GSM3993117",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "11",
+      "proteomics_run": "20191101_033_S206454_11_C_Diseased",
+      "rna_case": "132",
+      "rna_gsm": "GSM3993118",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "12",
+      "proteomics_run": "20191101_008_S206457_12_N_Control",
+      "rna_case": "138",
+      "rna_gsm": "GSM3993127",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "12",
+      "proteomics_run": "20191101_025_S206456_12_C_Diseased",
+      "rna_case": "138",
+      "rna_gsm": "GSM3993128",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "13",
+      "proteomics_run": "20191101_019_S206459_13_N_Control",
+      "rna_case": "139",
+      "rna_gsm": "GSM3993129",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "13",
+      "proteomics_run": "20191101_012_S206458_13_C_Diseased",
+      "rna_case": "139",
+      "rna_gsm": "GSM3993130",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "14",
+      "proteomics_run": "20191101_004_S206461_14_N_Control",
+      "rna_case": "136",
+      "rna_gsm": "GSM3993123",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "14",
+      "proteomics_run": "20191101_022_S206460_14_C_Diseased",
+      "rna_case": "136",
+      "rna_gsm": "GSM3993124",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "normal",
+      "proteomics_case": "15",
+      "proteomics_run": "20191101_035_S206463_15_N_Control",
+      "rna_case": "137",
+      "rna_gsm": "GSM3993125",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    },
+    {
+      "basis": "unique breed/age/histology match between article Table 1 and GEO within author-declared shared cohort",
+      "condition": "cancer-associated",
+      "proteomics_case": "15",
+      "proteomics_run": "20191101_020_S206462_15_C_Diseased",
+      "rna_case": "137",
+      "rna_gsm": "GSM3993126",
+      "status": "metadata_derived_crosswalk; not author-provided ID mapping"
+    }
+  ],
+  "peptide_rows": 5413,
+  "protein_group_rows": 1583,
+  "protein_samples": 28,
+  "riboseq_search": {
+    "date": "2026-10-28",
+    "ena_result_lines": [
+      "run_accession\tstudy_accession\tsample_accession\tscientific_name\tlibrary_strategy\tlibrary_selection\tstudy_title"
+    ],
+    "geo": {
+      "count": "0",
+      "idlist": [],
+      "querytranslation": "\"Canis\"[Organism] AND (\"ribosome profiling\"[All Fields] OR \"ribosome footprinting\"[All Fields] OR \"Ribo-seq\"[All Fields] OR \"ribosome protected\"[All Fields])",
+      "retmax": "0",
+      "retstart": "0",
+      "translationset": [
+        {
+          "from": "canis[Organism]",
+          "to": "\"Canis\"[Organism]"
+        }
+      ],
+      "translationstack": [
+        {
+          "count": "24101",
+          "explode": "Y",
+          "field": "Organism",
+          "term": "\"Canis\"[Organism]"
+        },
+        {
+          "count": "4575",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"ribosome profiling\"[All Fields]"
+        },
+        {
+          "count": "391",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"ribosome footprinting\"[All Fields]"
+        },
+        "OR",
+        {
+          "count": "4913",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"Ribo-seq\"[All Fields]"
+        },
+        "OR",
+        {
+          "count": "4621",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"ribosome protected\"[All Fields]"
+        },
+        "OR",
+        "GROUP",
+        "AND"
+      ]
+    },
+    "geo_request": {
+      "bytes": 884,
+      "sha256": "fa971a4d52cf5d2aefa0824be85336b9d89f2400b7df0d45a36a3c9f949ee431",
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gds&retmode=json&retmax=100&term=canis%5BOrganism%5D%20AND%20%28%22ribosome%20profiling%22%20OR%20%22ribosome%20footprinting%22%20OR%20%22Ribo-seq%22%20OR%20%22ribosome%20protected%22%29"
+    },
+    "interpretation": "No matching records found by these bounded queries; no universal absence claim. Known pancreas study lacks a verified sequencing accession.",
+    "sra": {
+      "count": "0",
+      "idlist": [],
+      "querytranslation": "txid9615[Organism:exp] AND (\"ribosome profiling\"[All Fields] OR \"ribosome footprinting\"[All Fields] OR \"Ribo-seq\"[All Fields] OR \"ribosome protected\"[All Fields])",
+      "retmax": "0",
+      "retstart": "0",
+      "translationset": [],
+      "translationstack": [
+        {
+          "count": "74758",
+          "explode": "Y",
+          "field": "Organism",
+          "term": "txid9615[Organism:exp]"
+        },
+        {
+          "count": "16039",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"ribosome profiling\"[All Fields]"
+        },
+        {
+          "count": "1252",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"ribosome footprinting\"[All Fields]"
+        },
+        "OR",
+        {
+          "count": "14816",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"Ribo-seq\"[All Fields]"
+        },
+        "OR",
+        {
+          "count": "10039",
+          "explode": "N",
+          "field": "All Fields",
+          "term": "\"ribosome protected\"[All Fields]"
+        },
+        "OR",
+        "GROUP",
+        "AND"
+      ]
+    }
+  },
+  "rna_genes": 18582,
+  "rna_samples": 30,
+  "shared_cases": 14,
+  "sources": [
+    {
+      "bytes": 2784425,
+      "name": "proteinGroups.txt",
+      "sha256": "67360353510fdb77cc970f671ca9ec17b07686f2dc5771bb6804d182d5c17423",
+      "state": "fetched",
+      "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2021/03/PXD023023/proteinGroups.txt"
+    },
+    {
+      "bytes": 4492377,
+      "name": "peptides.txt",
+      "sha256": "8964af6adbe8ac6fce6897f5eeaaf5da3d7c72fe2eb78ee2653901876a2f0172",
+      "state": "fetched",
+      "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2021/03/PXD023023/peptides.txt"
+    },
+    {
+      "bytes": 605819,
+      "name": "GSE135183_raw_counts.csv.gz",
+      "sha256": "de3fc2a57fa05682996b328929c94fc51eadd126ec2299870b8f46b24be46a67",
+      "state": "fetched",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE135nnn/GSE135183/suppl/GSE135183_raw_counts.csv.gz"
+    }
+  ],
+  "state": "processed_sources_verified; importer_not_implemented",
+  "studies": {
+    "article": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8042244/",
+    "protein": "PXD023023",
+    "rna": "GSE135183"
+  }
+}
