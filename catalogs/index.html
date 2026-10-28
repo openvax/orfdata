@@ -1699,7 +1699,7 @@ evidence filters, and JSON/TSV/FASTA exports. They cannot override the selected
 release with a local <code>--catalog</code> argument. Use <code>orfdata --catalog FILE</code> for the
 existing standalone local-file workflow.</p>
 <h2 id="mouse">Mouse<a class="headerlink" href="#mouse" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"orfdata[data,build-data]"</span>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"orfdata"</span>
 orfdata<span class="w"> </span>setup<span class="w"> </span>--species<span class="w"> </span>mouse<span class="w"> </span>--accept-terms<span class="w">   </span><span class="c1"># Three catalogues and the chains; about 130 MB of sources</span>
 </code></pre></div>
 <p><code>orfdata setup</code> builds each registered mouse catalogue from its pinned sources
@@ -1758,8 +1758,7 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 (1,950), iORF (1,749), dORF (741) and doORF (174).</p>
 <ul>
 <li><strong>Sources.</strong> The authors' BED and protein FASTA (MIT, pinned commit), the
-  paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF; about 40 MB. Building
-  needs <code>orfdata[build-data]</code> for the spreadsheet.</li>
+  paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF; about 40 MB.</li>
 <li><strong>Coding paths.</strong> The BED garbles multi-exon block sizes, so each ORF's
   path comes from its representative transcript and transcript coordinates
   in Ensembl 107, checked against its genomic start, stop, BED span and
@@ -1804,8 +1803,7 @@ floor, remains available explicitly as <code>--version 1</code>.</p>
   51,881 place on Ensembl 115.</li>
 <li><strong>Sources.</strong> Supplementary Data 3 (CC BY 4.0) and Ensembl 107's GTF, cDNA
   and ncRNA FASTAs; about 115 MB, of which the 32 MB GTF is the one Chang et
-  al.'s catalogue uses, so <code>orfdata setup</code> downloads it once. Building needs
-  <code>orfdata[build-data]</code>.</li>
+  al.'s catalogue uses, so <code>orfdata setup</code> downloads it once.</li>
 <li><strong>Evidence.</strong> Presence in the source's set is aggregate Ribo-seq support:
   <code>RiboSeq()</code> selects every ORF, <code>RiboSeq(min_studies=2)</code> none.</li>
 <li><strong>Length policy.</strong> <code>catalog.query(min_protein_length=5)</code> and
@@ -2113,7 +2111,7 @@ silently dropped.</p>
 <h3 id="t2t-chm13">T2T-CHM13<a class="headerlink" href="#t2t-chm13" title="Permanent link">&para;</a></h3>
 <p>PyEnsembl's <code>EnsemblRelease</code> has no T2T-CHM13 annotation, so orfdata pins
 Ensembl's rapid-release one (2022_07) and installs it on request, checking each
-file's size and SHA-256 (it needs <code>orfdata[pyensembl]</code>). The T2T Consortium's
+file's size and SHA-256. The T2T Consortium's
 GRCh38-to-CHM13 chain is public domain (CC0):</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>genomes<span class="w"> </span>install<span class="w"> </span>t2t-chm13<span class="w">          </span><span class="c1"># 143 MB of Ensembl files, plus about 1.1 GB of PyEnsembl index</span>
 orfdata<span class="w"> </span>chains<span class="w"> </span>download<span class="w"> </span>GRCh38<span class="w"> </span>T2T-CHM13v2.0
@@ -2152,8 +2150,7 @@ chains cover or with your own chain file:</p>
 error. <code>--catalog FILE</code> lifts a local catalogue instead, and <code>--chain FILE</code> uses
 your own chain file instead of a downloaded pin. Pass the result back with
 <code>--nc-orf-sources</code> for <code>orfdata proteome</code>; JSON and TSV exports include
-each record's original and the chain. Downloading chains needs the
-<code>orfdata[data]</code> extra, which adds DataCache. In Python:</p>
+each record's original and the chain. In Python:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">download_chain</span><span class="p">,</span> <span class="n">lift_catalog</span><span class="p">,</span> <span class="n">load_catalog</span><span class="p">,</span> <span class="n">load_chain</span>
 
 <span class="n">download_chain</span><span class="p">(</span><span class="s2">"GRCh38"</span><span class="p">,</span> <span class="s2">"GRCh37"</span><span class="p">)</span>  <span class="c1"># Once; checksum-verified. download_chains() gets them all.</span>

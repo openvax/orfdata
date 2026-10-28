@@ -1446,7 +1446,7 @@ ORF in that gene.</p>
 imports. The bundled human ORF evidence catalogue remains available offline.
 Its pooled PSM counts describe spectra, not sample-level protein abundance.</p>
 <h2 id="discover-download-and-query">Discover, download and query<a class="headerlink" href="#discover-download-and-query" title="Permanent link">&para;</a></h2>
-<p>Install <code>orfdata[data]</code> to manage datasets. Creating a registry and listing
+<p>Install <code>orfdata</code> to manage datasets. Creating a registry and listing
 releases reads metadata only:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatasetRegistry</span><span class="p">,</span> <span class="n">ScopedTarget</span>
 
@@ -1649,8 +1649,8 @@ identities include manifest/reference and content hashes.</p>
 composite foreign keys, so human, mouse, dog, yeast and arbitrary other taxa use
 the same schema. <a href="../storage/">Compact storage and compatibility</a> describes new
 SQLite v4 writes, legacy readers and actual-source size/query benchmarks.</p>
-<p>The core API needs neither pandas nor PyArrow. The optional <code>orfdata[columnar]</code>
-extra enables <code>dataset.export_parquet(path)</code>. Its query columns accompany the
+<p>The normal installation includes pandas and PyArrow. Use
+<code>dataset.export_parquet(path)</code> to export query columns alongside the
 full measurement JSON, preserving exact values and provenance even when a
 floating-point analysis column cannot represent an integer exactly.</p>
 

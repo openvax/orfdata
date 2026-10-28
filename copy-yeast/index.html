@@ -1365,7 +1365,7 @@ through the same dataset API as human, mouse and dog. It includes calibrated
 protein and peptide quantities, label-free estimates and RNA from budding yeast
 grown in glucose-limited chemostats. The strain is EUROSCARF Y11335 BY4742,
 with the reported genotype retained on each sample.</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'orfdata[data]'</span>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'orfdata'</span>
 orfdata<span class="w"> </span>datasets<span class="w"> </span>info<span class="w"> </span>copy-yeast-abundance
 orfdata<span class="w"> </span>datasets<span class="w"> </span>download<span class="w"> </span>copy-yeast-abundance
 orfdata<span class="w"> </span>datasets<span class="w"> </span>pairs<span class="w"> </span>copy-yeast-abundance<span class="w"> </span>--basis<span class="w"> </span>condition_aggregate
@@ -1472,7 +1472,7 @@ cardinality and confidence. No expression or protein-existence evidence transfer
 between species, and different cultures/calibrations remain different experiments.
 See <a href="../pairing/">pairing and orthology</a>.</p>
 <p>To rebuild the release from the pinned public workbook, standards, metadata and
-four RNA files, install <code>orfdata[data,build-data]</code> and run
+four RNA files, install <code>orfdata</code> and run
 <code>orfdata datasets build copy-yeast-abundance</code>. Python uses
 <code>DatasetRegistry().build("copy-yeast-abundance")</code>. Local verified inputs can be
 supplied with repeated <code>--source-path ASSET=PATH</code> or <code>source_paths={...}</code>.

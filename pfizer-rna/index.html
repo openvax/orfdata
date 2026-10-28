@@ -1308,7 +1308,7 @@ SQLite database without loading the whole matrix into memory.</p>
 nf-core/Salmon pipeline. They are neither TPM nor calibrated RNA copies per cell.
 Zeros stay measured zeros: 4,218,202 dog observations and 18,019,555 mouse
 observations. Every value retains the native numeric text and source line.</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'orfdata[data]'</span>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'orfdata'</span>
 orfdata<span class="w"> </span>datasets<span class="w"> </span>download<span class="w"> </span>pfizer-atlas-dog-rna<span class="w"> </span>--version<span class="w"> </span><span class="m">2026</span>-10-12.1
 orfdata<span class="w"> </span>datasets<span class="w"> </span>query<span class="w"> </span>pfizer-atlas-dog-rna<span class="w"> </span>--sample<span class="w"> </span><span class="m">1</span><span class="w"> </span>--unit<span class="w"> </span>counts
 </code></pre></div>
@@ -1354,7 +1354,7 @@ remains explicit. Rat, pig and macaque rows are present in the original matrix
 and remain candidates for separate releases through the same importer.</p>
 <p><code>registry.build(name, source_paths=...)</code> or <code>orfdata datasets build NAME</code> rebuilds
 from pinned counts, GEO metadata, factual Table S5 sample records and the
-historical GTF; workbook rebuilding needs <code>orfdata[build-data]</code>. Python returns
+historical GTF. Python returns
 a <code>QuantitativeDataset</code> ready to query. Reopen it offline with
 <code>registry.open_build(name)</code> or inspect it with <code>registry.inspect_build(name)</code>.
 The CLI selects that source build explicitly with <code>orfdata datasets query NAME
