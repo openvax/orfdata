@@ -800,6 +800,11 @@ class TranscriptORF:
         return self._source_gene[1] if self.record is None else self.model.gene_name
 
     def to_dict(self):
+        """Export this placement, including the carrier RNA's contig and strand.
+
+        ``resolved_transcript`` always contains both locus fields; an unmapped
+        source RNA keeps its unknown values as ``None``.
+        """
         transcript = self.transcript
         genome = transcript.genome
         species = getattr(genome, "species", None)
@@ -825,6 +830,8 @@ class TranscriptORF:
             },
             resolved_transcript=dict(
                 id=transcript.id,
+                contig=transcript.contig,
+                strand=transcript.strand,
                 version=getattr(transcript, "version", None),
                 release=getattr(genome, "release", None),
                 genome_build=self.context.genome_build,
@@ -862,6 +869,8 @@ class TranscriptORF:
         The complete RNA sequence, reference context, coordinates and protein
         fingerprints must agree. Annotation and source-defined placements keep
         ``record=None``; no catalogue observation is fabricated during replay.
+        Legacy v1 exports without carrier locus fields remain readable; when
+        present, those fields must match the explicitly supplied RNA.
         """
         from .catalog import ORFEvidence, _record
 
@@ -934,7 +943,13 @@ class TranscriptORF:
             elif ((restored.start_complete and origin != 0)
                   or (restored.stop_complete and origin != len(coding) - 3 * (len(restored.protein_sequence) + 1))):
                 raise ValueError("Transcript ORF snapshot coding phase contradicts its annotated boundaries")
-        if json.dumps(restored.to_dict(), sort_keys=True) != json.dumps(value, sort_keys=True):
+        exported = restored.to_dict()
+        # Before 0.42.1, v1 snapshots did not include the carrier's locus.
+        # Only absent fields are optional: an explicit null still must agree.
+        for field in ("contig", "strand"):
+            if field not in resolved:
+                exported["resolved_transcript"].pop(field)
+        if json.dumps(exported, sort_keys=True) != json.dumps(value, sort_keys=True):
             raise ValueError("Transcript ORF snapshot does not round-trip to its source definition")
         return restored
 

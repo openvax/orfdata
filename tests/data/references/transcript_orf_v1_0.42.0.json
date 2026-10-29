@@ -1,0 +1,71 @@
+{
+  "schema": "orfdata.transcript_orf.v1",
+  "kind": "extra_orf",
+  "orf_id": "legacy",
+  "equivalent_ids": [],
+  "source_transcript_id": "snapshot-fixture",
+  "on_source_transcript": true,
+  "model": null,
+  "record": null,
+  "evidence": {
+    "ribosome_studies": [],
+    "peptides": []
+  },
+  "reference_context": {
+    "taxon_id": 9606,
+    "species": "human",
+    "genome_build": "GRCh38",
+    "annotation_name": "synthetic",
+    "annotation_version": "1",
+    "assembly_accession": null,
+    "strain": null,
+    "strain_taxon_id": null,
+    "sequence_sha256": null,
+    "taxonomy_version": "ncbi-2026-10-12",
+    "source_sha256": null
+  },
+  "reference_key": "ref:2cd293bb014bdfd762ba5d24f5a4f7c9eb6ee91b1ba0cbd2585b60b667491fec",
+  "sequence_fingerprints": {
+    "transcript_sha256": "c5fc760ddfbe43faada474e3d39342b30a0542dd9e4583b655cec28b53867498",
+    "coding_sha256": "c5fc760ddfbe43faada474e3d39342b30a0542dd9e4583b655cec28b53867498",
+    "protein_sha256": "b2690faaaa9351ecb43b60145db79e38151129eaa426b9529f1705b2dd5168bc"
+  },
+  "resolved_transcript": {
+    "id": "snapshot-fixture",
+    "version": null,
+    "release": null,
+    "genome_build": "GRCh38",
+    "species": null,
+    "biotype": null,
+    "topology": "linear"
+  },
+  "source": "synthetic",
+  "source_gene_id": null,
+  "source_gene_name": null,
+  "orf_type": null,
+  "coding_sequence": "ATGAAATAA",
+  "protein_sequence": "MK",
+  "translation_table": 1,
+  "coding_phase": 0,
+  "coding_origin": 0,
+  "start": 0,
+  "end": 9,
+  "segments": [
+    [
+      0,
+      9
+    ]
+  ],
+  "cdna_interval": [
+    0,
+    9
+  ],
+  "coding_blocks": [],
+  "start_complete": true,
+  "stop_complete": true,
+  "start_codon": "ATG",
+  "stop_codon": "TAA",
+  "decoded_stop_codons": [],
+  "subcodon_introns": [],
+  "coordinates": "0-based-half-open-cdna;1-based-inclusive-genome"
+}

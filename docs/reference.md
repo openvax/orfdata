@@ -84,6 +84,18 @@ explicitly supplied RNA, checking its identity, reference, coding path and
 sequence fingerprints. It preserves source evidence and optional catalogue
 provenance.
 
+Every `to_dict()` export includes `resolved_transcript.contig` and
+`resolved_transcript.strand`, including annotated CDSs and `TranscriptORF.at`
+placements whose `model` and `record` are `null`. These fields describe the RNA
+actually carrying the ORF, preserving its contig spelling and `+`/`-` strand;
+they do not substitute the original source model's locus. Unmapped `SourceRNA`
+values remain `null`, so unknown orientation is explicit. Saved results can be
+interpreted without reloading a reference sequence.
+
+These are additive fields in `orfdata.transcript_orf.v1` as of 0.42.1. The reader
+accepts older v1 exports where they are absent. If a field is present, including
+an explicit `null`, it must match the supplied carrier RNA during replay.
+
 ```python
 from orfdata import extra_orfs
 
