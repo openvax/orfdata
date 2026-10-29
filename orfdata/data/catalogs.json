@@ -190,10 +190,16 @@
           "schema": "orfdata.catalog-manifest.v1"
         },
         "distribution": {
-          "access_terms": "Built locally from the pinned source files: the authors' ncORF files (MIT), the paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF. Cite Chang et al., eLife 2025 (doi:10.7554/eLife.109128).",
+          "access_terms": "Redistributed from the pinned authors' ncORF files (MIT), Table S3 (CC BY 4.0) and Ensembl 107 GTF (unrestricted). Includes source provenance and one unresolved row. Cite Chang et al., eLife 2025 (doi:10.7554/eLife.109128).",
           "redistributable": true
         },
-        "assets": {}
+        "assets": {
+          "catalog.json.gz": {
+            "url": "https://github.com/openvax/orfdata/releases/download/data-ncorf-mammals-mouse-1/catalog.json.gz",
+            "sha256": "255f1d089b1eaa88a0bed53006c05ec78350626659461086fa11164947f151f1",
+            "size": 2219659
+          }
+        }
       }
     },
     "priority": 20

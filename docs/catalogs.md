@@ -17,7 +17,8 @@ original PyEnsembl transcript through `ReferenceORF`. To use several catalogues
 for one species together, see
 [merging catalogues](proteome.md#merging-catalogues).
 
-The packaged registry builds each catalogue from its sources' own files:
+The packaged registry supplies catalogues as pinned downloads or builds from
+their sources' own files:
 
 | Species | Catalogues | ORFs |
 | --- | --- | ---: |
@@ -78,11 +79,11 @@ existing standalone local-file workflow.
 
 ```sh
 pip install "orfdata"
-orfdata setup --species mouse --accept-terms   # Three catalogues and the chains; about 130 MB of sources
+orfdata setup --species mouse --accept-terms   # Three catalogues and the chains
 ```
 
-`orfdata setup` builds each registered mouse catalogue from its pinned sources
-and downloads the chain files (`--accept-terms` for UCSC's non-commercial
+`orfdata setup` downloads the published Chang et al. catalogue, builds the other
+registered mouse catalogues from their pinned sources, and downloads the chain files (`--accept-terms` for UCSC's non-commercial
 GRCm38/GRCm39 chains). It prints what it did with each: built, downloaded,
 already installed, repaired or skipped. If one fails, the rest are still
 installed and it exits with status 1, naming each failure; in Python,
@@ -115,6 +116,14 @@ least two callers find it in a library, in at least two libraries, starting at
 ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 (1,950), iORF (1,749), dORF (741) and doORF (174).
 
+- **Download.** `orfdata data fetch ncorf-mammals-mouse` installs the
+  checksum-pinned 2.22 MB catalogue. `orfdata data path ncorf-mammals-mouse`
+  returns its local path for offline use. Python callers use
+  `fetch_data("ncorf-mammals-mouse")` and `CatalogRegistry().open("ncorf-mammals-mouse")`.
+  The [data release](https://github.com/openvax/orfdata/releases/tag/data-ncorf-mammals-mouse-1)
+  includes the manifest, source access terms and acceptance receipt.
+  `orfdata catalogs build ncorf-mammals-mouse` still explicitly rebuilds from
+  the original inputs; `catalogs query ncorf-mammals-mouse --built` selects that result.
 - **Sources.** The authors' BED and protein FASTA (MIT, pinned commit), the
   paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF; about 40 MB.
 - **Coding paths.** The BED garbles multi-exon block sizes, so each ORF's
