@@ -941,6 +941,8 @@
       
         
       
+        
+      
     
     
     
@@ -1082,6 +1084,34 @@
     
   
     Dog and mouse RNA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mammary-stroma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Paired canine mammary stroma
   
 
     
@@ -1425,7 +1455,7 @@ Multiple values remain multiple values; the API does not average them or create
 a Cartesian product of technical replicates. Each row retains its assay pairing
 and target relationship. A three-assay experiment can declare several pairwise
 comparisons; sharing an RNA measurement does not create independent replicates.</p>
-<p>Pairing bases are <code>same_material</code>, <code>adjacent_donor_tissue</code>,
+<p>Pairing bases are <code>same_material</code>, <code>same_specimen</code>, <code>adjacent_donor_tissue</code>,
 <code>biological_replicate</code>, <code>independent_cultures</code>, <code>tissue_aggregate</code> and
 <code>condition_aggregate</code>. The caller must choose the allowed bases. By default,
 only explicitly concurrent assays are returned; opt into <code>longitudinal</code> or
@@ -1505,6 +1535,10 @@ identities nor transfers abundance or protein-existence evidence. ORF comparison
 additionally require their own sequence, frame and positional evidence and
 <code>allow_orfs=True</code>; a gene ortholog cannot establish an orthologous ncORF.
 Human, mouse, dog, yeast and arbitrary other taxa use this same API.</p>
+<p><code>same_specimen</code> records separate preparations from the same original specimen.
+It does not assert identical aliquots (<code>same_material</code>) or adjacent sections.
+The <a href="../mammary-stroma/">canine mammary-stroma dataset</a> uses this distinction and
+retains missing mates explicitly.</p>
 
 
 

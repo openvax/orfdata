@@ -952,6 +952,8 @@
       
         
       
+        
+      
     
     
     
@@ -1093,6 +1095,34 @@
     
   
     Dog and mouse RNA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mammary-stroma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Paired canine mammary stroma
   
 
     
@@ -1461,9 +1491,9 @@ data coverage, independently of what the API can represent.</p>
 </tr>
 <tr>
 <td>Dog</td>
-<td>Pfizer: 434 libraries, 30,941 gene targets, counts</td>
-<td>Pfizer: 9,929 groups, 38 channels, iBAQ/rIBAQ</td>
-<td>Unresolved library-to-pool correspondence</td>
+<td>Pfizer: 434 libraries, 30,941 gene targets, counts; mammary stroma: 18,582 genes × 30 samples</td>
+<td>Pfizer: 9,929 groups, 38 channels, iBAQ/rIBAQ; mammary stroma: 1,583 native groups × 28 samples</td>
+<td>Mammary stroma: 14 shared specimens, 28 paired compartments and two RNA samples without protein mates; Pfizer crosswalk remains unresolved</td>
 </tr>
 <tr>
 <td>Budding yeast</td>
@@ -1474,8 +1504,9 @@ data coverage, independently of what the API can represent.</p>
 </tbody>
 </table>
 <h2 id="peptides-and-mhc-ligands">Peptides and MHC ligands<a class="headerlink" href="#peptides-and-mhc-ligands" title="Permanent link">&para;</a></h2>
-<p>Dog has three peptide-level datasets:</p>
+<p>Dog has four peptide-level datasets:</p>
 <ul>
+<li><strong>Mammary stroma</strong> (<a href="../mammary-stroma/">guide</a>): 5,413 native peptide rows, intensity and LFQ columns, reported group memberships and original control/decoy flags across 28 samples.</li>
 <li><strong>Pfizer native peptide evidence</strong> (<a href="../pfizer-peptides/">guide</a>): 953,980 target
   peptide sequences, native peptide/PSM reporter quantities and reported protein-group
   memberships. The 96 runs retain 38 tissue pools, four bridge channels and two
@@ -1489,7 +1520,7 @@ data coverage, independently of what the API can represent.</p>
   dog tumours, each searched against four protein databases, and from three
   human HCT 116 lines that each express one DLA-88 allele.</li>
 </ul>
-<p>All three searched known proteins only. Other species have no peptide-level
+<p>All four searched known proteins only. Other species have no peptide-level
 measurement dataset yet; the human and mouse ORF catalogues carry pooled
 peptide evidence for their noncanonical ORFs.</p>
 <h2 id="reading-the-table">Reading the table<a class="headerlink" href="#reading-the-table" title="Permanent link">&para;</a></h2>
