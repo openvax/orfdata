@@ -1,0 +1,39 @@
+{
+  "genes": [
+    "ENSG00000282640"
+  ],
+  "origin": "Exact unmodified Ensembl 115 transcript/protein records containing native internal stop symbols; no sequence repair",
+  "full_reference": {
+    "schema": "openvax.reference",
+    "schema_version": 1,
+    "taxon_id": 9606,
+    "assembly_accession": "GCA_000001405.29",
+    "annotation_source": "Ensembl",
+    "annotation_release": "115",
+    "source_version": "Ensembl-115",
+    "identifier_namespaces": {
+      "gene": "Ensembl gene",
+      "protein": "Ensembl protein",
+      "transcript": "Ensembl transcript"
+    },
+    "content_provenance": {
+      "gtf": "02df5a2a8c7a41e513209e0780c56cf197941b6b35ef8bab3e9a6317eecd17ef",
+      "ncrna": "7825db09257902df82172928537c1da16cfe79edcca56425556f74f1507437a0",
+      "protein": "7991ab37d09986eefdb5c77032b15370ab0e99918b78f235f3230c0302851c96",
+      "rna": "93af088ed22a46daa9645fc6292fb120c1e4ffe791d24abbcbd35062666c03f1"
+    },
+    "reference_id": "openvax:reference:v1:sha256:ba6f6186a301a3ef9217ea0199ec3b851f9da2eb43558b7ba7e0d6fcd9cd85e9"
+  },
+  "fixture_sha256": {
+    "gtf": "e6f7a0964a7a247a13db51bbc98f304eed155fb03728d244b02a9cb1de6adf7e",
+    "protein": "2f435b2640ee4569d2491013fa97cfde8198080dfa270551cece5a26f1bba98e",
+    "rna": "5d3f5c5604f0d227c1568aafb60ae4853706f324f2c25ef655af5d36291a20f5",
+    "ncrna": "f1b651238a58fe290baec6c5e32f3bdb1943dd2bd582f02569231f7a757c7837"
+  },
+  "transcripts": [
+    "ENST00000633030.1"
+  ],
+  "proteins": [
+    "ENSP00000488168.1"
+  ]
+}

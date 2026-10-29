@@ -108,6 +108,51 @@ The annotated layer retains both asset hashes and identifier namespaces. Its
 are genomic envelopes, so occurrence CDS offsets/blocks and transcript biotypes
 remain unknown. No annotation indexing or downloads occur.
 
+## Pinned Ensembl proteins
+
+`Proteome.from_ensembl()` provides the same reference inventory and provenance
+contract for Ensembl's full GTF, peptide, cDNA and ncRNA files. It reads local
+plain or gzip files without building annotation indexes:
+
+```python
+context = ReferenceContext(9606, "human", "GRCh38", "Ensembl", "115",
+                           assembly_accession="GCA_000001405.29")
+reference = Proteome.from_ensembl(
+    "Homo_sapiens.GRCh38.pep.all.fa.gz",
+    "Homo_sapiens.GRCh38.115.chr_patch_hapl_scaff.gtf.gz",
+    "Homo_sapiens.GRCh38.cdna.all.fa.gz",
+    "Homo_sapiens.GRCh38.ncrna.fa.gz",
+    reference=context,
+    expected_sha256={"protein": protein_sha256, "gtf": gtf_sha256,
+                     "rna": rna_sha256, "ncrna": ncrna_sha256},
+)
+reference.save("human.proteome.json.gz")
+```
+
+Obtain and pin the matching files from the same [Ensembl release](https://www.ensembl.org/info/data/ftp/index.html).
+The reader hashes the exact source bytes it parses. The GTF assembly accession,
+versioned transcript/protein accessions and versioned gene identities must agree
+with the supplied reference and sequence headers. Every peptide FASTA accession
+must have a GTF assignment and its exact RNA record; a missing coding sequence or
+conflicting duplicate fails the build. Identical protein sequences at different
+accessions and genes remain separate entries. Identical duplicate FASTA records
+are counted in the layer manifest.
+Protein residues, including Ensembl's internal stop symbols and ambiguous
+residues, are preserved exactly. Downstream prediction must assess whether it
+supports those sequences; the reference reader does not repair them.
+
+The annotated layer carries all four source hashes, identifier namespaces and
+the complete protein inventory checksum. Its `transcript_spans` preserves each
+original genomic transcript envelope in occurrence order. These are not spliced
+CDS coordinates: occurrence `start`, `end` and `coding_blocks` remain unknown.
+Noncoding annotation transcripts without RNA bytes are listed explicitly in
+`untranslated_transcripts_without_rna`; they never become protein entries.
+
+The same method accepts other species' matching Ensembl files and an explicit
+`ReferenceContext`. Reference membership does not establish RNA abundance,
+empirical translation, protein abundance or tissue restriction. The reader
+does not compare translations or transfer evidence between assemblies.
+
 ## Add ncORFs with selected evidence
 
 Pass `nc_orf_sources="ms"`, `"ribosome"`, `"all"` or an evidence rule to `proteome()`,

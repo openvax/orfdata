@@ -1474,6 +1474,21 @@ class Proteome:
                               reference=reference, expected_sha256=expected_sha256)
 
     @classmethod
+    def from_ensembl(cls, protein_fasta, gtf, rna_fasta, ncrna_fasta, *, reference, expected_sha256):
+        """Join pinned Ensembl GTF, cDNA/ncRNA and peptide files without indexing.
+
+        Keep the complete peptide inventory and every source transcript locus.
+        ``expected_sha256`` requires ``protein``, ``gtf``, ``rna`` and ``ncrna``.
+        RNA/header identities are checked; RNA abundance and empirical translation
+        are not inferred. Original transcript spans remain in the layer manifest;
+        spliced CDS coordinates are not reconstructed by this accession join.
+        """
+        from .ensembl import ensembl_proteome
+
+        return ensembl_proteome(cls, protein_fasta, gtf, rna_fasta, ncrna_fasta,
+                               reference=reference, expected_sha256=expected_sha256)
+
+    @classmethod
     def build(cls, genome, *, reference_cds=True, isoforms="all", nc_orf_sources=(),
               viral=(), derived=(), min_protein_length=None, context=None, cache=False, cache_root=None):
         """Reference CDS proteins with optional sources, optionally cached.

@@ -13,6 +13,7 @@ recursive-include tests/data/ingolia *.gz *.txt
 recursive-include tests/data/openprot *.zip *.gz
 recursive-include tests/data/ncorf_mammals *.bed *.fa *.xlsx *.gz *.md
 recursive-include tests/data/riborf *.xlsx *.gz *.md
+recursive-include tests/data/ensembl *.gz *.json *.md
 recursive-include tests/data/kaabinejadian *.zip *.tsv
 recursive-include tests/data/peptideatlas *.zip *.gz
 recursive-include tests/data/mammary_stroma *.gz *.txt *.xml
