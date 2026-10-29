@@ -86,6 +86,35 @@ def test_source_rna_locus_is_explicit_even_when_unknown(strand):
     assert TranscriptORF.from_dict(snapshot, rna).to_dict() == orf.to_dict()
 
 
+@pytest.mark.parametrize("field,wrong", (("strand", "-"), ("strand", None),
+                                         ("contig", "other"), ("contig", None)))
+@pytest.mark.parametrize("legacy_other_field", (False, True))
+def test_conflicting_carrier_locus_is_rejected_before_reading_sequence(field, wrong, legacy_other_field):
+    rna = source_rna(contig="2", strand="+", exons=((100, 108),))
+    snapshot = TranscriptORF.at(rna, 0, orf_id="source-rna", source="synthetic").to_dict()
+    snapshot["resolved_transcript"][field] = wrong
+    if legacy_other_field:
+        del snapshot["resolved_transcript"]["contig" if field == "strand" else "strand"]
+
+    class UnavailableSequence:
+        def __getattr__(self, name):
+            if name == "sequence":
+                pytest.fail("A contradictory carrier locus must fail before reading RNA bases")
+            return getattr(rna, name)
+
+    with pytest.raises(ValueError, match=f"carrier {field} mismatch"):
+        TranscriptORF.from_dict(snapshot, UnavailableSequence())
+
+
+@pytest.mark.parametrize("field,wrong", (("strand", "+"), ("contig", "2")))
+def test_snapshot_cannot_assign_a_locus_to_an_unmapped_source_rna(field, wrong):
+    rna = source_rna()
+    snapshot = TranscriptORF.at(rna, 0, orf_id="unmapped", source="synthetic").to_dict()
+    snapshot["resolved_transcript"][field] = wrong
+    with pytest.raises(ValueError, match=f"carrier {field} mismatch"):
+        TranscriptORF.from_dict(snapshot, rna)
+
+
 def test_published_042_snapshot_remains_readable():
     # Frozen using the published 0.42.0 wheel, before carrier locus fields existed.
     path = Path(__file__).parent / "data/references/transcript_orf_v1_0.42.0.json"
@@ -94,3 +123,6 @@ def test_published_042_snapshot_remains_readable():
     assert restored.protein_sequence == "MK" and restored.record is None
     assert restored.to_dict()["resolved_transcript"]["strand"] is None
     assert restored.to_dict()["resolved_transcript"]["contig"] is None
+    snapshot["sequence_fingerprints"]["protein_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="does not round-trip"):
+        TranscriptORF.from_dict(snapshot, source_rna())

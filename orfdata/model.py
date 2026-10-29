@@ -889,6 +889,9 @@ class TranscriptORF:
         if (transcript.id != resolved["id"]
                 or getattr(transcript, "version", None) != resolved["version"]):
             raise ValueError("Transcript ORF snapshot transcript identity mismatch")
+        for field in ("contig", "strand"):
+            if field in resolved and resolved[field] != getattr(transcript, field):
+                raise ValueError(f"Transcript ORF snapshot carrier {field} mismatch")
         if value.get("record") is not None:
             restored = cls(_record(value["record"]), transcript, context=context, any_transcript=True)
         else:

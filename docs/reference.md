@@ -88,8 +88,8 @@ Every `to_dict()` export includes `resolved_transcript.contig` and
 `resolved_transcript.strand`, including annotated CDSs and `TranscriptORF.at`
 placements whose `model` and `record` are `null`. These fields describe the RNA
 actually carrying the ORF, preserving its contig spelling and `+`/`-` strand;
-they do not substitute the original source model's locus. Unmapped `SourceRNA`
-values remain `null`, so unknown orientation is explicit. Saved results can be
+they do not substitute the original source model's locus. Unknown `SourceRNA`
+locus values remain `null`, so unknown orientation is explicit. Saved results can be
 interpreted without reloading a reference sequence.
 
 These are additive fields in `orfdata.transcript_orf.v1` as of 0.42.1. The reader
