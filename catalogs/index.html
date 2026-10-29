@@ -1650,7 +1650,8 @@ returns the existing <code>ORFCatalog</code>; query results still bind to the
 original PyEnsembl transcript through <code>ReferenceORF</code>. To use several catalogues
 for one species together, see
 <a href="../proteome/#merging-catalogues">merging catalogues</a>.</p>
-<p>The packaged registry builds each catalogue from its sources' own files:</p>
+<p>The packaged registry supplies catalogues as pinned downloads or builds from
+their sources' own files:</p>
 <table>
 <thead>
 <tr>
@@ -1730,10 +1731,10 @@ release with a local <code>--catalog</code> argument. Use <code>orfdata --catalo
 existing standalone local-file workflow.</p>
 <h2 id="mouse">Mouse<a class="headerlink" href="#mouse" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"orfdata"</span>
-orfdata<span class="w"> </span>setup<span class="w"> </span>--species<span class="w"> </span>mouse<span class="w"> </span>--accept-terms<span class="w">   </span><span class="c1"># Three catalogues and the chains; about 130 MB of sources</span>
+orfdata<span class="w"> </span>setup<span class="w"> </span>--species<span class="w"> </span>mouse<span class="w"> </span>--accept-terms<span class="w">   </span><span class="c1"># Three catalogues and the chains</span>
 </code></pre></div>
-<p><code>orfdata setup</code> builds each registered mouse catalogue from its pinned sources
-and downloads the chain files (<code>--accept-terms</code> for UCSC's non-commercial
+<p><code>orfdata setup</code> downloads the published Chang et al. catalogue, builds the other
+registered mouse catalogues from their pinned sources, and downloads the chain files (<code>--accept-terms</code> for UCSC's non-commercial
 GRCm38/GRCm39 chains). It prints what it did with each: built, downloaded,
 already installed, repaired or skipped. If one fails, the rest are still
 installed and it exits with status 1, naming each failure; in Python,
@@ -1787,6 +1788,14 @@ least two callers find it in a library, in at least two libraries, starting at
 ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 (1,950), iORF (1,749), dORF (741) and doORF (174).</p>
 <ul>
+<li><strong>Download.</strong> <code>orfdata data fetch ncorf-mammals-mouse</code> installs the
+  checksum-pinned 2.22 MB catalogue. <code>orfdata data path ncorf-mammals-mouse</code>
+  returns its local path for offline use. Python callers use
+  <code>fetch_data("ncorf-mammals-mouse")</code> and <code>CatalogRegistry().open("ncorf-mammals-mouse")</code>.
+  The <a href="https://github.com/openvax/orfdata/releases/tag/data-ncorf-mammals-mouse-1">data release</a>
+  includes the manifest, source access terms and acceptance receipt.
+  <code>orfdata catalogs build ncorf-mammals-mouse</code> still explicitly rebuilds from
+  the original inputs; <code>catalogs query ncorf-mammals-mouse --built</code> selects that result.</li>
 <li><strong>Sources.</strong> The authors' BED and protein FASTA (MIT, pinned commit), the
   paper's Table S3 (CC BY 4.0) and Ensembl 107's GTF; about 40 MB.</li>
 <li><strong>Coding paths.</strong> The BED garbles multi-exon block sizes, so each ORF's
