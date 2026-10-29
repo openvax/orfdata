@@ -1,3 +1,12 @@
+# 0.42.1
+
+- Include the actual carrier RNA's contig and strand in every `TranscriptORF`
+  export, including annotated CDSs and `at` placements without a catalogue
+  model. Preserve unknown source-RNA locus values as `null` (#135).
+- Keep older v1 snapshots readable while requiring any supplied carrier locus
+  fields to match during replay. Preserve the original source model separately
+  when its ORF is placed on another transcript.
+
 # 0.42.0
 
 - Add `orfdata data info/fetch/path` for resources named in `data list`;
