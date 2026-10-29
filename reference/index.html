@@ -1682,6 +1682,16 @@ protein sequences and known stop declarations are checked against the interval.<
 explicitly supplied RNA, checking its identity, reference, coding path and
 sequence fingerprints. It preserves source evidence and optional catalogue
 provenance.</p>
+<p>Every <code>to_dict()</code> export includes <code>resolved_transcript.contig</code> and
+<code>resolved_transcript.strand</code>, including annotated CDSs and <code>TranscriptORF.at</code>
+placements whose <code>model</code> and <code>record</code> are <code>null</code>. These fields describe the RNA
+actually carrying the ORF, preserving its contig spelling and <code>+</code>/<code>-</code> strand;
+they do not substitute the original source model's locus. Unknown <code>SourceRNA</code>
+locus values remain <code>null</code>, so unknown orientation is explicit. Saved results can be
+interpreted without reloading a reference sequence.</p>
+<p>These are additive fields in <code>orfdata.transcript_orf.v1</code> as of 0.42.1. The reader
+accepts older v1 exports where they are absent. If a field is present, including
+an explicit <code>null</code>, it must match the supplied carrier RNA during replay.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">extra_orfs</span>
 
 <span class="n">orfs</span> <span class="o">=</span> <span class="n">extra_orfs</span><span class="p">(</span><span class="n">genome</span><span class="p">)</span>  <span class="c1"># Every catalogue ORF, on every transcript carrying it.</span>
