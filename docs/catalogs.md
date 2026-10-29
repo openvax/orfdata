@@ -82,29 +82,19 @@ pip install "orfdata"
 orfdata setup --species mouse --accept-terms   # Three catalogues and the chains
 ```
 
-`orfdata setup` downloads the published Chang et al. catalogue, builds the other
-registered mouse catalogues from their pinned sources, and downloads the chain files (`--accept-terms` for UCSC's non-commercial
+`orfdata setup` downloads the published Chang et al. and RibORF catalogues, builds OpenProt from their pinned sources, and downloads the chain files (`--accept-terms` for UCSC's non-commercial
 GRCm38/GRCm39 chains). It prints what it did with each: built, downloaded,
 already installed, repaired or skipped. If one fails, the rest are still
 installed and it exits with status 1, naming each failure; in Python,
 `install_species` raises `InstallError`, whose `result` holds the same
-report. `load_catalog(species="mouse")` then merges the three,
-in this order, into 60,707 ORFs: 2,976 MS-supported OpenProt ORFs, 16,484
-Ribo-seq ORFs of Chang et al. and 51,991 of Yang et al. 10,448 of Chang's and
-Yang's ORFs are the same ORF (28 of them also in OpenProt), and 296 OpenProt
-ORFs have Ribo-seq support from one or both, 242 from Yang et al. alone. On
-Ensembl 115 (GRCm39):
-
-| Evidence | Selected | Added to the proteome |
-| --- | ---: | ---: |
-| `"ms"` (default) | 2,976 | 2,854 |
-| `RiboSeq()` | 58,109 | 57,992 |
-| `RiboSeq() & MS()` | 378 | 371 |
-| `None` | 60,707 | 60,475 |
-
-Loading the merged catalogue takes about 10 seconds and 1.1 GB of memory, once
-per process, whichever evidence is selected. On GRCm38 and NCBIM37 all three
-are [lifted automatically](#every-assembly-of-a-species).
+report. `load_catalog(species="mouse")` merges OpenProt, Chang et al. and
+Yang et al. in that order. Current inputs contain 2,976 MS-supported OpenProt
+ORFs, 16,484 Chang et al. ORFs and 51,831 validated Yang et al. target placements.
+Overlapping source models merge by coding path and protein while keeping their
+original evidence. Merged counts and target-genome placement counts depend on
+these versions; inspect the resulting catalogue and proteome layer receipts.
+On GRCm38 and NCBIM37 the catalogues are
+[lifted automatically](#every-assembly-of-a-species).
 
 ### Mouse Ribo-seq ORFs (Chang et al.)
 
@@ -143,48 +133,55 @@ ATG, CTG, GTG or TTG. Its types are uORF (8,294), lncORF (3,576), uoORF
 
 ### Mouse RibORF ORFs (Yang et al.)
 
-`riborf-mouse` holds the mouse ORFs that RibORF 2.0 identified as translated in
-the Ribo-seq data of Yang et al. (Nat Commun 2024,
-[doi:10.1038/s41467-024-46240-9](https://doi.org/10.1038/s41467-024-46240-9);
-224 samples in 26 GEO series): uORF (26,052), lncORF (8,149), iORF (6,155),
-dORF (5,174), uoORF (3,157), N-terminal truncation (2,059), doORF (670) and
-extension (575). The source's ouORF, odORF and
-noncoding types take Chang et al.'s names, so `--biotype uoORF` finds both
-sources' overlapping uORFs. Annotated CDSs, likely sequencing errors,
-and stop-codon readthrough are not imported. Release 2 retains 11,902 valid
-ORFs shorter than five residues. Release 1, which applied a five-residue import
-floor, remains available explicitly as `--version 1`.
+`riborf-mouse` generation 3 reconstructs the ORFs reported by Yang et al.
+(Nat Commun 2024,
+[doi:10.1038/s41467-024-46240-9](https://doi.org/10.1038/s41467-024-46240-9))
+against their original GENCODE M25/GRCm38 reference before any placement on
+Ensembl 107/GRCm39. The original table supplies RNA intervals and BED blocks,
+not protein sequences. All 54,128 non-skipped rows reconstruct against the
+pinned native RNA, with the full transcript version, length, start/stop and
+every BED block checked.
 
-- **Placement.** The source gives mm10 / GENCODE vM25 transcript coordinates
-  (a 1-based start, an exclusive end) and no proteins. Rather than lift mm10
-  through a restricted chain, each ORF is placed on the same transcript in
-  Ensembl 107 GRCm39 and translated from that transcript's sequence. Of the
-  54,128 non-skipped source rows, 51,991 resolve. Listed as unresolved, with the
-  reason: 1,642 rows on transcripts that changed length since GENCODE
-  vM25, 399 on transcripts that Ensembl 107 has in its GTF but in
-  neither FASTA, 95 on transcripts that are gone, and one whose
-  transcript's sequence changed at the same length. Placing through the
-  transcript gives the same coding path as lifting the source's mm10 blocks
-  through UCSC's chain for all but 2, in a duplicated region of chr14 where
-  the chain is ambiguous. Of the 12,222 source rows below five residues,
-  11,902 resolve and 320 carry one of the same explicit failures. In all,
-  51,881 place on Ensembl 115.
-- **Sources.** Supplementary Data 3 (CC BY 4.0) and Ensembl 107's GTF, cDNA
-  and ncRNA FASTAs; about 115 MB, of which the 32 MB GTF is the one Chang et
-  al.'s catalogue uses, so `orfdata setup` downloads it once.
-- **Evidence.** Presence in the source's set is aggregate Ribo-seq support:
-  `RiboSeq()` selects every ORF, `RiboSeq(min_studies=2)` none.
-- **Length policy.** `catalog.query(min_protein_length=5)` and
-  `Proteome.build(..., min_protein_length=5)` reproduce a downstream
-  five-residue selection without removing short models from the catalogue.
-  Proteome layers record the threshold and number filtered.
-- **IDs.** `riborf_` and the GRCm39 start and stop, such as
-  `riborf_4_120262600_120262620_+`, never a name Chang et al. use. Two paths
-  with the same start and stop add their transcript (`…@ENSMUST00000226495.2`),
-  and a lookup by the shared name lists both, as for OpenProt's split
-  accessions. An ORF in both sets merges by its coding path and protein,
-  whatever its name, and keeps Chang et al.'s ID; its `riborf_` ID still
-  finds it.
+- **Download.** `orfdata data fetch riborf-mouse` installs the verified 24.9 MB
+  catalogue. Rebuilding remains available from its pinned source files.
+- **Target placement.** Exact full RNA, coding nucleotide sequence and translated
+  protein must agree. All target cDNA and ncRNA sequences are searched, including
+  duplicate loci and renamed transcripts. A surviving stable ID, unchanged RNA
+  length or matching start/stop alone cannot transfer evidence.
+- **Coverage.** 51,831 rows have a unique validated target placement, representing
+  41,882 distinct proteins. Another 118 have multiple exact target placements;
+  2,179 lack an unchanged complete target RNA. These 2,297 retain their native
+  models, sequences, evidence and explicit mapping reasons in
+  `catalog.metadata["unresolved"]`. `extra_orfs(...).unlifted` also reports them
+  under the requested evidence rule. A changed RNA with an unchanged small CDS
+  remains unresolved under this conservative placement method.
+- **Provenance.** Placed records retain their native `ORFRecord` in
+  `record.lifted_from` and a typed `record.reference_mapping`. The latter records
+  source/target references, original row ID, RNA interval, native CDS, source
+  pins, coordinate checks and exact sequence comparisons. Evidence summaries
+  continue to name the native reference and protein. No chain file is invented;
+  `record.liftover` is `None`. JSON and TSV exports retain both objects.
+  Managed manifests keep target annotation contexts in `references` and native
+  evidence contexts in `source_references`.
+- **Sources.** Supplementary Data 3 (CC BY 4.0), native GENCODE M25 GTF/RNA and
+  Ensembl 107 GTF/cDNA/ncRNA: about 198 MB in total. The 32 MB target GTF is also
+  used by Chang et al., so species setup acquires it once.
+- **Evidence and length.** The 224 samples in 26 GEO series provide aggregate
+  RibORF presence, not per-ORF named studies. `RiboSeq()` selects the target
+  records; `MS()` and `RiboSeq(min_studies=2)` select none. The catalogue retains
+  11,858 target ORFs shorter than five residues. Consumers choose length limits
+  when querying or building proteomes.
+- **IDs and earlier generations.** IDs are `riborf_` followed by the original
+  source row ID, including its native transcript version and RNA interval.
+  They do not relabel a current coordinate as an original observation.
+  Generations 1/2 reconstructed proteins directly from the target annotation;
+  new builds of those unvalidated generations fail before downloads and direct
+  callers to generation 3. Archived files remain historical data, with their
+  saved provenance; they are not retroactively sequence-validated.
+
+The source's ouORF, odORF and noncoding categories use the common uoORF, doORF
+and lncORF names. Canonical CDSs, likely sequencing errors and stop-codon
+readthrough rows remain excluded.
 
 ## Mouse ORFs from OpenProt
 

@@ -313,6 +313,7 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
                                          r"homo_sapiens GRCh38 \(riborf-human 1\); homo_sapiens GRCh38 \(riborf-human 2\); "
                                          r"mus_musculus GRCm39 \(ncorf-mammals-mouse 1\); mus_musculus GRCm39 \(openprot-mouse 2.2-1\); "
                                          r"mus_musculus GRCm39 \(riborf-mouse 1\); mus_musculus GRCm39 \(riborf-mouse 2\); "
+                                         r"mus_musculus GRCm39 \(riborf-mouse 3\); "
                                          r"saccharomyces_cerevisiae R64-1-1 \(riborf-yeast 1\); "
                                          r"saccharomyces_cerevisiae R64-1-1 \(riborf-yeast 2\)\."):
         load_catalog(species="dog")

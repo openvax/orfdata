@@ -2085,6 +2085,9 @@ def _filter_unlifted(metadata, accepts):
     """Apply a union selection to failed lifts as well as placed records."""
     from .catalog import _record
 
+    if "unresolved" in metadata:
+        metadata["unresolved"] = [entry for entry in metadata["unresolved"]
+                                  if entry.get("native_record") is None or accepts(_record(entry["native_record"]))]
     lift = metadata.get("liftover")
     if lift:
         _filter_unlifted(lift["input"]["metadata"], accepts)

@@ -1,24 +1,26 @@
 # Yang et al. RibORF mouse fixtures
 
-Real source slices for `tests/test_riborf.py`, for testing the importer; not a
-catalogue release.
+Nineteen exact Supplementary Data 3 rows from Yang et al., Nat Commun
+15:1932 (2024), DOI 10.1038/s41467-024-46240-9 (CC BY 4.0). The canonical
+and readthrough rows are excluded. All remaining 17 reconstruct against native
+GENCODE M25; 13 have exact full-RNA placements on Ensembl 107 and four retain
+native models with unresolved target RNA. The unchanged short CDS in the
+changed chr14 RNA is not promoted to a uniquely validated placement.
 
-- `SD3.xlsx`: nineteen rows of the `mouse` sheet of Supplementary Data 3 of
-  Yang et al., Nat Commun 15:1932 (2024), doi:10.1038/s41467-024-46240-9 (CC
-  BY 4.0): a uORF, an N-terminal truncation and an extension, ACG and GTG
-  starts, ouORF, odORF and noncoding ORFs (one on a transcript in the ncRNA
-  FASTA), a 5-residue ORF, two uORFs on different paths with the same start
-  and stop, a retained 1- and 4-residue ORF, and ORFs that are not imported:
-  an annotated CDS, a readthrough ORF, and three unresolved ones (a transcript that
-  changed length since GENCODE vM25, a TEC transcript with no sequence, and a
-  transcript whose sequence changed at the same length, on which another ORF
-  still places).
-- `ensembl107.gtf.gz`, `ensembl107.cdna.fa.gz` and `ensembl107.ncrna.fa.gz`:
-  Ensembl 107 GRCm39 GTF lines and sequences for their sixteen transcripts and their genes,
-  from <https://ftp.ensembl.org/pub/release-107/>, under Ensembl's
-  [data use terms](https://www.ensembl.org/info/about/legal/disclaimer.html).
+`gencodeM25.gtf.gz` and `gencodeM25.rna.fa.gz` retain exact native annotation
+lines and FASTA records for these source transcript versions. The existing
+`ensembl107.*` slices include their stable-ID target counterparts and every
+full-RNA-identical target candidate found in the complete target FASTAs. The
+source workbook also contains the species fixtures documented below.
 
-The full sources' SHA-256 are pinned in `orfdata/data/catalogs.json`.
+`v3-manifest.json` pins these factual subsets and their coverage under their
+actual reference/version labels. Full source pins are in the packaged registry.
+GENCODE source files are from its official release_M25 directory:
+https://www.gencodegenes.org/mouse/release_M25.html
+Native GTF SHA-256: e6c9704cb5832b8a1c71431ecac9ea30057377c72cdc9a12dc5d0405ab066d5a
+Native RNA SHA-256: 5139cf409a680b60434716ca10ad4e474cbbe5d2e4d11af7553edfad8ed73670
+GENCODE/EMBL-EBI data-use terms and Ensembl data-use terms apply to their
+reference data. Citation and original release identities are retained.
 
 ## Zebrafish, C. elegans, human and yeast
 

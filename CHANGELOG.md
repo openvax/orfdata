@@ -1,3 +1,14 @@
+# 0.42.4
+
+- Reconstruct mouse RibORF source ORFs from pinned GENCODE M25 RNA and exon
+  paths before placing them on Ensembl 107. Require exact full RNA, CDS and
+  protein preservation; retain changed or ambiguous native records explicitly.
+- Publish the verified 24.9 MB generation-3 catalogue through the common data
+  commands; rebuilding from 198 MB of source references remains available.
+- Keep native reference/evidence identity through typed `ReferenceMapping`
+  provenance on placed ORF records, including JSON and TSV replay. Generation 3
+  replaces unvalidated mouse generations 1/2 for new builds.
+
 # 0.42.3
 
 - Import canine mammary-stroma RNA, protein-group and peptide measurements from

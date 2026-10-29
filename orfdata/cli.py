@@ -320,14 +320,14 @@ def _query(args, parser, catalog_loader):
             "initiation_context_json",
         )
         scoped = not isinstance(catalog, UORFCatalog)
-        provenance = ("members", "liftover", "lifted_from")
+        provenance = ("members", "liftover", "lifted_from", "reference_mapping")
         if scoped:
             fields += ("start_codon", "reference_context_json", "summaries_json") + tuple(
                 f + "_json" for f in provenance)
         elif any(r.summaries for r in records):
             # The released upstream-only columns have no place for aggregate counts.
             parser.error("The legacy upstream-ORF TSV cannot export aggregate evidence; use --format json")
-        elif any(r.members or r.liftover for r in records):
+        elif any(r.members or r.lifted_from for r in records):
             parser.error("The legacy upstream-ORF TSV cannot export merged or lifted records; use --format json")
         elif any(getattr(r, "start_codon", None) for r in records):
             parser.error("The legacy upstream-ORF TSV cannot export declared start codons; use --format json")
