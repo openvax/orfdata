@@ -446,6 +446,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pinned-ensembl-proteins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pinned Ensembl proteins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#add-ncorfs-with-selected-evidence" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1606,6 +1617,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pinned-ensembl-proteins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pinned Ensembl proteins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#add-ncorfs-with-selected-evidence" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1948,6 +1970,44 @@ in <code>layers[0]["cds_without_protein"]</code>.</p>
 <code>genomic_spans</code> maps each protein accession to spans in occurrence order. These
 are genomic envelopes, so occurrence CDS offsets/blocks and transcript biotypes
 remain unknown. No annotation indexing or downloads occur.</p>
+<h2 id="pinned-ensembl-proteins">Pinned Ensembl proteins<a class="headerlink" href="#pinned-ensembl-proteins" title="Permanent link">&para;</a></h2>
+<p><code>Proteome.from_ensembl()</code> provides the same reference inventory and provenance
+contract for Ensembl's full GTF, peptide, cDNA and ncRNA files. It reads local
+plain or gzip files without building annotation indexes:</p>
+<div class="highlight"><pre><span></span><code><span class="n">context</span> <span class="o">=</span> <span class="n">ReferenceContext</span><span class="p">(</span><span class="mi">9606</span><span class="p">,</span> <span class="s2">"human"</span><span class="p">,</span> <span class="s2">"GRCh38"</span><span class="p">,</span> <span class="s2">"Ensembl"</span><span class="p">,</span> <span class="s2">"115"</span><span class="p">,</span>
+                           <span class="n">assembly_accession</span><span class="o">=</span><span class="s2">"GCA_000001405.29"</span><span class="p">)</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">from_ensembl</span><span class="p">(</span>
+    <span class="s2">"Homo_sapiens.GRCh38.pep.all.fa.gz"</span><span class="p">,</span>
+    <span class="s2">"Homo_sapiens.GRCh38.115.chr_patch_hapl_scaff.gtf.gz"</span><span class="p">,</span>
+    <span class="s2">"Homo_sapiens.GRCh38.cdna.all.fa.gz"</span><span class="p">,</span>
+    <span class="s2">"Homo_sapiens.GRCh38.ncrna.fa.gz"</span><span class="p">,</span>
+    <span class="n">reference</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+    <span class="n">expected_sha256</span><span class="o">=</span><span class="p">{</span><span class="s2">"protein"</span><span class="p">:</span> <span class="n">protein_sha256</span><span class="p">,</span> <span class="s2">"gtf"</span><span class="p">:</span> <span class="n">gtf_sha256</span><span class="p">,</span>
+                     <span class="s2">"rna"</span><span class="p">:</span> <span class="n">rna_sha256</span><span class="p">,</span> <span class="s2">"ncrna"</span><span class="p">:</span> <span class="n">ncrna_sha256</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">reference</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"human.proteome.json.gz"</span><span class="p">)</span>
+</code></pre></div>
+<p>Obtain and pin the matching files from the same <a href="https://www.ensembl.org/info/data/ftp/index.html">Ensembl release</a>.
+The reader hashes the exact source bytes it parses. The GTF assembly accession,
+versioned transcript/protein accessions and versioned gene identities must agree
+with the supplied reference and sequence headers. Every peptide FASTA accession
+must have a GTF assignment and its exact RNA record; a missing coding sequence or
+conflicting duplicate fails the build. Identical protein sequences at different
+accessions and genes remain separate entries. Identical duplicate FASTA records
+are counted in the layer manifest.
+Protein residues, including Ensembl's internal stop symbols and ambiguous
+residues, are preserved exactly. Downstream prediction must assess whether it
+supports those sequences; the reference reader does not repair them.</p>
+<p>The annotated layer carries all four source hashes, identifier namespaces and
+the complete protein inventory checksum. Its <code>transcript_spans</code> preserves each
+original genomic transcript envelope in occurrence order. These are not spliced
+CDS coordinates: occurrence <code>start</code>, <code>end</code> and <code>coding_blocks</code> remain unknown.
+Noncoding annotation transcripts without RNA bytes are listed explicitly in
+<code>untranslated_transcripts_without_rna</code>; they never become protein entries.</p>
+<p>The same method accepts other species' matching Ensembl files and an explicit
+<code>ReferenceContext</code>. Reference membership does not establish RNA abundance,
+empirical translation, protein abundance or tissue restriction. The reader
+does not compare translations or transfer evidence between assemblies.</p>
 <h2 id="add-ncorfs-with-selected-evidence">Add ncORFs with selected evidence<a class="headerlink" href="#add-ncorfs-with-selected-evidence" title="Permanent link">&para;</a></h2>
 <p>Pass <code>nc_orf_sources="ms"</code>, <code>"ribosome"</code>, <code>"all"</code> or an evidence rule to <code>proteome()</code>,
 or add to an existing proteome with <code>with_nc_orfs("ms")</code>. Evidence presets query
