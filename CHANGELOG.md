@@ -1,3 +1,11 @@
+# 0.42.2
+
+- Publish the existing 16,484-record mouse ncORF catalogue of Chang et al.
+  as a checksum-pinned download. `orfdata data fetch ncorf-mammals-mouse`
+  downloads the 2.22 MB artifact; explicit source builds remain available.
+  Source/reference provenance, aggregate Ribo-seq evidence and the unresolved
+  source row are unchanged.
+
 # 0.42.1
 
 - Include the actual carrier RNA's contig and strand in every `TranscriptORF`
