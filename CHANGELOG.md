@@ -1,3 +1,13 @@
+# 0.42.3
+
+- Import canine mammary-stroma RNA, protein-group and peptide measurements from
+  GSE135183/PXD023023 through the common data commands and dataset API. Preserve
+  14 shared specimens, 28 paired compartments and two missing protein mates,
+  native units, controls, group ambiguity and source-bound incomplete references.
+- Add explicit `same_specimen` pairing for separate preparations without asserting
+  identical aliquots or adjacent sections. Preserve MS zero/NaN missingness and
+  measured RNA zeros; do not infer gene/protein equivalence or ncORF translation.
+
 # 0.42.2
 
 - Publish the existing 16,484-record mouse ncORF catalogue of Chang et al.

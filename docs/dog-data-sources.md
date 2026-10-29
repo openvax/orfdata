@@ -1,7 +1,8 @@
 # Canine paired measurements and translation-evidence audit
 
 Source check: **28 October 2026**. This audit identifies importable measurement
-files and their limitations. It does not add a dataset to the registry.
+files and their limitations. The subsequent [mammary-stroma importer](mammary-stroma.md)
+now exposes the paired study through the common quantitative registry.
 The [machine-readable audit](data/dog-source-audit-20261028.json) contains source
 URLs, hashes, counts, search queries and a candidate sample crosswalk.
 
@@ -37,7 +38,8 @@ deposited search used a dated canonical UniProt reference, but its FASTA is not
 among the 31 PRIDE files. Sequence/reference qualification remains necessary;
 these data do not establish ncORF translation. Author-derived contrasts in the
 supplementary workbooks must stay distinct from sample-level measurements.
-Import work remains tracked in [#20](https://github.com/openvax/orfdata/issues/20).
+The paired study is now imported as `canine-mammary-stroma`; the remaining dog
+data requests stay tracked in [#20](https://github.com/openvax/orfdata/issues/20).
 
 ## Dog Ribo-seq and ncORF translation
 

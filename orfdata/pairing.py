@@ -16,7 +16,7 @@ from .measurements import (
 from .reference import ReferenceContext, ScopedTarget
 
 PAIRING_BASES = (
-    "same_material", "adjacent_donor_tissue", "biological_replicate",
+    "same_material", "same_specimen", "adjacent_donor_tissue", "biological_replicate",
     "independent_cultures", "tissue_aggregate", "condition_aggregate",
 )
 TEMPORAL_RELATIONS = ("concurrent", "longitudinal", "unknown")

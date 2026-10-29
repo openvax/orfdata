@@ -3,6 +3,10 @@
 
 def importer(name):
     """Resolve a packaged importer, never execute an import path from metadata."""
+    if name == "canine-mammary-stroma-v1":
+        from .mammary_stroma import import_stroma
+
+        return import_stroma
     if name == "pfizer-protein-v1":
         from .pfizer import import_protein
 

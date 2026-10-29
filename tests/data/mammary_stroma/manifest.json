@@ -1,0 +1,238 @@
+{
+  "dataset_id": "canine-stroma-regression",
+  "version": "fixture-1",
+  "title": "Canine paired mammary-stroma RNA and native protein/peptide measurements",
+  "references": [
+    {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": "CanFam3.1",
+      "annotation_name": "ensembl",
+      "annotation_version": null,
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": "0f30974214f28fc9aa8a816839f51c7d8620c40868cca98f59be9f8fcab27131"
+    },
+    {
+      "taxon_id": 9615,
+      "species": "dog",
+      "genome_build": null,
+      "annotation_name": "uniprot",
+      "annotation_version": null,
+      "assembly_accession": null,
+      "strain": null,
+      "strain_taxon_id": null,
+      "sequence_sha256": null,
+      "taxonomy_version": "ncbi-2026-10-12",
+      "source_sha256": "df94a44433407f764a74f683e376879ce42c65e4f2a8d20fbbcc3a9436624c6b"
+    }
+  ],
+  "sources": [
+    {
+      "asset_id": "proteinGroups.txt",
+      "url": "https://example.org/stroma-fixture/proteinGroups.txt",
+      "sha256": "df94a44433407f764a74f683e376879ce42c65e4f2a8d20fbbcc3a9436624c6b",
+      "size": 35906,
+      "access_terms": "Factual regression slice; see NOTICE.md",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Amini et al.; University of Zurich",
+        "source_filename": "proteinGroups.txt",
+        "terms_verified": "2026-10-29",
+        "fixture": "Selected facts only; not original complete source bytes"
+      }
+    },
+    {
+      "asset_id": "peptides.txt",
+      "url": "https://example.org/stroma-fixture/peptides.txt",
+      "sha256": "83c5a16217ec285e9da908bb7ed0bbfce5deb1aad5f2c35fecae797b65b5f85e",
+      "size": 8732,
+      "access_terms": "Factual regression slice; see NOTICE.md",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Amini et al.; University of Zurich",
+        "source_filename": "peptides.txt",
+        "terms_verified": "2026-10-29",
+        "fixture": "Selected facts only; not original complete source bytes"
+      }
+    },
+    {
+      "asset_id": "rna.csv.gz",
+      "url": "https://example.org/stroma-fixture/rna.csv.gz",
+      "sha256": "b5b5fe7efc08807dd64c623736e987208b921ce0e8ba07920addc62d9e3945db",
+      "size": 251,
+      "access_terms": "Factual regression slice; see NOTICE.md",
+      "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Amini et al.; University of Zurich",
+        "source_filename": "GSE135183_raw_counts.csv.gz",
+        "terms_verified": "2026-10-29",
+        "fixture": "Selected facts only; not original complete source bytes"
+      }
+    },
+    {
+      "asset_id": "geo.soft.gz",
+      "url": "https://example.org/stroma-fixture/geo.soft.gz",
+      "sha256": "0f30974214f28fc9aa8a816839f51c7d8620c40868cca98f59be9f8fcab27131",
+      "size": 1728,
+      "access_terms": "Factual regression slice; see NOTICE.md",
+      "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Amini et al.; University of Zurich",
+        "source_filename": "GSE135183_family.soft.gz",
+        "terms_verified": "2026-10-29",
+        "fixture": "Selected facts only; not original complete source bytes"
+      }
+    },
+    {
+      "asset_id": "paper.xml",
+      "url": "https://example.org/stroma-fixture/paper.xml",
+      "sha256": "8a329ab53dd6fa877976f78b1a88674b5937b0f6e3d05ff93430c2fe77c0615a",
+      "size": 1505,
+      "access_terms": "Factual regression slice; see NOTICE.md",
+      "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Amini et al.; University of Zurich",
+        "source_filename": "PMC8042244.xml",
+        "terms_verified": "2026-10-29",
+        "fixture": "Selected facts only; not original complete source bytes"
+      }
+    },
+    {
+      "asset_id": "project.json",
+      "url": "https://example.org/stroma-fixture/project.json",
+      "sha256": "b47659f5fdfbeade1f1b0c1a1bf4bace5c475e4e3d6d32c8eca556577a2506e6",
+      "size": 78,
+      "access_terms": "Factual regression slice; see NOTICE.md",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "redistributable": true,
+      "metadata": {
+        "attribution": "Amini et al.; University of Zurich",
+        "source_filename": "PXD023023.json",
+        "terms_verified": "2026-10-29",
+        "fixture": "Selected facts only; not original complete source bytes"
+      }
+    }
+  ],
+  "citations": [
+    "https://doi.org/10.1016/j.neo.2021.03.001",
+    "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE135183",
+    "https://www.ebi.ac.uk/pride/archive/projects/PXD023023"
+  ],
+  "assay_kinds": [
+    "rna_seq",
+    "digest_ms"
+  ],
+  "coverage": {
+    "accessions": [
+      "GSE135183",
+      "PXD023023"
+    ],
+    "rna_genes": 3,
+    "rna_samples": 30,
+    "protein_samples": 28,
+    "shared_specimens": 14,
+    "paired_compartments": 28,
+    "rna_without_protein": 2,
+    "tables": {
+      "proteinGroups.txt": {
+        "header_sha256": "8f5e81ad809c172f2e4bb7cec1a8a6cdb1c427e232cf0bc7a0434b5e7df4b1ef",
+        "rows": 8,
+        "measurement_statuses": {
+          "intensity:measured": 136,
+          "intensity:missing": 88,
+          "LFQ intensity:missing": 161,
+          "LFQ intensity:measured": 63,
+          "iBAQ:measured": 128,
+          "iBAQ:missing": 96
+        },
+        "qc_counts": {
+          "Reverse": {
+            "": 6,
+            "+": 2
+          },
+          "Potential contaminant": {
+            "+": 3,
+            "": 5
+          }
+        }
+      },
+      "peptides.txt": {
+        "header_sha256": "b5ee266d1d5ae348f902e2332e94bef7cec49d90978bba16370247767481b5eb",
+        "rows": 4,
+        "measurement_statuses": {
+          "intensity:missing": 73,
+          "intensity:measured": 39,
+          "LFQ intensity:missing": 73,
+          "LFQ intensity:measured": 39
+        },
+        "qc_counts": {
+          "Reverse": {
+            "": 3,
+            "+": 1
+          },
+          "Potential contaminant": {
+            "": 3,
+            "+": 1
+          }
+        }
+      }
+    },
+    "normal_tissue_scope": "Normal stromal compartments of cancer-bearing specimens, not healthy-dog baseline tissue",
+    "reference_limits": "RNA Ensembl release unspecified. Protein canonical UniProt search date 2019-07-29; exact FASTA unavailable. No current-reference or gene/protein identity projection.",
+    "measurement_limits": "Native estimated counts and MS intensities; no copies/cell, imputation, RNA/protein ratios or isoform allocation.",
+    "qc_scope": "All native rows retained, including contaminants and reversed decoys, with source QC flags. No implicit acceptance threshold.",
+    "translation_scope": "Bulk digest proteomics; no ncORF search or translation evidence and no MHC presentation evidence",
+    "pairing_limits": "Metadata-derived case crosswalk within author-declared shared FFPE cohort; separate preparations, no same-aliquot or adjacent-section assertion."
+  },
+  "processing": {
+    "software": "orfdata",
+    "version": "0.42.3",
+    "importer": "canine-mammary-stroma-v1",
+    "specimen_crosswalk": {
+      "1": "135",
+      "2": "134",
+      "3": "121",
+      "4": "123",
+      "5": "126",
+      "6": "109",
+      "8": "128",
+      "9": "131",
+      "10": "130",
+      "11": "132",
+      "12": "138",
+      "13": "139",
+      "14": "136",
+      "15": "137"
+    },
+    "operations": [
+      "Validate native samples and source bytes",
+      "Reconcile unique case metadata with explicit source spelling aliases",
+      "Retain reported quantitative scales and all native MS row fields",
+      "Treat zero MS intensity as unquantified; retain native zero text",
+      "Keep RNA zeros measured",
+      "Declare same-specimen assay pairs and missing mates without gene/protein inference"
+    ],
+    "parameters": {
+      "aggregate_replicates": false,
+      "impute_missing": false,
+      "allocate_group_abundance": false
+    },
+    "specimen_identity_aliases": {
+      "Bassett": "Basset",
+      "Viszla": "Vizsla",
+      "n.d.": "not disclosed",
+      "tubulo-papillary": "tubulopapillary"
+    },
+    "source_note": "Paper Table 1 and GEO case numbers differ; crosswalk derived from unique breed/age/histology within the explicitly shared cohort. Protein case 7 was excluded; RNA 127 has no matching proteomics specimen."
+  },
+  "schema": "orfdata.measurements.v1"
+}
