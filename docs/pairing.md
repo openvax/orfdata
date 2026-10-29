@@ -17,7 +17,7 @@ a Cartesian product of technical replicates. Each row retains its assay pairing
 and target relationship. A three-assay experiment can declare several pairwise
 comparisons; sharing an RNA measurement does not create independent replicates.
 
-Pairing bases are `same_material`, `adjacent_donor_tissue`,
+Pairing bases are `same_material`, `same_specimen`, `adjacent_donor_tissue`,
 `biological_replicate`, `independent_cultures`, `tissue_aggregate` and
 `condition_aggregate`. The caller must choose the allowed bases. By default,
 only explicitly concurrent assays are returned; opt into `longitudinal` or
@@ -116,3 +116,8 @@ identities nor transfers abundance or protein-existence evidence. ORF comparison
 additionally require their own sequence, frame and positional evidence and
 `allow_orfs=True`; a gene ortholog cannot establish an orthologous ncORF.
 Human, mouse, dog, yeast and arbitrary other taxa use this same API.
+
+`same_specimen` records separate preparations from the same original specimen.
+It does not assert identical aliquots (`same_material`) or adjacent sections.
+The [canine mammary-stroma dataset](mammary-stroma.md) uses this distinction and
+retains missing mates explicitly.

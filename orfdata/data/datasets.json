@@ -3283,5 +3283,260 @@
         }
       }
     }
+  },
+  "canine-mammary-stroma": {
+    "default_version": "2026-10-29.1",
+    "versions": {
+      "2026-10-29.1": {
+        "manifest": {
+          "dataset_id": "canine-mammary-stroma",
+          "version": "2026-10-29.1",
+          "title": "Canine paired mammary-stroma RNA and native protein/peptide measurements",
+          "references": [
+            {
+              "taxon_id": 9615,
+              "species": "dog",
+              "genome_build": "CanFam3.1",
+              "annotation_name": "ensembl",
+              "annotation_version": null,
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "a199bafcc51fefdd3a4231710d0ad6b157a3f9d6c25ae42c26b0bac0c44667c2"
+            },
+            {
+              "taxon_id": 9615,
+              "species": "dog",
+              "genome_build": null,
+              "annotation_name": "uniprot",
+              "annotation_version": null,
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "67360353510fdb77cc970f671ca9ec17b07686f2dc5771bb6804d182d5c17423"
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "proteinGroups.txt",
+              "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2021/03/PXD023023/proteinGroups.txt",
+              "sha256": "67360353510fdb77cc970f671ca9ec17b07686f2dc5771bb6804d182d5c17423",
+              "size": 2784425,
+              "access_terms": "PRIDE dataset PXD023023: Creative Commons Public Domain CC0, as declared by project API. Attribution: Amini et al.",
+              "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Amini et al.; University of Zurich",
+                "source_filename": "proteinGroups.txt",
+                "terms_verified": "2026-10-29"
+              }
+            },
+            {
+              "asset_id": "peptides.txt",
+              "url": "https://ftp.pride.ebi.ac.uk/pride/data/archive/2021/03/PXD023023/peptides.txt",
+              "sha256": "8964af6adbe8ac6fce6897f5eeaaf5da3d7c72fe2eb78ee2653901876a2f0172",
+              "size": 4492377,
+              "access_terms": "PRIDE dataset PXD023023: Creative Commons Public Domain CC0, as declared by project API. Attribution: Amini et al.",
+              "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Amini et al.; University of Zurich",
+                "source_filename": "peptides.txt",
+                "terms_verified": "2026-10-29"
+              }
+            },
+            {
+              "asset_id": "rna.csv.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE135nnn/GSE135183/suppl/GSE135183_raw_counts.csv.gz",
+              "sha256": "de3fc2a57fa05682996b328929c94fc51eadd126ec2299870b8f46b24be46a67",
+              "size": 605819,
+              "access_terms": "Public GEO deposited numerical data and factual metadata; NCBI imposes no use/distribution restrictions. Attribution: Amini et al., GSE135183.",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Amini et al.; University of Zurich",
+                "source_filename": "GSE135183_raw_counts.csv.gz",
+                "terms_verified": "2026-10-29"
+              }
+            },
+            {
+              "asset_id": "geo.soft.gz",
+              "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE135nnn/GSE135183/soft/GSE135183_family.soft.gz",
+              "sha256": "a199bafcc51fefdd3a4231710d0ad6b157a3f9d6c25ae42c26b0bac0c44667c2",
+              "size": 4022,
+              "access_terms": "Public GEO deposited numerical data and factual metadata; NCBI imposes no use/distribution restrictions. Attribution: Amini et al., GSE135183.",
+              "license_url": "https://www.ncbi.nlm.nih.gov/geo/info/disclaimer.html",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Amini et al.; University of Zurich",
+                "source_filename": "GSE135183_family.soft.gz",
+                "terms_verified": "2026-10-29"
+              }
+            },
+            {
+              "asset_id": "paper.xml",
+              "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8042244/fullTextXML",
+              "sha256": "c933efb05e263a4d6106c93b2e5344f9ecec08e7875633ec38eef069dfad171a",
+              "size": 156278,
+              "access_terms": "CC BY-NC-ND 4.0 article; acquired locally to validate factual Table 1. Original article text and figures excluded from generated artifacts.",
+              "license_url": "https://creativecommons.org/licenses/by-nc-nd/4.0/",
+              "redistributable": false,
+              "metadata": {
+                "attribution": "Amini et al.; University of Zurich",
+                "source_filename": "PMC8042244.xml",
+                "terms_verified": "2026-10-29"
+              }
+            },
+            {
+              "asset_id": "project.json",
+              "url": "https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD023023",
+              "sha256": "75271e3cdfb38c259509ed9564268564d5c7aababb4c602efa74076e0831668d",
+              "size": 9687,
+              "access_terms": "PRIDE dataset PXD023023: Creative Commons Public Domain CC0, as declared by project API. Attribution: Amini et al.",
+              "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+              "redistributable": true,
+              "metadata": {
+                "attribution": "Amini et al.; University of Zurich",
+                "source_filename": "PXD023023.json",
+                "terms_verified": "2026-10-29"
+              }
+            }
+          ],
+          "citations": [
+            "https://doi.org/10.1016/j.neo.2021.03.001",
+            "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE135183",
+            "https://www.ebi.ac.uk/pride/archive/projects/PXD023023"
+          ],
+          "assay_kinds": [
+            "rna_seq",
+            "digest_ms"
+          ],
+          "coverage": {
+            "accessions": [
+              "GSE135183",
+              "PXD023023"
+            ],
+            "rna_genes": 18582,
+            "rna_samples": 30,
+            "protein_samples": 28,
+            "shared_specimens": 14,
+            "paired_compartments": 28,
+            "rna_without_protein": 2,
+            "tables": {
+              "proteinGroups.txt": {
+                "header_sha256": "8f5e81ad809c172f2e4bb7cec1a8a6cdb1c427e232cf0bc7a0434b5e7df4b1ef",
+                "rows": 1583,
+                "measurement_statuses": {
+                  "intensity:measured": 19910,
+                  "intensity:missing": 24414,
+                  "LFQ intensity:missing": 36303,
+                  "LFQ intensity:measured": 8021,
+                  "iBAQ:measured": 18951,
+                  "iBAQ:missing": 25373
+                },
+                "qc_counts": {
+                  "Reverse": {
+                    "": 1506,
+                    "+": 77
+                  },
+                  "Potential contaminant": {
+                    "+": 52,
+                    "": 1531
+                  }
+                }
+              },
+              "peptides.txt": {
+                "header_sha256": "b5ee266d1d5ae348f902e2332e94bef7cec49d90978bba16370247767481b5eb",
+                "rows": 5413,
+                "measurement_statuses": {
+                  "intensity:missing": 92422,
+                  "intensity:measured": 59142,
+                  "LFQ intensity:missing": 92422,
+                  "LFQ intensity:measured": 59142
+                },
+                "qc_counts": {
+                  "Reverse": {
+                    "": 5336,
+                    "+": 77
+                  },
+                  "Potential contaminant": {
+                    "": 4997,
+                    "+": 416
+                  }
+                }
+              }
+            },
+            "normal_tissue_scope": "Normal stromal compartments of cancer-bearing specimens, not healthy-dog baseline tissue",
+            "reference_limits": "RNA Ensembl release unspecified. Protein canonical UniProt search date 2019-07-29; exact FASTA unavailable. No current-reference or gene/protein identity projection.",
+            "measurement_limits": "Native estimated counts and MS intensities; no copies/cell, imputation, RNA/protein ratios or isoform allocation.",
+            "qc_scope": "All native rows retained, including contaminants and reversed decoys, with source QC flags. No implicit acceptance threshold.",
+            "translation_scope": "Bulk digest proteomics; no ncORF search or translation evidence and no MHC presentation evidence",
+            "pairing_limits": "Metadata-derived case crosswalk within author-declared shared FFPE cohort; separate preparations, no same-aliquot or adjacent-section assertion."
+          },
+          "processing": {
+            "software": "orfdata",
+            "version": "0.42.3",
+            "importer": "canine-mammary-stroma-v1",
+            "specimen_crosswalk": {
+              "1": "135",
+              "2": "134",
+              "3": "121",
+              "4": "123",
+              "5": "126",
+              "6": "109",
+              "8": "128",
+              "9": "131",
+              "10": "130",
+              "11": "132",
+              "12": "138",
+              "13": "139",
+              "14": "136",
+              "15": "137"
+            },
+            "operations": [
+              "Validate native samples and source bytes",
+              "Reconcile unique case metadata with explicit source spelling aliases",
+              "Retain reported quantitative scales and all native MS row fields",
+              "Treat zero MS intensity as unquantified; retain native zero text",
+              "Keep RNA zeros measured",
+              "Declare same-specimen assay pairs and missing mates without gene/protein inference"
+            ],
+            "parameters": {
+              "aggregate_replicates": false,
+              "impute_missing": false,
+              "allocate_group_abundance": false
+            },
+            "specimen_identity_aliases": {
+              "Bassett": "Basset",
+              "Viszla": "Vizsla",
+              "n.d.": "not disclosed",
+              "tubulo-papillary": "tubulopapillary"
+            },
+            "source_note": "Paper Table 1 and GEO case numbers differ; crosswalk derived from unique breed/age/histology within the explicitly shared cohort. Protein case 7 was excluded; RNA 127 has no matching proteomics specimen."
+          },
+          "schema": "orfdata.measurements.v1"
+        },
+        "assets": {
+          "dataset.sqlite": {
+            "url": "https://github.com/openvax/orfdata/releases/download/data-canine-mammary-stroma-2026-10-29.1/canine-mammary-stroma-2026-10-29.1.sqlite.gz",
+            "decompress": true,
+            "size": 514154496,
+            "sha256": "98301b7ff5c7fb71640491de65de7631db5dfa3288e3b0ecb2ec2c8ebd721ef2"
+          }
+        },
+        "distribution": {
+          "redistributable": true,
+          "access_terms": "PRIDE CC0 quantitative facts; public GEO numerical data and factual metadata under GEO terms; factual clinical curation with citation to the CC BY-NC-ND article, whose text/figures are excluded. ORFdata code Apache-2.0.",
+          "data_release": "data-canine-mammary-stroma-2026-10-29.1",
+          "download_size": 52014803,
+          "download_sha256": "0afcff9d3b8e23c9cd3fbb91f93f13095e9cec20b478e1f837afba71c202b90a",
+          "installed_size": 514154496
+        }
+      }
+    }
   }
 }

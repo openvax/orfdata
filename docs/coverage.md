@@ -8,13 +8,14 @@ data coverage, independently of what the API can represent.
 | --- | --- | --- | --- |
 | Human | Wang: 29 specimens, gene/transcript FPKM and estimated copies/cell | Wang: 15,210 groups, iBAQ and estimated copies/cell; Pfizer: 10,352 groups, 37 channels, iBAQ/rIBAQ | Wang: adjacent cryosections; Pfizer: native RNA missing |
 | Mouse | Pfizer: 606 libraries, 56,051 gene targets, counts | Pfizer: 12,124 groups, 63 channels, iBAQ/rIBAQ | Unresolved library-to-pool correspondence |
-| Dog | Pfizer: 434 libraries, 30,941 gene targets, counts | Pfizer: 9,929 groups, 38 channels, iBAQ/rIBAQ | Unresolved library-to-pool correspondence |
+| Dog | Pfizer: 434 libraries, 30,941 gene targets, counts; mammary stroma: 18,582 genes × 30 samples | Pfizer: 9,929 groups, 38 channels, iBAQ/rIBAQ; mammary stroma: 1,583 native groups × 28 samples | Mammary stroma: 14 shared specimens, 28 paired compartments and two RNA samples without protein mates; Pfizer crosswalk remains unresolved |
 | Budding yeast | CoPY: four RNA libraries plus a source aggregate, FPKM and estimated copies/cell; Ingolia: four RNA libraries, counts and densities | CoPY: calibrated SRM and separately calibrated label-free estimates | CoPY: explicit source-cohort pairing; individual cross-assay replicate matches unknown |
 
 ## Peptides and MHC ligands
 
-Dog has three peptide-level datasets:
+Dog has four peptide-level datasets:
 
+- **Mammary stroma** ([guide](mammary-stroma.md)): 5,413 native peptide rows, intensity and LFQ columns, reported group memberships and original control/decoy flags across 28 samples.
 - **Pfizer native peptide evidence** ([guide](pfizer-peptides.md)): 953,980 target
   peptide sequences, native peptide/PSM reporter quantities and reported protein-group
   memberships. The 96 runs retain 38 tissue pools, four bridge channels and two
@@ -28,7 +29,7 @@ Dog has three peptide-level datasets:
   dog tumours, each searched against four protein databases, and from three
   human HCT 116 lines that each express one DLA-88 allele.
 
-All three searched known proteins only. Other species have no peptide-level
+All four searched known proteins only. Other species have no peptide-level
 measurement dataset yet; the human and mouse ORF catalogues carry pooled
 peptide evidence for their noncanonical ORFs.
 
