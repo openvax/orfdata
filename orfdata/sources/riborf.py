@@ -12,8 +12,9 @@ end, the stop codon included.
 The source gives no protein sequences, so each ORF is placed through the same
 transcript in a pinned Ensembl annotation (:func:`import_orfs`): its
 transcript coordinates map through that transcript's exons, and its protein is
-translated from that transcript's sequence. For mouse this also moves the ORFs
-from mm10 to GRCm39 without a chain file with usage restrictions. A row is
+translated from that transcript's sequence. Mouse uses the separate native
+GENCODE M25 reconstruction and exact-sequence placement in ``riborf_native``;
+the unvalidated historical mouse rebuilds are rejected here. A row is
 left out, with the reason, when the transcript is missing, has no sequence or
 changed length since the source's annotation, or when its sequence there
 doesn't start with the stated codon and end at its first stop.
@@ -110,8 +111,15 @@ def _parsed(processing, sheet_rows):
     return parsed, source_rows, short
 
 
+def validate_transcript_manifest(manifest):
+    """Reject superseded mouse builds before acquiring their source files."""
+    if manifest.references[0].taxon_id == 10090:
+        raise ValueError("Mouse RibORF generations 1/2 lack native sequence validation; build generation 3")
+
+
 def import_orfs(inputs, output, manifest):
     """Write the catalogue ``manifest`` describes from the source table and the pinned Ensembl files."""
+    validate_transcript_manifest(manifest)
     processing = manifest.processing
     reference = manifest.references[0]
     # Ensembl IDs carry a version (ENST00000000233.10); C. elegans names have dots of their own (2L52.1a.1).

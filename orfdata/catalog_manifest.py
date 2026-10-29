@@ -21,13 +21,21 @@ class CatalogManifest(_Record):
     coverage: Mapping
     processing: Mapping
     schema: str = "orfdata.catalog-manifest.v1"
+    source_references: tuple = ()
 
     @classmethod
     def from_dict(cls, data):
         values = dict(data)
         values["references"] = tuple(ReferenceContext(**c) for c in values["references"])
         values["sources"] = tuple(SourceAsset.from_dict(s) for s in values["sources"])
+        values["source_references"] = tuple(ReferenceContext(**c) for c in values.get("source_references", ()))
         return cls(**values)
+
+    def to_dict(self):
+        result = super().to_dict()
+        if not self.source_references:
+            result.pop("source_references")
+        return result
 
     def __post_init__(self):
         for name in ("catalog_id", "version", "title"):
@@ -54,6 +62,14 @@ class CatalogManifest(_Record):
         builds = {r.genome_build for r in self.references if r.genome_build is not None}
         if len(builds) != 1 or not any(r.is_genomic for r in self.references):
             raise ValueError("A catalogue must have one assembly and a complete genomic reference")
+        if isinstance(self.source_references, str):
+            raise TypeError("Source references must be a sequence of contexts")
+        object.__setattr__(self, "source_references", tuple(self.source_references))
+        if any(not isinstance(r, ReferenceContext) or not r.is_genomic
+               or r.taxon_id != self.taxon_id for r in self.source_references):
+            raise ValueError("Native source references must be genomic contexts of the catalogue species")
+        if len({r.key for r in self.source_references}) != len(self.source_references):
+            raise ValueError("Duplicate native source reference contexts")
         if any(not isinstance(s, SourceAsset) for s in self.sources):
             raise TypeError("Catalogue sources must be SourceAssets")
         if len({s.asset_id for s in self.sources}) != len(self.sources):
@@ -91,9 +107,16 @@ class CatalogManifest(_Record):
             reference = record.reference_context
             if reference is None or not reference.is_genomic or reference.key not in references:
                 raise ValueError("Managed ORF records require a declared complete genomic reference")
+        evidence_references = references | {r.key for r in self.source_references}
         for summary in catalog.evidence_summaries:
-            if summary.target.reference.key not in references:
+            if summary.target.reference.key not in evidence_references:
                 raise ValueError("Evidence summary reference is absent from catalogue manifest")
+        for entry in catalog.metadata.get("unresolved", ()):
+            if entry.get("native_record") is not None:
+                native = ReferenceContext(**entry["native_record"]["reference_context"])
+                target = ReferenceContext(**entry["reference_mapping"]["target_reference"])
+                if native.key not in evidence_references or target.key not in references:
+                    raise ValueError("Unresolved placement reference is absent from catalogue manifest")
         counts = dict(distinct_protein_sequences=len({r.protein_sequence for r in catalog.records}),
                       evidence_summaries=len(catalog.evidence_summaries))
         for key, actual in counts.items():

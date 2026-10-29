@@ -11,7 +11,7 @@ import os
 import re
 from collections import Counter
 from copy import copy, deepcopy
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from importlib.resources import files
 from pathlib import Path
 from typing import NamedTuple, Optional
@@ -22,8 +22,10 @@ from .evidence import MS_METHODS, evidence_rule, stored_method
 from .evidence_summary import EvidenceSummary, unique_summaries
 from .initiation_context import KOZAK_PREFERENCES, InitiationContext
 from .liftover import Liftover
+from .measurements import _plain
 from .model import ORFModel, TranscriptORF, _contig, _id_forms, _species, _transcript_match
-from .reference import ReferenceContext
+from .reference import ReferenceContext, ScopedTarget
+from .reference_mapping import ReferenceMapping
 from .sequence import genetic_code, reverse_complement_dna
 
 
@@ -142,17 +144,35 @@ class ORFRecord:
     members: tuple = ()
     lifted_from: Optional["ORFRecord"] = None
     liftover: Optional[Liftover] = None
+    reference_mapping: Optional[ReferenceMapping] = field(default=None, hash=False)
 
     def __post_init__(self):
         object.__setattr__(self, "summaries", unique_summaries(self.summaries))
         object.__setattr__(self, "members", tuple(self.members))
-        if (self.lifted_from is None) != (self.liftover is None):
-            raise ValueError("A lifted record names both its original record and the chain")
         original = self.lifted_from
+        methods = int(self.liftover is not None) + int(self.reference_mapping is not None)
+        if methods != int(original is not None):
+            raise ValueError("A placed record names its original and exactly one chain or reference mapping")
         if original is not None and any(getattr(self, name) != getattr(original, name) for name in (
                 "orf_id", "protein_sequence", "translation_table", "start_codon", "source",
                 "ribosome_studies", "peptides", "summaries")):
             raise ValueError(f"A lifted record keeps its original's ID, protein and evidence: {self.orf_id}")
+        mapping = self.reference_mapping
+        if mapping is not None:
+            if not isinstance(mapping, ReferenceMapping):
+                raise TypeError("ORF reference placements require a ReferenceMapping")
+            if original.reference_context is None or self.reference_context is None:
+                raise ValueError("ORF reference placements require both reference identities")
+            source = ScopedTarget(original.reference_context, "orf", original.orf_id, original.source)
+            target = ScopedTarget(self.reference_context, "orf", self.orf_id, self.source)
+            if mapping.source != source or mapping.targets != (target,) or mapping.status != "unique":
+                raise ValueError("ORF reference mapping endpoints disagree with the records")
+            digest = hashlib.sha256(self.protein_sequence.encode("ascii")).hexdigest()
+            if not mapping.sequence_validated or mapping.validation["sequence"]["source_sha256"] != digest:
+                raise ValueError("ORF reference mapping protein identity disagrees with the records")
+            expected = {"source": _placement_position(original), "target": _placement_position(self)}
+            if _plain(mapping.validation.get("position")) != expected:
+                raise ValueError("ORF reference mapping positions disagree with the records")
         if self.members:
             # Each member validated its own summaries against its own identity.
             key = _merge_key(self)
@@ -229,7 +249,7 @@ class ORFRecord:
 
     def to_dict(self):
         """Return a serializable copy of this record."""
-        result = asdict(self)
+        result = _plain(self)
         if not self.summaries:
             result.pop("summaries")
         if self.reference_context is None:
@@ -246,7 +266,10 @@ class ORFRecord:
             result["lifted_from"] = self.lifted_from.to_dict()
         else:
             result.pop("lifted_from")
+        if self.liftover is None:
             result.pop("liftover")
+        if self.reference_mapping is None:
+            result.pop("reference_mapping")
         return result
 
     def map_initiation_position(self, position, *, genome_build):
@@ -417,6 +440,12 @@ class ORFRecord:
         }
 
 
+def _placement_position(record):
+    """The coding placement bound by a typed source-to-target reference mapping."""
+    return dict(transcript_id=record.transcript_id, contig=record.contig, strand=record.strand,
+                coding_blocks=[list(block) for block in record.coding_blocks])
+
+
 def _qualify_colliding_ids(records):
     """Give colliding source records unique catalogue IDs, retaining their native records."""
     records = tuple(records)
@@ -436,7 +465,7 @@ def _qualify_colliding_ids(records):
         names = [f"{quote(r.source, safe='')}:{quote(r.orf_id, safe='')}" if i in qualified
                  else r.orf_id for i, r in enumerate(records)]
     return tuple(r if name == r.orf_id else replace(
-        r, orf_id=name, members=r.members or (r,), lifted_from=None, liftover=None)
+        r, orf_id=name, members=r.members or (r,), lifted_from=None, liftover=None, reference_mapping=None)
         for r, name in zip(records, names))
 
 
@@ -449,6 +478,15 @@ class ORFCatalog:
         self.genome_build = metadata["genome_build"]
         self.taxon_id = metadata["taxon_id"]
         self.species = metadata["species"]
+        for entry in metadata.get("unresolved", ()):
+            if entry.get("native_record") is not None:
+                native = _record(entry["native_record"])
+                mapping = ReferenceMapping.from_dict(entry["reference_mapping"])
+                expected = ScopedTarget(native.reference_context, "orf", native.orf_id, native.source)
+                if (mapping.source != expected or mapping.status == "unique"
+                        or mapping.target_reference.taxon_id != self.taxon_id
+                        or mapping.target_reference.genome_build != self.genome_build):
+                    raise ValueError("Unresolved reference mapping disagrees with its native record or catalogue")
         self._by_id = {r.orf_id: r for r in self.records}
         self._aliases = {}
         self._by_source_id = {}
@@ -834,7 +872,7 @@ def merge_catalogs(catalogs):
         pinned = {None if m.reference_context is None else m.reference_context.key for m in members}
         records.append(replace(
             # The merged ORF is no one source's lift; each member keeps its own lift provenance.
-            primary, members=tuple(members), lifted_from=None, liftover=None,
+            primary, members=tuple(members), lifted_from=None, liftover=None, reference_mapping=None,
             initiation_context=_shared_context(primary, members),
             # Sources pinned to different annotations of one assembly leave the ORF unpinned.
             reference_context=primary.reference_context if len(pinned) == 1 else None, **_union(members, study)))
@@ -927,7 +965,10 @@ def _record(row, legacy=False):
     row["members"] = tuple(_record(m) for m in row.get("members", ()))
     if row.get("lifted_from") is not None:
         row["lifted_from"] = _record(row["lifted_from"])
+    if row.get("liftover") is not None:
         row["liftover"] = Liftover(**row["liftover"])
+    if row.get("reference_mapping") is not None:
+        row["reference_mapping"] = ReferenceMapping.from_dict(row["reference_mapping"])
     return ORFRecord(**row)
 
 

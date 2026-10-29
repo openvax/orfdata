@@ -205,7 +205,7 @@
     "priority": 20
   },
   "riborf-mouse": {
-    "default_version": "2",
+    "default_version": "3",
     "priority": 30,
     "versions": {
       "1": {
@@ -408,6 +408,151 @@
           "redistributable": true
         },
         "assets": {}
+      },
+      "3": {
+        "manifest": {
+          "catalog_id": "riborf-mouse",
+          "version": "3",
+          "title": "Mouse RibORF 2.0 translated ORFs of Yang et al. 2024",
+          "references": [
+            {
+              "taxon_id": 10090,
+              "species": "mus_musculus",
+              "genome_build": "GRCm39",
+              "annotation_name": "ensembl",
+              "annotation_version": "107",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": null,
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": null
+            }
+          ],
+          "sources": [
+            {
+              "asset_id": "table",
+              "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-024-46240-9/MediaObjects/41467_2024_46240_MOESM6_ESM.xlsx",
+              "sha256": "4dc8444c2fd3da25c7066074c71d1ec5427afd5d005862c6c61dc3f27fb9d32c",
+              "size": 24211005,
+              "access_terms": "Supplementary Data 3 of Yang et al., Nat Commun 2024, CC BY 4.0.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "gtf",
+              "url": "https://ftp.ensembl.org/pub/release-107/gtf/mus_musculus/Mus_musculus.GRCm39.107.gtf.gz",
+              "sha256": "15af16b7bef88c4309a82d49579fdd967f6ac8769b7f0bf657bbf7ee73b779e3",
+              "size": 31861821,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "cdna",
+              "url": "https://ftp.ensembl.org/pub/release-107/fasta/mus_musculus/cdna/Mus_musculus.GRCm39.cdna.all.fa.gz",
+              "sha256": "34499a727ff72bdddb2f32e5831b14fb5a9d20218cd79b8639dc8736b2c596c0",
+              "size": 51269494,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "ncrna",
+              "url": "https://ftp.ensembl.org/pub/release-107/fasta/mus_musculus/ncrna/Mus_musculus.GRCm39.ncrna.fa.gz",
+              "sha256": "0472b7d912e84d838485ecf236670a68319a32fb4580062cd9768c7bce85d9ab",
+              "size": 7668482,
+              "access_terms": "Ensembl imposes no restrictions on access to, or use of, the data provided.",
+              "license_url": null,
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "source_gtf",
+              "url": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M25/gencode.vM25.annotation.gtf.gz",
+              "sha256": "e6c9704cb5832b8a1c71431ecac9ea30057377c72cdc9a12dc5d0405ab066d5a",
+              "size": 28542432,
+              "access_terms": "GENCODE reference annotation/transcript data under EMBL-EBI data-use terms.",
+              "license_url": "https://www.ebi.ac.uk/about/terms-of-use/",
+              "redistributable": true,
+              "metadata": {}
+            },
+            {
+              "asset_id": "source_rna",
+              "url": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M25/gencode.vM25.transcripts.fa.gz",
+              "sha256": "5139cf409a680b60434716ca10ad4e474cbbe5d2e4d11af7553edfad8ed73670",
+              "size": 54587418,
+              "access_terms": "GENCODE reference annotation/transcript data under EMBL-EBI data-use terms.",
+              "license_url": "https://www.ebi.ac.uk/about/terms-of-use/",
+              "redistributable": true,
+              "metadata": {}
+            }
+          ],
+          "citations": [
+            "Yang H, Li Q, Stroup EK, Wang S, Ji Z. Widespread stable noncanonical peptides identified by integrated analyses of ribosome profiling and ORF features. Nat Commun. 2024;15:1932. doi:10.1038/s41467-024-46240-9"
+          ],
+          "coverage": {
+            "records": 51831,
+            "distinct_protein_sequences": 41882,
+            "evidence_summaries": 51831,
+            "source_rows": 54128,
+            "short_rows": 12222,
+            "native_valid_rows": 54128,
+            "resolved_rows": 51831,
+            "unresolved_rows": 2297,
+            "short_records": 11858
+          },
+          "processing": {
+            "importer": "riborf-native-v3",
+            "sheet": "mouse",
+            "source": "riborf-mouse",
+            "release": "NatCommun-15-1932",
+            "skip_types": [
+              "canonical",
+              "seqerror",
+              "readthrough"
+            ],
+            "biotypes": {
+              "ouORF": "uoORF",
+              "odORF": "doORF",
+              "noncoding": "lncORF"
+            },
+            "scope": "Native GENCODE vM25/mm10 ORFs reconstructed first; target Ensembl 107/GRCm39 placement requires exact full RNA, CDS and protein, with every source BED block validated. Aggregate presence only.",
+            "report_protein_lengths_below": 5,
+            "source_annotation": "GENCODE vM25"
+          },
+          "schema": "orfdata.catalog-manifest.v1",
+          "source_references": [
+            {
+              "taxon_id": 10090,
+              "species": "mouse",
+              "genome_build": "GRCm38",
+              "annotation_name": "gencode",
+              "annotation_version": "M25",
+              "assembly_accession": null,
+              "strain": null,
+              "strain_taxon_id": null,
+              "sequence_sha256": "5139cf409a680b60434716ca10ad4e474cbbe5d2e4d11af7553edfad8ed73670",
+              "taxonomy_version": "ncbi-2026-10-12",
+              "source_sha256": "e6c9704cb5832b8a1c71431ecac9ea30057377c72cdc9a12dc5d0405ab066d5a"
+            }
+          ]
+        },
+        "distribution": {
+          "access_terms": "Built from pinned Yang et al. Supplementary Data 3 (CC BY 4.0), native GENCODE vM25 RNA/GTF, and Ensembl 107 target annotation/RNA. Original references and evidence retained; exact-sequence placement only.",
+          "redistributable": true,
+          "data_release": "data-riborf-mouse-3"
+        },
+        "assets": {
+          "catalog.json.gz": {
+            "url": "https://github.com/openvax/orfdata/releases/download/data-riborf-mouse-3/riborf-mouse-3.json.gz",
+            "sha256": "2d60d7783821f3ab88485197b141c355ca07fbe6e5a9da78cec42262508c5d03",
+            "size": 24875346
+          }
+        }
       }
     }
   },

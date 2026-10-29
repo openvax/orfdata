@@ -374,7 +374,8 @@ def _lift(record, chain):
                                   source_sha256=chain.liftover.sha256)
     lifted = replace(record, contig=contig, strand=strand, coding_blocks=blocks,
                      genome_build=chain.liftover.target_build, reference_context=pinned,
-                     initiation_context=None, members=members, lifted_from=record, liftover=chain.liftover)
+                     initiation_context=None, members=members, lifted_from=record, liftover=chain.liftover,
+                     reference_mapping=None)
     context = record.initiation_context
     if context is not None:
         positions = [chain.map(record.contig, p, p) for p in context.genomic_positions]
@@ -394,6 +395,9 @@ def unlifted(metadata):
     """Every record a catalogue's lifts left out, through each hop and merged input: (record, assembly, reason)."""
     from .catalog import _record
 
+    for entry in metadata.get("unresolved", ()):
+        if entry.get("native_record") is not None and entry.get("reference_mapping") is not None:
+            yield _record(entry["native_record"]), metadata["genome_build"], entry["reason"]
     lift = metadata.get("liftover")
     if lift:
         yield from unlifted(lift["input"]["metadata"])

@@ -40,7 +40,7 @@ def _copy_catalog(inputs, output, manifest):
         handle.write(json.dumps(catalog.to_dict(), sort_keys=True, separators=(",", ":"), allow_nan=False).encode())
 
 
-def _builder(manifest):
+def _builder(manifest, *, for_build=False):
     """The packaged importer a release names; import paths in metadata are never executed."""
     importer = manifest.processing.get("importer")
     if importer == "catalog-copy-v1":
@@ -54,7 +54,13 @@ def _builder(manifest):
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
     if importer in ("riborf-v1", "riborf-v2"):
-        from .sources.riborf import import_orfs
+        from .sources.riborf import import_orfs, validate_transcript_manifest
+
+        if for_build:
+            validate_transcript_manifest(manifest)
+        return lambda inputs, output: import_orfs(inputs, output, manifest)
+    if importer == "riborf-native-v3":
+        from .sources.riborf_native import import_orfs
 
         return lambda inputs, output: import_orfs(inputs, output, manifest)
     if importer in ("riborf-genome-v1", "riborf-genome-v2"):
@@ -198,7 +204,7 @@ class CatalogRegistry:
     def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
         """Explicitly materialize an allowlisted catalogue source adapter."""
         manifest = self.info(name, version)
-        return build_catalog(manifest, _builder(manifest), cache_root=self._cache_root,
+        return build_catalog(manifest, _builder(manifest, for_build=True), cache_root=self._cache_root,
                              source_paths=source_paths, force=force, download_options=download_options)
 
     def inspect_build(self, name, version=None, *, verify_files=True):

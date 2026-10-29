@@ -89,7 +89,7 @@ def test_batch_resolves_all_names_before_acquiring(published, capsys):
 
 
 def test_default_and_historical_catalogue_versions_are_explicit():
-    assert data_info("riborf-mouse")["version"] == "2"
+    assert data_info("riborf-mouse")["version"] == "3"
     old = data_info("riborf-mouse", version="1")
     assert old["version"] == "1" and old["manifest"]["coverage"]["records"] == 40089
     with pytest.raises(ValueError, match="Unknown catalogue version"):
