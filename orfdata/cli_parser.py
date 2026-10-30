@@ -35,6 +35,54 @@ class ArgumentParser(argparse.ArgumentParser):
         self.exit(2, f"{prog}: error: {message}\nTry '{prog} --help' for usage.\n")
 
 
+CACHE_ROOT_HELP = "Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default"
+
+
+def add_cache_root(parser):
+    parser.add_argument("--cache-root", metavar="DIR", help=CACHE_ROOT_HELP)
+
+
+def share_cache_root(parser):
+    """Accept --cache-root before or after any of this group's subcommands.
+
+    A subcommand's own default would replace a value given before it, so
+    below the group the option sets nothing unless it is given there.
+    """
+    if not any("--cache-root" in action.option_strings for action in parser._actions):
+        add_cache_root(parser)
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for subparser in action.choices.values():
+                _defer_cache_root(subparser)
+
+
+def _defer_cache_root(parser):
+    found = [action for action in parser._actions if "--cache-root" in action.option_strings]
+    for action in found:
+        action.default, action.metavar, action.help = argparse.SUPPRESS, "DIR", CACHE_ROOT_HELP
+    if not found:
+        parser.add_argument("--cache-root", metavar="DIR", default=argparse.SUPPRESS, help=CACHE_ROOT_HELP)
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for subparser in action.choices.values():
+                _defer_cache_root(subparser)
+
+
+def seconds(value):
+    try:
+        number = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("expected a positive number of seconds") from None
+    if not number > 0:
+        raise argparse.ArgumentTypeError("expected a positive number of seconds")
+    return number
+
+
+def add_timeout(parser):
+    parser.add_argument("--timeout", type=seconds, default=60, metavar="SECONDS",
+                        help="Seconds a download may stall before it is retried, then fails (default 60)")
+
+
 def add_json(parser):
     parser.add_argument("--json", action="store_true", help="Write complete machine-readable JSON")
 

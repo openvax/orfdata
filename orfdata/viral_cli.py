@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from .cli_output import print_fields, print_json, print_table, records
-from .cli_parser import ArgumentParser, add_json, add_limit
+from .cli_parser import ArgumentParser, add_json, add_limit, add_timeout, share_cache_root
 from .viral_coverage import PANEL, download_viral_inventory, viral_contexts, viral_panel_coverage
 from .viral_panel import viral_annotation_survey, viral_reference_summary
 from .viral_subsets import viral_subsets
@@ -75,9 +75,10 @@ def run(argv=None, prog="orfdata viral"):
     download = inventory_commands.add_parser("download", help="Download the pinned inventory via DataCache")
     download.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE or the default")
     download.add_argument("--force", action="store_true", help="Replace the cached copy from the pinned source")
-    download.add_argument("--timeout", type=float, default=60, help="Per-attempt timeout in seconds")
+    add_timeout(download)
 
     add_json(download)
+    share_cache_root(parser)
     args = parser.parse_args(argv)
     if args.command == "contexts":
         rows = viral_contexts()

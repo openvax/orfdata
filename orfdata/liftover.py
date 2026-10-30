@@ -207,12 +207,13 @@ def chain_downloaded(chain, *, cache_root=None):
     return _chain_registry(chain, cache_root).inspect(chain.name, "1", verify_files=False).status != "missing"
 
 
-def download_chains(*, species=None, accept_terms=False, force=False, cache_root=None):
+def download_chains(*, species=None, accept_terms=False, force=False, cache_root=None, download_options=None):
     """Download every pinned chain file, or a species' ones, verifying each checksum.
 
     Returns ``{"downloaded": {name: path}, "skipped": {name: reason}}``:
     chains with usage restrictions, such as UCSC's non-commercial terms, are
-    skipped unless ``accept_terms=True``.
+    skipped unless ``accept_terms=True``. ``download_options``, such as
+    ``timeout``, go to each download.
     """
     pins = pinned_chains(species=species)
     if not pins:
@@ -226,7 +227,7 @@ def download_chains(*, species=None, accept_terms=False, force=False, cache_root
             continue
         result["downloaded"][chain.name] = download_chain(
             chain.source_build, chain.target_build, species=chain.species, accept_terms=accept_terms, force=force,
-            cache_root=cache_root)
+            cache_root=cache_root, download_options=download_options)
     return result
 
 

@@ -37,13 +37,18 @@ groups such as `orfdata datasets` show their subcommands. `download` and
 | `chains` | Manage assembly mapping files | `list`, `download` |
 | `lift` | Write an ORF catalogue on another assembly | Requires `--to` and `--output` |
 
-Commands that use a group-level cache or registry option show its placement in
-help. For example:
+`--cache-root DIR` works before or after a subcommand, in every command group,
+so these are the same:
 
 ```sh
 orfdata datasets --cache-root /path/to/cache query pfizer-atlas-dog-protein
-orfdata catalogs --registry registry.json list
+orfdata datasets query pfizer-atlas-dog-protein --cache-root /path/to/cache
 ```
+
+Every command that downloads takes `--timeout SECONDS`: how long a download may
+stall before it is retried, then fails (default 60). The `--registry` option of
+`catalogs` and `datasets` stays before the subcommand:
+`orfdata catalogs --registry registry.json list`.
 
 ## Human previews and complete exports
 
