@@ -32,15 +32,36 @@ def _add_json(parser):
     parser.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
 
+def _preview(rows, limit):
+    """At most ``limit`` rows, shared among kinds so every kind appears; also what each kind hides."""
+    if limit == 0 or len(rows) <= limit:
+        return rows, {}
+    groups = {}
+    for row in rows:
+        groups.setdefault(row.kind, []).append(row)
+    shown = dict.fromkeys(groups, 0)
+    remaining = limit
+    while remaining:  # One more row for each kind that has one, in turn.
+        for kind, group in groups.items():
+            if remaining and shown[kind] < len(group):
+                shown[kind] += 1
+                remaining -= 1
+    hidden = {kind: len(group) - shown[kind] for kind, group in groups.items() if len(group) > shown[kind]}
+    return [row for kind, group in groups.items() for row in group[:shown[kind]]], hidden
+
+
 def _show(rows, json_output, limit=25):
     if json_output:
         print_json([row.to_dict() for row in rows])
         return
     headings = ("KIND", "NAME", "VERSION", "STATUS", "ACQUIRE")
-    values = []
-    for row in rows:
-        values.append((row.kind, row.name, row.version, row.status, row.acquire))
-    print_table(headings, values, empty="No matching resources", limit=limit)
+    preview, hidden = _preview(rows, limit)
+    values = [(row.kind, row.name, row.version, row.status, row.acquire) for row in preview]
+    print_table(headings, values, empty="No matching resources", limit=0)
+    if hidden:
+        more = ", ".join(f"{count} {kind}" for kind, count in hidden.items())
+        print(f"\nShowing {len(preview)} of {len(rows)} entries; not shown: {more}.\n"
+              "Use --kind KIND or --limit 0 for all rows, or --json for a complete export.")
     print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
           "Local path: orfdata data path NAME")
     print("Filter with --species or --kind; use --json for versions, paths, and source metadata.")
@@ -61,7 +82,10 @@ def _show_result(result, json_output):
             print_fields(summary)
             print("\nUse --json for complete source pins and metadata.")
             return
-        if result.get("kind") in ("viral", "viral-selection"):
+        if "acquired" in result:  # What a fetch did, whatever the kind.
+            result = {key: result[key] for key in ("kind", "name", "version", "title", "acquired", "status", "path")
+                      if key in result}
+        elif result.get("kind") in ("viral", "viral-selection"):
             result = {key: value for key, value in result.items() if key in (
                 "kind", "status", "collection", "path", "bundle_version", "genome_count",
                 "transcript_count", "protein_count", "target_species", "contexts", "subsets")}
