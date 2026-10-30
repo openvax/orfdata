@@ -751,7 +751,8 @@ def download_viral_references(
         except (OSError, ValueError) as error:
             if not force:
                 raise FileNotFoundError(
-                    "Viral source-reference cache is incomplete or invalid; rerun with force=True."
+                    f"The {collection.name} viral references at {output} are incomplete or invalid; "
+                    f"replace them with force=True or 'orfdata data fetch {collection.name}'"
                 ) from error
         else:
             if not force:

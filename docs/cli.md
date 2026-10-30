@@ -14,8 +14,9 @@ orfdata data path pfizer-atlas-dog-protein
 ```
 
 `list` shows registered resources, including resources that need a local build.
-`status` shows resources available in the selected local cache, including bundled
-data. Neither command downloads anything. Use `--cache-root DIR` if your data
+`status` shows resources with files in the selected local cache, including bundled
+data and damaged installs that `data fetch` will repair. Neither command
+downloads anything. Use `--cache-root DIR` if your data
 lives outside the default cache, and `--verify` when you want to hash local files.
 
 ## Finding commands

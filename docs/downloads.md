@@ -32,7 +32,9 @@ results. See the [CLI guide](cli.md) for output formats and migration notes.
 Use `--kind` to disambiguate colliding resource names. For one resource,
 `--version VERSION` selects a historical release and `--source-path ASSET=PATH`
 provides already downloaded catalogue/dataset sources or genome files. Source
-overrides remain checksum-checked. `--force` installs a fresh generation.
+overrides remain checksum-checked. `fetch` reuses a valid installation and
+replaces one whose files fail verification, reporting it as `repaired`;
+`--force` installs a fresh generation even over valid files.
 Restricted chain downloads require `--accept-terms` after reviewing `info`.
 
 The same operations are available in Python:
@@ -62,8 +64,8 @@ to every resource kind. Focused command groups such as `orfdata viral coverage` 
 
 `list` shows every bundled, downloadable or locally buildable primary resource
 and its current state, including native protein search references declared by
-quantitative datasets. `status` shows resources already usable from local
-files. Filter either command with `--kind` or `--species`; use `--installed` or
+quantitative datasets. `status` shows resources with local files: usable ones
+and damaged or unreadable installs, which `data fetch NAME` repairs. Filter either command with `--kind` or `--species`; use `--installed` or
 `--missing` with `list`, `--json` for programs, and `--verify` to hash installed
 files. Discovery and status commands never acquire or repair data.
 

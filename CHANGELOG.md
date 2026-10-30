@@ -1,3 +1,13 @@
+# Unreleased
+
+- `orfdata data fetch` repairs an installation whose files fail verification,
+  reporting `acquired: repaired`, as `setup` already did; `--force` still
+  replaces valid files. An unreadable installation is reported, not replaced,
+  unless `--force` is given (#152).
+- `orfdata data status` lists damaged and unreadable installations with a repair
+  hint instead of hiding them. An incomplete viral collection directory is
+  `corrupt`, not `missing` (#151).
+
 # 0.44.0
 
 - Show a command guide for bare `orfdata` and command groups; add `help COMMAND`

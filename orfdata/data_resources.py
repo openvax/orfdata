@@ -93,8 +93,10 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
     """Install one resource and return its status, downloading or building as declared.
 
     Downloads retain their checksum validation. Builds use the same pinned source
-    adapters as the focused commands. Existing valid files are reused; discovery
-    and ordinary queries never invoke this function implicitly.
+    adapters as the focused commands. Existing valid files are reused, and files
+    that fail verification are replaced (``acquired`` is then ``"repaired"``);
+    ``force`` replaces valid files too. Discovery and ordinary queries never
+    invoke this function implicitly.
     """
     row = _resolve(name, kind, version, cache_root, True)
     if source_paths is not None and row.kind not in ("catalog", "dataset", "genome"):
@@ -103,6 +105,12 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
         raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
     if row.acquire is None or (row.installed and not force):
         return dict(row.to_dict(), acquired="already installed")
+    if row.status == "inaccessible" and not force:
+        raise ValueError(f"{name!r} at {row.path} can't be read; fix its permissions, choose another "
+                         f"--cache-root, or replace it with 'orfdata data fetch {name} --force'")
+    # Files that are present but fail verification are replaced, as setup does.
+    repair = not row.installed and row.status != "missing"
+    force = force or repair
     if row.kind in ("catalog", "dataset"):
         registry = _registry(row.kind, cache_root)
         options = dict(timeout=timeout, show_progress=show_progress)
@@ -137,4 +145,5 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
     result = _resolve(name, row.kind, row.version, cache_root, False)
     if not result.installed:
         raise RuntimeError(f"{name!r} installation finished with status {result.status}")
-    return dict(result.to_dict(), acquired="downloaded" if row.acquire == "download" else "built")
+    acquired = "repaired" if repair else "downloaded" if row.acquire == "download" else "built"
+    return dict(result.to_dict(), acquired=acquired)

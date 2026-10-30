@@ -159,3 +159,65 @@ def test_fetch_json_separates_source_progress(monkeypatch, published, capsys):
     output = capsys.readouterr()
     assert json.loads(output.out)[0]["installed"]
     assert "source processing progress" in output.err
+
+
+def _flip_last_byte(path):
+    with path.open("r+b") as handle:
+        handle.seek(-1, 2)
+        last = handle.read(1)
+        handle.seek(-1, 2)
+        handle.write(bytes([last[0] ^ 1]))
+
+
+def test_status_shows_and_fetch_repairs_damaged_files(published, capsys):
+    registry, original = published
+    fetch_data("fixture", show_progress=False)
+    artifact = registry.open("fixture").path
+    _flip_last_byte(artifact)
+    run(["data", "status", "--kind", "dataset", "--verify"])
+    output = capsys.readouterr().out
+    assert "fixture" in output and "invalid" in output and "Repair with: orfdata data fetch NAME" in output
+    run(["data", "status", "--kind", "dataset", "--verify", "--json"])
+    assert [row["status"] for row in json.loads(capsys.readouterr().out)] == ["invalid"]
+    repaired = fetch_data("fixture", show_progress=False)
+    assert repaired["acquired"] == "repaired" and repaired["installed"]
+    assert artifact.exists() and registry.open("fixture").path != artifact
+    assert list(registry.open("fixture").measurements()) == list(original.measurements())
+    assert fetch_data("fixture")["acquired"] == "already installed"
+
+
+def test_status_omits_absent_resources(published, capsys):
+    run(["data", "status", "--kind", "dataset", "--json"])
+    assert json.loads(capsys.readouterr().out) == []
+    run(["data", "list", "--kind", "dataset", "--json"])
+    assert [row["status"] for row in json.loads(capsys.readouterr().out)] == ["missing"]
+
+
+def test_fetch_does_not_replace_unreadable_files_without_force(published):
+    registry, _ = published
+    fetch_data("fixture", show_progress=False)
+    artifact = registry.open("fixture").path
+    artifact.chmod(0)
+    try:
+        if data_info("fixture", verify_files=True)["status"] != "inaccessible":
+            pytest.skip("this user can read files without read permission")
+        with pytest.raises(ValueError, match="can't be read.*--force"):
+            fetch_data("fixture", show_progress=False)
+    finally:
+        artifact.chmod(0o644)
+
+
+def test_fetch_repairs_a_damaged_or_incomplete_viral_collection(viral_panel, tmp_path):
+    from orfdata.downloads import collection_state
+
+    root = tmp_path / "cache"
+    assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "downloaded"
+    path = data_path("gdc-viruses", cache_root=root)
+    (path / "README.md").write_text("changed\n")
+    assert data_info("gdc-viruses", cache_root=root, verify_files=True)["status"] == "corrupt"
+    assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "repaired"
+    assert data_info("gdc-viruses", cache_root=root, verify_files=True)["status"] == "available"
+    (data_path("gdc-viruses", cache_root=root) / "metadata.json").unlink()
+    assert collection_state("gdc-viruses", cache_root=root) == "corrupt"
+    assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "repaired"
+    assert collection_state("gdc-viruses", cache_root=root) == "available"

@@ -41,6 +41,10 @@ def _show(rows, json_output, limit=25):
     for row in rows:
         values.append((row.kind, row.name, row.version, row.status, row.acquire))
     print_table(headings, values, empty="No matching resources", limit=limit)
+    damaged = [row.name for row in rows if row.status not in ("available", "missing")]
+    if damaged:
+        print(f"\n{len(damaged)} damaged or unreadable: {', '.join(damaged[:5])}"
+              f"{', ...' if len(damaged) > 5 else ''}. Repair with: orfdata data fetch NAME")
     print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
           "Local path: orfdata data path NAME")
     print("Filter with --species or --kind; use --json for versions, paths, and source metadata.")
@@ -81,14 +85,14 @@ def _add_discovery(parser, *, status=False):
     add_limit(parser)
     parser.add_argument("--verify", action="store_true", help="Hash and validate installed files")
     if status:
-        parser.set_defaults(installed=True)
+        parser.set_defaults(installed=None, local=True)
     else:
         selection = parser.add_mutually_exclusive_group()
         selection.add_argument("--installed", dest="installed", action="store_const", const=True,
                                help="Show only locally installed or bundled resources")
         selection.add_argument("--missing", dest="installed", action="store_const", const=False,
                                help="Show only missing, corrupt or inaccessible resources")
-        parser.set_defaults(installed=None)
+        parser.set_defaults(installed=None, local=False)
 
 
 def run(argv=None, prog="orfdata download"):
@@ -101,7 +105,7 @@ def run(argv=None, prog="orfdata download"):
 
     listing = commands.add_parser("list", help="List every bundled, downloadable or buildable resource")
     _add_discovery(listing)
-    status = commands.add_parser("status", help="Show resources already available locally")
+    status = commands.add_parser("status", help="Show resources with local files, including damaged installs")
     _add_discovery(status, status=True)
 
     for verb, description in (("info", "Describe a resource's source pins and download/build route"),
@@ -235,6 +239,8 @@ def run(argv=None, prog="orfdata download"):
                 kind=args.kind, species=args.species, contexts=args.context,
                 context_match=args.context_match, installed=args.installed,
                 cache_root=args.cache_root, verify_files=args.verify)
+            if args.local:  # Bundled, installed, damaged or unreadable: anything not simply absent.
+                rows = [row for row in rows if row.status != "missing"]
             _show(rows, args.json, args.limit)
             return
         with redirect_stdout(sys.stderr):

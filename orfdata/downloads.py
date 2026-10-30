@@ -86,7 +86,7 @@ def collection_state(
         else:
             _existing_bundle(path, species=chosen_species, collection=collection)
     except FileNotFoundError:
-        return "missing"
+        return "corrupt"  # The collection's directory exists, but not all of its files.
     except OSError:
         return "inaccessible"
     except ValueError:
