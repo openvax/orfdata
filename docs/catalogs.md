@@ -605,22 +605,26 @@ and its [coordinate discrepancy](https://github.com/openvax/orfdata/issues/55)
 remain separate from this data-management API.
 
 The pinned files contain transcript/protein sequences, not chromosome DNA.
-For intronic sequence and structural products, explicitly install the consortium's
-[CHM13v2.0 chromosome FASTA](https://github.com/marbl/CHM13):
+For intronic sequence and structural products, explicitly install the matching
+[Ensembl CHM13v2.0 chromosome FASTA](https://ftp.ensembl.org/pub/rapid-release/species/Homo_sapiens/GCA_009914755.4/ensembl/genome/):
 
 ```bash
-orfdata genomes install t2t-chm13 --genome-fasta https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz
+orfdata genomes install t2t-chm13 --genome-fasta https://ftp.ensembl.org/pub/rapid-release/species/Homo_sapiens/GCA_009914755.4/ensembl/genome/Homo_sapiens-GCA_009914755.4-unmasked.fa.gz
 ```
 
 ```python
 from orfdata import load_genome
 
-dna = "https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz"
+dna = "https://ftp.ensembl.org/pub/rapid-release/species/Homo_sapiens/GCA_009914755.4/ensembl/genome/Homo_sapiens-GCA_009914755.4-unmasked.fa.gz"
 genome = load_genome("t2t-chm13", genome_fasta_path_or_url=dna)
 sequence = genome.sequence("1", 1, 100)  # 1-based inclusive; offline after install
 ```
 
 A local chromosome FASTA path works too. Supply the same source when loading;
+contig names must match the annotation (`1` ... `22`, `X`, `Y`). The consortium
+analysis FASTA uses `chr1` etc. and requires explicit contig-name remapping before
+use with this annotation. Renaming contigs is not coordinate liftover.
+
 DNA is optional and is not silently added to annotation-only loads. This DNA
 source is caller-selected, separate from the checksum-pinned annotation assets.
 Allow roughly 1 GB for the compressed download and several GB for installed DNA

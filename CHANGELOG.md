@@ -1,3 +1,8 @@
+# 0.43.1
+
+- Use matching Ensembl chromosome DNA in the CHM13 installation example and
+  explain the consortium FASTA's different contig names (#149).
+
 # 0.43.0
 
 - Resolve pinned annotations' taxonomy and genetic codes from their declared species,
