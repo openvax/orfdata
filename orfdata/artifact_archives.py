@@ -74,6 +74,8 @@ def install_archive(destination, archive, member, pin, *, source_paths=None, for
     """
     import datacache
 
+    from .datasets import _resumable
+
     options = archive_options(archive, member, pin)
     if source_paths is not None:
         if not isinstance(source_paths, (list, tuple)) or len(source_paths) != len(options["sources"]):
@@ -87,7 +89,7 @@ def install_archive(destination, archive, member, pin, *, source_paths=None, for
 
     tree = datacache.install_archive(destination, **options, force=force, verified=True,
                                     max_members=1, max_extracted_size=pin["size"],
-                                    download_options=download_options, validator=validate)
+                                    download_options=_resumable(download_options), validator=validate)
     return Path(tree) / member
 
 

@@ -268,11 +268,13 @@ def download_chain(source_build, target_build, *, species=None, accept_terms=Fal
     if chain.restricted and accept_terms is not True:
         raise ValueError(f"{chain.filename} comes from {chain.provider} with these terms: {chain.terms} "
                          f"({chain.terms_url}). Pass accept_terms=True (or --accept-terms) to download it.")
+    from .datasets import _resumable
+
     registry = _chain_registry(chain, cache_root)
     try:
         registry.download(chain.name, "1", force=force,
                           source_paths=None if source_path is None else {chain.filename: str(source_path)},
-                          **(download_options or {}))
+                          **_resumable(download_options))
     except ValueError as error:
         if force or registry.inspect(chain.name, "1", verify_files=False).status == "missing":
             raise

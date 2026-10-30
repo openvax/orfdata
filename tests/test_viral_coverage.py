@@ -114,3 +114,4 @@ def test_inventory_download_uses_datacache_with_the_published_pin(monkeypatch, t
     assert called["expected_size"] == called["max_bytes"] == len(gzip.decompress(FIXTURE.read_bytes()))
     assert called["raw"] and called["record_provenance"] and called["force"]
     assert called["timeout"] == 12
+    assert called["resume"] == "auto"

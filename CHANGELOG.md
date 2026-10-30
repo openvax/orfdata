@@ -1,3 +1,11 @@
+# Unreleased
+
+- Resume interrupted downloads by default: published catalogues, genome and
+  chain files, search references, archive parts and build sources continue
+  from the bytes already received, through DataCache's `resume="auto"`. Single
+  compressed dataset files still restart, because DataCache can't resume a
+  transfer it decompresses (#156).
+
 # 0.44.0
 
 - Show a command guide for bare `orfdata` and command groups; add `help COMMAND`
