@@ -47,13 +47,15 @@ def fasta_records(text):
 
 
 @pytest.mark.parametrize("plain", [False, True])
-def test_pinned_real_ensembl_pairs_and_all_source_identities_replay_offline(tmp_path, plain):
+@pytest.mark.parametrize("annotation_name", ["Ensembl", "ensembl"])
+def test_pinned_real_ensembl_pairs_and_all_source_identities_replay_offline(tmp_path, plain, annotation_name):
     paths = inputs(tmp_path, plain=plain)
     if not plain:
         pins = json.loads((FIXTURE / "manifest.json").read_text())["fixture_sha256"]
         assert pins == {k: hashlib.sha256(p.read_bytes()).hexdigest() for k, p in paths.items()}
-    result = build(paths)
+    result = build(paths, reference=context(annotation_name=annotation_name))
     assert len(result) == 13
+    assert result.reference.annotation_name == annotation_name
     first = result.by_accession()[PROTEIN]
     assert (first.gene_id, first.transcript_id, len(first.sequence)) == (GENE, RNA, 496)
     duplicate_sequence = result.by_accession()["ENSP00000250831.5"]

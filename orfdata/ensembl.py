@@ -161,7 +161,8 @@ def _fasta(paths, hashes, *, protein=False):
 
 
 def ensembl_proteome(cls, protein_fasta, gtf, rna_fasta, ncrna_fasta, *, reference, expected_sha256):
-    if (not isinstance(reference, ReferenceContext) or reference.annotation_name != "Ensembl"
+    if (not isinstance(reference, ReferenceContext)
+            or (reference.annotation_name or "").casefold() != "ensembl"
             or not reference.annotation_version or not reference.assembly_accession):
         raise ValueError("Ensembl requires explicit taxon, assembly accession and Ensembl annotation")
     roles = {"protein", "gtf", "rna", "ncrna"}

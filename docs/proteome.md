@@ -114,6 +114,10 @@ remain unknown. No annotation indexing or downloads occur.
 contract for Ensembl's full GTF, peptide, cDNA and ncRNA files. It reads local
 plain or gzip files without building annotation indexes:
 
+`ReferenceContext.from_genome()` from a matching PyEnsembl release is also
+accepted. Provider names `Ensembl` and `ensembl` are compared without case
+differences; the supplied context spelling is preserved in the snapshot.
+
 ```python
 context = ReferenceContext(9606, "human", "GRCh38", "Ensembl", "115",
                            assembly_accession="GCA_000001405.29")
