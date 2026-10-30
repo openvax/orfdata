@@ -159,6 +159,13 @@ def print_record_stream(rows, *, format, columns, limit=25):
                 if key not in references:
                     references[key] = (f"r{len(references) + 1}", value)
                 return references[key][0]
+            if isinstance(value, float):
+                return f"{value:.6g}"
+            if isinstance(value, str):
+                if path.endswith(("sample_id", "pair_id", ".identifier")) and len(value) > 24:
+                    return value[:9] + "..." + value[-12:]
+                if path.endswith(("quantity", "status", "attribution")):
+                    return value.replace("_", " ")
             return value
 
         print_table(tuple(label for label, _ in columns),
@@ -170,6 +177,7 @@ def print_record_stream(rows, *, format, columns, limit=25):
                           ref.get("annotation_version"), (ref.get("sequence_sha256") or "")[:12])
                          for label, ref in references.values()], limit=0)
         print("\nUse --json for complete records or --format jsonl for streaming export.")
+        print("Previews abbreviate long IDs and show six significant digits; exports retain full precision.")
 
 
 def manifest_summary(manifest):

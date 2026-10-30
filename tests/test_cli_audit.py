@@ -228,6 +228,13 @@ def test_every_command_executes_with_human_and_json_output(audit_cases, monkeypa
             elif path not in (("data", "path"), ("viral", "inventory", "download")):
                 assert not output.lstrip().startswith(("{", "[")), argv
                 assert len(output.splitlines()) <= 100, argv
+                if path in (("datasets", "query"), ("datasets", "pairs")):
+                    assert all(species in output for species in ("human", "mouse", "dog", "yeast"))
+                    assert "REF" in output
+                if path == ("datasets", "query"):
+                    assert "TPM" in output and "iBAQ" in output and "measured" in output
+                if path == ("datasets", "pairs"):
+                    assert "same_material" in output and "concurrent" in output and "canonical_translation" in output
             if path == ("proteome",):
                 assert captured.out.startswith(">") and "{" not in captured.out
             elif path == ("lift",):

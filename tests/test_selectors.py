@@ -39,7 +39,7 @@ def test_native_unit_values_and_source_identity(native):
     assert views and all(v.measurement.unit == "iBAQ" and v.attribution == "group_membership_context" for v in views)
 
 
-def test_cli_native_and_mapped(native, tmp_path, capsys):
+def test_cli_native_and_mapped(native, tmp_path, capsys, monkeypatch):
     from test_measurements import definition
 
     definitions = definition(native)
@@ -52,11 +52,19 @@ def test_cli_native_and_mapped(native, tmp_path, capsys):
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(rows) == 5 and all(r["unit"] == "iBAQ" for r in rows)
     target = next(m.targets[0] for m in native.reference_mappings() if m.targets)
-    run(prefix + ["--mapped", "--mapping-status", "unresolved", "--reference", target.reference.key,
-                  "--target", target.identifier, "--kind", target.kind, "--namespace", target.namespace,
-                  "--unit", "rIBAQ", "--scale", "linear"] + ["--format", "jsonl"])
+    selection = ["--mapped", "--mapping-status", "unresolved", "--reference", target.reference.key,
+                 "--target", target.identifier, "--kind", target.kind, "--namespace", target.namespace,
+                 "--unit", "rIBAQ", "--scale", "linear"]
+    run(prefix + selection + ["--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert rows and all(r["measurement"]["unit"] == "rIBAQ" for r in rows)
+    monkeypatch.setenv("COLUMNS", "120")
+    run(prefix + selection)
+    preview = capsys.readouterr().out
+    assert "rIBAQ" in preview and "MAPPING" in preview and "requested target:" in preview
+    assert "group membership" in preview and "context only" in preview
+    assert target.identifier in preview and "References (full identities in --json)" in preview
+    assert "..." in preview and len(preview.splitlines()) <= 30
     run(prefix + ["--unit", "copies/cell"] + ["--format", "jsonl"])
     assert capsys.readouterr().out == ""
 

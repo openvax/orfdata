@@ -5,7 +5,7 @@ import sqlite3
 import sys
 from contextlib import redirect_stdout
 
-from .cli_output import manifest_summary, print_record_stream, print_result
+from .cli_output import manifest_summary, print_fields, print_record_stream, print_result
 from .cli_parser import ArgumentParser, add_json, add_limit
 from .datasets import DatasetRegistry
 from .reference import ScopedTarget
@@ -224,7 +224,11 @@ def run(argv=None, prog=None):
                        ("UNIT", "unit"), ("SCALE", "scale"), ("STATUS", "status"))
             if args.mapped:
                 columns = tuple((label, "measurement." + path) for label, path in columns) + (
-                    ("MAPPING", "attribution"), ("REQUESTED", "requested_target.identifier"))
+                    ("MAPPING", "attribution"),)
+                if args.format == "table":
+                    print_fields(dict(requested_target=target.identifier, namespace=target.namespace,
+                                      requested_reference=target.reference.key))
+                    print("Values retain their original targets; group membership supplies context only.\n")
             print_record_stream((measurement.to_dict() for measurement in measurements),
                                 format=args.format, limit=args.limit, columns=columns)
             return

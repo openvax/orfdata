@@ -68,7 +68,9 @@ JSON arrays; `--format jsonl` streams one original record per line. ORF queries
 also support `--format tsv`, `fasta`, and `gtf`. Viral coverage supports TSV.
 The preview limit never truncates a machine export.
 
-Measurement previews keep native values, units, scales and statuses. Reference
+Measurement previews keep native units, scales and statuses, display values to
+six significant digits, and abbreviate long identifiers. Exports retain full
+identifiers and numeric precision. Reference
 labels distinguish scoped identifiers that happen to have the same spelling.
 Mapped measurements show the original observation and its mapping attribution;
 pair previews show their pairing basis, temporal relationship and target
