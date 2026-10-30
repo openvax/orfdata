@@ -603,3 +603,27 @@ executed as Python code.
 [OpenProt source qualification](https://github.com/openvax/orfdata/issues/18)
 and its [coordinate discrepancy](https://github.com/openvax/orfdata/issues/55)
 remain separate from this data-management API.
+
+The pinned files contain transcript/protein sequences, not chromosome DNA.
+For intronic sequence and structural products, explicitly install the consortium's
+[CHM13v2.0 chromosome FASTA](https://github.com/marbl/CHM13):
+
+```bash
+orfdata genomes install t2t-chm13 --genome-fasta https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz
+```
+
+```python
+from orfdata import load_genome
+
+dna = "https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz"
+genome = load_genome("t2t-chm13", genome_fasta_path_or_url=dna)
+sequence = genome.sequence("1", 1, 100)  # 1-based inclusive; offline after install
+```
+
+A local chromosome FASTA path works too. Supply the same source when loading;
+DNA is optional and is not silently added to annotation-only loads. This DNA
+source is caller-selected, separate from the checksum-pinned annotation assets.
+Allow roughly 1 GB for the compressed download and several GB for installed DNA
+and indexes. Loading never downloads DNA. Missing DNA raises an installation
+error when accessed. Species taxonomy and nuclear/mitochondrial genetic codes
+are retained in PyEnsembl's saved reference metadata.

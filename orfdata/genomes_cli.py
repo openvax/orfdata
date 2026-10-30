@@ -16,6 +16,7 @@ def run(argv=None, prog=None):
     install = commands.add_parser("install", help="Download, check and index a pinned annotation")
     install.add_argument("name", help="Annotation name, as 'orfdata genomes list' shows it, e.g. t2t-chm13")
     install.add_argument("--force", action="store_true", help="Download again even when present")
+    install.add_argument("--genome-fasta", help="Explicit chromosome FASTA path or URL to install through PyEnsembl")
     install.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH",
                          help="Install a local copy of the gtf, transcripts or proteins file instead of downloading")
     args = parser.parse_args(argv)
@@ -30,7 +31,7 @@ def run(argv=None, prog=None):
                     raise ValueError("Source overrides require unique ROLE=PATH entries")
                 paths[role] = path
             genome = install_genome(args.name, force=args.force, source_paths=paths or None,
-                                    cache_root=args.cache_root)
+                                    cache_root=args.cache_root, genome_fasta_path_or_url=args.genome_fasta)
             output = dict(name=args.name, reference_name=genome.reference_name,
                           annotation=f"{genome.annotation_name} {genome.annotation_version}",
                           transcripts=len(genome.transcript_ids()))
