@@ -21,6 +21,7 @@ from .data_resources import data_info, data_path, fetch_data
 from .dataset import QuantitativeDataset
 from .datasets import DatasetRegistry, build_dataset
 from .downloads import DataStatus, list_data
+from .errors import NotInstalledError
 from .evidence import MS, EvidenceRule, RiboSeq
 from .evidence_summary import EvidenceSummary
 from .genomes import PinnedGenome, install_genome, load_genome, pinned_genomes
@@ -180,6 +181,7 @@ __all__ = [
     "data_info",
     "data_path",
     "fetch_data",
+    "NotInstalledError",
     "DatasetManifest",
     "SourceAsset",
     "Sample",

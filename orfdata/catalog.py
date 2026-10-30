@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import NamedTuple, Optional
 from urllib.parse import quote
 
+from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS as EVIDENCE_METHODS  # Re-exported for existing imports.
 from .evidence import MS_METHODS, evidence_rule, stored_method
 from .evidence_summary import EvidenceSummary, unique_summaries
@@ -1093,9 +1094,12 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
         chosen = ("" if catalogs is None else " --catalogs " + (
             catalogs if isinstance(catalogs, str) else ",".join(catalogs)))
-        raise ValueError(f"{species} {genome_build} ORFs need " + "; and ".join(needs)
-                         + f". Or install everything at once with 'orfdata setup --species {species}{chosen}{accept}"
-                         f"{cli_root}'")
+        # Missing catalogues or chains are a missing installation; a damaged one is a failure to repair.
+        damaged = any(c.registry is not None and _installed(c) == "damaged" for c, _ in plan)
+        error = ValueError if damaged else NotInstalledError
+        raise error(f"{species} {genome_build} ORFs need " + "; and ".join(needs)
+                    + f". Or install everything at once with 'orfdata setup --species {species}{chosen}{accept}"
+                    f"{cli_root}'")
     # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
     key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
         x.sha256 for x in route)) for c, route in plan))
@@ -1288,8 +1292,8 @@ def _open_registered(choice, expected_sha256):
         how = (f"{verb} it{when} with CatalogRegistry().{verb}({name!r}, {version!r}"
                f"{', force=True' if installed else ''}) or 'orfdata catalogs {verb} {name} --version {version}"
                f"{' --force' if installed else ''}'")
-        state = "damaged" if installed else "not installed"
-        raise ValueError(f"The {name} {version} ORF catalogue is {state}; {how}")
+        state, error = ("damaged", ValueError) if installed else ("not installed", NotInstalledError)
+        raise error(f"The {name} {version} ORF catalogue is {state}; {how}")
     if installed == "built":
         inspected = registry.inspect_build(name, version)
         if inspected.status != "available":

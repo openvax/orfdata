@@ -277,20 +277,22 @@ def test_cli_position_annotation_and_review_filter(capsys):
 
 
 @pytest.mark.parametrize(
-    "args",
+    "args, status",
     [
-        ["--position", "chr7:66205483"],
-        ["--region", "bad"],
-        ["--position", "7:1", "--format", "tsv"],
-        ["--orf-id", "typo"],
-        ["--position", "7:1", "--region", "7:1-2"],
-        ["--require-reviewed"],
+        (["--position", "chr7:66205483"], 2),
+        (["--region", "bad"], 2),
+        (["--region", "bad", "--genome-build", "GRCh38"], 2),
+        (["--position", "7:1", "--format", "tsv"], 2),
+        (["--orf-id", "typo"], 1),  # A well-formed ID the catalogue doesn't have.
+        (["--position", "7:1", "--region", "7:1-2"], 2),
+        (["--require-reviewed"], 2),
     ],
 )
-def test_cli_invalid_inputs_fail_explicitly(args):
+def test_cli_invalid_inputs_fail_explicitly(args, status, capsys):
     with pytest.raises(SystemExit) as error:
         run(args)
-    assert error.value.code == 2
+    assert error.value.code == status
+    assert ("--help' for usage" in capsys.readouterr().err) == (status == 2)
 
 
 def test_source_preparation_preserves_an_existing_Rdata_file(tmp_path, monkeypatch):

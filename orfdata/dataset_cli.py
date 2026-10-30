@@ -6,9 +6,17 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_record_stream, print_result
-from .cli_parser import ArgumentParser, add_json, add_limit
+from .cli_parser import ArgumentParser, UsageError, add_json, add_limit
 from .datasets import DatasetRegistry
 from .reference import ScopedTarget
+
+
+def _reference(references, key, option):
+    """The dataset reference ``option`` names, or a usage error listing the dataset's references."""
+    if key not in references:
+        raise UsageError(f"{option} {key!r} is not a reference of this dataset; choose from "
+                         f"{', '.join(references)}")
+    return references[key]
 
 
 def run(argv=None, prog=None):
@@ -107,7 +115,10 @@ def run(argv=None, prog=None):
         if args.registry:
             with open(args.registry) as handle:
                 definitions = json.load(handle)
-        registry = DatasetRegistry(definitions, cache_root=args.cache_root)
+        try:
+            registry = DatasetRegistry(definitions, cache_root=args.cache_root)
+        except (KeyError, TypeError) as error:  # A malformed --registry file, not a bug here.
+            raise ValueError(f"Invalid dataset registry {args.registry}: {error!r}") from error
         if args.command == "list":
             result = [m.to_dict() for m in registry.list(
                 species=args.species, taxon_id=args.taxon_id, assay=args.assay)]
@@ -178,7 +189,8 @@ def run(argv=None, prog=None):
                     if not all((identifier, kind, namespace, reference)):
                         parser.error(f"{side.title()} target queries require --{side}-target, --{side}-kind, "
                                      f"--{side}-namespace and --{side}-reference")
-                    selections[f"{side}_target"] = ScopedTarget(references[reference], kind, identifier, namespace)
+                    selections[f"{side}_target"] = ScopedTarget(
+                        _reference(references, reference, f"--{side}-reference"), kind, identifier, namespace)
                 selections[f"{side}_filters"] = {
                     field: getattr(args, f"{side}_{field}")
                     for field in ("quantity", "status", "unit", "scale", "log_base")
@@ -205,7 +217,8 @@ def run(argv=None, prog=None):
                 if not all((args.target, args.kind, args.namespace, args.reference)):
                     parser.error("Target queries require --target, --kind, --namespace and --reference")
                 references = {r.key: r for r in dataset.manifest.references}
-                target = ScopedTarget(references[args.reference], args.kind, args.target, args.namespace)
+                target = ScopedTarget(_reference(references, args.reference, "--reference"),
+                                      args.kind, args.target, args.namespace)
             filters = dict(sample_id=args.sample, assay_id=args.assay_id,
                            quantity=args.quantity, status=args.status,
                            unit=args.unit, scale=args.scale, log_base=args.log_base)
@@ -241,5 +254,5 @@ def run(argv=None, prog=None):
             print("\nUse --json for full source, reference, and provenance metadata.")
         if not args.json and args.command == "list":
             print("\nDetails: orfdata datasets info NAME\nInstall: orfdata data fetch NAME")
-    except (ValueError, TypeError, KeyError, OSError, ImportError, RuntimeError, sqlite3.Error) as exc:
-        parser.error(str(exc))
+    except (ValueError, OSError, ImportError, RuntimeError, sqlite3.Error) as exc:
+        parser.fail(exc)

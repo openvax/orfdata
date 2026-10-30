@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from importlib.resources import files
 from typing import Mapping, Optional
 
+from .errors import NotInstalledError
+
 _ROLES = ("gtf", "transcripts", "proteins")
 
 
@@ -108,8 +110,8 @@ def load_genome(name, *, cache_root=None, genome_fasta_path_or_url=None):
     status = _registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
     root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
     if status == "missing":
-        raise ValueError(f"The {name} annotation is not installed; install it once with install_genome({name!r}"
-                         f"{root}) or {_install_command(name, cache_root)}")
+        raise NotInstalledError(f"The {name} annotation is not installed; install it once with "
+                                f"install_genome({name!r}{root}) or {_install_command(name, cache_root)}")
     if status != "available":
         raise ValueError(f"The installed {name} annotation is {status}; install it again with "
                          f"install_genome({name!r}, force=True{root}) or {_install_command(name, cache_root, True)}")

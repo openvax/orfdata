@@ -8,6 +8,7 @@ from pathlib import Path
 
 from . import artifact_archives
 from .dataset import QuantitativeDataset
+from .errors import NotInstalledError
 from .measurements import DatasetManifest
 from .reference import species_taxon
 
@@ -150,7 +151,14 @@ class DatasetRegistry:
         from .search_reference import SearchReference, reference_registry
 
         spec = self._search_reference(name, version, reference, asset_id)
-        path = reference_registry(spec, self._cache_root).local_path(spec.dataset_id, spec.dataset_version)
+        registry = reference_registry(spec, self._cache_root)
+        if registry.inspect(spec.dataset_id, spec.dataset_version, verify_files=False).status == "missing":
+            asset, version = spec.source.asset_id, spec.dataset_version
+            raise NotInstalledError(
+                f"The {name} {version} search reference {asset} is not installed; download it with "
+                f"DatasetRegistry().download_reference({name!r}, {version!r}, asset_id={asset!r}) or "
+                f"'orfdata data fetch {name}:{asset} --version {version}'")
+        path = registry.local_path(spec.dataset_id, spec.dataset_version)
         return SearchReference(path, spec)
 
     def published(self, name, version=None):
@@ -170,6 +178,17 @@ class DatasetRegistry:
         if not self.published(name, version):
             raise ValueError(self._build_hint(name, version))
         return version
+
+    def _not_installed(self, name, version):
+        return NotInstalledError(
+            f"The {name} {version} dataset is not installed; download it with "
+            f"DatasetRegistry().download({name!r}, {version!r}) or 'orfdata data fetch {name} --version {version}'")
+
+    def _not_built(self, name, version):
+        version = self._version(name, version)
+        return NotInstalledError(
+            f"The {name} {version} dataset has no local build; build it from its pinned sources with "
+            f"DatasetRegistry().build({name!r}, {version!r}) or 'orfdata datasets build {name} --version {version}'")
 
     def _data_registry(self):
         if self._registry is None:
@@ -250,20 +269,22 @@ class DatasetRegistry:
         if not self.published(name, version):
             if self.inspect_build(name, version, verify_files=False).status == "missing":
                 version = self._version(name, version)
-                raise FileNotFoundError(self._build_hint(name, version).replace(
+                raise NotInstalledError(self._build_hint(name, version).replace(
                     "has no published artifact", "hasn't been built, and has no published artifact"))
             return self.open_build(name, version, verify_files=verify_files)
         version = self._published(name, version)
         if "archive" in self._definitions[name]["versions"][version]:
             inspected = self.inspect(name, version, verify_files=verify_files)
             if inspected.status == "missing":
-                raise FileNotFoundError(inspected.path)
+                raise self._not_installed(name, version)
             if inspected.status != "available":
                 raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
             path = inspected.files["dataset.sqlite"].path
         else:
-            path = self._data_registry().local_path(name, version, asset="dataset.sqlite",
-                                                  verify_files=verify_files)
+            registry = self._data_registry()
+            if registry.inspect(name, version, verify_files=False).status == "missing":
+                raise self._not_installed(name, version)
+            path = registry.local_path(name, version, asset="dataset.sqlite", verify_files=verify_files)
         dataset = QuantitativeDataset(path)
         if dataset.manifest.to_dict() != self.info(name, version).to_dict():
             raise ValueError("Installed dataset manifest disagrees with registered release")
@@ -284,7 +305,7 @@ class DatasetRegistry:
         """Open a local source materialization explicitly, without artifact fallback."""
         inspected = self.inspect_build(name, version, verify_files=verify_files)
         if inspected.status == "missing":
-            raise FileNotFoundError(inspected.path)
+            raise self._not_built(name, version)
         if inspected.status != "available":
             raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
         dataset = QuantitativeDataset(inspected.files["dataset.sqlite"].path)

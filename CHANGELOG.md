@@ -1,3 +1,17 @@
+# Unreleased
+
+- Exit with a status scripts can branch on: 1 when a command fails (network,
+  checksums, damaged data, unknown names), 2 only for an invalid command line,
+  and 3 when a resource the command needs isn't installed. Only command-line
+  mistakes point to `--help`. Up to 0.44.0 every failure exited 2 (#155).
+- Raise `orfdata.NotInstalledError`, also a `FileNotFoundError` and a
+  `ValueError`, for catalogues, datasets, search references, genomes, chains and
+  viral collections that aren't installed; opening one now names the command
+  that installs it instead of only its cache path.
+- Report unexpected internal errors with their traceback instead of as a
+  one-line user error, and name the option and its choices for an unknown
+  dataset `--reference`.
+
 # 0.44.0
 
 - Show a command guide for bare `orfdata` and command groups; add `help COMMAND`

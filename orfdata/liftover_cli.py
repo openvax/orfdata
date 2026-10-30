@@ -8,7 +8,7 @@ from dataclasses import asdict
 from .catalog import load_catalog
 from .catalogs import CatalogRegistry
 from .cli_output import print_result
-from .cli_parser import ArgumentParser, add_json, add_limit
+from .cli_parser import ArgumentParser, UsageError, add_json, add_limit
 from .liftover import (
     ChainFile,
     chain_downloaded,
@@ -41,7 +41,7 @@ def lift(argv=None, prog=None):
     args = parser.parse_args(argv)
     try:
         if args.catalog and (args.species or args.genome_build):
-            raise ValueError("Pass --catalog or --species/--genome-build, not both")
+            raise UsageError("Pass --catalog or --species/--genome-build, not both")
         registry = CatalogRegistry(cache_root=args.cache_root) if args.cache_root else None
         catalog = (load_catalog(args.catalog) if args.catalog
                    else load_catalog(species=args.species, genome_build=args.genome_build, registry=registry))
@@ -51,7 +51,7 @@ def lift(argv=None, prog=None):
                   if args.chain else lift_to(catalog, args.to, cache_root=args.cache_root))
         lifted.save(args.output)
     except (ValueError, OSError, ImportError, RuntimeError) as error:
-        parser.error(str(error))
+        parser.fail(error)
     hops, metadata = [], lifted.metadata
     while metadata.get("liftover") and metadata is not catalog.metadata:  # This command's hops, last first.
         hops.insert(0, metadata["liftover"])
@@ -95,20 +95,20 @@ def chains(argv=None, prog=None):
                 output.append(dict(asdict(chain), downloaded=downloaded))
         elif args.source_build is None:
             if args.source_path:
-                raise ValueError("--source-path installs one chain; name it with FROM TO")
+                raise UsageError("--source-path installs one chain; name it with FROM TO")
             with redirect_stdout(sys.stderr):
                 result = download_chains(species=args.species, accept_terms=args.accept_terms, force=args.force,
                                          cache_root=args.cache_root)
             output = dict(downloaded={k: str(v) for k, v in result["downloaded"].items()}, skipped=result["skipped"])
         elif args.target_build is None:
-            raise ValueError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
+            raise UsageError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
         else:
             with redirect_stdout(sys.stderr):
                 output = dict(path=str(download_chain(args.source_build, args.target_build, species=args.species,
                                                       accept_terms=args.accept_terms, force=args.force,
                                                       source_path=args.source_path, cache_root=args.cache_root)))
     except (ValueError, OSError, ImportError, RuntimeError) as error:
-        parser.error(str(error))
+        parser.fail(error)
     print_result(output, json_output=args.json,
                  columns=("source_build", "target_build", "species", "provider", "downloaded", "restricted"),
                  limit=getattr(args, "limit", 25))

@@ -8,6 +8,7 @@ from importlib.resources import files
 from .catalog import ORFCatalog, load_catalog
 from .catalog_manifest import CatalogManifest
 from .datasets import _datacache, _digest, get_data_dir
+from .errors import NotInstalledError
 from .reference import species_taxon
 
 _ASSET = "catalog.json.gz"
@@ -197,8 +198,14 @@ class CatalogRegistry:
         if not self.published(name, version):
             return self.open_build(name, version, verify_files=verify_files)
         manifest = self.info(name, version)
-        path = self._data_registry().local_path(name, self._published(name, version), asset=_ASSET,
-                                                verify_files=verify_files)
+        version = self._published(name, version)
+        registry = self._data_registry()
+        if registry.inspect(name, version, verify_files=False).status == "missing":
+            raise NotInstalledError(
+                f"The {name} {version} ORF catalogue is not installed; download it with "
+                f"CatalogRegistry().download({name!r}, {version!r}) or "
+                f"'orfdata data fetch {name} --version {version}'")
+        path = registry.local_path(name, version, asset=_ASSET, verify_files=verify_files)
         return _open(path, manifest)
 
     def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
@@ -233,7 +240,11 @@ class CatalogRegistry:
         """Open the local source build explicitly; never fall back to a download."""
         inspected = self.inspect_build(name, version, verify_files=verify_files)
         if inspected.status == "missing":
-            raise FileNotFoundError(inspected.path)
+            version = self._version(name, version)
+            raise NotInstalledError(
+                f"The {name} {version} ORF catalogue has no local build; build it from its pinned sources with "
+                f"CatalogRegistry().build({name!r}, {version!r}) or "
+                f"'orfdata catalogs build {name} --version {version}'")
         if inspected.status != "available":
             raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
         return _open(inspected.files[_ASSET].path, self.info(name, version))

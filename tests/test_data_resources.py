@@ -9,7 +9,14 @@ from test_catalog_registry import setup_release
 from test_measurements import definition as dataset_definition
 from test_measurements import write_dataset
 
-from orfdata import CatalogRegistry, DatasetRegistry, data_info, data_path, fetch_data
+from orfdata import (
+    CatalogRegistry,
+    DatasetRegistry,
+    NotInstalledError,
+    data_info,
+    data_path,
+    fetch_data,
+)
 from orfdata.cli import run
 
 
@@ -27,7 +34,7 @@ def published(tmp_path, experiment, monkeypatch):
 def test_download_reuse_corruption_and_force_preserve_existing_generation(published):
     registry, original = published
     assert data_info("fixture")["acquire"] == "download"
-    with pytest.raises(ValueError, match="missing"):
+    with pytest.raises(NotInstalledError, match="not installed; install it with orfdata data fetch fixture"):
         data_path("fixture")
     installed = fetch_data("fixture", show_progress=False)
     assert installed["acquired"] == "downloaded"
