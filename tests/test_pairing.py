@@ -257,7 +257,7 @@ def test_paired_table_cli_preserves_rna_protein_and_missing_ribo(tmp_path, paire
     registry_path = tmp_path / "registry.json"
     registry_path.write_text(json.dumps(metadata))
     run(["datasets", "--registry", str(registry_path), "--cache-root", str(cache_root),
-         "pairs", "fixture", "--basis", "same_material"])
+         "pairs", "fixture", "--basis", "same_material", "--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(rows) == 4
     assert all(row["ribosome_occupancy"] == [] for row in rows)

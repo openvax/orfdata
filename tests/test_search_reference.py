@@ -104,13 +104,13 @@ def test_reference_cli(source, tmp_path, capsys):
     config.write_text(json.dumps(definitions))
     prefix = ["datasets", "--registry", str(config), "--cache-root", str(tmp_path / "cache")]
     name = dataset.manifest.dataset_id
-    run(prefix + ["references", name])
+    run(prefix + ["references", name] + ["--json"])
     spec, = json.loads(capsys.readouterr().out)
     assert spec["source"]["sha256"] == dataset.manifest.references[0].sequence_sha256
-    run(prefix + ["download-reference", name, "--source-path", str(root / "search.fasta"), "--quiet"])
+    run(prefix + ["download-reference", name, "--source-path", str(root / "search.fasta"), "--quiet"] + ["--json"])
     assert Path(json.loads(capsys.readouterr().out)["search.fasta"]).exists()
     identifier = next(iter(root.joinpath("search.fasta").read_text().splitlines())).split("|")[1]
-    run(prefix + ["query-reference", name, "--target", identifier])
+    run(prefix + ["query-reference", name, "--target", identifier] + ["--json"])
     result = json.loads(capsys.readouterr().out)
     assert result["membership"]["status"] == "present"
     assert result["source"]["source"]["license_url"]

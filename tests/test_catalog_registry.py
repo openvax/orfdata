@@ -103,24 +103,24 @@ def test_catalogue_cli_reuses_evidence_locus_and_export_options(tmp_path, capsys
     config = tmp_path / "registry.json"
     config.write_text(json.dumps(definition(manifest)))
     prefix = ["catalogs", "--registry", str(config), "--cache-root", str(tmp_path / "cache")]
-    run(prefix + ["list", "--species", "mouse"])
+    run(prefix + ["list", "--species", "mouse"] + ["--json"])
     assert json.loads(capsys.readouterr().out)[0]["catalog_id"] == manifest.catalog_id
-    run(prefix + ["build", manifest.catalog_id, "--source-path", "source.json=" + str(source)])
+    run(prefix + ["build", manifest.catalog_id, "--source-path", "source.json=" + str(source)] + ["--json"])
     assert json.loads(capsys.readouterr().out)["status"] == "available"
-    run(prefix + ["inspect", manifest.catalog_id, "--built"])
+    run(prefix + ["inspect", manifest.catalog_id, "--built"] + ["--json"])
     assert json.loads(capsys.readouterr().out)["verified"] is False
     record = original.records[0]
     query = prefix + ["query", manifest.catalog_id, "--built"]
     run(query + ["--orf-id", record.orf_id, "--format", "fasta"])
     assert record.protein_sequence in capsys.readouterr().out
-    run(query + ["--evidence", "ms", "--require-resolved"])
+    run(query + ["--evidence", "ms", "--require-resolved"] + ["--json"])
     assert json.loads(capsys.readouterr().out)["records"] == []
-    run(query + ["--min-protein-length", str(len(record.protein_sequence) + 1)])
+    run(query + ["--min-protein-length", str(len(record.protein_sequence) + 1)] + ["--json"])
     assert json.loads(capsys.readouterr().out)["records"] == []
-    run(query + ["--position", f"{record.contig}:{record.coding_blocks[0][0]}", "--genome-build", record.genome_build])
+    run(query + ["--position", f"{record.contig}:{record.coding_blocks[0][0]}", "--genome-build", record.genome_build] + ["--json"])
     assert json.loads(capsys.readouterr().out)["records"][0]["orf_id"] == record.orf_id
     with pytest.raises(SystemExit):
-        run(query + ["--catalog", str(source)])
+        run(query + ["--catalog", str(source)] + ["--json"])
 
 
 @pytest.mark.parametrize("summarize", (False, True))
@@ -366,12 +366,12 @@ def test_load_catalog_opens_the_release_for_the_requested_assembly(tmp_path, mon
 
 
 def test_query_cli_selects_a_species_catalogue(capsys):
-    run(["--species", "human", "--orf-id", "c7riboseqorf56"])
+    run(["--species", "human", "--orf-id", "c7riboseqorf56", "--json"])
     assert [r["orf_id"] for r in json.loads(capsys.readouterr().out)["records"]] == ["c7riboseqorf56"]
     for species, message in (("dog", "No ORF catalogue covers canis_lupus_familiaris"),
                              ("mouse", "openprot-mouse 2.2-1 catalogue, which is not installed")):
         with pytest.raises(SystemExit):
-            run(["--species", species, "--gene", "Tpst1"])
+            run(["--species", species, "--gene", "Tpst1", "--json"])
         assert message in capsys.readouterr().err
 
 

@@ -1,10 +1,10 @@
 """Discover and acquire ORFdata resources through one command."""
 
-import argparse
 import sys
 from contextlib import redirect_stdout
 
-from .cli_output import print_fields, print_json, print_table
+from .cli_output import manifest_summary, print_fields, print_json, print_table
+from .cli_parser import ArgumentParser, add_limit
 from .downloads import list_data
 
 
@@ -32,30 +32,39 @@ def _add_json(parser):
     parser.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
 
-def _show(rows, json_output):
+def _show(rows, json_output, limit=25):
     if json_output:
         print_json([row.to_dict() for row in rows])
         return
-    headings = ("KIND", "NAME", "VERSION", "SPECIES", "CONTEXTS", "STATUS", "ACQUIRE", "COMMAND")
+    headings = ("KIND", "NAME", "VERSION", "STATUS", "ACQUIRE")
     values = []
     for row in rows:
-        version = row.version or "-"
-        if len(version) > 16:
-            version = version[:12] + "\u2026"
-        values.append((row.kind, row.name, version, ",".join(row.species),
-                       ",".join(row.contexts), row.status, row.acquire, row.command))
-    print_table(headings, values, empty="No matching resources")
-    installed = [row for row in rows if row.installed and row.path]
-    if installed:
-        print("\nInstalled paths")
-        for row in installed:
-            print(f"{row.kind}/{row.name}: {row.path}")
+        values.append((row.kind, row.name, row.version, row.status, row.acquire))
+    print_table(headings, values, empty="No matching resources", limit=limit)
+    print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
+          "Local path: orfdata data path NAME")
+    print("Filter with --species or --kind; use --json for versions, paths, and source metadata.")
 
 
 def _show_result(result, json_output):
     if json_output:
         print_json(result)
     else:
+        if "manifest" in result:
+            summary = {key: result[key] for key in
+                       ("kind", "name", "version", "title", "status", "acquired", "acquire", "installed",
+                        "species", "contexts", "path", "restricted", "command") if key in result}
+            summary["distribution"] = {key: value for key, value in result.get("distribution", {}).items()
+                                       if key in ("access_terms", "redistributable", "download_size", "installed_size")}
+            manifest = manifest_summary(result["manifest"])
+            summary.update((key, manifest[key]) for key in ("references", "source_assets", "coverage"))
+            print_fields(summary)
+            print("\nUse --json for complete source pins and metadata.")
+            return
+        if result.get("kind") in ("viral", "viral-selection"):
+            result = {key: value for key, value in result.items() if key in (
+                "kind", "status", "collection", "path", "bundle_version", "genome_count",
+                "transcript_count", "protein_count", "target_species", "contexts", "subsets")}
         print_fields(result)
 
 
@@ -69,6 +78,7 @@ def _add_discovery(parser, *, status=False):
     parser.add_argument("--context-match", choices=("any", "all"), default="any",
                         help="Match any selected context (default) or require all")
     _add_json(parser)
+    add_limit(parser)
     parser.add_argument("--verify", action="store_true", help="Hash and validate installed files")
     if status:
         parser.set_defaults(installed=True)
@@ -82,7 +92,11 @@ def _add_discovery(parser, *, status=False):
 
 
 def run(argv=None, prog="orfdata download"):
-    parser = argparse.ArgumentParser(prog=prog, description=__doc__)
+    parser = ArgumentParser(prog=prog, description=__doc__,
+                            epilog="Start here:\n  orfdata data list --species dog\n"
+                                   "  orfdata data status\n  orfdata data info NAME\n"
+                                   "  orfdata data fetch NAME\n\n"
+                                   "List, status, info, and path never download data.")
     commands = parser.add_subparsers(dest="command", required=True)
 
     listing = commands.add_parser("list", help="List every bundled, downloadable or buildable resource")
@@ -214,107 +228,108 @@ def run(argv=None, prog="orfdata download"):
                     print_json(output)
                 else:
                     for result in output:
-                        print_fields(result)
+                        _show_result(result, False)
             return
         if args.command in ("list", "status"):
             rows = list_data(
                 kind=args.kind, species=args.species, contexts=args.context,
                 context_match=args.context_match, installed=args.installed,
                 cache_root=args.cache_root, verify_files=args.verify)
-            _show(rows, args.json)
+            _show(rows, args.json, args.limit)
             return
-        if args.command == "viral":
-            from .viral_panel import download_viral_references, select_viral_references
+        with redirect_stdout(sys.stderr):
+            if args.command == "viral":
+                from .viral_panel import download_viral_references, select_viral_references
 
-            bundle = download_viral_references(
-                species=args.species, collection=args.collection, cache_root=args.cache_root,
-                force=args.force, timeout=args.timeout,
-                prefer_reference_molecule=args.prefer_reference_molecule,
-                annotate_from_alternate=args.annotate_from_alternate,
-                prefer_alternate_annotation=args.prefer_alternate_annotation)
-            if args.context or args.exclude_context or args.subset:
-                indexed = select_viral_references(
-                    contexts=args.context, exclude_contexts=args.exclude_context,
-                    context_match=args.context_match, subsets=args.subset,
-                    species=args.species, collection=args.collection,
-                    cache_root=args.cache_root, force=args.force, timeout=args.timeout)
-                output = dict(indexed.to_dict(), kind="viral-selection", status="available")
+                bundle = download_viral_references(
+                    species=args.species, collection=args.collection, cache_root=args.cache_root,
+                    force=args.force, timeout=args.timeout,
+                    prefer_reference_molecule=args.prefer_reference_molecule,
+                    annotate_from_alternate=args.annotate_from_alternate,
+                    prefer_alternate_annotation=args.prefer_alternate_annotation)
+                if args.context or args.exclude_context or args.subset:
+                    indexed = select_viral_references(
+                        contexts=args.context, exclude_contexts=args.exclude_context,
+                        context_match=args.context_match, subsets=args.subset,
+                        species=args.species, collection=args.collection,
+                        cache_root=args.cache_root, force=args.force, timeout=args.timeout)
+                    output = dict(indexed.to_dict(), kind="viral-selection", status="available")
+                else:
+                    output = dict(bundle.to_dict(), kind="viral", status="available")
+            elif args.command == "catalog":
+                from .catalogs import CatalogRegistry
+
+                registry = CatalogRegistry(cache_root=args.cache_root)
+                paths = _source_paths(args.source_path, "Source overrides")
+                if registry.published(args.name, args.version):
+                    registry.download(args.name, args.version, force=args.force, source_paths=paths,
+                                      timeout=args.timeout)
+                    inspection = registry.inspect(args.name, args.version)
+                    acquired = "downloaded"
+                else:
+                    registry.build(args.name, args.version, force=args.force, source_paths=paths,
+                                   download_options={"timeout": args.timeout})
+                    inspection = registry.inspect_build(args.name, args.version)
+                    acquired = "built"
+                output = dict(kind="catalog", name=args.name, version=registry.info(args.name, args.version).version,
+                              acquired=acquired, status=inspection.status, path=str(inspection.path))
+            elif args.command == "dataset":
+                from .datasets import DatasetRegistry
+
+                registry = DatasetRegistry(cache_root=args.cache_root)
+                paths = _source_paths(args.source_path, "Source overrides")
+                options = {"timeout": args.timeout, "show_progress": not args.quiet}
+                if registry.published(args.name, args.version):
+                    registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
+                    inspection = registry.inspect(args.name, args.version)
+                    acquired = "downloaded"
+                else:
+                    registry.build(args.name, args.version, force=args.force, source_paths=paths,
+                                   download_options=options)
+                    inspection = registry.inspect_build(args.name, args.version)
+                    acquired = "built"
+                output = dict(kind="dataset", name=args.name, version=registry.info(args.name, args.version).version,
+                              acquired=acquired, status=inspection.status, path=str(inspection.path))
+            elif args.command == "reference":
+                from .datasets import DatasetRegistry
+
+                registry = DatasetRegistry(cache_root=args.cache_root)
+                options = {"timeout": args.timeout, "show_progress": not args.quiet}
+                paths = registry.download_reference(
+                    args.dataset, args.version, reference=args.reference, asset_id=args.asset,
+                    force=args.force, source_path=args.source_path, **options)
+                inspection = registry.inspect_reference(
+                    args.dataset, args.version, reference=args.reference, asset_id=args.asset)
+                output = dict(kind="reference", dataset=args.dataset,
+                              version=registry.info(args.dataset, args.version).version,
+                              status=inspection.status, path=str(inspection.path), files=paths)
+            elif args.command == "genome":
+                from .genomes import install_genome
+
+                paths = _source_paths(args.source_path, "Source overrides")
+                installed = install_genome(args.name, force=args.force, source_paths=paths,
+                                           cache_root=args.cache_root)
+                output = dict(kind="genome", name=args.name, reference_name=installed.reference_name,
+                              annotation=f"{installed.annotation_name} {installed.annotation_version}",
+                              transcripts=len(installed.transcript_ids()))
             else:
-                output = dict(bundle.to_dict(), kind="viral", status="available")
-        elif args.command == "catalog":
-            from .catalogs import CatalogRegistry
+                from .liftover import download_chain, download_chains
 
-            registry = CatalogRegistry(cache_root=args.cache_root)
-            paths = _source_paths(args.source_path, "Source overrides")
-            if registry.published(args.name, args.version):
-                registry.download(args.name, args.version, force=args.force, source_paths=paths,
-                                  timeout=args.timeout)
-                inspection = registry.inspect(args.name, args.version)
-                acquired = "downloaded"
-            else:
-                registry.build(args.name, args.version, force=args.force, source_paths=paths,
-                               download_options={"timeout": args.timeout})
-                inspection = registry.inspect_build(args.name, args.version)
-                acquired = "built"
-            output = dict(kind="catalog", name=args.name, version=registry.info(args.name, args.version).version,
-                          acquired=acquired, status=inspection.status, path=str(inspection.path))
-        elif args.command == "dataset":
-            from .datasets import DatasetRegistry
-
-            registry = DatasetRegistry(cache_root=args.cache_root)
-            paths = _source_paths(args.source_path, "Source overrides")
-            options = {"timeout": args.timeout, "show_progress": not args.quiet}
-            if registry.published(args.name, args.version):
-                registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
-                inspection = registry.inspect(args.name, args.version)
-                acquired = "downloaded"
-            else:
-                registry.build(args.name, args.version, force=args.force, source_paths=paths,
-                               download_options=options)
-                inspection = registry.inspect_build(args.name, args.version)
-                acquired = "built"
-            output = dict(kind="dataset", name=args.name, version=registry.info(args.name, args.version).version,
-                          acquired=acquired, status=inspection.status, path=str(inspection.path))
-        elif args.command == "reference":
-            from .datasets import DatasetRegistry
-
-            registry = DatasetRegistry(cache_root=args.cache_root)
-            options = {"timeout": args.timeout, "show_progress": not args.quiet}
-            paths = registry.download_reference(
-                args.dataset, args.version, reference=args.reference, asset_id=args.asset,
-                force=args.force, source_path=args.source_path, **options)
-            inspection = registry.inspect_reference(
-                args.dataset, args.version, reference=args.reference, asset_id=args.asset)
-            output = dict(kind="reference", dataset=args.dataset,
-                          version=registry.info(args.dataset, args.version).version,
-                          status=inspection.status, path=str(inspection.path), files=paths)
-        elif args.command == "genome":
-            from .genomes import install_genome
-
-            paths = _source_paths(args.source_path, "Source overrides")
-            installed = install_genome(args.name, force=args.force, source_paths=paths,
-                                       cache_root=args.cache_root)
-            output = dict(kind="genome", name=args.name, reference_name=installed.reference_name,
-                          annotation=f"{installed.annotation_name} {installed.annotation_version}",
-                          transcripts=len(installed.transcript_ids()))
-        else:
-            from .liftover import download_chain, download_chains
-
-            if args.source_build is None:
-                if args.source_path:
-                    raise ValueError("--source-path installs one chain; name it with FROM TO")
-                result = download_chains(species=args.species, accept_terms=args.accept_terms,
-                                         force=args.force, cache_root=args.cache_root)
-                output = dict(downloaded={key: str(path) for key, path in result["downloaded"].items()},
-                              skipped=result["skipped"])
-            elif args.target_build is None:
-                raise ValueError("Name both assemblies, FROM and TO, or neither")
-            else:
-                path = download_chain(
-                    args.source_build, args.target_build, species=args.species,
-                    accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,
-                    cache_root=args.cache_root)
-                output = dict(path=str(path))
+                if args.source_build is None:
+                    if args.source_path:
+                        raise ValueError("--source-path installs one chain; name it with FROM TO")
+                    result = download_chains(species=args.species, accept_terms=args.accept_terms,
+                                             force=args.force, cache_root=args.cache_root)
+                    output = dict(downloaded={key: str(path) for key, path in result["downloaded"].items()},
+                                  skipped=result["skipped"])
+                elif args.target_build is None:
+                    raise ValueError("Name both assemblies, FROM and TO, or neither")
+                else:
+                    path = download_chain(
+                        args.source_build, args.target_build, species=args.species,
+                        accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,
+                        cache_root=args.cache_root)
+                    output = dict(path=str(path))
     except (ImportError, KeyError, RuntimeError, TypeError, ValueError, OSError) as error:
         parser.error(str(error))
     _show_result(output, args.json)

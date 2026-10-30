@@ -210,17 +210,17 @@ def test_reference_loading_preserves_version_and_checks_disagreement(tmp_path):
 
 
 def test_cli_context_lookup_and_ref_errors(capsys):
-    run(["--position", "7:66205480", "--genome-build", "GRCh38", "--ref", "A", "--alt", "C"])
+    run(["--position", "7:66205480", "--genome-build", "GRCh38", "--ref", "A", "--alt", "C", "--json"])
     output = json.loads(capsys.readouterr().out)
     assert output["position_annotations"] == [None]
     assert output["initiation_annotations"][0]["sequence_changes"] == ["kozak_preference_lost"]
     with pytest.raises(SystemExit) as exc:
-        run(["--position", "7:66205480", "--genome-build", "GRCh38", "--ref", "T", "--alt", "C"])
+        run(["--position", "7:66205480", "--genome-build", "GRCh38", "--ref", "T", "--alt", "C", "--json"])
     assert exc.value.code == 2 and "REF mismatch" in capsys.readouterr().err
     with pytest.raises(SystemExit):
-        run(["--ref", "A", "--alt", "C"])
+        run(["--ref", "A", "--alt", "C", "--json"])
     with pytest.raises(SystemExit):
-        run(["--position", "7:66240380", "--genome-build", "GRCh38", "--ref", "A", "--alt", "C"])
+        run(["--position", "7:66240380", "--genome-build", "GRCh38", "--ref", "A", "--alt", "C", "--json"])
     assert "No mapped initiation context" in capsys.readouterr().err
 
 

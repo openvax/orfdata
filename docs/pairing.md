@@ -32,10 +32,11 @@ the same species. A protein FASTA does not need an invented genomic assembly:
 see [source references](source-references.md). Original targets and references
 remain attached to both sides, even when their local IDs happen to match.
 
-The CLI streams the same table rows:
+The CLI previews the pairing basis, reference scopes and target relationships.
+Export the same complete table rows with an explicit streaming format:
 
 ```sh
-orfdata datasets pairs DATASET --version RELEASE --basis same_material
+orfdata datasets pairs DATASET --version RELEASE --basis same_material --format jsonl
 ```
 
 Select exact targets with `left_target=...` and `right_target=...`, using the

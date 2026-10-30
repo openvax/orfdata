@@ -267,11 +267,11 @@ def test_cli_exports_native_sequence_and_peptide_evidence(fmt, capsys):
 
 
 def test_cli_position_annotation_and_review_filter(capsys):
-    run(["--position", "chr7:66240380", "--genome-build", "GRCh38"])
+    run(["--position", "chr7:66240380", "--genome-build", "GRCh38", "--json"])
     output = json.loads(capsys.readouterr().out)
     assert output["position_annotations"][0]["amino_acid_position"] == 32
     assert output["position_annotations"][0]["mutant_translation_evidence"] == "not_assessed"
-    run(["--evidence", "immunopeptidomics", "--require-reviewed"])
+    run(["--evidence", "immunopeptidomics", "--require-reviewed", "--json"])
     output = json.loads(capsys.readouterr().out)
     assert len(output["records"]) == 16
 

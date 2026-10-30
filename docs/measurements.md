@@ -119,10 +119,11 @@ orfdata datasets inspect DATASET --version RELEASE
 orfdata datasets query DATASET --version RELEASE --quantity protein_abundance
 ```
 
-Queries stream JSON lines. `--reference ref:SHA256` selects an exact context;
+Queries show a human preview by default. Use `--format jsonl` to stream original
+JSON lines, or `--json` for one complete JSON array. `--reference ref:SHA256` selects an exact context;
 target queries also require `--target`, `--kind` and `--namespace`. Unqualified
-sample/assay ID queries across multiple references are rejected. Existing
-catalogue commands such as `orfdata --gene TPST1` retain their behavior.
+sample/assay ID queries across multiple references are rejected. ORF catalogue queries use `orfdata query --gene TPST1`; add `--json` for the
+complete structured export. See the [CLI migration guide](cli.md#migrating-scripts-from-042-or-043).
 
 ## What each value means
 

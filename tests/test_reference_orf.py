@@ -152,7 +152,7 @@ def test_nonhuman_immunopeptidomics_evidence_is_scoped_and_preserved(tmp_path):
 def test_generic_cli_exports_noncoding_models_and_species(capsys):
     from orfdata.cli import run
 
-    run(["--biotype", "lncRNA", "--evidence", "ms"])
+    run(["--biotype", "lncRNA", "--evidence", "ms", "--json"])
     output = json.loads(capsys.readouterr().out)
     assert output["schema"] == "orfdata.query.v1"
     assert output["records"]

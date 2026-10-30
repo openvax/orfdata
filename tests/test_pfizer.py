@@ -160,7 +160,7 @@ def test_registry_build_and_cli_use_same_verified_source_workflow(tmp_path, sour
                "build", source[0].dataset_id, "--quiet"]
     for key, path in source[1].items():
         options.extend(["--source-path", f"{key}={path}"])
-    run(options)
+    run(options + ["--json"])
     result = json.loads(capsys.readouterr().out)
     rebuilt = QuantitativeDataset(result["path"])
     assert rebuilt.manifest == dataset.manifest

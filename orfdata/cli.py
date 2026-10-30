@@ -5,14 +5,55 @@ import csv
 import json
 import re
 import sys
+from contextlib import redirect_stdout
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
+from .cli_output import print_result, print_table
+from .cli_parser import ArgumentParser, add_json, add_limit
 from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
+
+COMMANDS = {
+    "data": "Discover downloadable data, inspect local files, and fetch resources",
+    "query": "Find ORFs and export catalogue records",
+    "catalogs": "Manage optional ORF catalogues",
+    "datasets": "Manage and query quantitative RNA/protein datasets",
+    "proteome": "Build a reference proteome and export FASTA",
+    "viral": "Inspect viral coverage, subsets, and installed reference layers",
+    "setup": "Install a species' default catalogues and reference collections",
+    "genomes": "Manage pinned genome annotations",
+    "chains": "List and download assembly mapping files",
+    "lift": "Map an ORF catalogue to another genome assembly",
+    "help": "Show help for a command",
+}
+
+
+def _command_guide(prog):
+    parser = ArgumentParser(
+        prog=prog, description="ORFdata: discover reference data, query ORFs, and build proteomes.",
+        epilog="Start here:\n"
+               f"  {prog} data list                 See what can be downloaded or built\n"
+               f"  {prog} data status               See what is available locally\n"
+               f"  {prog} data info NAME            Inspect a resource before fetching it\n"
+               f"  {prog} help COMMAND              Find subcommands and options\n\n"
+               "Tables and summaries are the default; use --json for machine-readable output.\n"
+               "'download' and 'downloads' are aliases for 'data'.\n"
+               "Documentation: https://openvax.github.io/orfdata/")
+    parser.add_argument("--version", action="store_true", help="Show the installed version")
+    commands = parser.add_subparsers()
+    for name, description in COMMANDS.items():
+        commands.add_parser(name, help=description)
+    return parser
 
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
-    """Export reference records as JSON, TSV or FASTA."""
+    """Discover commands, inspect resources, and explicitly query or export records."""
     argv = list(sys.argv[1:] if argv is None else argv)
+    prog = prog or "orfdata"
+    if argv[:1] == ["help"]:
+        argv = argv[1:] + ["--help"]
+    if not argv or argv in (["--help"], ["-h"]):
+        _command_guide(prog).print_help()
+        return
     if argv == ["--version"]:
         from .version import __version__
 
@@ -49,15 +90,17 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
 
         command = liftover_cli.lift if argv[0] == "lift" else liftover_cli.chains
         return command(argv[1:], prog=f"{prog or 'orfdata'} {argv[0]}")
-    parser = argparse.ArgumentParser(
-        description=__doc__, prog=prog,
-        epilog="Install a species' catalogues and chains with 'orfdata setup --species S'. "
-               "Write a reference proteome with 'orfdata proteome --help'; manage optional ORF "
-               "catalogues with 'orfdata catalogs --help'; lift a catalogue to another assembly with "
-               "'orfdata lift --help' and 'orfdata chains --help'; annotations PyEnsembl lacks, such as "
-               "T2T-CHM13, with 'orfdata genomes --help'; discover and acquire data with "
-               "'orfdata data --help' (also 'downloads' or 'download'); viral coverage, subsets and installed layers with "
-               "'orfdata viral --help'.")
+    if argv[0] == "query":
+        argv = argv[1:]
+    elif not argv[0].startswith("-"):
+        _command_guide(prog).error(f"Unknown command {argv[0]!r}")
+    parser = ArgumentParser(
+        description="Query an installed ORF catalogue; preview records or export them explicitly.",
+        prog=prog + " query",
+        epilog="Examples:\n  orfdata query --gene TP53\n"
+               "  orfdata query --orf-id c7riboseqorf56 --json\n"
+               "  orfdata query --species mouse --format fasta\n\n"
+               "Find optional sources with 'orfdata catalogs list'.")
     _add_query_arguments(parser)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
@@ -66,7 +109,7 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
 def _setup(argv, prog):
     from .install import InstallError, install_species
 
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         prog=prog, description="Install a species' ORF catalogues, chains and default reference collections, so its "
                                "proteomes work offline on every assembly the chains reach. Human setup downloads "
                                "the GDC viral collection too; '--collections none' skips it.")
@@ -83,19 +126,19 @@ def _setup(argv, prog):
     parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--timeout", type=float, default=60,
                         help="Seconds a download may stall before it is retried, then fails (default 60)")
+    add_json(parser)
     args = parser.parse_args(argv)
     try:
-        result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
-                                 cache_root=args.cache_root, timeout=args.timeout, catalogs=args.catalogs,
-                                 collections=args.collections)
+        with redirect_stdout(sys.stderr):
+            result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
+                                     cache_root=args.cache_root, timeout=args.timeout, catalogs=args.catalogs,
+                                     collections=args.collections)
     except InstallError as error:  # What did install is still reported.
-        json.dump(error.result, sys.stdout, indent=2)
-        sys.stdout.write("\n")
+        print_result(error.result, json_output=args.json)
         parser.exit(1, f"{parser.prog}: error: {error}\n")
-    except (ValueError, OSError, ImportError) as error:
+    except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.error(str(error))
-    json.dump(result, sys.stdout, indent=2)
-    sys.stdout.write("\n")
+    print_result(result, json_output=args.json)
 
 
 def _catalog_names(value):
@@ -124,7 +167,7 @@ def _add_query_arguments(parser, *, catalog_path=True):
                         help="Select ORFs with at least this many amino acids; source catalogues stay unfiltered")
     parser.add_argument("--region", help="1-based inclusive interval: chr7:66205483-66205522")
     parser.add_argument(
-        "--position", help="Map a 1-based variant position: chr7:66205483 (JSON only)"
+        "--position", help="Map a 1-based variant position: chr7:66205483 (table or JSON)"
     )
     parser.add_argument(
         "--include-initiation-context",
@@ -136,7 +179,12 @@ def _add_query_arguments(parser, *, catalog_path=True):
     parser.add_argument(
         "--genome-build", help="Required for genomic queries; selects or must match the catalogue's assembly"
     )
-    parser.add_argument("--format", choices=("json", "tsv", "fasta", "gtf"), default="json")
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--format", choices=("table", "json", "tsv", "fasta", "gtf"), default="table",
+                        help="Output format (default table; exports contain all matching records)")
+    output.add_argument("--json", dest="format", action="store_const", const="json",
+                        help="Write complete machine-readable JSON")
+    add_limit(parser)
 
 
 def _evidence_name(*extra):
@@ -205,7 +253,7 @@ def _rule(args, method, flag, *, default=None):
 def _query(args, parser, catalog_loader):
     if args.region and args.position:
         parser.error("Choose --region or --position")
-    if args.position and args.format != "json":
+    if args.position and args.format not in ("table", "json"):
         parser.error("--position requires --format json")
     if (args.ref is not None or args.alt is not None) and (
         not args.ref or not args.alt or not args.position
@@ -266,9 +314,30 @@ def _query(args, parser, catalog_loader):
                 raise ValueError(
                     "No mapped initiation context covers the SNV; coding consequences require full transcript reconstruction"
                 )
-    except (ValueError, KeyError, OSError, ImportError) as exc:
+    except (ValueError, KeyError, OSError, ImportError, RuntimeError) as exc:
         parser.error(str(exc))
-    if args.format == "json":
+    if args.format == "table":
+        print(f"{catalog.source}: {len(records)} matching ORFs ({catalog.genome_build})")
+        print_table(("ORF", "GENE", "TRANSCRIPT", "CLASS", "AA"),
+                    [(r.orf_id, r.gene_name or r.gene_id, r.transcript_id, r.biotype,
+                      len(r.protein_sequence)) for r in records], limit=args.limit, empty="No matching ORFs")
+        if args.position:
+            print("\nPosition annotations")
+            positions = [r.map_genomic_position(options["start"], genome_build=args.genome_build) or {}
+                         for r in records]
+            print_table(("ORF", "ROLE", "AA POSITION", "REF AA", "REFERENCE MS"),
+                        [(r.orf_id, a.get("role"), a.get("amino_acid_position"),
+                          a.get("reference_amino_acid"), a.get("reference_ms_support"))
+                         for r, a in zip(records, positions, strict=True)], limit=args.limit)
+            if any(a is not None for a in initiation_annotations):
+                print("\nInitiation context (sequence assessment; translation change is not measured)")
+                print_table(("ORF", "CONTEXT POSITION", "REFERENCE", "ALTERNATE"),
+                            [(a["orf_id"], a.get("context_position"),
+                              (a.get("initiation_assessment") or {}).get("display"),
+                              ((a.get("alternate_context") or {}).get("assessment") or {}).get("display"))
+                             for a in initiation_annotations if a is not None], limit=args.limit)
+        print("\nUse --json for evidence and provenance; --format fasta, tsv, or gtf for export.")
+    elif args.format == "json":
         output = {
             "schema": "isovar.uorf_query.v1"
             if isinstance(catalog, UORFCatalog)

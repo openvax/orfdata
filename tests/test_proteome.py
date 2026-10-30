@@ -996,7 +996,7 @@ def test_cli_adds_bundled_viral_proteins_to_fasta(tmp_path, monkeypatch, capsys)
         monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: human)
         fasta = tmp_path / "combined.fa"
         run(["proteome", "--species", "human", "--release", "1",
-             "--viral", "all", "--output", str(fasta)])
+             "--viral", "all", "--output", str(fasta), "--json"])
         assert json.loads(capsys.readouterr().err)["kinds"] == {"annotated": 3, "viral": 9}
         assert fasta.read_text().count(">") == 12
         assert "source=viral:HPV16@NC_001526.4" in fasta.read_text()
@@ -1034,43 +1034,43 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     path.write_text(json.dumps(catalog.to_dict()))
     output = tmp_path / "proteome.fa"
     command = ["proteome", "--species", "mouse", "--release", "1"]
-    run(command + ["--nc-orf-sources", str(path), "--output", str(output)])
+    run(command + ["--nc-orf-sources", str(path), "--output", str(output)] + ["--json"])
     summary = json.loads(capsys.readouterr().err)
     assert summary["kinds"] == {"annotated": 3, "extra_orf": 3}
     assert [e["orf_id"] for e in summary["excluded_orfs"]] == ["changed-orf"]
     assert output.read_text().count(">") == 6
-    run(command + ["--nc-orf-sources", str(path), "--no-reference-cds"])
+    run(command + ["--nc-orf-sources", str(path), "--no-reference-cds"] + ["--json"])
     captured = capsys.readouterr()
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"extra_orf": 3}
-    run(command + ["--nc-orf-sources", str(path), "--no-reference-cds", "--min-protein-length", "3"])
+    run(command + ["--nc-orf-sources", str(path), "--no-reference-cds", "--min-protein-length", "3"] + ["--json"])
     captured = capsys.readouterr()
     selected = json.loads(captured.err)
     assert captured.out.count(">") == 2 and selected["kinds"] == {"extra_orf": 2}
     assert selected["layers"][-1]["length_filtered"] == 1
     snapshot = tmp_path / "proteome.json.gz"
-    run(command + ["--nc-orf-sources", str(path), "--snapshot", str(snapshot)])
+    run(command + ["--nc-orf-sources", str(path), "--snapshot", str(snapshot)] + ["--json"])
     assert Proteome.load(snapshot).identity == json.loads(capsys.readouterr().err)["identity"]
-    run(command)
+    run(command + ["--json"])
     captured = capsys.readouterr()
     assert captured.out.count(">") == 3 and json.loads(captured.err)["kinds"] == {"annotated": 3}
     with pytest.raises(SystemExit):
-        run(command + ["--nc-orf-sources", "ms"])  # Required dataset isn't installed.
+        run(command + ["--nc-orf-sources", "ms"] + ["--json"])  # Required dataset isn't installed.
     assert "openprot-mouse 2.2-1 catalogue, which is not installed" in capsys.readouterr().err
     for old in ("--catalogs", "--catalog", "--nc-orfs", "--nc-orf-evidence", "--extra-orf-evidence"):
         with pytest.raises(SystemExit):
-            run(command + [old, "all"])
+            run(command + [old, "all"] + ["--json"])
         assert "unrecognized arguments" in capsys.readouterr().err
     for sources in ("", ",", "ms,"):
         with pytest.raises(SystemExit):
-            run(command + ["--nc-orf-sources", sources])
+            run(command + ["--nc-orf-sources", sources] + ["--json"])
         assert "requires nonempty" in capsys.readouterr().err
     with pytest.raises(SystemExit):
-        run(command + ["--no-reference-cds"])
+        run(command + ["--no-reference-cds"] + ["--json"])
     assert "No protein layers selected" in capsys.readouterr().err
     monkeypatch.setattr("orfdata.proteome.load_catalog", lambda **kw: catalog)
     for args in (["--nc-orf-sources", "ms,ribosome"],
                  ["--nc-orf-sources", "ms", "--nc-orf-sources", "ribosome"]):
-        run(command + args)
+        run(command + args + ["--json"])
         assert json.loads(capsys.readouterr().err)["kinds"] == {"annotated": 3, "extra_orf": 3}
 
 
@@ -1080,7 +1080,7 @@ def test_cli_longest_isoform_selection(tmp_path, monkeypatch, capsys):
     genome = write_genome(tmp_path / "isoforms", twin=True, fragment=True)
     try:
         monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda release, species: genome)
-        run(["proteome", "--species", "mouse", "--release", "1", "--isoforms", "longest"])
+        run(["proteome", "--species", "mouse", "--release", "1", "--isoforms", "longest", "--json"])
         captured = capsys.readouterr()
         assert captured.out.count(">") == 3 and "twin_protein" not in captured.out
         assert json.loads(captured.err)["layers"][0]["isoforms"] == "longest"
@@ -1109,9 +1109,9 @@ def test_build_reuses_an_identical_cached_proteome(genome, catalog, tmp_path, mo
     path.write_text(json.dumps(catalog.to_dict()))
     command = ["proteome", "--species", "mouse", "--release", "1", "--nc-orf-sources", "ms", "--cache",
                "--cache-root", str(tmp_path)]
-    run(command)
+    run(command + ["--json"])
     first = json.loads(capsys.readouterr().err)["identity"]
-    run(command)
+    run(command + ["--json"])
     assert json.loads(capsys.readouterr().err)["identity"] == first == built.identity and calls == [1, 1]
 
 

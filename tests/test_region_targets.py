@@ -67,10 +67,10 @@ def test_native_regions_roundtrip_and_cli(tmp_path, capsys):
     registry = tmp_path / "registry.json"
     registry.write_text(json.dumps(definition(dataset)))
     args = ["datasets", "--registry", str(registry), "--cache-root", str(tmp_path / "cache")]
-    run(args + ["download", "regions", "--quiet"])
+    run(args + ["download", "regions", "--quiet"] + ["--json"])
     capsys.readouterr()
     run(args + ["query", "regions", "--reference", reference.key, "--kind", "region",
-                "--namespace", target.namespace, "--target", target.identifier, "--unit", "RPKM"])
+                "--namespace", target.namespace, "--target", target.identifier, "--unit", "RPKM"] + ["--format", "jsonl"])
     assert [Measurement.from_dict(json.loads(line)) for line in capsys.readouterr().out.splitlines()] == expected
 
 

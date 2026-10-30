@@ -175,7 +175,7 @@ def test_offline_registry_source_rebuild_and_region_cli(source, tmp_path, monkey
     args = ["datasets", "--registry", str(config), "--cache-root", str(tmp_path / "cache"),
             "query", name, "--built", "--reference", ref.key, "--kind", "region",
             "--namespace", "Ingolia2009:feature", "--target", "HRA1", "--unit", "RPKM"]
-    run(args)
+    run(args + ["--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(rows) == 8 and {r["quantity"] for r in rows} == {"rna_abundance", "ribosome_occupancy"}
     assert all(r["target"]["kind"] == "region" and r["origin"] == "derived" for r in rows)

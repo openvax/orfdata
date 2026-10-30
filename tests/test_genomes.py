@@ -158,5 +158,7 @@ def test_genome_cli_passes_explicit_dna_source(tmp_path, monkeypatch, capsys):
     for role, path in paths.items():
         argv += ["--source-path", f"{role}={path}"]
     run(argv)
+    assert "reference name: GRCm39" in capsys.readouterr().out
+    run(argv + ["--json"])
     assert '"reference_name": "GRCm39"' in capsys.readouterr().out
     assert load_genome("mouse-slice", genome_fasta_path_or_url=dna).sequence("MT", 1, 3) == "ATA"

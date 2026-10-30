@@ -4,11 +4,11 @@ Acquisition lives in 'orfdata download viral'; this command describes what is
 published and what is installed.
 """
 
-import argparse
 import sys
 from pathlib import Path
 
-from .cli_output import print_json, print_table, records
+from .cli_output import print_fields, print_json, print_table, records
+from .cli_parser import ArgumentParser, add_json, add_limit
 from .viral_coverage import PANEL, download_viral_inventory, viral_contexts, viral_panel_coverage
 from .viral_panel import viral_annotation_survey, viral_reference_summary
 from .viral_subsets import viral_subsets
@@ -24,7 +24,7 @@ def _add_selection(parser):
 
 
 def run(argv=None, prog="orfdata viral"):
-    parser = argparse.ArgumentParser(prog=prog, description=__doc__)
+    parser = ArgumentParser(prog=prog, description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     coverage = commands.add_parser("coverage", help="List all GDC human-screen rows and coding-reference status")
     selection = coverage.add_mutually_exclusive_group()
@@ -37,12 +37,15 @@ def run(argv=None, prog="orfdata viral"):
     output.add_argument("--format", choices=("table", "json", "tsv"), default="table")
     output.add_argument("--json", dest="format", action="store_const", const="json",
                         help="Write machine-readable JSON")
+    add_limit(coverage)
 
     contexts = commands.add_parser("contexts", help="List selectable viral-reference contexts")
     contexts.add_argument("--json", action="store_true", help="Write machine-readable JSON")
+    add_limit(contexts)
 
     subsets = commands.add_parser("subsets", help="List named viral-reference subsets")
     subsets.add_argument("--json", action="store_true", help="Write machine-readable JSON")
+    add_limit(subsets)
 
     summary = commands.add_parser(
         "summary", help="Summarize the installed collection's genome, transcriptome and proteome")
@@ -65,6 +68,7 @@ def run(argv=None, prog="orfdata viral"):
     completeness.add_argument("--incomplete", action="store_true",
                               help="Show only genomes with a gap worth looking at")
     completeness.add_argument("--json", action="store_true", help="Write machine-readable JSON")
+    add_limit(completeness)
 
     inventory = commands.add_parser("inventory", help="Manage the published GDC inventory metadata")
     inventory_commands = inventory.add_subparsers(dest="inventory_command", required=True)
@@ -73,6 +77,7 @@ def run(argv=None, prog="orfdata viral"):
     download.add_argument("--force", action="store_true", help="Replace the cached copy from the pinned source")
     download.add_argument("--timeout", type=float, default=60, help="Per-attempt timeout in seconds")
 
+    add_json(download)
     args = parser.parse_args(argv)
     if args.command == "contexts":
         rows = viral_contexts()
@@ -82,7 +87,7 @@ def run(argv=None, prog="orfdata viral"):
             print_table(("CONTEXT", "ALIASES", "REFERENCES", "DESCRIPTION"),
                         [(row.name, ",".join(row.aliases), row.references,
                           row.description)
-                         for row in rows.itertuples(index=False)])
+                         for row in rows.itertuples(index=False)], limit=args.limit)
         return
     if args.command == "subsets":
         rows = viral_subsets()
@@ -90,7 +95,7 @@ def run(argv=None, prog="orfdata viral"):
             print_json(rows)
         else:
             print_table(("SUBSET", "REFERENCES", "DESCRIPTION"),
-                        [(row["name"], row["references"], row["description"]) for row in rows])
+                        [(row["name"], row["references"], row["description"]) for row in rows], limit=args.limit)
         return
     if args.command == "summary":
         try:
@@ -98,7 +103,7 @@ def run(argv=None, prog="orfdata viral"):
                 contexts=args.context, exclude_contexts=args.exclude_context,
                 context_match=args.context_match, subsets=args.subset, species=args.species,
                 cache_root=args.cache_root)
-        except (ImportError, ValueError, OSError) as error:
+        except (ImportError, ValueError, OSError, RuntimeError) as error:
             parser.error(str(error))
         _show_summary(result, args.json)
         return
@@ -108,9 +113,9 @@ def run(argv=None, prog="orfdata viral"):
                 contexts=args.context, exclude_contexts=args.exclude_context,
                 context_match=args.context_match, subsets=args.subset, species=args.species,
                 cache_root=args.cache_root)
-        except (ImportError, ValueError, OSError) as error:
+        except (ImportError, ValueError, OSError, RuntimeError) as error:
             parser.error(str(error))
-        _show_completeness(result, args.incomplete, args.json)
+        _show_completeness(result, args.incomplete, args.json, args.limit)
         return
     if args.command == "coverage":
         _show_coverage(args, parser)
@@ -119,9 +124,9 @@ def run(argv=None, prog="orfdata viral"):
     try:
         path = download_viral_inventory(cache_root=args.cache_root, force=args.force,
                                         timeout=args.timeout)
-    except (ImportError, ValueError, OSError) as error:
+    except (ImportError, ValueError, OSError, RuntimeError) as error:
         parser.error(str(error))
-    print(path)
+    print_json(dict(path=str(path))) if args.json else print(path)
 
 
 def _show_summary(result, json_output):
@@ -137,7 +142,7 @@ def _show_summary(result, json_output):
           f"taxon {result['target_taxon_id']}")
     print(f"version: {result['bundle_version']}")
     print(f"retrieved: {result['retrieved'] or '-'}")
-    print(f"path: {result['path']}")
+    print_fields({"path": result["path"]})
     print(f"selection: {', '.join(part for part in chosen if part) or 'whole collection'}")
     print()
     # The directory is on the path line above; the table names the files in it.
@@ -155,9 +160,10 @@ def _show_summary(result, json_output):
     unannotated = result["genomes_without_transcripts"]
     if unannotated:
         print(f"{len(unannotated)} of {result['genome_count']} genomes have no annotated CDS "
-              f"feature: {', '.join(unannotated)}")
-    for name, reason in sorted(result["annotation_fill_skipped"].items()):
-        print(f"  {name}: annotation could not be filled: {reason}")
+              "feature")
+        print_fields({"unannotated genomes": unannotated})
+    if result["annotation_fill_skipped"]:
+        print_fields({"annotation fill skipped": result["annotation_fill_skipped"]})
     sources = result["genome_sources"]
     if sorted(sources) != [next(iter(sources), "genbank")]:
         print("genome sources: " + ", ".join(f"{name} {count}"
@@ -165,7 +171,8 @@ def _show_summary(result, json_output):
     unlike = result["genomes_unlike_alternate"]
     if unlike:
         print(f"{len(unlike)} of {result['genome_count']} genomes are not the alternate "
-              f"reference their inventory row names: {', '.join(unlike)}")
+              "reference their inventory row names")
+        print_fields({"unlike alternate": unlike})
 
 
 def _incomplete(row):
@@ -174,7 +181,7 @@ def _incomplete(row):
                 or row["non_canonical_starts"] or not row["transcripts"])
 
 
-def _show_completeness(result, only_incomplete, json_output):
+def _show_completeness(result, only_incomplete, json_output, limit=25):
     rows = result["genomes"]
     if only_incomplete:
         rows = [row for row in rows if _incomplete(row)]
@@ -193,8 +200,8 @@ def _show_completeness(result, only_incomplete, json_output):
               f"{totals['coding_features_behind_alternate']} coding features")
     starts = result["initiations"]
     print("initiation: " + ", ".join(f"{name} {count}" for name, count in sorted(starts.items())))
-    for transcript, recoding in sorted(result["recoded_transcripts"].items()):
-        print(f"recoded: {transcript} ({recoding})")
+    if result["recoded_transcripts"]:
+        print_fields({"recoded": result["recoded_transcripts"]})
     print()
     print_table(("VIRUS", "SOURCE", "CDSS", "COMPLETE", "INCOMPLETE", "UNNAMED", "SPLICED",
                  "ALTERNATE", "SHORT BY"),
@@ -202,7 +209,7 @@ def _show_completeness(result, only_incomplete, json_output):
                   row["complete"], row["incomplete"], row["unnamed_genes"], row["spliced"],
                   row["alternate_features"] if row["alternate_features"] is not None else "-",
                   row["shortfall"] or "") for row in rows],
-                empty="No genomes to survey")
+                empty="No genomes to survey", limit=limit)
 
 
 def _show_coverage(args, parser):
@@ -229,4 +236,4 @@ def _show_coverage(args, parser):
         print_table(("VIRUS", "STATUS", "CDSS", "GDC REFERENCE / SOURCE"),
                     [(row.abbreviation, "available" if row.available else "not bundled",
                       row.coding_models, row.bundled_reference_id or row.refseq or row.genbank)
-                     for row in rows.itertuples(index=False)], empty="No matching references")
+                     for row in rows.itertuples(index=False)], empty="No matching references", limit=args.limit)

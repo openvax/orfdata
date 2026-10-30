@@ -174,12 +174,12 @@ def test_native_rna_cli_build_and_query(source, tmp_path, capsys):
     config.write_text(json.dumps(definition(dataset)))
     prefix = ["datasets", "--registry", str(config), "--cache-root", str(tmp_path / "cli")]
     overrides = [arg for name, path in inputs.items() for arg in ("--source-path", f"{name}={path}")]
-    run(prefix + ["build", manifest.dataset_id, "--quiet"] + overrides)
+    run(prefix + ["build", manifest.dataset_id, "--quiet"] + overrides + ["--json"])
     assert json.loads(capsys.readouterr().out)["counts"]["measurement"] == manifest.coverage["rows"]
     # Published-artifact queries are a distinct cache contract from local builds.
-    run(prefix + ["download", manifest.dataset_id, "--source-path", str(dataset.path), "--quiet"])
+    run(prefix + ["download", manifest.dataset_id, "--source-path", str(dataset.path), "--quiet"] + ["--json"])
     capsys.readouterr()
-    run(prefix + ["query", manifest.dataset_id, "--quantity", "rna_abundance", "--unit", "counts"])
+    run(prefix + ["query", manifest.dataset_id, "--quantity", "rna_abundance", "--unit", "counts"] + ["--format", "jsonl"])
     records = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(records) == manifest.coverage["rows"]
     registry = DatasetRegistry(definition(dataset))

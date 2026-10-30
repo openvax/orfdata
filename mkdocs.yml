@@ -19,6 +19,7 @@ extra_css:
   - stylesheets/docs.css
 nav:
   - Home: index.md
+  - Command-line guide: cli.md
   - Discover and download data: downloads.md
   - Downstream tools: downstream.md
   - Proteomes:
@@ -47,6 +48,7 @@ nav:
       - Dog MHC ligands and PeptideAtlas: dog-peptides.md
       - Dog paired-data and Ribo-seq source audit: dog-data-sources.md
   - Project:
+      - CLI design and audit: cli-design.md
       - Release notes: https://github.com/openvax/orfdata/blob/main/CHANGELOG.md
       - Data roadmap: https://github.com/openvax/orfdata/issues/3
 plugins:

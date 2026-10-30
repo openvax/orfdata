@@ -1,11 +1,12 @@
 """Write a proteome from selected host protein sources and optional viruses."""
 
-import argparse
-import json
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from .catalog import load_catalog
+from .cli_output import print_result
+from .cli_parser import ArgumentParser
 from .proteome import Proteome
 
 
@@ -16,7 +17,7 @@ def _ensembl_genome(release, species):
 
 
 def run(argv=None, prog=None, *, genome_loader=None):
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         description=__doc__, prog=prog,
         epilog="The PyEnsembl annotation must already be installed, e.g. "
                "'pyensembl install --release 115 --species human', or, for --genome, with "
@@ -48,6 +49,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--annotation", metavar="DIRECTORY",
                         help="Also write the ncORF models there as annotation.gtf with matching "
                              "transcripts.fasta and proteins.fasta, for PyEnsembl-based tools")
+    parser.add_argument("--json", action="store_true", help="Write the complete build summary as JSON to stderr")
     args = parser.parse_args(argv)
     try:
         sources = []
@@ -71,21 +73,23 @@ def run(argv=None, prog=None, *, genome_loader=None):
             raise ValueError("Pass --species and --release, or --genome")
         else:
             genome = (genome_loader or _ensembl_genome)(args.release, args.species)
-        proteome = Proteome.build(
-            genome, reference_cds=not args.no_reference_cds, isoforms=args.isoforms,
-            nc_orf_sources=sources, viral=args.viral or (), min_protein_length=args.min_protein_length,
-            cache=args.cache, cache_root=args.cache_root)
+        with redirect_stdout(sys.stderr):
+            proteome = Proteome.build(
+                genome, reference_cds=not args.no_reference_cds, isoforms=args.isoforms,
+                nc_orf_sources=sources, viral=args.viral or (), min_protein_length=args.min_protein_length,
+                cache=args.cache, cache_root=args.cache_root)
         proteome.write_fasta(args.output or sys.stdout)
         annotation = proteome.write_annotation(args.annotation) if args.annotation else None
         if args.snapshot:
             proteome.save(args.snapshot)
-    except (TypeError, ValueError, OSError, ImportError) as error:
+    except (TypeError, ValueError, OSError, ImportError, RuntimeError) as error:
         parser.error(str(error))
     summary = proteome.summary()
     summary["excluded_orfs"] = [dict(orf_id=e.orf_id, transcript_id=e.transcript_id, reason=e.reason)
                                 for e in proteome.excluded]
     if annotation is not None:
         summary["annotation"] = annotation
-    json.dump(summary, sys.stderr, indent=2)
-    sys.stderr.write("\n")
+    if not args.json:
+        summary = dict(output=args.output or "stdout (FASTA)", **summary)
+    print_result(summary, json_output=args.json, stream=sys.stderr)
 

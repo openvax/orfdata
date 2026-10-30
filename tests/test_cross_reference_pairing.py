@@ -87,7 +87,7 @@ def test_cross_reference_pair_cli_retains_native_scopes(tmp_path, native_pair, c
     DatasetRegistry(definitions, cache_root=cache).download("fixture", show_progress=False)
     capsys.readouterr()
     run(["datasets", "--registry", str(registry), "--cache-root", str(cache),
-         "pairs", "fixture", "--basis", "same_material"])
+         "pairs", "fixture", "--basis", "same_material", "--format", "jsonl"])
     row = json.loads(capsys.readouterr().out)
     assert row["rna_abundance"][0]["target"]["reference"]["genome_build"] is not None
     assert row["protein_abundance"][0]["target"]["reference"]["genome_build"] is None
@@ -99,7 +99,7 @@ def test_cross_reference_pair_cli_retains_native_scopes(tmp_path, native_pair, c
                            f"--{side}-namespace", target.namespace, f"--{side}-reference", target.reference.key,
                            f"--{side}-unit", value.unit])
     run(["datasets", "--registry", str(registry), "--cache-root", str(cache),
-         "pairs", "fixture", "--basis", "same_material", "--pair-id", "pair"] + selections)
+         "pairs", "fixture", "--basis", "same_material", "--pair-id", "pair"] + selections + ["--format", "jsonl"])
     assert json.loads(capsys.readouterr().out) == row
 
 

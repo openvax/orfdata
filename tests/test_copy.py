@@ -175,7 +175,7 @@ def test_cli_offline_source_rebuild(source, dataset, tmp_path, capsys):
                "build", source[0].dataset_id, "--quiet"]
     for key, path in source[1].items():
         options += ["--source-path", f"{key}={path}"]
-    run(options)
+    run(options + ["--json"])
     built = QuantitativeDataset(json.loads(capsys.readouterr().out)["path"])
     assert built.counts == dataset.counts and built.manifest == dataset.manifest
 

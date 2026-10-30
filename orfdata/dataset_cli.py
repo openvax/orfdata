@@ -1,16 +1,20 @@
 """Discover, download, inspect and query quantitative datasets."""
 
-import argparse
 import json
 import sqlite3
 import sys
+from contextlib import redirect_stdout
 
+from .cli_output import manifest_summary, print_fields, print_record_stream, print_result
+from .cli_parser import ArgumentParser, add_json, add_limit
 from .datasets import DatasetRegistry
 from .reference import ScopedTarget
 
 
 def run(argv=None, prog=None):
-    parser = argparse.ArgumentParser(description=__doc__, prog=prog)
+    parser = ArgumentParser(description=__doc__, prog=prog,
+                            epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
+                                   "Queries preserve native units and reference identities.")
     parser.add_argument("--registry", help="Local registry JSON (otherwise use packaged releases)")
     parser.add_argument("--cache-root", help="Override the OpenVax data cache root")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -18,11 +22,33 @@ def run(argv=None, prog=None):
     listing.add_argument("--species")
     listing.add_argument("--taxon-id", type=int)
     listing.add_argument("--assay")
-    for command in ("info", "download", "build", "inspect", "query", "pairs", "references",
-                    "download-reference", "inspect-reference", "query-reference"):
-        subparser = commands.add_parser(command)
-        subparser.add_argument("name")
-        subparser.add_argument("--version")
+    add_json(listing)
+    add_limit(listing)
+    for command, description in {
+        "info": "Describe a dataset's sources, references, and assay coverage",
+        "download": "Download and verify a published dataset",
+        "build": "Build a dataset from pinned source files",
+        "inspect": "Check the local dataset without downloading",
+        "query": "Preview or export measurements in their native units",
+        "pairs": "Find measurements with an explicit supported pairing basis",
+        "references": "List the dataset's native protein search references",
+        "download-reference": "Download a pinned native protein search FASTA",
+        "inspect-reference": "Check an installed search FASTA without downloading",
+        "query-reference": "Check an exact accession in an installed search reference",
+    }.items():
+        subparser = commands.add_parser(command, help=description, description=description)
+        subparser.add_argument("name", help="Dataset name from 'orfdata datasets list'")
+        subparser.add_argument("--version", help="Exact dataset release (default: registered version)")
+        if command in ("query", "pairs"):
+            output = subparser.add_mutually_exclusive_group()
+            output.add_argument("--format", choices=("table", "json", "jsonl"), default="table",
+                                help="Output format (default table; exports contain every matching record)")
+            output.add_argument("--json", dest="format", action="store_const", const="json",
+                                help="Write a complete machine-readable JSON array")
+        else:
+            add_json(subparser)
+        if command in ("query", "pairs", "references"):
+            add_limit(subparser)
         if command in ("inspect", "query", "pairs"):
             subparser.add_argument("--built", action="store_true",
                                    help="Use a local source build explicitly, instead of a published artifact")
@@ -98,12 +124,18 @@ def run(argv=None, prog=None):
             options = dict(show_progress=not args.quiet)
             if args.timeout is not None:
                 options["timeout"] = args.timeout
-            result = registry.download_reference(args.name, args.version, reference=args.reference, asset_id=args.asset,
-                                                 force=args.force, source_path=args.source_path, **options)
+            with redirect_stdout(sys.stderr):
+                result = registry.download_reference(args.name, args.version, reference=args.reference, asset_id=args.asset,
+                                                     force=args.force, source_path=args.source_path, **options)
         elif args.command == "query-reference":
             reference = registry.open_reference(args.name, args.version, reference=args.reference, asset_id=args.asset)
             target = ScopedTarget(reference.reference, args.kind, args.target, args.namespace or reference.spec.namespace)
             result = dict(source=reference.spec.to_dict(), membership=reference.membership(target).to_dict())
+            if not args.json:
+                membership = result["membership"]
+                result = dict(target=args.target, namespace=target.namespace, status=membership["status"],
+                              reason=membership["reason"], reference=target.reference.key,
+                              source_asset=reference.spec.source.asset_id)
         elif args.command == "inspect":
             inspect = registry.inspect_build if args.built else registry.inspect
             inspected = inspect(args.name, args.version)
@@ -116,8 +148,9 @@ def run(argv=None, prog=None):
             if args.timeout is not None:
                 options["timeout"] = args.timeout
             sources = {"dataset.sqlite": args.source_path} if args.source_path else None
-            result = registry.download(args.name, args.version, force=args.force,
-                                       source_paths=sources, **options)
+            with redirect_stdout(sys.stderr):
+                result = registry.download(args.name, args.version, force=args.force,
+                                           source_paths=sources, **options)
         elif args.command == "build":
             sources = {}
             for value in args.source_path:
@@ -128,8 +161,9 @@ def run(argv=None, prog=None):
             options = dict(show_progress=not args.quiet)
             if args.timeout is not None:
                 options["timeout"] = args.timeout
-            dataset = registry.build(args.name, args.version, force=args.force,
-                                     source_paths=sources, download_options=options)
+            with redirect_stdout(sys.stderr):
+                dataset = registry.build(args.name, args.version, force=args.force,
+                                         source_paths=sources, download_options=options)
             result = dict(path=str(dataset.path), counts=dataset.counts,
                           dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":
@@ -149,12 +183,19 @@ def run(argv=None, prog=None):
                     field: getattr(args, f"{side}_{field}")
                     for field in ("quantity", "status", "unit", "scale", "log_base")
                     if getattr(args, f"{side}_{field}") is not None}
-            for match in dataset.matched_measurements(
+            matches = dataset.matched_measurements(
                 allowed_bases=args.basis, allowed_temporal=args.temporal or ["concurrent"],
                 reference=args.reference, pair_ids=args.pair_id, relation_ids=args.relation_id,
                 **selections,
-            ):
-                sys.stdout.write(json.dumps(match.to_table_row()) + "\n")
+            )
+            print_record_stream((match.to_table_row() for match in matches), format=args.format, limit=args.limit,
+                                columns=(("PAIR", "pairing.pair_id"), ("BASIS", "pairing.basis"),
+                                         ("TEMPORAL", "pairing.temporal_relation"),
+                                         ("RELATION", "target_relation.relation"),
+                                         ("LEFT REF", "target_relation.left.reference"),
+                                         ("LEFT", "target_relation.left.identifier"),
+                                         ("RIGHT REF", "target_relation.right.reference"),
+                                         ("RIGHT", "target_relation.right.identifier")))
             return
         else:
             open_dataset = registry.open_build if args.built else registry.open
@@ -178,10 +219,27 @@ def run(argv=None, prog=None):
                 if args.mapping_status or args.require_sequence:
                     parser.error("Mapping filters require --mapped")
                 measurements = dataset.measurements(target=target, reference=args.reference, **filters)
-            for measurement in measurements:
-                sys.stdout.write(json.dumps(measurement.to_dict()) + "\n")
+            columns = (("REF", "target.reference"), ("TARGET", "target.identifier"), ("SAMPLE", "sample_id"),
+                       ("QUANTITY", "quantity"), ("VALUE", "value"),
+                       ("UNIT", "unit"), ("SCALE", "scale"), ("STATUS", "status"))
+            if args.mapped:
+                columns = tuple((label, "measurement." + path) for label, path in columns) + (
+                    ("MAPPING", "attribution"),)
+                if args.format == "table":
+                    print_fields(dict(requested_target=target.identifier, namespace=target.namespace,
+                                      requested_reference=target.reference.key))
+                    print("Values retain their original targets; group membership supplies context only.\n")
+            print_record_stream((measurement.to_dict() for measurement in measurements),
+                                format=args.format, limit=args.limit, columns=columns)
             return
-        json.dump(result, sys.stdout, indent=2)
-        sys.stdout.write("\n")
-    except (ValueError, TypeError, KeyError, OSError, ImportError, sqlite3.Error) as exc:
+        columns = (("dataset_id", "version", "assay_kinds") if args.command == "list"
+                   else ("source.asset_id", "namespace", "reference.species", "reference.genome_build"))
+        if args.command == "info" and not args.json:
+            result = dict(manifest_summary(result), download=result["download"])
+        print_result(result, json_output=args.json, columns=columns, limit=getattr(args, "limit", 25))
+        if args.command in ("info", "query-reference") and not args.json:
+            print("\nUse --json for full source, reference, and provenance metadata.")
+        if not args.json and args.command == "list":
+            print("\nDetails: orfdata datasets info NAME\nInstall: orfdata data fetch NAME")
+    except (ValueError, TypeError, KeyError, OSError, ImportError, RuntimeError, sqlite3.Error) as exc:
         parser.error(str(exc))

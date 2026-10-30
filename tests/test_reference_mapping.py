@@ -203,7 +203,7 @@ def test_mapped_cli_preserves_source_identity(tmp_path, mapped, capsys):
     target = mapped[1]["reference_mappings"][0].targets[0]
     run(["datasets", "--registry", str(path), "--cache-root", str(cache_root),
          "query", "fixture", "--mapped", "--require-sequence", "--reference", target.reference.key,
-         "--namespace", target.namespace, "--kind", target.kind, "--target", target.identifier])
+         "--namespace", target.namespace, "--kind", target.kind, "--target", target.identifier, "--format", "jsonl"])
     result = json.loads(capsys.readouterr().out)
     assert result["measurement"]["target"]["reference"]["genome_build"] is None
     assert result["requested_target"]["reference"]["genome_build"] == "GRCh38"
