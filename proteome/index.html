@@ -1974,6 +1974,9 @@ remain unknown. No annotation indexing or downloads occur.</p>
 <p><code>Proteome.from_ensembl()</code> provides the same reference inventory and provenance
 contract for Ensembl's full GTF, peptide, cDNA and ncRNA files. It reads local
 plain or gzip files without building annotation indexes:</p>
+<p><code>ReferenceContext.from_genome()</code> from a matching PyEnsembl release is also
+accepted. Provider names <code>Ensembl</code> and <code>ensembl</code> are compared without case
+differences; the supplied context spelling is preserved in the snapshot.</p>
 <div class="highlight"><pre><span></span><code><span class="n">context</span> <span class="o">=</span> <span class="n">ReferenceContext</span><span class="p">(</span><span class="mi">9606</span><span class="p">,</span> <span class="s2">"human"</span><span class="p">,</span> <span class="s2">"GRCh38"</span><span class="p">,</span> <span class="s2">"Ensembl"</span><span class="p">,</span> <span class="s2">"115"</span><span class="p">,</span>
                            <span class="n">assembly_accession</span><span class="o">=</span><span class="s2">"GCA_000001405.29"</span><span class="p">)</span>
 <span class="n">reference</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">from_ensembl</span><span class="p">(</span>
