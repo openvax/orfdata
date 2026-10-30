@@ -100,3 +100,63 @@ def test_the_proteome_cli_takes_a_pinned_genome_or_a_release(capsys):
         with pytest.raises(SystemExit):
             run(argv)
         assert message in capsys.readouterr().err
+
+
+def test_nonstandard_assembly_keeps_species_genetic_codes_and_saved_overrides():
+    import pickle
+
+    from orfdata._pinned_genome import PinnedEnsemblGenome
+
+    genome = PinnedEnsemblGenome("T2T-CHM13v2.0", "ensembl-rapid", "2022_07",
+                                species="human", assembly_accession="GCA_009914755.4")
+    for copied in (genome, pickle.loads(pickle.dumps(genome)),
+                   PinnedEnsemblGenome.from_json(genome.to_json())):
+        assert copied.taxon_id == 9606
+        assert copied.reference_metadata["translation_tables"] == {
+            "nuclear": 1, "mitochondrial": 2, "plastid": None}
+        assert copied.assembly_accession == "GCA_009914755.4"
+    # Saved provenance must not be silently refreshed from today's catalogue.
+    state = genome.to_dict()
+    state["reference_metadata"]["translation_tables"]["nuclear"] = 2
+    state["reference_metadata"]["translation_table_sources"]["nuclear"] = "reference"
+    copied = PinnedEnsemblGenome.from_dict(state)
+    assert copied.reference_metadata == state["reference_metadata"]
+
+
+def test_explicit_chromosome_dna_install_and_offline_load(tmp_path, monkeypatch):
+    from pyensembl.genome_fasta import MissingGenomeFastaError
+
+    from orfdata import genomes
+
+    paths, pins = slice_pins(tmp_path)
+    monkeypatch.setattr(genomes, "_pins", lambda: pins)
+    dna = tmp_path / "chromosomes.fa"
+    dna.write_text(">MT\nATATGAAGG\n")
+    installed = install_genome("mouse-slice", source_paths=paths, genome_fasta_path_or_url=dna)
+    assert installed.sequence("MT", 2, 6) == "TATGA"
+    assert installed.taxon_id == 10090
+    opened = load_genome("mouse-slice", genome_fasta_path_or_url=dna)
+    assert opened.sequence("MT", 1, 9) == "ATATGAAGG"
+    assert opened.transcript_by_id("ENSMUST00000109601").sequence
+    assert not load_genome("mouse-slice").requires_genome_fasta
+    missing = load_genome("mouse-slice", genome_fasta_path_or_url=tmp_path / "missing.fa")
+    with pytest.raises(MissingGenomeFastaError):
+        missing.sequence("MT", 1, 3)
+    monkeypatch.setattr(type(opened), "download_genome_fasta", lambda *a, **k: pytest.fail("load downloaded DNA"))
+    monkeypatch.setattr(type(opened), "index_genome_fasta", lambda *a, **k: pytest.fail("load opened DNA"))
+    assert load_genome("mouse-slice", genome_fasta_path_or_url="https://example.invalid/chromosomes.fa").requires_genome_fasta
+
+
+def test_genome_cli_passes_explicit_dna_source(tmp_path, monkeypatch, capsys):
+    from orfdata import genomes
+
+    paths, pins = slice_pins(tmp_path)
+    monkeypatch.setattr(genomes, "_pins", lambda: pins)
+    dna = tmp_path / "chromosomes.fa"
+    dna.write_text(">MT\nATATGAAGG\n")
+    argv = ["genomes", "install", "mouse-slice", "--genome-fasta", str(dna)]
+    for role, path in paths.items():
+        argv += ["--source-path", f"{role}={path}"]
+    run(argv)
+    assert '"reference_name": "GRCm39"' in capsys.readouterr().out
+    assert load_genome("mouse-slice", genome_fasta_path_or_url=dna).sequence("MT", 1, 3) == "ATA"

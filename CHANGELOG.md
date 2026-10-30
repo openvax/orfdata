@@ -1,3 +1,12 @@
+# 0.43.0
+
+- Resolve pinned annotations' taxonomy and genetic codes from their declared species,
+  including T2T-CHM13. Preserve explicitly saved reference metadata on replay.
+- Add explicit chromosome FASTA installation/loading through PyEnsembl to the
+  pinned-genome Python API and `orfdata genomes install --genome-fasta`. Loading
+  remains offline, and annotation-only installations remain supported (#146).
+- Require PyEnsembl 2.32.3 for native DNA and saved genetic-code metadata.
+
 # 0.42.4
 
 - Reconstruct mouse RibORF source ORFs from pinned GENCODE M25 RNA and exon
