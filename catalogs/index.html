@@ -2298,6 +2298,24 @@ executed as Python code.</p>
 <p><a href="https://github.com/openvax/orfdata/issues/18">OpenProt source qualification</a>
 and its <a href="https://github.com/openvax/orfdata/issues/55">coordinate discrepancy</a>
 remain separate from this data-management API.</p>
+<p>The pinned files contain transcript/protein sequences, not chromosome DNA.
+For intronic sequence and structural products, explicitly install the consortium's
+<a href="https://github.com/marbl/CHM13">CHM13v2.0 chromosome FASTA</a>:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>genomes<span class="w"> </span>install<span class="w"> </span>t2t-chm13<span class="w"> </span>--genome-fasta<span class="w"> </span>https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_genome</span>
+
+<span class="n">dna</span> <span class="o">=</span> <span class="s2">"https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz"</span>
+<span class="n">genome</span> <span class="o">=</span> <span class="n">load_genome</span><span class="p">(</span><span class="s2">"t2t-chm13"</span><span class="p">,</span> <span class="n">genome_fasta_path_or_url</span><span class="o">=</span><span class="n">dna</span><span class="p">)</span>
+<span class="n">sequence</span> <span class="o">=</span> <span class="n">genome</span><span class="o">.</span><span class="n">sequence</span><span class="p">(</span><span class="s2">"1"</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># 1-based inclusive; offline after install</span>
+</code></pre></div>
+<p>A local chromosome FASTA path works too. Supply the same source when loading;
+DNA is optional and is not silently added to annotation-only loads. This DNA
+source is caller-selected, separate from the checksum-pinned annotation assets.
+Allow roughly 1 GB for the compressed download and several GB for installed DNA
+and indexes. Loading never downloads DNA. Missing DNA raises an installation
+error when accessed. Species taxonomy and nuclear/mitochondrial genetic codes
+are retained in PyEnsembl's saved reference metadata.</p>
 
 
 
