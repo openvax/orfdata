@@ -651,12 +651,110 @@ def _bundle_readme(collection, genome_rows, transcript_rows, complete, retrieved
     )
 
 
-def _bundle_path(cache_root, species, collection):
+# Collections and selections are published the way DataCache publishes its own
+# bundles. Each version has a store directory holding complete bundles under
+# bundles/, the newest of which is current. An install builds a whole new bundle
+# beside the current one, under the store's lock, and renames it into place, so a
+# reader finds the old bundle or the new one, never a missing or partial one.
+# ORFdata 0.44 and earlier kept one plain directory per version, under
+# "references" and "indexes"; such a directory is still read when the store is
+# empty, and counts as the oldest bundle.
+_STORE_KIND = "orfdata-viral"
+_COLLECTIONS, _LEGACY_COLLECTIONS = "collections", "references"
+_SELECTIONS, _LEGACY_SELECTIONS = "selections", "indexes"
+# A program may still be reading the bundle a refresh replaced, so the previous
+# bundle is kept; older ones, and their PyEnsembl indexes, are removed.
+_KEPT_BUNDLES = 2
+
+
+def _bundle_path(cache_root, species, collection, *, area=_COLLECTIONS):
+    """The store a collection's version is published in; ``area`` selects the 0.44 directory."""
     from .datasets import get_data_dir
 
     collection = viral_collection(collection)
-    return (get_data_dir(cache_root) / "viral" / "references" / species /
+    return (get_data_dir(cache_root) / "viral" / area / species /
             collection.name / bundle_version(collection))
+
+
+def _store(path):
+    # BundleStore supplies DataCache's lock, naming and takeover rules, so a
+    # viral store behaves exactly like the stores beside it in the cache.
+    from datacache.bundle_store import BundleStore
+
+    return BundleStore(path, _STORE_KIND)
+
+
+def _current(path, legacy):
+    """The directory holding a store's current bundle, else a 0.44 directory, else None."""
+    try:
+        current = _store(path).current_bundle()
+    except (KeyError, TypeError, RecursionError) as error:
+        raise ValueError(f"Invalid viral reference store {path}: {error}") from error
+    if current is None and legacy.is_dir():
+        return legacy
+    return current
+
+
+def _installed_bundle(cache_root, species, collection):
+    """The directory holding the installed collection, or None when it isn't installed."""
+    return _current(_bundle_path(cache_root, species, collection),
+                    _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS))
+
+
+def _publish(path, legacy, build, open_bundle, reuse, *, cache_root, collection):
+    """Build a bundle with ``build(directory)`` and make it the store's current one.
+
+    ``reuse(current)`` returns the installed bundle to keep, or None to build a
+    new one. It is asked once without the lock, so a cache hit writes nothing,
+    and again under it, since another install may have finished meanwhile.
+    Installs into one store take turns; ``open_bundle`` checks the new bundle
+    before it is published and returns it opened.
+    """
+    current = _current(path, legacy)
+    if current is not None and (found := reuse(current)) is not None:
+        return found
+    store = _store(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with store.lock():
+        store.create()
+        current = _current(path, legacy)
+        if current is not None and (found := reuse(current)) is not None:
+            return found
+        # The working directory is private; the bundle inside it takes the
+        # cache's normal sharing mode, so others can read it once published.
+        working = Path(tempfile.mkdtemp(prefix=".staging-", dir=path))
+        try:
+            staged = working / "bundle"
+            staged.mkdir()
+            build(staged)
+            open_bundle(staged)
+            published = store.publish(staged)
+        finally:
+            shutil.rmtree(working, ignore_errors=True)
+        _prune(store, legacy, cache_root=cache_root, collection=collection)
+        return open_bundle(published)
+
+
+def _prune(store, legacy, *, cache_root, collection):
+    """Keep the newest bundles; a 0.44 directory counts as older than any of them."""
+    names = store.bundle_names()
+    removed = [store.bundles / name for name in names[:-_KEPT_BUNDLES]]
+    if len(names) >= _KEPT_BUNDLES and legacy.is_dir():
+        removed.append(legacy)
+    for bundle in removed:  # Cleanup never fails an install that has already published.
+        index = _annotation_index(cache_root, collection, bundle)
+        shutil.rmtree(bundle, ignore_errors=True)
+        shutil.rmtree(index, ignore_errors=True)
+
+
+def _annotation_index(cache_root, collection, path):
+    """Where :func:`viral_genome` keeps the PyEnsembl index of the files in ``path``."""
+    from .datasets import get_data_dir
+
+    collection = viral_collection(collection)
+    digest = hashlib.sha256(str(Path(path).resolve()).encode("utf-8")).hexdigest()[:16]
+    return (get_data_dir(cache_root) / "viral" / "annotations" /
+            collection.name / bundle_version(collection) / digest).absolute()
 
 
 def open_viral_references(
@@ -685,8 +783,8 @@ def open_viral_references(
         return download_viral_references(
             species=species, collection=collection.name, cache_root=cache_root,
             force=force, timeout=timeout)
-    path = _bundle_path(cache_root, species, collection)
-    if not path.is_dir():
+    path = _installed_bundle(cache_root, species, collection)
+    if path is None:
         raise FileNotFoundError(
             f"The {collection.name} viral references are not installed; run "
             f"'orfdata download viral --collection {collection.name}', or pass "
@@ -716,8 +814,11 @@ def download_viral_references(
     create a filtered derived set, use :func:`select_viral_references`. The
     collection is stored under ``ORFDATA_CACHE`` (or the normal OpenVax cache);
     a verified cache is reused and ``force=True`` refreshes or repairs it. A
-    request that stalls for ``timeout`` seconds is retried, then fails;
-    ``timeout=None`` waits.
+    refresh is built beside the installed collection and replaces it in one
+    step, so the collection's files are never missing; the previous copy is
+    kept for programs still reading it, and installs of one collection take
+    turns. A request that stalls for ``timeout`` seconds is retried, then
+    fails; ``timeout=None`` waits.
 
     An inventory can name an entry at two sources whose molecules differ. With
     ``prefer_reference_molecule=True`` (the default) the collection carries the
@@ -742,39 +843,30 @@ def download_viral_references(
     if timeout is not None and (not isinstance(timeout, (int, float))
                                 or isinstance(timeout, bool) or timeout <= 0):
         raise ValueError("timeout must be a positive number of seconds, or None to wait")
-    output = _bundle_path(cache_root, species, collection)
-    if output.exists() and not output.is_dir():
-        raise ValueError(f"Viral reference cache path must be a directory: {output}")
-    if output.is_dir():
+
+    def reuse(current):
+        if force:
+            return None
         try:
-            existing = _verified_existing_bundle(output, species=species, collection=collection)
+            return _verified_existing_bundle(current, species=species, collection=collection)
         except (OSError, ValueError) as error:
-            if not force:
-                raise FileNotFoundError(
-                    "Viral source-reference cache is incomplete or invalid; rerun with force=True."
-                ) from error
-        else:
-            if not force:
-                return existing
+            raise FileNotFoundError(
+                "Viral source-reference cache is incomplete or invalid; rerun with force=True."
+            ) from error
 
-    inventory = viral_panel_coverage(collection=collection.name)
-    primaries = _primary_ledger(collection, inventory)
-
-    output.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
-    try:
-        _write_bundle(staging, collection, inventory, primaries, timeout=timeout,
+    def build(directory):
+        inventory = viral_panel_coverage(collection=collection.name)
+        primaries = _primary_ledger(collection, inventory)
+        _write_bundle(directory, collection, inventory, primaries, timeout=timeout,
                       prefer_reference_molecule=prefer_reference_molecule,
                       annotate_from_alternate=annotate_from_alternate,
                       prefer_alternate_annotation=prefer_alternate_annotation)
-        _verified_existing_bundle(staging, species=species, collection=collection)
-        if output.exists():
-            shutil.rmtree(output)
-        staging.replace(output)
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    return _verified_existing_bundle(output, species=species, collection=collection)
+
+    return _publish(
+        _bundle_path(cache_root, species, collection),
+        _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS),
+        build, lambda path: _verified_existing_bundle(path, species=species, collection=collection),
+        reuse, cache_root=cache_root, collection=collection)
 
 
 def _copy_fasta(source, destination, keys):
@@ -807,7 +899,8 @@ def _copy_gtf(source, destination, genome_ids):
 
 
 def _index_path(cache_root, species, collection, contexts, excluded_contexts,
-                context_match, subsets, genome_ids):
+                context_match, subsets, genome_ids, *, area=_SELECTIONS):
+    """The store a selection is published in; ``area`` selects the 0.44 directory."""
     from .datasets import get_data_dir
 
     version = bundle_version(viral_collection(collection))
@@ -821,7 +914,7 @@ def _index_path(cache_root, species, collection, contexts, excluded_contexts,
         "genomes": genome_ids,
     }, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
-    return (get_data_dir(cache_root) / "viral" / "indexes" / species / collection /
+    return (get_data_dir(cache_root) / "viral" / area / species / collection /
             version / digest)
 
 
@@ -941,22 +1034,20 @@ def select_viral_references(
         raise ValueError("No viral references match the selected contexts and subsets")
     genome_ids = _selected_genomes(bundle, abbreviations)
     selected = set(genome_ids)
-    output = _index_path(
-        cache_root, bundle.target_species, bundle.collection, contexts, excluded_contexts,
-        context_match, subsets, genome_ids)
+    location = (cache_root, bundle.target_species, bundle.collection, contexts,
+                excluded_contexts, context_match, subsets, genome_ids)
     identity = dict(bundle=bundle, contexts=contexts, excluded_contexts=excluded_contexts,
                     context_match=context_match, subsets=subsets)
-    if output.is_dir() and not force:
-        try:
-            return _verified_existing_index(output, **identity)
-        except (OSError, ValueError):
-            pass  # A derived index is rebuilt from the local bundle, not repaired by hand.
-    if output.exists() and not output.is_dir():
-        raise ValueError(f"Viral reference index path must be a directory: {output}")
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
-    try:
+    def reuse(current):
+        if force:
+            return None
+        try:
+            return _verified_existing_index(current, **identity)
+        except (OSError, ValueError):
+            return None  # A derived index is rebuilt from the local bundle, not repaired by hand.
+
+    def build(staging):
         transcripts = [row for row in _read_table(bundle.transcript_table)
                        if row["genome_id"] in selected]
         genome_count = _copy_fasta(bundle.genome_fasta, staging / _GENOME_FASTA, selected)
@@ -998,20 +1089,18 @@ def select_viral_references(
             f"Excluded contexts: {', '.join(excluded_contexts) or 'none'}\n\n"
             f"Named subsets: {', '.join(subsets) or 'none'}\n\n"
             f"Genome, transcriptome and proteome layers for {genome_count} of the "
-            f"{bundle.genome_count} references in `{bundle.path.name}`, with the same "
+            f"{bundle.genome_count} references in the `{bundle.collection}` collection, "
+            f"version `{bundle_version(viral_collection(bundle.collection))}`, with the same "
             "identifiers and the matching GTF rows. Context, subset and collection membership "
             "are evidence associations and do not alter identity.\n",
             encoding="utf-8",
         )
         _write_checksums(staging)
-        _verified_existing_index(staging, **identity)
-        if output.exists():
-            shutil.rmtree(output)
-        staging.replace(output)
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    return _verified_existing_index(output, **identity)
+
+    return _publish(
+        _index_path(*location), _index_path(*location, area=_LEGACY_SELECTIONS), build,
+        lambda path: _verified_existing_index(path, **identity), reuse,
+        cache_root=cache_root, collection=bundle.collection)
 
 
 def viral_reference_summary(*, contexts=None, exclude_contexts=None, context_match="any",
@@ -1191,14 +1280,11 @@ def viral_genome(
         raise TypeError("viral_genome needs ViralReferenceFiles")
     from pyensembl import Genome
 
-    from .datasets import get_data_dir
-
     collection = viral_collection(reference_set.collection)
     version = bundle_version(collection)
-    path = Path(reference_set.path)
-    digest = hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:16]
-    index = (get_data_dir(cache_root) / "viral" / "annotations" /
-             collection.name / version / digest).absolute()
+    # Each published bundle has its own directory, so its index is never one
+    # built from a bundle it replaced.
+    index = _annotation_index(cache_root, collection, reference_set.path)
     if rebuild:
         shutil.rmtree(index, ignore_errors=True)
     genome = Genome(

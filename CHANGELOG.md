@@ -1,3 +1,11 @@
+# Unreleased
+
+- Replace a viral collection or derived selection without ever removing its
+  files first. A refresh is built beside the installed copy, switched in with
+  one rename under DataCache's store lock, and concurrent installs take turns.
+  The previous copy is kept for running programs and older ones are pruned.
+  Collections installed by 0.44 or earlier still open (#158).
+
 # 0.44.0
 
 - Show a command guide for bare `orfdata` and command groups; add `help COMMAND`

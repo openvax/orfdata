@@ -297,3 +297,12 @@ the cached collection without downloading, and a damaged selection is rebuilt ra
 than reported, since nothing in it is unrecoverable. Adding
 `download_if_missing=True` to that call lets it repair the source collection too,
 which does download.
+
+A viral collection or selection is replaced the way DataCache replaces its own
+bundles. The refresh is built beside the installed copy and switched in with one
+rename while installs of the same collection wait their turn, so its path is
+never missing and a reader sees the old files or the new ones, never a mix. The
+copy it replaced is kept for programs still reading it, and older copies, with
+their PyEnsembl indexes, are removed. A collection installed by ORFdata 0.44 or
+earlier still opens, and is kept as the previous copy after its first refresh.
+`orfdata data path gdc-viruses` prints the directory holding the current files.

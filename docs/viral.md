@@ -149,7 +149,9 @@ alongside the human catalogues and chains, and `--collections none` skips it.
 The command above installs only this checked collection under `ORFDATA_CACHE` (or
 the normal OpenVax cache), rather than asking for an export directory. Use
 `--cache-root DIRECTORY` to select another cache and `--force` to refresh or
-repair the installed files.
+repair the installed files. A refresh replaces the collection in one step and
+keeps the previous copy for programs still reading it;
+`orfdata data path gdc-viruses` prints where the current files are.
 
 Here `--species human` is the target analysis species. The current collection
 is for human transcriptome analysis; a future collection may target another
@@ -223,7 +225,7 @@ over every record in a downloaded collection:
 
 ```sh
 pip install 'orfdata[dev]'
-ORFDATA_GENBANK_CORPUS=<cache>/viral/references/homo_sapiens/gdc-viruses/<version>/genbank \
+ORFDATA_GENBANK_CORPUS="$(orfdata data path gdc-viruses)/records" \
   pytest tests/test_genbank_equivalence.py
 ```
 

@@ -72,15 +72,15 @@ def collection_state(
     ``verify_files=False`` checks only that the expected files are present,
     without hashing them.
     """
-    from .viral_panel import _bundle_path, _existing_bundle, open_viral_references
+    from .viral_panel import _existing_bundle, _installed_bundle, open_viral_references
     from .viral_registry import viral_collection
 
     collection = viral_collection(name, species=species)
     chosen_species = canonical_species(collection.target_species)
-    path = _bundle_path(cache_root, chosen_species, collection)
-    if not path.is_dir():
-        return "missing"
     try:
+        path = _installed_bundle(cache_root, chosen_species, collection)
+        if path is None:
+            return "missing"
         if verify_files:
             open_viral_references(collection=collection, cache_root=cache_root)
         else:
@@ -113,7 +113,7 @@ def install_collection(
 
 def _viral(cache_root, verify_files):
     """Every published viral collection, whichever species it targets."""
-    from .viral_panel import _bundle_path, bundle_version
+    from .viral_panel import _bundle_path, _installed_bundle, bundle_version
     from .viral_registry import viral_collections
 
     rows = []
@@ -121,6 +121,10 @@ def _viral(cache_root, verify_files):
         species = canonical_species(collection.target_species)
         status = collection_state(collection.name, species=species, cache_root=cache_root,
                                   verify_files=verify_files)
+        try:  # The directory holding the files, once installed; its store until then.
+            path = _installed_bundle(cache_root, species, collection)
+        except (OSError, ValueError):
+            path = None
         rows.append(DataStatus(
             kind="viral",
             name=collection.name,
@@ -130,7 +134,7 @@ def _viral(cache_root, verify_files):
             taxon_ids=(collection.target_taxon_id,),
             contexts=collection.contexts,
             status=status,
-            path=str(_bundle_path(cache_root, species, collection)),
+            path=str(path or _bundle_path(cache_root, species, collection)),
             origin="download" if status == "available" else None,
             acquire="download",
             command=None,

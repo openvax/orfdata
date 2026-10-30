@@ -2,19 +2,28 @@
 
 import gzip
 import json
+import shutil
+import threading
+import time
 
 import pytest
 
+from orfdata import viral_panel as viral_panel_module
+from orfdata.data_resources import data_path
+from orfdata.datasets import get_data_dir
+from orfdata.downloads import collection_state
 from orfdata.gtf import transcript_blocks
 from orfdata.viral_annotation import split_genbank
 from orfdata.viral_panel import (
     VIRAL_LAYERS,
     ViralReferenceFiles,
+    bundle_version,
     download_viral_references,
     open_viral_references,
     select_viral_references,
     viral_reference_summary,
 )
+from orfdata.viral_registry import GDC_VIRUSES
 
 CONTEXT = "cancer-transcriptome-screening"
 
@@ -166,7 +175,11 @@ def test_a_damaged_index_is_rebuilt_from_the_local_bundle(viral_panel, tmp_path)
     index = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
     index.protein_fasta.write_text("")
     rebuilt = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
-    assert rebuilt == index and rebuilt.protein_count == 3
+    # The rebuilt selection is published beside the damaged one, never over it.
+    assert rebuilt.path != index.path and rebuilt.protein_count == 3
+    assert (rebuilt.genome_count, rebuilt.contexts) == (index.genome_count, index.contexts)
+    assert select_viral_references(contexts=[CONTEXT], species="human",
+                                  cache_root=str(tmp_path)) == rebuilt
     assert json.loads((rebuilt.path / "metadata.json").read_text())["genome_ids"] == [
         "VTEST001.1", "VTEST002.1"]
 
@@ -211,7 +224,7 @@ def test_viral_genome_annotates_variants_for_downstream_tools(viral_panel, tmp_p
 
 
 def test_summary_reads_the_installed_layers_without_writing(viral_panel, tmp_path):
-    bundle = _install(tmp_path)
+    _install(tmp_path)
     whole = viral_reference_summary(species="human", cache_root=str(tmp_path))
     assert whole["collection"] == "gdc-viruses" and whole["selection"]["selected"] is False
     assert (whole["genome_count"], whole["transcript_count"]) == (4, 4)
@@ -225,4 +238,109 @@ def test_summary_reads_the_installed_layers_without_writing(viral_panel, tmp_pat
     assert selected["genome_count"] == 2 and selected["layers"][0]["records"] == 2
     assert selected["selection"]["contexts"] == [CONTEXT]
     # Summarizing never materializes a derived index.
-    assert not (bundle.path.parent.parent.parent / "indexes").exists()
+    assert not (get_data_dir(str(tmp_path)) / "viral" / "selections").exists()
+
+
+def _slowed(monkeypatch, seconds=0.2):
+    """Make every collection build take a while, and record how many run at once."""
+    write, running, counts = viral_panel_module._write_bundle, [0], []
+    guard = threading.Lock()
+
+    def slow_write(*args, **kwargs):
+        with guard:
+            running[0] += 1
+            counts.append(running[0])
+        try:
+            time.sleep(seconds)
+            return write(*args, **kwargs)
+        finally:
+            with guard:
+                running[0] -= 1
+
+    monkeypatch.setattr(viral_panel_module, "_write_bundle", slow_write)
+    return counts
+
+
+def test_a_refresh_never_removes_the_files_a_reader_holds(viral_panel, tmp_path, monkeypatch):
+    old = _install(tmp_path)
+    gtf = old.annotation_gtf.read_text()
+    _slowed(monkeypatch)
+    seen, done = [], threading.Event()
+
+    def read_while_refreshing():
+        while not done.is_set():
+            try:
+                seen.append(open_viral_references(species="human", cache_root=str(tmp_path)).path)
+            except Exception as error:  # Any failure is a gap a reader would have hit.
+                seen.append(error)
+
+    reader = threading.Thread(target=read_while_refreshing)
+    with old.annotation_gtf.open() as held:
+        reader.start()
+        try:
+            new = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+        finally:
+            done.set()
+            reader.join()
+        assert held.read() == gtf
+    assert seen and all(path in (old.path, new.path) for path in seen), seen
+    # The replaced collection stays whole for programs still reading it.
+    assert new.path != old.path and old.annotation_gtf.read_text() == gtf
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == new
+
+
+def test_concurrent_refreshes_take_turns(viral_panel, tmp_path, monkeypatch):
+    first = _install(tmp_path)
+    counts = _slowed(monkeypatch)
+    results, errors = [], []
+
+    def refresh():
+        try:
+            results.append(download_viral_references(
+                species="human", cache_root=str(tmp_path), force=True))
+        except Exception as error:
+            errors.append(error)
+
+    threads = [threading.Thread(target=refresh) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not errors and len(results) == 2 and max(counts) == 1
+    newest = max(results, key=lambda result: result.path.name)
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == newest
+    # The current bundle and the one before it are kept; the first is pruned.
+    assert sorted(p.name for p in newest.path.parent.iterdir()) == sorted(
+        result.path.name for result in results)
+    assert not first.path.exists()
+
+
+def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
+        viral_panel, tmp_path, monkeypatch):
+    # ORFdata 0.44 kept a collection as one plain directory.
+    installed = _install(tmp_path)
+    legacy = (get_data_dir(str(tmp_path)) / "viral" / "references" / "homo_sapiens" /
+              "gdc-viruses" / bundle_version(GDC_VIRUSES))
+    legacy.parent.mkdir(parents=True)
+    store = installed.path.parent.parent
+    shutil.move(installed.path, legacy)
+    shutil.rmtree(store)
+
+    opened = open_viral_references(species="human", cache_root=str(tmp_path))
+    assert opened.path == legacy
+    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "available"
+    assert data_path("gdc-viruses", cache_root=str(tmp_path)) == legacy
+    with monkeypatch.context() as offline:
+        offline.setattr(viral_panel_module, "_write_bundle",
+                        lambda *a, **k: pytest.fail("a verified 0.44 collection is reused"))
+        assert download_viral_references(species="human", cache_root=str(tmp_path)) == opened
+
+    with opened.annotation_gtf.open() as held:
+        refreshed = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+        assert held.read() and legacy.is_dir()  # Kept as the previous collection.
+    assert refreshed.path.parent == store / "bundles"
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == refreshed
+    assert data_path("gdc-viruses", cache_root=str(tmp_path)) == refreshed.path
+
+    again = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    assert not legacy.exists() and refreshed.path.is_dir() and again.path.is_dir()
