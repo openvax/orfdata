@@ -29,9 +29,11 @@ downloaded explicitly and checked against their pinned checksums. The
 database through its custom VFS; released dataset queries and rebuilds from
 normalized sources do not need it.
 
-List every bundled, downloadable or buildable resource and what is installed:
+Run `orfdata` for the command guide, or `orfdata help data` to discover data
+subcommands. List downloadable or buildable resources and what is installed:
 
 ```sh
+orfdata
 orfdata data list
 orfdata data status
 orfdata data info pfizer-atlas-dog-peptide-evidence
@@ -43,6 +45,8 @@ orfdata data path pfizer-atlas-dog-peptide-evidence
 when no artifact is distributed. The same command handles optional catalogues
 such as `openprot-mouse` and datasets such as `peptideatlas-dog-peptides`.
 `downloads` and `download` are aliases for `data`; `info` and `path` stay offline.
+Output is readable by default; use `--json` for scripts and `--limit 0` for full
+human tables. See the [CLI guide and migration notes](https://openvax.github.io/orfdata/cli/).
 
 `orfdata setup --species human` also installs `gdc-viruses`, the default
 200-reference GDC viral screen for human transcriptome analysis;

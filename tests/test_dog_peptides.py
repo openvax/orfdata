@@ -367,18 +367,18 @@ def test_build_only_release_builds_opens_and_inspects_locally(tmp_path, capsys):
     config.write_text(json.dumps(definitions))
     cli = ["datasets", "--registry", str(config), "--cache-root", str(tmp_path)]
     with pytest.raises(SystemExit):
-        run(cli + ["download", "peptideatlas-dog-peptides"])
+        run(cli + ["download", "peptideatlas-dog-peptides"] + ["--json"])
     assert "build it from its pinned sources" in capsys.readouterr().err
     built = registry.build("peptideatlas-dog-peptides", source_paths=inputs,
                            download_options={"show_progress": False})
     assert registry.inspect("peptideatlas-dog-peptides").status == "available"
     assert registry.open("peptideatlas-dog-peptides").path == built.path
-    run(cli + ["inspect", "peptideatlas-dog-peptides"])
+    run(cli + ["inspect", "peptideatlas-dog-peptides"] + ["--json"])
     inspected = json.loads(capsys.readouterr().out)
     assert inspected["status"] == "available" and inspected["origin"] == "source_build"
     source = manifest.references[0]
     run(cli + ["query", "peptideatlas-dog-peptides", "--reference", source.key, "--kind", "peptide",
-               "--namespace", "amino-acid-sequence", "--target", "AAHEEICTTNEGVMYR"])
+               "--namespace", "amino-acid-sequence", "--target", "AAHEEICTTNEGVMYR"] + ["--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert sorted(row["value"] for row in rows) == [17, 675]
     unknown = json.loads(json.dumps(definitions))

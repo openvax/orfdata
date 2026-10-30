@@ -280,27 +280,27 @@ def test_cli_lifts_with_a_chain_file_or_a_downloaded_pin(chain, pinned, tmp_path
     source = tmp_path / "old.json"
     old.save(source)
     by_file, by_pin = tmp_path / "file.json.gz", tmp_path / "pin.json.gz"
-    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--chain", str(chain.path), "--output", str(by_file)])
+    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--chain", str(chain.path), "--output", str(by_file), "--json"])
     summary = json.loads(capsys.readouterr().err)
     assert (summary["records"], summary["lifted_records"], summary["unmapped"]) == (4, 4, 0)
     assert summary["lifted"] == "orfdata-catalog:fixture-v1@GRCm39"
     assert load_catalog(by_file).records == lift_catalog(old, chain).records
     cache = str(tmp_path / "cache")
     run(["chains", "--cache-root", cache, "download", "GRCm38", "GRCm39", "--source-path", str(chain.path),
-         "--accept-terms"])
+         "--accept-terms", "--json"])
     assert json.loads(capsys.readouterr().out)["path"].endswith(chain.path.name)
-    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin)])
+    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin), "--json"])
     assert by_pin.read_bytes() == by_file.read_bytes()
     for options, message in ((["--species", "mouse"], "not both"),
                              (["--to", "GRCm40"], "No pinned chain files lift mus_musculus GRCm38 to GRCm40")):
         argv = ["lift", "--catalog", str(source), "--to", "GRCm39", "--output", str(by_pin)]
         with pytest.raises(SystemExit):
-            run(argv[:3] + argv[5:] + options if "--to" in options else argv + options)
+            run((argv[:3] + argv[5:] + options if "--to" in options else argv + options) + ["--json"])
         assert message in capsys.readouterr().err
 
 
 def test_cli_lists_pins_without_downloading(capsys):
-    run(["chains", "list", "--species", "human"])
+    run(["chains", "list", "--species", "human", "--json"])
     listed = json.loads(capsys.readouterr().out)
     assert [c["name"] for c in listed] == ["GRCh37_to_GRCh38", "GRCh38_to_GRCh37", "GRCh38_to_NCBI36",
                                            "GRCh38_to_T2T-CHM13v2.0", "NCBI36_to_GRCh38", "T2T-CHM13v2.0_to_GRCh38"]
@@ -501,13 +501,13 @@ def test_routes_take_the_fewest_hops_and_lift_through_each(chain, tmp_path, monk
     assert far.get("ms-orf").lifted_from.lifted_from == old.get("ms-orf")
     source = tmp_path / "old.json"
     old.save(source)
-    run(["lift", "--catalog", str(source), "--to", "GRCm40", "--output", str(tmp_path / "far.json")])
+    run(["lift", "--catalog", str(source), "--to", "GRCm40", "--output", str(tmp_path / "far.json"), "--json"])
     summary = json.loads(capsys.readouterr().err)
     assert [c["chain"] for c in summary["chains"]] == [chain.path.name, identity.name]
     assert summary["lifted_records"] == 4 and load_catalog(tmp_path / "far.json").records == far.records
     # Lifting a lifted file reports only this command's hops.
     lift_catalog(old, chain).save(tmp_path / "mid.json")
-    run(["lift", "--catalog", str(tmp_path / "mid.json"), "--to", "GRCm40", "--output", str(tmp_path / "far2.json")])
+    run(["lift", "--catalog", str(tmp_path / "mid.json"), "--to", "GRCm40", "--output", str(tmp_path / "far2.json"), "--json"])
     assert [c["chain"] for c in json.loads(capsys.readouterr().err)["chains"]] == [identity.name]
 
 

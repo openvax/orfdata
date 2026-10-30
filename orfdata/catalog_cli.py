@@ -1,27 +1,42 @@
 """Explicit optional catalogue discovery, acquisition and offline queries."""
 
-import argparse
 import json
+import sys
+from contextlib import redirect_stdout
 from dataclasses import asdict
 from pathlib import Path
 
 from .catalog import catalog_status
 from .catalogs import CatalogRegistry
 from .cli import _add_query_arguments, _query
+from .cli_output import manifest_summary, print_result
+from .cli_parser import ArgumentParser, add_json, add_limit
 
 
 def run(argv=None, prog=None):
-    parser = argparse.ArgumentParser(description=__doc__, prog=prog)
+    parser = ArgumentParser(description=__doc__, prog=prog,
+                            epilog="Start with 'orfdata catalogs list', then 'orfdata catalogs info NAME'.\n"
+                                   "Use 'orfdata data fetch NAME' to select the published download or source build.")
     parser.add_argument("--registry", help="Local JSON catalogue registry definitions")
     parser.add_argument("--cache-root", help="Override the OpenVax cache root")
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Discover release manifests without downloading")
     listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
     listing.add_argument("--taxon-id", type=int)
-    commands.add_parser("status", help="Every species' catalogues, including the bundled one, and what is installed")
+    add_json(listing)
+    add_limit(listing)
+    status = commands.add_parser("status", help="Show bundled and installed catalogue status for every species")
+    add_json(status)
+    add_limit(status)
     query_parser = None
-    for command in ("info", "inspect", "download", "build", "query"):
-        subparser = commands.add_parser(command)
+    for command, description in {
+        "info": "Describe a catalogue's references, sources, and evidence coverage",
+        "inspect": "Check the local artifact without downloading",
+        "download": "Download and verify a published catalogue",
+        "build": "Build a catalogue from pinned source files",
+        "query": "Find ORFs in an installed catalogue and export records",
+    }.items():
+        subparser = commands.add_parser(command, help=description, description=description)
         subparser.add_argument("name", help="Catalogue name, as 'orfdata catalogs list' shows it")
         subparser.add_argument("--version", help="Release to use instead of the catalogue's default")
         if command in ("inspect", "query"):
@@ -35,6 +50,8 @@ def run(argv=None, prog=None):
         if command == "query":
             query_parser = subparser
             _add_query_arguments(subparser, catalog_path=False)
+        else:
+            add_json(subparser)
     args = parser.parse_args(argv)
     try:
         definitions = json.loads(Path(args.registry).read_text()) if args.registry else None
@@ -59,11 +76,12 @@ def run(argv=None, prog=None):
                     raise ValueError("Source overrides require unique ASSET=PATH entries")
                 paths[asset] = path
             options = dict(timeout=args.timeout)
-            if args.command == "build":
-                registry.build(args.name, args.version, force=args.force, source_paths=paths or None,
-                               download_options=options)
-            else:
-                registry.download(args.name, args.version, force=args.force, source_paths=paths or None, **options)
+            with redirect_stdout(sys.stderr):
+                if args.command == "build":
+                    registry.build(args.name, args.version, force=args.force, source_paths=paths or None,
+                                   download_options=options)
+                else:
+                    registry.download(args.name, args.version, force=args.force, source_paths=paths or None, **options)
             inspect = registry.inspect_build if args.command == "build" else registry.inspect
             result = inspect(args.name, args.version)
             output = dict(status=result.status, path=str(result.path))
@@ -72,6 +90,14 @@ def run(argv=None, prog=None):
         else:
             method = registry.open_build if args.built else registry.open
             return _query(args, query_parser, lambda _: method(args.name, args.version))
-    except (ValueError, TypeError, KeyError, OSError, ImportError) as error:
+    except (ValueError, TypeError, KeyError, OSError, ImportError, RuntimeError) as error:
         parser.error(str(error))
-    print(json.dumps(output, indent=2, sort_keys=True))
+    columns = ("catalog_id", "version", "title") if args.command == "list" else (
+        "species", "name", "version", "genome_build", "installed", "acquire")
+    if args.command == "info" and not args.json:
+        output = manifest_summary(output)
+    print_result(output, json_output=args.json, columns=columns, limit=getattr(args, "limit", 25))
+    if args.command == "info" and not args.json:
+        print("\nUse --json for full source pins, citations, and processing metadata.")
+    if not args.json and args.command in ("list", "status"):
+        print("\nDetails: orfdata catalogs info NAME\nInstall: orfdata data fetch NAME")

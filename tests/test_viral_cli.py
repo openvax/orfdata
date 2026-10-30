@@ -121,7 +121,8 @@ def test_summary_reports_genomes_without_annotated_transcripts(viral_panel, tmp_
     download_viral_references(species="human", cache_root=str(tmp_path))
     run(["viral", "summary", "--cache-root", str(tmp_path)])
     output = capsys.readouterr().out
-    assert "1 of 4 genomes have no annotated CDS feature: TV4" in output
+    assert "1 of 4 genomes have no annotated CDS feature" in output
+    assert "unannotated genomes: TV4" in output
     assert "3 of 4 coding transcripts have whole start and stop codons" in output
 
 

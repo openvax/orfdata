@@ -1,5 +1,6 @@
 # Discover and download data
 
+Run `orfdata` for the command guide, or `orfdata data` to see its subcommands.
 ORFdata has one common entry point for data acquisition:
 
 ```sh
@@ -24,7 +25,9 @@ metadata, including sizes and redistribution terms where declared. `path NAME`
 prints an installed file or directory for scripts; missing data is an error,
 and never triggers a download. Use `--verify` on reads to validate local bytes,
 `--cache-root DIR` to select a cache, and `--json` for machine output.
-`fetch --json` returns one result per distinct requested name.
+`fetch --json` returns one result per distinct requested name. Human tables
+preview 25 rows; use `--limit 0` for all rows. `--json` always returns complete
+results. See the [CLI guide](cli.md) for output formats and migration notes.
 
 Use `--kind` to disambiguate colliding resource names. For one resource,
 `--version VERSION` selects a historical release and `--source-path ASSET=PATH`

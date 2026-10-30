@@ -109,19 +109,19 @@ def test_cli_build_then_explicit_offline_query_and_inspection(experiment, tmp_pa
     prefix = ["datasets", "--registry", str(config), "--cache-root", str(tmp_path / "cache")]
     name = manifest.dataset_id
     monkeypatch.setattr(requests.sessions.Session, "request", lambda *a, **k: pytest.fail("CLI contacted network"))
-    run(prefix + ["inspect", name, "--built"])
+    run(prefix + ["inspect", name, "--built"] + ["--json"])
     assert json.loads(capsys.readouterr().out)["status"] == "missing"
     overrides = [arg for name, path in inputs.items() for arg in ("--source-path", f"{name}={path}")]
-    run(prefix + ["build", name, "--quiet"] + overrides)
+    run(prefix + ["build", name, "--quiet"] + overrides + ["--json"])
     built = json.loads(capsys.readouterr().out)
-    run(prefix + ["inspect", name, "--built"])
+    run(prefix + ["inspect", name, "--built"] + ["--json"])
     inspected = json.loads(capsys.readouterr().out)
     assert inspected["status"] == "available" and inspected["origin"] == "source_build"
     assert not inspected["verified"]
-    run(prefix + ["query", name, "--built", "--unit", "iBAQ"])
+    run(prefix + ["query", name, "--built", "--unit", "iBAQ"] + ["--format", "jsonl"])
     records = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(records) == built["counts"]["measurement"] // 2
-    run(prefix + ["pairs", name, "--built", "--basis", "same_material"])
+    run(prefix + ["pairs", name, "--built", "--basis", "same_material"] + ["--format", "jsonl"])
     assert capsys.readouterr().out == ""
-    run(prefix + ["inspect", name])
+    run(prefix + ["inspect", name] + ["--json"])
     assert json.loads(capsys.readouterr().out)["status"] == "missing"

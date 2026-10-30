@@ -1,3 +1,17 @@
+# 0.43.0
+
+- Show a command guide for bare `orfdata` and command groups; add `help COMMAND`
+  and an explicit `query` subcommand with discoverable examples.
+- Default to concise human summaries and bounded, wrapped tables across every
+  command. Preserve native measurement units, reference scopes and pairing basis.
+- Require explicit machine output: `--json` for complete JSON documents and
+  dataset `--format jsonl` for the former streaming representation. Explicit
+  FASTA/TSV/GTF formats and Python APIs are unchanged. Human `--limit` settings
+  never truncate exports. Proteome/lift summaries remain on stderr.
+- Run every CLI leaf in human and JSON modes against tiny offline fixtures in CI,
+  with exhaustive help, error and output-contract checks. See the
+  [CLI migration guide](https://openvax.github.io/orfdata/cli/#migrating-scripts-from-042).
+
 # 0.42.4
 
 - Reconstruct mouse RibORF source ORFs from pinned GENCODE M25 RNA and exon

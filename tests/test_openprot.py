@@ -188,7 +188,7 @@ def test_a_built_release_opens_inspects_and_queries_like_a_download(catalog, tmp
     definitions = tmp_path / "registry.json"
     definitions.write_text(json.dumps(registry._definitions))
     run(["catalogs", "--registry", str(definitions), "--cache-root", str(tmp_path / "cache"), "query",
-         "openprot-mouse", "--orf-id", "II_085990"])
+         "openprot-mouse", "--orf-id", "II_085990", "--json"])
     assert [r["orf_id"] for r in json.loads(capsys.readouterr().out)["records"]] == ["II_085990"]
     # A split accession's bare ID names its records.
     with pytest.raises(ValueError, match=r"IP_824771 names several ORFs: IP_824771@ENSMUST00000187264.2, "

@@ -174,11 +174,11 @@ def test_cli_scoped_target_and_native_filters(paired, tmp_path, capsys):
               "pairs", "fixture", "--basis", "same_material", "--pair-id", "pair"]
     args = ["--left-target", target.identifier, "--left-kind", target.kind,
             "--left-namespace", target.namespace, "--left-reference", target.reference.key]
-    run(prefix + args + ["--left-unit", "TPM", "--left-scale", "linear", "--right-unit", "iBAQ"])
+    run(prefix + args + ["--left-unit", "TPM", "--left-scale", "linear", "--right-unit", "iBAQ"] + ["--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(rows) == 1 and rows[0]["rna_abundance"][0]["unit"] == "TPM"
     assert rows[0]["protein_abundance"][0]["unit"] == "iBAQ"
     with pytest.raises(SystemExit) as exc:
-        run(prefix + ["--left-target", target.identifier])
+        run(prefix + ["--left-target", target.identifier] + ["--format", "jsonl"])
     assert exc.value.code == 2
     assert "Left target queries require" in capsys.readouterr().err

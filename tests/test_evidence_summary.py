@@ -157,10 +157,10 @@ def test_cli_resolution_and_native_summary_export(tmp_path, capsys):
     record = ORFRecord.from_model(model(), ORFEvidence(summaries=(s,)))
     path = tmp_path / "catalog.json"
     path.write_text(json.dumps(catalog(record).to_dict()))
-    run(["--catalog", str(path), "--evidence", "ms"])
+    run(["--catalog", str(path), "--evidence", "ms", "--json"])
     result = json.loads(capsys.readouterr().out)
     assert result["records"][0]["summaries"] == [s.to_dict()]
-    run(["--catalog", str(path), "--evidence", "ms", "--require-resolved"])
+    run(["--catalog", str(path), "--evidence", "ms", "--require-resolved", "--json"])
     assert json.loads(capsys.readouterr().out)["records"] == []
 
 

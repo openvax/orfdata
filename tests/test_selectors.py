@@ -48,16 +48,16 @@ def test_cli_native_and_mapped(native, tmp_path, capsys):
     cache = tmp_path / "cache"
     DatasetRegistry(definitions, cache_root=cache).download(native.manifest.dataset_id, show_progress=False)
     prefix = ["datasets", "--registry", str(path), "--cache-root", str(cache), "query", native.manifest.dataset_id]
-    run(prefix + ["--unit", "iBAQ", "--scale", "linear"])
+    run(prefix + ["--unit", "iBAQ", "--scale", "linear"] + ["--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(rows) == 5 and all(r["unit"] == "iBAQ" for r in rows)
     target = next(m.targets[0] for m in native.reference_mappings() if m.targets)
     run(prefix + ["--mapped", "--mapping-status", "unresolved", "--reference", target.reference.key,
                   "--target", target.identifier, "--kind", target.kind, "--namespace", target.namespace,
-                  "--unit", "rIBAQ", "--scale", "linear"])
+                  "--unit", "rIBAQ", "--scale", "linear"] + ["--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert rows and all(r["measurement"]["unit"] == "rIBAQ" for r in rows)
-    run(prefix + ["--unit", "copies/cell"])
+    run(prefix + ["--unit", "copies/cell"] + ["--format", "jsonl"])
     assert capsys.readouterr().out == ""
 
 
@@ -109,11 +109,11 @@ def test_cli_log_base_and_contradictory_selection(transformed, tmp_path, capsys)
     cache = tmp_path / "cache"
     DatasetRegistry(definitions, cache_root=cache).download("fixture", show_progress=False)
     prefix = ["datasets", "--registry", str(path), "--cache-root", str(cache), "query", "fixture"]
-    run(prefix + ["--unit", "TPM", "--scale", "log", "--log-base", "2"])
+    run(prefix + ["--unit", "TPM", "--scale", "log", "--log-base", "2"] + ["--format", "jsonl"])
     rows = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
     assert len(rows) == 1 and rows[0]["value"] == -2 and rows[0]["log_base"] == 2
     with pytest.raises(SystemExit):
-        run(prefix + ["--scale", "linear", "--log-base", "2"])
+        run(prefix + ["--scale", "linear", "--log-base", "2"] + ["--format", "jsonl"])
     assert "cannot have a logarithm base" in capsys.readouterr().err
 
 

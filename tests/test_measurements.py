@@ -297,13 +297,13 @@ def test_cli_matches_python_queries_and_original_catalogue(tmp_path, experiment,
     registry_path = tmp_path / "registry.json"
     registry_path.write_text(json.dumps(definition(dataset)))
     args = ["datasets", "--registry", str(registry_path), "--cache-root", str(tmp_path / "cache")]
-    run(args + ["list", "--species", "yeast"])
+    run(args + ["list", "--species", "yeast"] + ["--json"])
     assert json.loads(capsys.readouterr().out)[0]["dataset_id"] == "fixture"
-    run(args + ["download", "fixture", "--quiet"])
+    run(args + ["download", "fixture", "--quiet"] + ["--json"])
     capsys.readouterr()
-    run(args + ["query", "fixture", "--reference", experiment[0].references[0].key])
+    run(args + ["query", "fixture", "--reference", experiment[0].references[0].key] + ["--format", "jsonl"])
     assert json.loads(capsys.readouterr().out)["value"] == 0
-    run(["--orf-id", "c7riboseqorf56"])
+    run(["--orf-id", "c7riboseqorf56", "--json"])
     assert json.loads(capsys.readouterr().out)["records"][0]["orf_id"] == "c7riboseqorf56"
 
 

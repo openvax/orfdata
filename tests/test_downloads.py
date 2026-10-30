@@ -68,7 +68,7 @@ def test_setup_chooses_collections_like_catalogues():
 
 
 def test_cli_listings_are_readable_and_machine_readable(capsys):
-    run(["download", "list"])
+    run(["download", "list", "--limit", "0"])
     output = capsys.readouterr().out
     assert "KIND" in output and "gdc-viruses" in output and "orfdata data fetch" in output
 
