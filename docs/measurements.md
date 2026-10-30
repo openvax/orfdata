@@ -123,7 +123,7 @@ Queries show a human preview by default. Use `--format jsonl` to stream original
 JSON lines, or `--json` for one complete JSON array. `--reference ref:SHA256` selects an exact context;
 target queries also require `--target`, `--kind` and `--namespace`. Unqualified
 sample/assay ID queries across multiple references are rejected. ORF catalogue queries use `orfdata query --gene TPST1`; add `--json` for the
-complete structured export. See the [CLI migration guide](cli.md#migrating-scripts-from-042).
+complete structured export. See the [CLI migration guide](cli.md#migrating-scripts-from-042-or-043).
 
 ## What each value means
 

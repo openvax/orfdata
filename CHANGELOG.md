@@ -1,4 +1,4 @@
-# 0.43.0
+# 0.44.0
 
 - Show a command guide for bare `orfdata` and command groups; add `help COMMAND`
   and an explicit `query` subcommand with discoverable examples.
@@ -10,7 +10,21 @@
   never truncate exports. Proteome/lift summaries remain on stderr.
 - Run every CLI leaf in human and JSON modes against tiny offline fixtures in CI,
   with exhaustive help, error and output-contract checks. See the
-  [CLI migration guide](https://openvax.github.io/orfdata/cli/#migrating-scripts-from-042).
+  [CLI migration guide](https://openvax.github.io/orfdata/cli/#migrating-scripts-from-042-or-043).
+
+# 0.43.1
+
+- Use matching Ensembl chromosome DNA in the CHM13 installation example and
+  explain the consortium FASTA's different contig names (#149).
+
+# 0.43.0
+
+- Resolve pinned annotations' taxonomy and genetic codes from their declared species,
+  including T2T-CHM13. Preserve explicitly saved reference metadata on replay.
+- Add explicit chromosome FASTA installation/loading through PyEnsembl to the
+  pinned-genome Python API and `orfdata genomes install --genome-fasta`. Loading
+  remains offline, and annotation-only installations remain supported (#146).
+- Require PyEnsembl 2.32.3 for native DNA and saved genetic-code metadata.
 
 # 0.42.4
 

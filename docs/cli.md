@@ -82,7 +82,7 @@ FASTA to stdout unless `--output` is supplied; its summary goes to stderr.
 `lift` writes its catalogue to `--output` and also summarizes on stderr. For
 these two commands, `--json` selects the summary format on stderr.
 
-## Migrating scripts from 0.42
+## Migrating scripts from 0.42 or 0.43
 
 Bare `orfdata` now shows help. Use `orfdata query --json` for the previous
 unfiltered JSON catalogue export. Existing root query flags (for example,

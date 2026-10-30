@@ -65,11 +65,15 @@ def _registry(genome, cache_root):
         store_path=lambda name, version: get_data_dir(cache_root) / "genomes" / name / _digest(assets))
 
 
-def install_genome(name, *, force=False, source_paths=None, cache_root=None, download_options=None):
+def install_genome(name, *, force=False, source_paths=None, cache_root=None, download_options=None,
+                   genome_fasta_path_or_url=None):
     """Download a pinned annotation, check each file's size and SHA-256, and index it for PyEnsembl.
 
     ``source_paths`` maps ``"gtf"``, ``"transcripts"`` or ``"proteins"`` to
     local copies to install instead of downloading, checked the same way.
+    ``genome_fasta_path_or_url`` optionally installs chromosome DNA through
+    PyEnsembl. This caller-selected source is separate from the checksum-pinned
+    annotation assets. Omitting it preserves the annotation-only installation.
     Returns the opened genome.
     """
     genome = _pinned(name)
@@ -81,7 +85,11 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None, dow
         paths = {_files(genome)[role]: str(path) for role, path in source_paths.items()}
     _registry(genome, cache_root).download(genome.name, "1", force=force, source_paths=paths,
                                          **(download_options or {}))
-    return _open(genome, cache_root, rebuild=force)
+    opened = _with_genome_fasta(_open(genome, cache_root, rebuild=force), genome_fasta_path_or_url)
+    if genome_fasta_path_or_url is not None:
+        opened.download_genome_fasta(overwrite=force)
+        opened.index_genome_fasta()
+    return opened
 
 
 def _install_command(name, cache_root, force=False):
@@ -89,8 +97,13 @@ def _install_command(name, cache_root, force=False):
     return f"'orfdata genomes{root} install {name}{' --force' if force else ''}'"
 
 
-def load_genome(name, *, cache_root=None):
-    """The installed pinned annotation as a PyEnsembl genome, offline; indexed on first use."""
+def load_genome(name, *, cache_root=None, genome_fasta_path_or_url=None):
+    """Open an installed annotation offline, optionally with native chromosome DNA.
+
+    Pass the same ``genome_fasta_path_or_url`` used for installation. Loading
+    never downloads or opens DNA; a missing installation fails on DNA access
+    with PyEnsembl's explicit installation instructions.
+    """
     genome = _pinned(name)
     status = _registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
     root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
@@ -100,7 +113,13 @@ def load_genome(name, *, cache_root=None):
     if status != "available":
         raise ValueError(f"The installed {name} annotation is {status}; install it again with "
                          f"install_genome({name!r}, force=True{root}) or {_install_command(name, cache_root, True)}")
-    return _open(genome, cache_root)
+    return _with_genome_fasta(_open(genome, cache_root), genome_fasta_path_or_url)
+
+
+def _with_genome_fasta(genome, source):
+    if source is None:
+        return genome
+    return type(genome)(**dict(genome.to_dict(), genome_fasta_path_or_url=source))
 
 
 def _open(genome, cache_root, *, rebuild=False):
