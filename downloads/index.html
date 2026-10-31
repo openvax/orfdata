@@ -1543,7 +1543,10 @@ prints an installed file or directory for scripts; missing data is an error,
 and never triggers a download. Use <code>--verify</code> on reads to validate local bytes,
 <code>--cache-root DIR</code> to select a cache, and <code>--json</code> for machine output.
 <code>fetch --json</code> returns one result per distinct requested name. Human tables
-preview 25 rows; use <code>--limit 0</code> for all rows. <code>--json</code> always returns complete
+preview 25 rows; <code>list</code> and <code>status</code> take those rows from each resource kind in
+turn, so every kind appears whenever there is room for one row of each (the
+default always has), and say what each kind left out. Use <code>--limit 0</code> for all
+rows. <code>--json</code> always returns complete
 results. See the <a href="../cli/">CLI guide</a> for output formats and migration notes.</p>
 <p>Use <code>--kind</code> to disambiguate colliding resource names. For one resource,
 <code>--version VERSION</code> selects a historical release and <code>--source-path ASSET=PATH</code>
