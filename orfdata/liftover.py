@@ -24,6 +24,8 @@ from dataclasses import asdict, dataclass, replace
 from importlib.resources import files
 from pathlib import Path
 
+from .errors import NotInstalledError
+
 
 @dataclass(frozen=True)
 class Liftover:
@@ -297,8 +299,9 @@ def load_chain(source_build, target_build, *, species=None, cache_root=None):
     registry = _chain_registry(chain, cache_root)
     status = registry.inspect(chain.name, "1", verify_files=False).status
     if status == "missing":
-        raise ValueError(f"The {chain.name} chain file is not downloaded; "
-                         f"{_download_hint(chain, cache_root).replace('download it again', 'download it', 1)}")
+        raise NotInstalledError(
+            f"The {chain.name} chain file is not downloaded; "
+            f"{_download_hint(chain, cache_root).replace('download it again', 'download it', 1)}")
     try:
         path = registry.local_path(chain.name, "1", asset=chain.filename)
     except ValueError as error:

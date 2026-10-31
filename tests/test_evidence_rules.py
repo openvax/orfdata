@@ -240,14 +240,18 @@ def test_query_cli_selects_by_ribo_seq_and_ms_stringency(options, count, capsys)
     (["--evidence", "ms", "--min-ms-peptides", "2"], "Use --evidence or the Ribo-seq/MS requirements, not both"),
     (["--min-ms-peptides", "2", "--either"], "--either needs both"),
     (["--min-ribo-seq-studies", "2", "--require-reviewed"], "need an MS requirement"),
-    (["--require-unique"], "require_unique requires an evidence method"),
+    (["--require-unique"], "--require-reviewed and --require-resolved need --evidence or a Ribo-seq/MS requirement"),
+    (["--evidence", "ribosome", "--require-reviewed"], "MS filters do not apply to ribosome evidence"),
+    (["--min-ms-peptides", "1", "--ms-methods", "bogus"], "MS methods must be drawn from"),
 ])
 def test_query_cli_rejects_conflicting_rule_options(options, message, capsys):
     from orfdata.cli import run
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as error:
         run(options)
-    assert message in capsys.readouterr().err
+    assert error.value.code == 2  # A command-line mistake, pointing to help.
+    output = capsys.readouterr().err
+    assert message in output and "--help' for usage" in output
 
 
 def test_old_names_still_work_on_the_command_line(catalog, capsys):

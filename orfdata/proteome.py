@@ -23,6 +23,7 @@ from urllib.parse import quote
 
 from . import _structure
 from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
+from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
 from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_assembly, _versioned
 from .reference import ReferenceContext
@@ -2136,11 +2137,14 @@ def _onto(catalogs, reference, cache_root=None):
             route = chain_routes(_species(catalog.species), catalog.genome_build)[reference.genome_build]
             missing = [c.name for c in route if not chain_downloaded(c, cache_root=cache_root)]
             if missing:
-                accept = " --accept-terms" if any(c.restricted for c in route) else ""
-                raise ValueError(f"The {catalog.source} catalogue is on {catalog.genome_build}; lifting it to "
-                                 f"{reference.genome_build} needs the chain files {', '.join(missing)}: download "
-                                 f"them once with 'orfdata chains download --species "
-                                 f"{_species(catalog.species)}{accept}'")
+                from shlex import join
+
+                command = ["orfdata", "chains"] + ([] if cache_root is None else ["--cache-root", str(cache_root)])
+                command += ["download", "--species", _species(catalog.species)]
+                command += ["--accept-terms"] if any(c.restricted for c in route) else []
+                raise NotInstalledError(f"The {catalog.source} catalogue is on {catalog.genome_build}; lifting it to "
+                                        f"{reference.genome_build} needs the chain files {', '.join(missing)}, "
+                                        f"which are not installed; download them once with: {join(command)}")
             catalog = lift_to(catalog, reference.genome_build, cache_root=cache_root)
         placed.append(catalog)
     return placed[0] if len(placed) == 1 else merge_catalogs(placed)
@@ -2432,6 +2436,8 @@ def _require_installed(genome):
             install = f"orfdata genomes install {genome.pinned_name} --force"
         elif getattr(genome, "release", None) is not None and getattr(genome, "species", None) is not None:
             install += f" --release {genome.release} --species {genome.species.latin_name}"
-        raise ValueError(f"{genome.reference_name} annotation is {status}; install it first with: {install}")
+        # Absent, partly downloaded or unindexed annotation is installed by the command; damage is a failure.
+        error = NotInstalledError if status in ("missing", "incomplete", "not indexed") else ValueError
+        raise error(f"{genome.reference_name} annotation is {status}; install it first with: {install}")
 
 

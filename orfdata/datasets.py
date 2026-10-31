@@ -8,6 +8,8 @@ from pathlib import Path
 
 from . import artifact_archives
 from .dataset import QuantitativeDataset
+from .downloads import install_hint
+from .errors import NotInstalledError
 from .measurements import DatasetManifest
 from .reference import species_taxon
 
@@ -36,6 +38,20 @@ def _build_store(manifest, cache_root):
             manifest.version / _digest(manifest.to_dict()))
 
 
+def _installed_path(registry, name, version, hint, **options):
+    """A DataCache registry's local path, or a NotInstalledError saying ``hint`` when nothing is installed.
+
+    ``hint`` may be a function, called only then.
+
+    DataCache raises FileNotFoundError only for a missing bundle; damaged files
+    raise its own validation error, which passes through.
+    """
+    try:
+        return registry.local_path(name, version, **options)
+    except FileNotFoundError as error:
+        raise NotInstalledError(hint() if callable(hint) else hint) from error
+
+
 class DatasetRegistry:
     """Discover manifests offline; explicitly download before opening data.
 
@@ -47,6 +63,7 @@ class DatasetRegistry:
     """
 
     def __init__(self, definitions=None, *, cache_root=None):
+        self._packaged = definitions is None  # What 'orfdata data fetch' reads.
         if definitions is None:
             definitions = json.loads(files("orfdata").joinpath("data/datasets.json").read_text())
         # Own a JSON copy so callers cannot mutate identities after validation.
@@ -150,7 +167,11 @@ class DatasetRegistry:
         from .search_reference import SearchReference, reference_registry
 
         spec = self._search_reference(name, version, reference, asset_id)
-        path = reference_registry(spec, self._cache_root).local_path(spec.dataset_id, spec.dataset_version)
+        asset, version = spec.source.asset_id, spec.dataset_version
+        hint = (f"The {name} {version} search reference {asset} is not installed; download it with "
+                + install_hint(self, f"download_reference({name!r}, {version!r}, asset_id={asset!r})",
+                               f"{name}:{asset}", "reference", version))
+        path = _installed_path(reference_registry(spec, self._cache_root), spec.dataset_id, version, hint)
         return SearchReference(path, spec)
 
     def published(self, name, version=None):
@@ -162,14 +183,24 @@ class DatasetRegistry:
         release = self._definitions[name]["versions"][version]
         reason = "" if release["distribution"]["redistributable"] else ", because its source terms don't allow redistribution"
         return (f"The {name} {version} dataset has no published artifact{reason}; build it from its pinned "
-                f"sources with DatasetRegistry().build({name!r}, {version!r}) or "
-                f"'orfdata datasets build {name} --version {version}'")
+                f"sources with " + install_hint(self, f"build({name!r}, {version!r})", name, "dataset", version))
 
     def _published(self, name, version):
         version = self._version(name, version)
         if not self.published(name, version):
             raise ValueError(self._build_hint(name, version))
         return version
+
+    def _not_installed(self, name, version):
+        return (f"The {name} {version} dataset is not installed; download it with "
+                + install_hint(self, f"download({name!r}, {version!r})", name, "dataset", version))
+
+    def _not_built(self, name, version):
+        version = self._version(name, version)
+        return NotInstalledError(
+            f"The {name} {version} dataset has no local build; build it from its pinned sources with "
+            + install_hint(self, f"build({name!r}, {version!r})", name, "dataset", version,
+                           build=self.published(name, version)))
 
     def _data_registry(self):
         if self._registry is None:
@@ -250,20 +281,20 @@ class DatasetRegistry:
         if not self.published(name, version):
             if self.inspect_build(name, version, verify_files=False).status == "missing":
                 version = self._version(name, version)
-                raise FileNotFoundError(self._build_hint(name, version).replace(
+                raise NotInstalledError(self._build_hint(name, version).replace(
                     "has no published artifact", "hasn't been built, and has no published artifact"))
             return self.open_build(name, version, verify_files=verify_files)
         version = self._published(name, version)
         if "archive" in self._definitions[name]["versions"][version]:
             inspected = self.inspect(name, version, verify_files=verify_files)
             if inspected.status == "missing":
-                raise FileNotFoundError(inspected.path)
+                raise NotInstalledError(self._not_installed(name, version))
             if inspected.status != "available":
                 raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
             path = inspected.files["dataset.sqlite"].path
         else:
-            path = self._data_registry().local_path(name, version, asset="dataset.sqlite",
-                                                  verify_files=verify_files)
+            path = _installed_path(self._data_registry(), name, version, self._not_installed(name, version),
+                                   asset="dataset.sqlite", verify_files=verify_files)
         dataset = QuantitativeDataset(path)
         if dataset.manifest.to_dict() != self.info(name, version).to_dict():
             raise ValueError("Installed dataset manifest disagrees with registered release")
@@ -284,7 +315,7 @@ class DatasetRegistry:
         """Open a local source materialization explicitly, without artifact fallback."""
         inspected = self.inspect_build(name, version, verify_files=verify_files)
         if inspected.status == "missing":
-            raise FileNotFoundError(inspected.path)
+            raise self._not_built(name, version)
         if inspected.status != "available":
             raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
         dataset = QuantitativeDataset(inspected.files["dataset.sqlite"].path)

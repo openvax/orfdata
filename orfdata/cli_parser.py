@@ -1,7 +1,21 @@
-"""Common help and error conventions for the command-line entry points."""
+"""Common help and error conventions for the command-line entry points.
+
+Exit statuses: 0 on success; 1 when the command fails (network, checksums,
+damaged or inconsistent data, values the data doesn't recognise); 2 when the
+command line itself is invalid; 3 when a resource the command needs isn't
+installed.
+"""
 
 import argparse
 import sys
+
+from .errors import NotInstalledError
+
+FAILED, USAGE, NOT_INSTALLED = 1, 2, 3
+
+
+class UsageError(ValueError):
+    """Options that can't be combined, found after parsing; reported like an argparse error."""
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -32,7 +46,20 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def error(self, message):
         prog = getattr(self, "_selected_parser", self).prog
-        self.exit(2, f"{prog}: error: {message}\nTry '{prog} --help' for usage.\n")
+        self.exit(USAGE, f"{prog}: error: {message}\nTry '{prog} --help' for usage.\n")
+
+    def fail(self, error):
+        """Report an exception from running a command, with its exit status.
+
+        A :class:`UsageError` is a command-line mistake and points to help; any
+        other failure is reported without that pointer, exiting 3 for a missing
+        installation and 1 otherwise.
+        """
+        if isinstance(error, UsageError):
+            self.error(str(error))
+        prog = getattr(self, "_selected_parser", self).prog
+        status = NOT_INSTALLED if isinstance(error, NotInstalledError) else FAILED
+        self.exit(status, f"{prog}: error: {error}\n")
 
 
 def add_resume(parser):

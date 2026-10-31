@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
 from .cli_output import print_result, print_table
-from .cli_parser import ArgumentParser, add_json, add_limit, add_resume
+from .cli_parser import ArgumentParser, UsageError, add_json, add_limit, add_resume
 from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
 
 COMMANDS = {
@@ -138,7 +138,7 @@ def _setup(argv, prog):
         print_result(error.result, json_output=args.json)
         parser.exit(1, f"{parser.prog}: error: {error}\n")
     except (ValueError, OSError, ImportError, RuntimeError) as error:
-        parser.error(str(error))
+        parser.fail(error)
     print_result(result, json_output=args.json)
 
 
@@ -231,21 +231,30 @@ def _rule(args, method, flag, *, default=None):
     ribo = args.min_ribo_seq_studies is not None
     ms = args.min_ms_peptides is not None or args.ms_methods is not None
     if args.either and not (ribo and ms):
-        raise ValueError("--either needs both --min-ribo-seq-studies and an MS requirement")
+        raise UsageError("--either needs both --min-ribo-seq-studies and an MS requirement")
     if not (ribo or ms):
         method = default if method is None else method
-        return evidence_rule(None if method == "all" else method, require_unique=args.require_unique,
-                             require_reviewed=args.require_reviewed, require_resolved=args.require_resolved)
+        if method in (None, "all") and (args.require_unique or args.require_reviewed or args.require_resolved):
+            raise UsageError(f"--require-unique, --require-reviewed and --require-resolved need {flag} "
+                             "or a Ribo-seq/MS requirement")
+        try:
+            return evidence_rule(None if method == "all" else method, require_unique=args.require_unique,
+                                 require_reviewed=args.require_reviewed, require_resolved=args.require_resolved)
+        except ValueError as error:  # The evidence name and --require-* options don't combine.
+            raise UsageError(str(error)) from error
     if method is not None:
-        raise ValueError(f"Use {flag} or the Ribo-seq/MS requirements, not both")
+        raise UsageError(f"Use {flag} or the Ribo-seq/MS requirements, not both")
     if not ms and (args.require_unique or args.require_reviewed):
-        raise ValueError("--require-unique and --require-reviewed need an MS requirement")
-    rules = [RiboSeq(args.min_ribo_seq_studies, resolved=args.require_resolved)] if ribo else []
-    if ms:
-        rules.append(MS(1 if args.min_ms_peptides is None else args.min_ms_peptides,
-                        unique=args.require_unique, reviewed=args.require_reviewed,
-                        resolved=args.require_resolved,
-                        methods=args.ms_methods.split(",") if args.ms_methods is not None else None))
+        raise UsageError("--require-unique and --require-reviewed need an MS requirement")
+    try:  # Values the rules reject, such as an unknown MS kind, are command-line mistakes.
+        rules = [RiboSeq(args.min_ribo_seq_studies, resolved=args.require_resolved)] if ribo else []
+        if ms:
+            rules.append(MS(1 if args.min_ms_peptides is None else args.min_ms_peptides,
+                            unique=args.require_unique, reviewed=args.require_reviewed,
+                            resolved=args.require_resolved,
+                            methods=args.ms_methods.split(",") if args.ms_methods is not None else None))
+    except ValueError as error:
+        raise UsageError(str(error)) from error
     if len(rules) == 1:
         return rules[0]
     return rules[0] | rules[1] if args.either else rules[0] & rules[1]
@@ -256,6 +265,8 @@ def _query(args, parser, catalog_loader):
         parser.error("Choose --region or --position")
     if args.position and args.format not in ("table", "json"):
         parser.error("--position requires --format json")
+    if (args.region or args.position) and not args.genome_build:
+        parser.error("--region and --position require --genome-build")
     if (args.ref is not None or args.alt is not None) and (
         not args.ref or not args.alt or not args.position
     ):
@@ -267,13 +278,8 @@ def _query(args, parser, catalog_loader):
     ):
         parser.error("Provide distinct single-base forward-genomic REF and ALT")
     try:
-        paths = args.catalog or [None]
-        if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
-            # The assembly picks the catalogue too, not only checks it.
-            catalogs = [catalog_loader(p, species=args.species, genome_build=args.genome_build) for p in paths]
-        else:
-            catalogs = [catalog_loader(p) for p in paths]
-        catalog = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
+        # The whole command line is checked before any catalogue is read, so a mistake in it exits 2
+        # whatever is installed.
         options = {
             "gene": args.gene,
             "transcript_id": args.transcript,
@@ -288,16 +294,30 @@ def _query(args, parser, catalog_loader):
             pattern = r"([^:]+):([0-9]+)-([0-9]+)" if args.region else r"([^:]+):([0-9]+)"
             match = re.fullmatch(pattern, locus)
             if match is None:
-                raise ValueError(f"Invalid locus: {locus}")
+                raise UsageError(f"Invalid locus {locus!r}; use CONTIG:START-END for --region, CONTIG:POSITION "
+                                 "for --position")
             start = int(match.group(2))
-            options.update(
-                contig=match.group(1),
-                start=start,
-                end=int(match.group(3)) if args.region else start,
-            )
+            end = int(match.group(3)) if args.region else start
+            if start < 1 or end < start:
+                raise UsageError(f"Invalid locus {locus!r}; positions are 1-based and END must be at least START")
+            options.update(contig=match.group(1), start=start, end=end)
+        if args.min_protein_length is not None and args.min_protein_length < 1:
+            raise UsageError("--min-protein-length must be a positive number of amino acids")
+        if args.species and catalog_loader is not load_catalog:
+            raise UsageError("--species is not available here: this command reads one catalogue")
+        paths = args.catalog or [None]
+        if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
+            # The assembly picks the catalogue too, not only checks it.
+            catalogs = [catalog_loader(p, species=args.species, genome_build=args.genome_build) for p in paths]
+        else:
+            catalogs = [catalog_loader(p) for p in paths]
+        catalog = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
         records = catalog.query(**options)
         if args.orf_id:
-            orf_id = catalog.get(args.orf_id).orf_id  # Any source's ID; a misspelled one is an error.
+            try:
+                orf_id = catalog.get(args.orf_id).orf_id  # Any source's ID; a misspelled one is an error.
+            except KeyError:
+                raise ValueError(f"No ORF {args.orf_id!r} in {catalog.source}") from None
             records = tuple(r for r in records if r.orf_id == orf_id)
         initiation_annotations = None
         if args.position:
@@ -315,8 +335,8 @@ def _query(args, parser, catalog_loader):
                 raise ValueError(
                     "No mapped initiation context covers the SNV; coding consequences require full transcript reconstruction"
                 )
-    except (ValueError, KeyError, OSError, ImportError, RuntimeError) as exc:
-        parser.error(str(exc))
+    except (ValueError, OSError, ImportError, RuntimeError) as exc:
+        parser.fail(exc)
     if args.format == "table":
         print(f"{catalog.source}: {len(records)} matching ORFs ({catalog.genome_build})")
         print_table(("ORF", "GENE", "TRANSCRIPT", "CLASS", "AA"),

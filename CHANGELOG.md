@@ -11,6 +11,38 @@
   `data list --installed`. `list_data(local=True)` selects the same rows. An
   unreadable viral collection is `inaccessible`, not `corrupt`. Fetch commands
   in listings carry `--cache-root` when one is given (#151).
+- `orfdata data list` and `status` share their 25-row preview among resource
+  kinds, so datasets, genomes, search references and viral collections appear
+  next to catalogues and chains, and report what each kind left out (#153).
+- `orfdata data fetch` summaries name the resource, its version and what the
+  command did (`downloaded`, `built`, `already installed`) for every kind,
+  including viral collections (#154).
+- Replace a viral collection or derived selection without ever removing its
+  files first. A refresh is built beside the installed copy, switched in with
+  one rename under DataCache's store lock, and concurrent installs take turns.
+  Replaced copies stay for running programs, as DataCache keeps its own, until
+  the new `prune_viral_references()` removes them; it skips, and reports, any
+  store it can't validate. A selection is rebuilt after its collection is
+  refreshed, so its recorded source is always the copy it was built from. A
+  forced install repairs a store that lost its marker; an interrupted install's
+  working files are swept by the next one. Collections installed by 0.44 or
+  earlier, including ones linked into place, still open (#158).
+- Exit with a status scripts can branch on: 1 when a command fails (network,
+  checksums, damaged data or files, unknown names), 2 for a command line the
+  parser or the command's own checks reject, and 3 when a resource the command
+  needs isn't installed. Those checks run before anything is read; a few option
+  values are checked only by library code and exit 1. Only command-line
+  mistakes point to `--help`. Up to 0.44.0 nearly every failure exited 2; a partial
+  `setup` exited 1 (#155).
+- Raise `orfdata.NotInstalledError`, also a `FileNotFoundError` and a
+  `ValueError`, for catalogues, datasets, search references, genomes, chains,
+  viral collections and PyEnsembl annotations that aren't installed; opening one
+  now names the command that installs it, with its kind, version and cache root,
+  instead of only its cache path.
+- Report unexpected internal errors with their traceback instead of as a
+  one-line user error. A malformed catalogue file is reported by name. An
+  unknown dataset `--reference` or `--asset` lists the choices, and a restricted
+  chain without `--accept-terms` is a usage error in every command.
 - `orfdata data fetch --resume` and `orfdata setup --resume` (`resume=True` in
   `fetch_data` and `install_species`) continue interrupted downloads of
   published catalogues, genome and chain files, search references, archive
