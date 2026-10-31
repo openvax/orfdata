@@ -1,10 +1,24 @@
 # Unreleased
 
-- Resume interrupted downloads by default: published catalogues, genome and
-  chain files, search references, archive parts and build sources continue
-  from the bytes already received, through DataCache's `resume="auto"`. Single
-  compressed dataset files still restart, because DataCache can't resume a
-  transfer it decompresses (#156).
+- `orfdata data fetch` repairs an installation whose files fail verification,
+  reporting `acquired: repaired`, as `setup` already did; `--force` still
+  replaces valid files. An unreadable installation is reported, not replaced,
+  unless `--force` is given, in both `fetch` and `setup`, which now share one
+  policy; a multi-name fetch checks this for every name before downloading (#152).
+- `orfdata data status` lists damaged and unreadable installations, each with its
+  exact `data fetch` command, instead of hiding them. Scripts that read
+  `status --json` as "usable only" should filter on `installed` or use
+  `data list --installed`. `list_data(local=True)` selects the same rows. An
+  unreadable viral collection is `inaccessible`, not `corrupt`. Fetch commands
+  in listings carry `--cache-root` when one is given (#151).
+- `orfdata data fetch --resume` and `orfdata setup --resume` (`resume=True` in
+  `fetch_data` and `install_species`) continue interrupted downloads of
+  published catalogues, genome and chain files, search references, archive
+  parts and build sources from the bytes already received. It is off by
+  default because resumable transfers keep their partial downloads and
+  staging after a failure, and archive installs keep every part until the
+  dataset is published. The eleven compressed single-file datasets can't
+  resume; see "Interrupted downloads" in the download guide (part of #156).
 
 # 0.44.0
 
