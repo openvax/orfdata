@@ -1625,11 +1625,18 @@ groups such as <code>orfdata datasets</code> show their subcommands. <code>downl
 </tr>
 </tbody>
 </table>
-<p>Commands that use a group-level cache or registry option show its placement in
-help. For example:</p>
+<p><code>--cache-root DIR</code> works before or after a subcommand in every command group, so
+these are the same (<code>viral coverage</code>, <code>contexts</code> and <code>subsets</code> read packaged data
+only and refuse it):</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>datasets<span class="w"> </span>--cache-root<span class="w"> </span>/path/to/cache<span class="w"> </span>query<span class="w"> </span>pfizer-atlas-dog-protein
-orfdata<span class="w"> </span>catalogs<span class="w"> </span>--registry<span class="w"> </span>registry.json<span class="w"> </span>list
+orfdata<span class="w"> </span>datasets<span class="w"> </span>query<span class="w"> </span>pfizer-atlas-dog-protein<span class="w"> </span>--cache-root<span class="w"> </span>/path/to/cache
 </code></pre></div>
+<p>Every command that downloads takes <code>--timeout SECONDS</code>: how long a download may
+stall before it is retried, then fails (default 60; <code>--timeout none</code> waits
+indefinitely). The chromosome FASTA that <code>genomes install --genome-fasta</code> passes
+to PyEnsembl is downloaded without a timeout. The <code>--registry</code> option of
+<code>catalogs</code> and <code>datasets</code> stays before the subcommand:
+<code>orfdata catalogs --registry registry.json list</code>.</p>
 <h2 id="human-previews-and-complete-exports">Human previews and complete exports<a class="headerlink" href="#human-previews-and-complete-exports" title="Permanent link">&para;</a></h2>
 <p>Tables and short field summaries are the default. Tables show up to 25 entries;
 <code>--limit N</code> changes the preview and <code>--limit 0</code> shows every row. Tables wrap to
