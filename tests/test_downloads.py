@@ -99,7 +99,8 @@ def test_setup_reports_what_each_collection_needed(monkeypatch):
     options = dict(force=False, cache_root=None, timeout=60, failed=failed)
     assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
         "gdc-viruses": "downloaded"}
-    assert installed == [("gdc-viruses", True)] and failed == []
+    # Nothing is replaced when nothing is there.
+    assert installed == [("gdc-viruses", False)] and failed == []
 
     states["gdc-viruses"] = "available"
     assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
@@ -109,6 +110,13 @@ def test_setup_reports_what_each_collection_needed(monkeypatch):
         "gdc-viruses": "reinstalled"}
     states["gdc-viruses"] = "corrupt"
     assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
+        "gdc-viruses": "repaired"}
+    assert installed[-1] == ("gdc-viruses", True)
+    # Unreadable files are refused, as data fetch refuses them, unless forced.
+    states["gdc-viruses"] = "inaccessible"
+    result = _install_collections(["gdc-viruses"], "homo_sapiens", **options)
+    assert result["gdc-viruses"].startswith("failed: gdc-viruses can't be read") and failed
+    assert _install_collections(["gdc-viruses"], "homo_sapiens", **dict(options, force=True, failed=[])) == {
         "gdc-viruses": "repaired"}
 
 
