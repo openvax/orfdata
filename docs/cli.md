@@ -37,8 +37,9 @@ groups such as `orfdata datasets` show their subcommands. `download` and
 | `chains` | Manage assembly mapping files | `list`, `download` |
 | `lift` | Write an ORF catalogue on another assembly | Requires `--to` and `--output` |
 
-`--cache-root DIR` works before or after a subcommand in every command group whose
-subcommands read the cache, so these are the same:
+`--cache-root DIR` works before or after a subcommand in every command group, so
+these are the same (`viral coverage`, `contexts` and `subsets` read packaged data
+only and refuse it):
 
 ```sh
 orfdata datasets --cache-root /path/to/cache query pfizer-atlas-dog-protein

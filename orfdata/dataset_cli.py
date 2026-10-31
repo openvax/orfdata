@@ -11,6 +11,11 @@ from .datasets import DatasetRegistry
 from .reference import ScopedTarget
 
 
+def _download_options(args):
+    """What the download, download-reference and build commands pass on to DataCache."""
+    return dict(show_progress=not args.quiet, timeout=args.timeout)
+
+
 def run(argv=None, prog=None):
     parser = ArgumentParser(description=__doc__, prog=prog,
                             epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
@@ -108,8 +113,6 @@ def run(argv=None, prog=None):
             with open(args.registry) as handle:
                 definitions = json.load(handle)
         registry = DatasetRegistry(definitions, cache_root=args.cache_root)
-        if hasattr(args, "timeout"):  # The commands that download.
-            options = dict(show_progress=not args.quiet, timeout=args.timeout)
         if args.command == "list":
             result = [m.to_dict() for m in registry.list(
                 species=args.species, taxon_id=args.taxon_id, assay=args.assay)]
@@ -125,7 +128,7 @@ def run(argv=None, prog=None):
         elif args.command == "download-reference":
             with redirect_stdout(sys.stderr):
                 result = registry.download_reference(args.name, args.version, reference=args.reference, asset_id=args.asset,
-                                                     force=args.force, source_path=args.source_path, **options)
+                                                     force=args.force, source_path=args.source_path, **_download_options(args))
         elif args.command == "query-reference":
             reference = registry.open_reference(args.name, args.version, reference=args.reference, asset_id=args.asset)
             target = ScopedTarget(reference.reference, args.kind, args.target, args.namespace or reference.spec.namespace)
@@ -146,7 +149,7 @@ def run(argv=None, prog=None):
             sources = {"dataset.sqlite": args.source_path} if args.source_path else None
             with redirect_stdout(sys.stderr):
                 result = registry.download(args.name, args.version, force=args.force,
-                                           source_paths=sources, **options)
+                                           source_paths=sources, **_download_options(args))
         elif args.command == "build":
             sources = {}
             for value in args.source_path:
@@ -156,7 +159,7 @@ def run(argv=None, prog=None):
                 sources[asset] = path
             with redirect_stdout(sys.stderr):
                 dataset = registry.build(args.name, args.version, force=args.force,
-                                         source_paths=sources, download_options=options)
+                                         source_paths=sources, download_options=_download_options(args))
             result = dict(path=str(dataset.path), counts=dataset.counts,
                           dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":

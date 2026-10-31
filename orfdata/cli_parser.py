@@ -40,24 +40,24 @@ class ArgumentParser(argparse.ArgumentParser):
 CACHE_ROOT_HELP = "Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default"
 
 
-def add_cache_root(parser):
-    parser.add_argument("--cache-root", metavar="DIR", help=CACHE_ROOT_HELP)
+def add_cache_root(parser, *, help=CACHE_ROOT_HELP, default=None):
+    parser.add_argument("--cache-root", metavar="DIR", help=help, default=default)
 
 
 def share_cache_root(parser, *, below=False):
     """Accept --cache-root before or after any of this group's subcommands.
 
     A subcommand's own default would replace a value given before it, so
-    below the group the option sets nothing unless it is given there.
+    below the group the option sets nothing unless it is given there. A
+    subcommand's own help for the option is kept.
     """
     found = [action for action in parser._actions if "--cache-root" in action.option_strings]
     for action in found:
-        action.metavar, action.help = "DIR", CACHE_ROOT_HELP
+        action.metavar = "DIR"
         if below:
             action.default = argparse.SUPPRESS
     if not found:
-        parser.add_argument("--cache-root", metavar="DIR", help=CACHE_ROOT_HELP,
-                            default=argparse.SUPPRESS if below else None)
+        add_cache_root(parser, default=argparse.SUPPRESS if below else None)
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
             for subparser in action.choices.values():
@@ -80,7 +80,7 @@ def seconds(value):
 def add_timeout(parser, *, note=""):
     parser.add_argument("--timeout", type=seconds, default=DOWNLOAD_TIMEOUT, metavar="SECONDS",
                         help="Seconds a download may stall before it is retried, then fails "
-                             f"(default %(default)s; 'none' waits indefinitely){note}")
+                             f"(default %(default)s; 'none' waits indefinitely){note.replace('%', '%%')}")
 
 
 def add_json(parser):

@@ -89,6 +89,7 @@ def test_dataset_downloads_no_longer_wait_indefinitely(monkeypatch, capsys):
 
 
 @pytest.mark.parametrize("argv", [
+    ["viral", "--cache-root", "{root}", "inventory", "download"],
     ["viral", "inventory", "--cache-root", "{root}", "download"],
     ["viral", "inventory", "download", "--cache-root", "{root}"],
 ])
@@ -109,11 +110,20 @@ def test_timeouts_must_be_positive_and_finite_or_none(capsys, monkeypatch):
     assert calls[0]["download_options"]["timeout"] is None
 
 
-def test_cache_root_is_not_offered_where_nothing_reads_it(capsys):
-    for argv in (["viral", "coverage", "--cache-root", "X"], ["viral", "--cache-root", "X", "contexts"]):
+def test_cache_root_is_refused_where_nothing_reads_it(capsys):
+    for argv in (["viral", "coverage", "--cache-root", "X"], ["viral", "--cache-root", "X", "contexts"],
+                 ["viral", "--cache-root", "X", "subsets"]):
         with pytest.raises(SystemExit):
             run(argv)
-        assert "error:" in capsys.readouterr().err
+        assert "--cache-root has no effect" in capsys.readouterr().err
+
+
+def test_viral_summary_reads_cache_root_before_or_after(monkeypatch, tmp_path, capsys):
+    calls = _capture(monkeypatch, "orfdata.viral_cli.viral_reference_summary", {})
+    run(["viral", "--cache-root", str(tmp_path), "summary", "--json"])
+    run(["viral", "summary", "--cache-root", str(tmp_path), "--json"])
+    capsys.readouterr()
+    assert [call["cache_root"] for call in calls] == [str(tmp_path)] * 2
 
 
 def test_viral_and_dataset_downloads_share_the_default(monkeypatch, capsys):
@@ -122,13 +132,12 @@ def test_viral_and_dataset_downloads_share_the_default(monkeypatch, capsys):
 
     assert DOWNLOAD_TIMEOUT == 60
     assert download_viral_references.__kwdefaults__["timeout"] == DOWNLOAD_TIMEOUT
-    viral = _capture(monkeypatch, "orfdata.viral_panel.download_viral_references")
+    viral = []
 
     class Bundle:
         def to_dict(self):
             return {}
 
-    viral.clear()
     monkeypatch.setattr("orfdata.viral_panel.download_viral_references",
                         lambda **options: viral.append(options) or Bundle())
     run(["data", "viral", "--json"])

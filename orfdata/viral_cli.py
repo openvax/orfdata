@@ -60,7 +60,7 @@ def run(argv=None, prog="orfdata viral"):
     summary.add_argument("--subset", action="append",
                          help="Count only this named viral subset; repeat for a union")
     summary.add_argument("--species", default="human", help="Target analysis species (currently human)")
-    add_cache_root(summary)
+    add_cache_root(summary)  # share_cache_root also accepts it before the subcommand.
     summary.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
     completeness = commands.add_parser(
@@ -83,9 +83,11 @@ def run(argv=None, prog="orfdata viral"):
     add_timeout(download)
 
     add_json(download)
-    # Only the inventory group reads the cache everywhere below it; coverage, contexts and subsets never do.
-    share_cache_root(inventory)
+    share_cache_root(parser)
     args = parser.parse_args(argv)
+    if args.cache_root is not None and args.command in ("coverage", "contexts", "subsets"):
+        # These read the packaged inventory only; a cache they'd ignore is a mistake worth saying so.
+        parser.error(f"--cache-root has no effect on 'viral {args.command}', which reads packaged data only")
     if args.command == "contexts":
         rows = viral_contexts()
         if args.json:

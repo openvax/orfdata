@@ -41,7 +41,8 @@ def lift(argv=None, prog=None):
     parser.add_argument("--chain", metavar="FILE",
                         help="UCSC or Ensembl chain file from the catalogue's assembly to --to, instead of the "
                              "pinned one; its direction is checked only when it is a pinned file")
-    add_cache_root(parser)
+    add_cache_root(parser, help="Cache directory holding catalogues and downloaded chain files, instead of "
+                                 "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", required=True, metavar="FILE",
                         help="Write the lifted catalogue here; gzipped when it ends in .gz")
     parser.add_argument("--json", action="store_true", help="Write the complete build summary as JSON to stderr")
