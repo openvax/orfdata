@@ -96,7 +96,7 @@ def test_a_whole_collection_reads_the_same_way():
     """Every record under ``ORFDATA_GENBANK_CORPUS``, for checking a real collection.
 
     The committed records above run always; point this at a downloaded
-    collection's ``genbank`` directory to compare the readers over all 200.
+    collection's ``records`` directory to compare the readers over all 200.
     """
     import os
 

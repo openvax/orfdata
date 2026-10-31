@@ -137,26 +137,34 @@ def collection_state(
     ``verify_files=False`` checks only that the expected files are present,
     without hashing them.
     """
-    from .viral_panel import _bundle_path, _existing_bundle, open_viral_references
     from .viral_registry import viral_collection
 
     collection = viral_collection(name, species=species)
-    chosen_species = canonical_species(collection.target_species)
-    path = _bundle_path(cache_root, chosen_species, collection)
-    if not path.is_dir():
-        return "missing"
+    return _collection_state(collection, cache_root, verify_files)[0]
+
+
+def _collection_state(collection, cache_root, verify_files):
+    """The state of a collection and the directory it describes, resolved once.
+
+    The directory is the installed bundle's, or None when there is none to name.
+    """
+    from .viral_panel import _existing_bundle, _installed_bundle, _verified_existing_bundle
+
+    species = canonical_species(collection.target_species)
+    path = None
     try:
-        if verify_files:
-            open_viral_references(collection=collection, cache_root=cache_root)
-        else:
-            _existing_bundle(path, species=chosen_species, collection=collection)
+        path = _installed_bundle(cache_root, species, collection)
+        if path is None:
+            return "missing", None
+        check = _verified_existing_bundle if verify_files else _existing_bundle
+        check(path, species=species, collection=collection)
     except FileNotFoundError:
-        return "missing"
+        return "missing", path
     except OSError:
-        return "inaccessible"
+        return "inaccessible", path
     except ValueError:
-        return "corrupt"
-    return "available"
+        return "corrupt", path
+    return "available", path
 
 
 def install_collection(
@@ -184,8 +192,8 @@ def _viral(cache_root, verify_files):
     rows = []
     for collection in viral_collections():
         species = canonical_species(collection.target_species)
-        status = collection_state(collection.name, species=species, cache_root=cache_root,
-                                  verify_files=verify_files)
+        # The directory holding the files, once installed; its store until then.
+        status, path = _collection_state(collection, cache_root, verify_files)
         rows.append(DataStatus(
             kind="viral",
             name=collection.name,
@@ -195,7 +203,7 @@ def _viral(cache_root, verify_files):
             taxon_ids=(collection.target_taxon_id,),
             contexts=collection.contexts,
             status=status,
-            path=str(_bundle_path(cache_root, species, collection)),
+            path=str(path or _bundle_path(cache_root, species, collection)),
             origin="download" if status == "available" else None,
             acquire="download",
             command=None,

@@ -17,6 +17,16 @@
 - `orfdata data fetch` summaries name the resource, its version and what the
   command did (`downloaded`, `built`, `already installed`) for every kind,
   including viral collections (#154).
+- Replace a viral collection or derived selection without ever removing its
+  files first. A refresh is built beside the installed copy, switched in with
+  one rename under DataCache's store lock, and concurrent installs take turns.
+  Replaced copies stay for running programs, as DataCache keeps its own, until
+  the new `prune_viral_references()` removes them; it skips, and reports, any
+  store it can't validate. A selection is rebuilt after its collection is
+  refreshed, so its recorded source is always the copy it was built from. A
+  forced install repairs a store that lost its marker; an interrupted install's
+  working files are swept by the next one. Collections installed by 0.44 or
+  earlier, including ones linked into place, still open (#158).
 - Exit with a status scripts can branch on: 1 when a command fails (network,
   checksums, damaged data or files, unknown names), 2 for a command line the
   parser or the command's own checks reject, and 3 when a resource the command
