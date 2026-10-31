@@ -1510,8 +1510,11 @@ orfdata<span class="w"> </span>data<span class="w"> </span>fetch<span class="w">
 orfdata<span class="w"> </span>data<span class="w"> </span>path<span class="w"> </span>pfizer-atlas-dog-protein
 </code></pre></div>
 <p><code>list</code> shows registered resources, including resources that need a local build.
-<code>status</code> shows resources available in the selected local cache, including bundled
-data. Neither command downloads anything. Use <code>--cache-root DIR</code> if your data
+<code>status</code> shows resources with files in the selected local cache, including bundled
+data, damaged installs that <code>data fetch</code> will repair, and unreadable ones, whose
+permissions need fixing (or <code>--force</code> to replace them). Each damaged or unreadable
+row's exact fetch command is printed below the table. Neither command downloads
+anything. Use <code>--cache-root DIR</code> if your data
 lives outside the default cache, and <code>--verify</code> when you want to hash local files.</p>
 <h2 id="finding-commands">Finding commands<a class="headerlink" href="#finding-commands" title="Permanent link">&para;</a></h2>
 <p><code>orfdata help COMMAND</code> and <code>orfdata COMMAND --help</code> are equivalent. Bare command

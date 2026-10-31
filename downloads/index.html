@@ -1548,7 +1548,10 @@ results. See the <a href="../cli/">CLI guide</a> for output formats and migratio
 <p>Use <code>--kind</code> to disambiguate colliding resource names. For one resource,
 <code>--version VERSION</code> selects a historical release and <code>--source-path ASSET=PATH</code>
 provides already downloaded catalogue/dataset sources or genome files. Source
-overrides remain checksum-checked. <code>--force</code> installs a fresh generation.
+overrides remain checksum-checked. <code>fetch</code> reuses a valid installation and
+replaces one whose files fail verification, reporting it as <code>repaired</code>, as
+<code>setup</code> does; <code>--force</code> installs a fresh generation even over valid files, and is
+needed to replace files that can't be read.
 Restricted chain downloads require <code>--accept-terms</code> after reviewing <code>info</code>.</p>
 <p>The same operations are available in Python:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_info</span><span class="p">,</span> <span class="n">data_path</span><span class="p">,</span> <span class="n">fetch_data</span>
@@ -1570,8 +1573,12 @@ to every resource kind. Focused command groups such as <code>orfdata viral cover
 <code>orfdata viral summary</code> remain useful for domain-specific inspection.</p>
 <p><code>list</code> shows every bundled, downloadable or locally buildable primary resource
 and its current state, including native protein search references declared by
-quantitative datasets. <code>status</code> shows resources already usable from local
-files. Filter either command with <code>--kind</code> or <code>--species</code>; use <code>--installed</code> or
+quantitative datasets. <code>status</code> shows resources with local files: usable ones
+and damaged or unreadable installs. <code>data fetch</code> replaces damaged files;
+unreadable ones are left alone until their permissions are fixed or <code>--force</code> is
+given. For catalogues, datasets, search references, genomes and chains, a repair
+installs a fresh generation and leaves the damaged one in place until the cache
+is pruned, as <code>--force</code> does; a viral collection is rebuilt in place. Filter either command with <code>--kind</code> or <code>--species</code>; use <code>--installed</code> or
 <code>--missing</code> with <code>list</code>, <code>--json</code> for programs, and <code>--verify</code> to hash installed
 files. Discovery and status commands never acquire or repair data.</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>download<span class="w"> </span>list<span class="w"> </span>--kind<span class="w"> </span>viral<span class="w"> </span>--species<span class="w"> </span>human
