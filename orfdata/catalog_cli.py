@@ -10,7 +10,14 @@ from .catalog import catalog_status
 from .catalogs import CatalogRegistry
 from .cli import _add_query_arguments, _query
 from .cli_output import manifest_summary, print_result
-from .cli_parser import ArgumentParser, UsageError, add_json, add_limit
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 
 
 def run(argv=None, prog=None):
@@ -18,7 +25,6 @@ def run(argv=None, prog=None):
                             epilog="Start with 'orfdata catalogs list', then 'orfdata catalogs info NAME'.\n"
                                    "Use 'orfdata data fetch NAME' to select the published download or source build.")
     parser.add_argument("--registry", help="Local JSON catalogue registry definitions")
-    parser.add_argument("--cache-root", help="Override the OpenVax cache root")
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Discover release manifests without downloading")
     listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
@@ -45,13 +51,13 @@ def run(argv=None, prog=None):
             subparser.add_argument("--force", action="store_true", help="Replace an existing installation")
             subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
                                    help="Use this local copy of a pinned source asset instead of downloading it")
-            subparser.add_argument("--timeout", type=float, default=60,
-                                   help="Seconds a download may stall before it is retried, then fails (default 60)")
+            add_timeout(subparser)
         if command == "query":
             query_parser = subparser
             _add_query_arguments(subparser, catalog_path=False)
         else:
             add_json(subparser)
+    share_cache_root(parser)
     args = parser.parse_args(argv)
     try:
         definitions = None

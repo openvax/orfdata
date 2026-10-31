@@ -6,9 +6,21 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_record_stream, print_result
-from .cli_parser import ArgumentParser, UsageError, add_json, add_limit
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 from .datasets import DatasetRegistry
 from .reference import ScopedTarget
+
+
+def _download_options(args):
+    """What the download, download-reference and build commands pass on to DataCache."""
+    return dict(show_progress=not args.quiet, timeout=args.timeout)
 
 
 def _reference(references, key, option):
@@ -62,7 +74,6 @@ def run(argv=None, prog=None):
                             epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
                                    "Queries preserve native units and reference identities.")
     parser.add_argument("--registry", help="Local registry JSON (otherwise use packaged releases)")
-    parser.add_argument("--cache-root", help="Override the OpenVax data cache root")
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="List published releases and assay coverage")
     listing.add_argument("--species")
@@ -100,7 +111,7 @@ def run(argv=None, prog=None):
                                    help="Use a local source build explicitly, instead of a published artifact")
         if command in ("download", "download-reference"):
             subparser.add_argument("--force", action="store_true")
-            subparser.add_argument("--timeout", type=float)
+            add_timeout(subparser)
             subparser.add_argument("--quiet", action="store_true")
             subparser.add_argument("--source-path", help="Use a local pinned file (compressed when declared)")
         if command in ("download-reference", "inspect-reference", "query-reference"):
@@ -112,7 +123,7 @@ def run(argv=None, prog=None):
             subparser.add_argument("--namespace", help="Default: the declared source namespace")
         if command == "build":
             subparser.add_argument("--force", action="store_true")
-            subparser.add_argument("--timeout", type=float)
+            add_timeout(subparser)
             subparser.add_argument("--quiet", action="store_true")
             subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
                                    help="Use a local pinned source; repeat for each input asset")
@@ -147,6 +158,7 @@ def run(argv=None, prog=None):
                     subparser.add_argument(f"--{side}-{field}")
                 subparser.add_argument(f"--{side}-scale", choices=("linear", "log"))
                 subparser.add_argument(f"--{side}-log-base", type=float)
+    share_cache_root(parser)
     args = parser.parse_args(argv)
     try:
         definitions = None
@@ -177,12 +189,9 @@ def run(argv=None, prog=None):
             result = dict(status=inspected.status, path=str(inspected.path),
                           error=str(inspected.error) if inspected.error else None)
         elif args.command == "download-reference":
-            options = dict(show_progress=not args.quiet)
-            if args.timeout is not None:
-                options["timeout"] = args.timeout
             with redirect_stdout(sys.stderr):
                 result = registry.download_reference(args.name, args.version, reference=args.reference, asset_id=args.asset,
-                                                     force=args.force, source_path=args.source_path, **options)
+                                                     force=args.force, source_path=args.source_path, **_download_options(args))
         elif args.command == "query-reference":
             reference = registry.open_reference(args.name, args.version, reference=args.reference, asset_id=args.asset)
             target = ScopedTarget(reference.reference, args.kind, args.target, args.namespace or reference.spec.namespace)
@@ -200,13 +209,10 @@ def run(argv=None, prog=None):
             if args.built or not registry.published(args.name, args.version):
                 result.update(origin="source_build", verified=inspected.verified)
         elif args.command == "download":
-            options = dict(show_progress=not args.quiet)
-            if args.timeout is not None:
-                options["timeout"] = args.timeout
             sources = {"dataset.sqlite": args.source_path} if args.source_path else None
             with redirect_stdout(sys.stderr):
                 result = registry.download(args.name, args.version, force=args.force,
-                                           source_paths=sources, **options)
+                                           source_paths=sources, **_download_options(args))
         elif args.command == "build":
             sources = {}
             for value in args.source_path:
@@ -214,12 +220,9 @@ def run(argv=None, prog=None):
                 if not separator or not asset or not path or asset in sources:
                     parser.error("Source overrides require unique ASSET=PATH entries")
                 sources[asset] = path
-            options = dict(show_progress=not args.quiet)
-            if args.timeout is not None:
-                options["timeout"] = args.timeout
             with redirect_stdout(sys.stderr):
                 dataset = registry.build(args.name, args.version, force=args.force,
-                                         source_paths=sources, download_options=options)
+                                         source_paths=sources, download_options=_download_options(args))
             result = dict(path=str(dataset.path), counts=dataset.counts,
                           dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":

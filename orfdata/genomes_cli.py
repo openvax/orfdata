@@ -5,13 +5,19 @@ from contextlib import redirect_stdout
 from dataclasses import asdict
 
 from .cli_output import print_result
-from .cli_parser import ArgumentParser, UsageError, add_json, add_limit
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 from .genomes import install_genome, pinned_genomes
 
 
 def run(argv=None, prog=None):
     parser = ArgumentParser(description=__doc__, prog=prog)
-    parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Show pinned annotations, without downloading")
     listing.add_argument("--species", help="Only this species' annotations, e.g. human")
@@ -23,7 +29,9 @@ def run(argv=None, prog=None):
     install.add_argument("--genome-fasta", help="Explicit chromosome FASTA path or URL to install through PyEnsembl")
     install.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH",
                          help="Install a local copy of the gtf, transcripts or proteins file instead of downloading")
+    add_timeout(install, note="; PyEnsembl downloads --genome-fasta without one")
     add_json(install)
+    share_cache_root(parser)
     args = parser.parse_args(argv)
     try:
         if args.command == "list":
@@ -37,7 +45,8 @@ def run(argv=None, prog=None):
                 paths[role] = path
             with redirect_stdout(sys.stderr):
                 genome = install_genome(args.name, force=args.force, source_paths=paths or None,
-                                        cache_root=args.cache_root, genome_fasta_path_or_url=args.genome_fasta)
+                                        cache_root=args.cache_root, genome_fasta_path_or_url=args.genome_fasta,
+                                        download_options=dict(timeout=args.timeout))
             output = dict(name=args.name, reference_name=genome.reference_name,
                           annotation=f"{genome.annotation_name} {genome.annotation_version}",
                           transcripts=len(genome.transcript_ids()))

@@ -44,6 +44,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .net import DOWNLOAD_TIMEOUT
 from .viral_registry import (
     GDC_VIRUSES,
     INVENTORY_COLUMNS,
@@ -191,7 +192,7 @@ def viral_panel_coverage(panel=None, *, collection=None, available=None, virus=N
     return frame[keep]
 
 
-def download_viral_inventory(*, collection=None, cache_root=None, force=False, timeout=60):
+def download_viral_inventory(*, collection=None, cache_root=None, force=False, timeout=DOWNLOAD_TIMEOUT):
     """Fetch a collection's own published inventory metadata through DataCache.
 
     This downloads the inventory text the collection follows, not viral genomes

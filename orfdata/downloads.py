@@ -6,6 +6,7 @@ from os import PathLike
 from shlex import join
 from typing import Optional
 
+from .net import DOWNLOAD_TIMEOUT
 from .reference import canonical_species, species_taxon
 
 
@@ -173,7 +174,7 @@ def install_collection(
     species: str | int | None = None,
     force: bool = False,
     cache_root: str | PathLike[str] | None = None,
-    timeout: float = 120,
+    timeout: float | None = DOWNLOAD_TIMEOUT,
 ):
     """Download one reference collection, as ``orfdata download viral`` does."""
     from .viral_panel import download_viral_references

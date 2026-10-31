@@ -2,6 +2,8 @@
 
 from shlex import join
 
+from .net import DOWNLOAD_TIMEOUT
+
 
 class InstallError(ValueError):
     """Some of a species' catalogues or chain files failed to install; ``result`` says what did and didn't."""
@@ -11,7 +13,7 @@ class InstallError(ValueError):
         self.result = result
 
 
-def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=60,
+def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=DOWNLOAD_TIMEOUT,
                     catalogs=None, collections=None, resume=False):
     """Install a species' registered catalogues, chains and default reference collections.
 

@@ -9,7 +9,15 @@ from contextlib import redirect_stdout
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
 from .cli_output import print_result, print_table
-from .cli_parser import ArgumentParser, UsageError, add_json, add_limit, add_resume
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_cache_root,
+    add_json,
+    add_limit,
+    add_resume,
+    add_timeout,
+)
 from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
 
 COMMANDS = {
@@ -123,9 +131,8 @@ def _setup(argv, prog):
     parser.add_argument("--collections", metavar="NAMES", type=_catalog_names,
                         help="'none' to skip the species' reference collections, such as human's GDC viral "
                              "collection, 'all', or comma-separated names; the default set by default")
-    parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
-    parser.add_argument("--timeout", type=float, default=60,
-                        help="Seconds a download may stall before it is retried, then fails (default 60)")
+    add_cache_root(parser)
+    add_timeout(parser)
     add_resume(parser)
     add_json(parser)
     args = parser.parse_args(argv)
