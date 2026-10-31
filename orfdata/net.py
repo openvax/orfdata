@@ -8,6 +8,8 @@ from urllib.request import Request, urlopen
 
 USER_AGENT = "orfdata/viral (https://github.com/openvax/orfdata)"
 MAX_ATTEMPTS = 5
+# Seconds any ORFdata download may stall before it is retried, then fails; the CLI's --timeout default too.
+DOWNLOAD_TIMEOUT = 60
 # A request the server rejects will be rejected again; only a timeout or a rate
 # limit is worth repeating.
 _RETRYABLE_STATUS = (408, 429)

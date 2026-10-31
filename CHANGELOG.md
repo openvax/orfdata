@@ -43,6 +43,19 @@
   one-line user error. A malformed catalogue file is reported by name. An
   unknown dataset `--reference` or `--asset` lists the choices, and a restricted
   chain without `--accept-terms` is a usage error in every command.
+- `--cache-root` works before or after the subcommand in every command group;
+  previously each group accepted only one placement and rejected the other.
+  `viral coverage`, `contexts` and `subsets` read packaged data only and say so
+  if given one.
+- Every command that downloads takes `--timeout` with the same 60-second
+  default and meaning; `--timeout none` waits indefinitely. `genomes install`,
+  `chains download`, `data genome` and `data chains` had no timeout, and
+  `datasets download`/`build` had none by default, so a stalled connection
+  waited forever. One default, `orfdata.net.DOWNLOAD_TIMEOUT`, serves the CLI,
+  `fetch_data`, `install_species`, the viral inventory and the viral collection
+  functions, which move from 120 to 60 seconds; registry, genome and chain
+  calls in Python still take their timeout in `download_options`. Timeouts must
+  be positive and finite, or none (#163).
 
 # 0.44.0
 

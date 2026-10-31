@@ -8,7 +8,15 @@ from dataclasses import asdict
 from .catalog import load_catalog
 from .catalogs import CatalogRegistry
 from .cli_output import print_result
-from .cli_parser import ArgumentParser, UsageError, add_json, add_limit
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_cache_root,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 from .liftover import (
     ChainFile,
     chain_downloaded,
@@ -34,7 +42,8 @@ def lift(argv=None, prog=None):
     parser.add_argument("--chain", metavar="FILE",
                         help="UCSC or Ensembl chain file from the catalogue's assembly to --to, instead of the "
                              "pinned one; its direction is checked only when it is a pinned file")
-    parser.add_argument("--cache-root", help="Cache directory holding catalogues and downloaded chain files")
+    add_cache_root(parser, help="Cache directory holding catalogues and downloaded chain files, instead of "
+                                 "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", required=True, metavar="FILE",
                         help="Write the lifted catalogue here; gzipped when it ends in .gz")
     parser.add_argument("--json", action="store_true", help="Write the complete build summary as JSON to stderr")
@@ -78,7 +87,6 @@ def require_terms(source_build, target_build, species, accept_terms):
 def chains(argv=None, prog=None):
     parser = ArgumentParser(
         description="List and download the pinned chain files 'orfdata lift' uses.", prog=prog)
-    parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Show pinned chain files and their terms, without downloading")
     listing.add_argument("--species", help="Only this species' chains, e.g. human or mouse")
@@ -94,7 +102,9 @@ def chains(argv=None, prog=None):
     download.add_argument("--force", action="store_true", help="Download again even when present")
     download.add_argument("--source-path", metavar="FILE",
                           help="Install this local copy instead of downloading; it must match the pin")
+    add_timeout(download)
     add_json(download)
+    share_cache_root(parser)
     args = parser.parse_args(argv)
     try:
         if args.command == "list":
@@ -107,7 +117,7 @@ def chains(argv=None, prog=None):
                 raise UsageError("--source-path installs one chain; name it with FROM TO")
             with redirect_stdout(sys.stderr):
                 result = download_chains(species=args.species, accept_terms=args.accept_terms, force=args.force,
-                                         cache_root=args.cache_root)
+                                         cache_root=args.cache_root, download_options=dict(timeout=args.timeout))
             output = dict(downloaded={k: str(v) for k, v in result["downloaded"].items()}, skipped=result["skipped"])
         elif args.target_build is None:
             raise UsageError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
@@ -116,7 +126,8 @@ def chains(argv=None, prog=None):
             with redirect_stdout(sys.stderr):
                 output = dict(path=str(download_chain(args.source_build, args.target_build, species=args.species,
                                                       accept_terms=args.accept_terms, force=args.force,
-                                                      source_path=args.source_path, cache_root=args.cache_root)))
+                                                      source_path=args.source_path, cache_root=args.cache_root,
+                                                      download_options=dict(timeout=args.timeout))))
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.fail(error)
     print_result(output, json_output=args.json,

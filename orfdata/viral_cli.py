@@ -8,7 +8,14 @@ import sys
 from pathlib import Path
 
 from .cli_output import print_fields, print_json, print_table, records
-from .cli_parser import ArgumentParser, add_json, add_limit
+from .cli_parser import (
+    ArgumentParser,
+    add_cache_root,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 from .viral_coverage import PANEL, download_viral_inventory, viral_contexts, viral_panel_coverage
 from .viral_panel import viral_annotation_survey, viral_reference_summary
 from .viral_subsets import viral_subsets
@@ -53,7 +60,7 @@ def run(argv=None, prog="orfdata viral"):
     summary.add_argument("--subset", action="append",
                          help="Count only this named viral subset; repeat for a union")
     summary.add_argument("--species", default="human", help="Target analysis species (currently human)")
-    summary.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE or the default")
+    add_cache_root(summary)  # share_cache_root also accepts it before the subcommand.
     summary.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
     completeness = commands.add_parser(
@@ -63,8 +70,7 @@ def run(argv=None, prog="orfdata viral"):
                               help="Survey only this named viral subset; repeat for a union")
     completeness.add_argument("--species", default="human",
                               help="Target analysis species (currently human)")
-    completeness.add_argument("--cache-root",
-                              help="Cache directory instead of ORFDATA_CACHE or the default")
+    add_cache_root(completeness)
     completeness.add_argument("--incomplete", action="store_true",
                               help="Show only genomes with a gap worth looking at")
     completeness.add_argument("--json", action="store_true", help="Write machine-readable JSON")
@@ -73,12 +79,15 @@ def run(argv=None, prog="orfdata viral"):
     inventory = commands.add_parser("inventory", help="Manage the published GDC inventory metadata")
     inventory_commands = inventory.add_subparsers(dest="inventory_command", required=True)
     download = inventory_commands.add_parser("download", help="Download the pinned inventory via DataCache")
-    download.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE or the default")
     download.add_argument("--force", action="store_true", help="Replace the cached copy from the pinned source")
-    download.add_argument("--timeout", type=float, default=60, help="Per-attempt timeout in seconds")
+    add_timeout(download)
 
     add_json(download)
+    share_cache_root(parser)
     args = parser.parse_args(argv)
+    if args.cache_root is not None and args.command in ("coverage", "contexts", "subsets"):
+        # These read the packaged inventory only; a cache they'd ignore is a mistake worth saying so.
+        parser.error(f"--cache-root has no effect on 'viral {args.command}', which reads packaged data only")
     if args.command == "contexts":
         rows = viral_contexts()
         if args.json:

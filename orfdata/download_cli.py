@@ -4,7 +4,7 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import ArgumentParser, UsageError, add_limit
+from .cli_parser import ArgumentParser, UsageError, add_limit, add_timeout, share_cache_root
 from .downloads import list_data
 
 
@@ -18,14 +18,9 @@ def _source_paths(items, label):
     return paths or None
 
 
-def _add_cache(parser):
-    parser.add_argument(
-        "--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
-
-
-def _add_force_timeout(parser, timeout=60):
+def _add_force_timeout(parser):
     parser.add_argument("--force", action="store_true", help="Replace or repair an existing installation")
-    parser.add_argument("--timeout", type=float, default=timeout, help="Per-attempt timeout in seconds")
+    add_timeout(parser)
 
 
 def _add_json(parser):
@@ -112,7 +107,6 @@ _COLLECTION_FIELDS = ("kind", "status", "collection", "path", "bundle_version", 
 
 
 def _add_discovery(parser, *, status=False):
-    _add_cache(parser)
     parser.add_argument(
         "--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain"))
     parser.add_argument("--species", help="Only resources for this species, e.g. human or mouse")
@@ -154,7 +148,6 @@ def run(argv=None, prog="orfdata download"):
         command.add_argument("names", metavar="NAME", nargs="+" if verb == "fetch" else None)
         command.add_argument("--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain"))
         command.add_argument("--version", help="Exact resource version; defaults to its registered version")
-        _add_cache(command)
         _add_json(command)
         if verb == "fetch":
             _add_force_timeout(command)
@@ -192,15 +185,13 @@ def run(argv=None, prog="orfdata download"):
                        help="Take the alternate source's coding features wherever it publishes "
                             "the same molecule and annotates at least as much of it, for "
                             "uniform gene models in place of each submission's own")
-    _add_cache(viral)
-    _add_force_timeout(viral, timeout=120)
+    _add_force_timeout(viral)
     _add_json(viral)
 
     catalog = commands.add_parser("catalog", help="Download or build a registered ORF catalogue")
     catalog.add_argument("name")
     catalog.add_argument("--version")
     catalog.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
-    _add_cache(catalog)
     _add_force_timeout(catalog)
     _add_json(catalog)
 
@@ -209,7 +200,6 @@ def run(argv=None, prog="orfdata download"):
     dataset.add_argument("--version")
     dataset.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
     dataset.add_argument("--quiet", action="store_true")
-    _add_cache(dataset)
     _add_force_timeout(dataset)
     _add_json(dataset)
 
@@ -220,15 +210,13 @@ def run(argv=None, prog="orfdata download"):
     reference.add_argument("--asset", help="Declared source asset ID")
     reference.add_argument("--source-path", metavar="FILE")
     reference.add_argument("--quiet", action="store_true")
-    _add_cache(reference)
     _add_force_timeout(reference)
     _add_json(reference)
 
     genome = commands.add_parser("genome", help="Download and index a pinned PyEnsembl annotation")
     genome.add_argument("name")
     genome.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH")
-    _add_cache(genome)
-    genome.add_argument("--force", action="store_true")
+    _add_force_timeout(genome)
     _add_json(genome)
 
     chains = commands.add_parser("chains", help="Download pinned assembly chain files")
@@ -237,10 +225,10 @@ def run(argv=None, prog="orfdata download"):
     chains.add_argument("--species")
     chains.add_argument("--accept-terms", action="store_true")
     chains.add_argument("--source-path", metavar="FILE")
-    _add_cache(chains)
-    chains.add_argument("--force", action="store_true")
+    _add_force_timeout(chains)
     _add_json(chains)
 
+    share_cache_root(parser)
     args = parser.parse_args(argv)
     try:
         if args.command in ("info", "path", "fetch"):
@@ -364,7 +352,8 @@ def run(argv=None, prog="orfdata download"):
 
                 paths = _source_paths(args.source_path, "Source overrides")
                 installed = install_genome(args.name, force=args.force, source_paths=paths,
-                                           cache_root=args.cache_root)
+                                           cache_root=args.cache_root,
+                                           download_options=dict(timeout=args.timeout))
                 output = dict(kind="genome", name=args.name, reference_name=installed.reference_name,
                               annotation=f"{installed.annotation_name} {installed.annotation_version}",
                               transcripts=len(installed.transcript_ids()))
@@ -375,7 +364,8 @@ def run(argv=None, prog="orfdata download"):
                     if args.source_path:
                         raise UsageError("--source-path installs one chain; name it with FROM TO")
                     result = download_chains(species=args.species, accept_terms=args.accept_terms,
-                                             force=args.force, cache_root=args.cache_root)
+                                             force=args.force, cache_root=args.cache_root,
+                                             download_options=dict(timeout=args.timeout))
                     output = dict(downloaded={key: str(path) for key, path in result["downloaded"].items()},
                                   skipped=result["skipped"])
                 elif args.target_build is None:
@@ -387,7 +377,7 @@ def run(argv=None, prog="orfdata download"):
                     path = download_chain(
                         args.source_build, args.target_build, species=args.species,
                         accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,
-                        cache_root=args.cache_root)
+                        cache_root=args.cache_root, download_options=dict(timeout=args.timeout))
                     output = dict(path=str(path))
     except (ImportError, RuntimeError, ValueError, OSError) as error:
         parser.fail(error)
