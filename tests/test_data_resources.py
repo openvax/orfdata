@@ -10,7 +10,14 @@ from test_catalog_registry import setup_release
 from test_measurements import definition as dataset_definition
 from test_measurements import write_dataset
 
-from orfdata import CatalogRegistry, DatasetRegistry, data_info, data_path, fetch_data
+from orfdata import (
+    CatalogRegistry,
+    DatasetRegistry,
+    NotInstalledError,
+    data_info,
+    data_path,
+    fetch_data,
+)
 from orfdata.cli import run
 
 
@@ -28,7 +35,7 @@ def published(tmp_path, experiment, monkeypatch):
 def test_download_reuse_corruption_and_force_preserve_existing_generation(published):
     registry, original = published
     assert data_info("fixture")["acquire"] == "download"
-    with pytest.raises(ValueError, match="missing"):
+    with pytest.raises(NotInstalledError, match="not installed; install it with: orfdata data fetch fixture"):
         data_path("fixture")
     installed = fetch_data("fixture", show_progress=False)
     assert installed["acquired"] == "downloaded"
@@ -257,7 +264,7 @@ def test_listed_fetch_commands_name_the_cache_root(tmp_path):
     from orfdata import list_data
 
     row = next(r for r in list_data(kind="chain", cache_root=tmp_path))
-    assert row.command.endswith(f"--cache-root {tmp_path}")
+    assert f" --cache-root {tmp_path}" in row.command
     assert list_data(kind="chain", cache_root=tmp_path, local=True) == ()
 
 

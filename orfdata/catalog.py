@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import zlib
 from collections import Counter
 from copy import copy, deepcopy
 from dataclasses import asdict, dataclass, field, replace
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import NamedTuple, Optional
 from urllib.parse import quote
 
+from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS as EVIDENCE_METHODS  # Re-exported for existing imports.
 from .evidence import MS_METHODS, evidence_rule, stored_method
 from .evidence_summary import EvidenceSummary, unique_summaries
@@ -915,23 +917,52 @@ def _load_catalog(path=None, *, expected_sha256=None, resource="orf-evidence"):
             raise ValueError("Packaged uORF catalogue checksum mismatch")
     if expected_sha256 is not None and hashlib.sha256(raw).hexdigest() != expected_sha256:
         raise ValueError("uORF catalogue checksum mismatch")
+    try:
+        records, metadata = _parse_catalog(raw)
+    except _MALFORMED as error:
+        if path is None:
+            raise
+        raise _invalid_catalog(path, error) from error
+    try:
+        return ORFCatalog(records, metadata)
+    except (KeyError, ValueError) as error:  # Metadata the file lacks or gets wrong; anything else is a bug.
+        if path is None:
+            raise
+        raise _invalid_catalog(path, error) from error
+
+
+# What reading a damaged or malformed catalogue file raises: truncated or corrupt
+# gzip, undecodable bytes, invalid JSON, and fields that are missing or of the wrong type.
+_MALFORMED = (ValueError, KeyError, TypeError, EOFError, zlib.error, gzip.BadGzipFile)
+
+
+def _invalid_catalog(path, error):
+    detail = str(error) if isinstance(error, ValueError) else f"{type(error).__name__}: {error}"
+    return ValueError(f"{path} is not a valid ORF catalogue: {detail}")
+
+
+def _parse_catalog(raw):
+    """A catalogue file's records and metadata, checking its shape."""
     if raw.startswith(b"\x1f\x8b"):
         raw = gzip.decompress(raw)
     data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("the file is not a JSON object")
     if data.get("schema") not in ("isovar.uorf_evidence.v1", "orfdata.catalog.v1"):
         raise ValueError("Unsupported uORF evidence schema")
-    if data["metadata"].get("coordinates") != "1-based-inclusive":
+    metadata = data["metadata"]
+    if not isinstance(metadata, dict) or not isinstance(data["records"], list):
+        raise ValueError("metadata must be an object and records a list")
+    if metadata.get("coordinates") != "1-based-inclusive":
         raise ValueError("Unsupported uORF coordinate convention")
     legacy = data["schema"] == "isovar.uorf_evidence.v1"
-    metadata = data["metadata"]
     if legacy:
         if metadata.get("genome_build") != "GRCh38":
             raise ValueError("Legacy Isovar data are explicitly human GRCh38 only")
         metadata = dict(metadata, taxon_id=9606, species="homo_sapiens")
     elif not metadata.get("sources"):
         raise ValueError("Generic catalogues require source provenance")
-    records = [_record(row, legacy) for row in data["records"]]
-    return ORFCatalog(records, metadata)
+    return [_record(row, legacy) for row in data["records"]], metadata
 
 
 def _record(row, legacy=False):
@@ -1079,7 +1110,8 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
                          "lifted or merged from several")
     # Everything missing is reported at once: catalogues to install, then chains to download.
     root = getattr(registry, "_cache_root", None)
-    needs = [_install_hint(c) for c, _ in plan if c.registry is not None and _installed(c) in (None, "damaged")]
+    states = [(c, _installed(c)) for c, _ in plan if c.registry is not None]  # Each inspected once.
+    needs = [_install_hint(c, state) for c, state in states if state in (None, "damaged")]
     chains = list(dict.fromkeys(c for _, route in plan for c in route))
     missing = [c for c in chains if not chain_downloaded(c, cache_root=root)]
     cli_root = "" if root is None else f" --cache-root {root}"
@@ -1093,9 +1125,11 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
         chosen = ("" if catalogs is None else " --catalogs " + (
             catalogs if isinstance(catalogs, str) else ",".join(catalogs)))
-        raise ValueError(f"{species} {genome_build} ORFs need " + "; and ".join(needs)
-                         + f". Or install everything at once with 'orfdata setup --species {species}{chosen}{accept}"
-                         f"{cli_root}'")
+        # Missing catalogues or chains are a missing installation; a damaged one is a failure to repair.
+        error = ValueError if any(state == "damaged" for _, state in states) else NotInstalledError
+        raise error(f"{species} {genome_build} ORFs need " + "; and ".join(needs)
+                    + f". Or install everything at once with 'orfdata setup --species {species}{chosen}{accept}"
+                    f"{cli_root}'")
     # Lifting and merging take seconds; one process reuses the result for exactly the same inputs.
     key = (species, genome_build, expected_sha256, tuple((c.name, c.version, c.resource, _installed_at(c), tuple(
         x.sha256 for x in route)) for c, route in plan))
@@ -1205,18 +1239,23 @@ def _plan(found, species, genome_build):
                                           item[0].priority, item[0].name))
 
 
-def _install_hint(choice):
-    """The command that installs a registered release, or repairs a damaged one, in the registry's cache."""
+def _how_to_install(choice, state):
+    """How to install a registered release, or repair a damaged one, in the registry's cache."""
+    from .downloads import install_hint
+
     registry, name, version = choice.registry, choice.name, choice.version
-    root = getattr(registry, "_cache_root", None)
-    damaged = _installed(choice) == "damaged"
+    damaged = state == "damaged"
     verb = "download" if registry.published(name, version) else "build"
-    how = " again" if damaged else (" from its pinned sources" if verb == "build" else "")
-    return (f"the {name} {version} catalogue, which {'is damaged' if damaged else 'is not installed'}: {verb} it"
-            f"{how} with CatalogRegistry({'' if root is None else f'cache_root={str(root)!r}'}).{verb}({name!r}, "
-            f"{version!r}{', force=True' if damaged else ''}) or 'orfdata catalogs"
-            f"{'' if root is None else f' --cache-root {root}'} {verb} {name} --version {version}"
-            f"{' --force' if damaged else ''}'")
+    how = " again" if damaged else ("" if verb == "download" else " from its pinned sources")
+    call = f"{verb}({name!r}, {version!r}{', force=True' if damaged else ''})"
+    return f"{verb} it{how} with " + install_hint(registry, call, name, "catalog", version, force=damaged)
+
+
+def _install_hint(choice, state):
+    """The catalogue a species' ORFs need, and how to install or repair it."""
+    damaged = state == "damaged"
+    return (f"the {choice.name} {choice.version} catalogue, which {'is damaged' if damaged else 'is not installed'}: "
+            + _how_to_install(choice, state))
 
 
 def _open_choice(choice, expected_sha256):
@@ -1283,13 +1322,8 @@ def _open_registered(choice, expected_sha256):
     registry, name, version = choice.registry, choice.name, choice.version
     installed = _installed(choice)
     if installed in (None, "damaged"):
-        verb = "download" if registry.published(name, version) else "build"
-        when = " again" if installed else (" first" if verb == "download" else " from its pinned sources")
-        how = (f"{verb} it{when} with CatalogRegistry().{verb}({name!r}, {version!r}"
-               f"{', force=True' if installed else ''}) or 'orfdata catalogs {verb} {name} --version {version}"
-               f"{' --force' if installed else ''}'")
-        state = "damaged" if installed else "not installed"
-        raise ValueError(f"The {name} {version} ORF catalogue is {state}; {how}")
+        state, error = ("damaged", ValueError) if installed else ("not installed", NotInstalledError)
+        raise error(f"The {name} {version} ORF catalogue is {state}; {_how_to_install(choice, installed)}")
     if installed == "built":
         inspected = registry.inspect_build(name, version)
         if inspected.status != "available":

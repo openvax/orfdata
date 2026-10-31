@@ -216,7 +216,7 @@ def test_cli_context_lookup_and_ref_errors(capsys):
     assert output["initiation_annotations"][0]["sequence_changes"] == ["kozak_preference_lost"]
     with pytest.raises(SystemExit) as exc:
         run(["--position", "7:66205480", "--genome-build", "GRCh38", "--ref", "T", "--alt", "C", "--json"])
-    assert exc.value.code == 2 and "REF mismatch" in capsys.readouterr().err
+    assert exc.value.code == 1 and "REF mismatch" in capsys.readouterr().err  # Disagrees with the reference.
     with pytest.raises(SystemExit):
         run(["--ref", "A", "--alt", "C", "--json"])
     with pytest.raises(SystemExit):

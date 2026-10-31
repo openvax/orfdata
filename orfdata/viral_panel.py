@@ -32,6 +32,7 @@ from os import PathLike
 from pathlib import Path
 from uuid import uuid4
 
+from .errors import NotInstalledError
 from .fasta import write_fasta
 from .record_sources import REQUEST_INTERVAL
 from .reference import canonical_species
@@ -996,7 +997,7 @@ def open_viral_references(
             force=force, timeout=timeout)
     path = _installed_bundle(cache_root, species, collection)
     if path is None:
-        raise FileNotFoundError(
+        raise NotInstalledError(
             f"The {collection.name} viral references are not installed; run "
             f"'orfdata download viral --collection {collection.name}', or pass "
             "download_if_missing=True."

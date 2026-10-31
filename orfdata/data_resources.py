@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from .downloads import _fetch_command, list_data, needs_replacement, refuse_unreadable
+from .errors import NotInstalledError
 
 
 def _registry(kind, cache_root):
@@ -84,10 +85,11 @@ def data_path(name, *, kind=None, version=None, cache_root=None, verify_files=Fa
     info = data_info(name, kind=kind, version=version, cache_root=cache_root,
                      verify_files=verify_files)
     if not info["installed"] or info["path"] is None:
+        if info["status"] == "missing":
+            raise NotInstalledError(f"{name!r} is not installed; install it with: {info['command']}")
         if info["status"] == "inaccessible":
             refuse_unreadable(info["status"], name=f"{name!r} at {info['path']}", command=info["command"])
-        verb = "install" if info["status"] == "missing" else "repair"
-        raise ValueError(f"{name!r} is {info['status']}; {verb} it with: {info['command']}")
+        raise ValueError(f"{name!r} is {info['status']}; repair it with: {info['command']}")
     return Path(info["path"])
 
 

@@ -27,6 +27,22 @@
   forced install repairs a store that lost its marker; an interrupted install's
   working files are swept by the next one. Collections installed by 0.44 or
   earlier, including ones linked into place, still open (#158).
+- Exit with a status scripts can branch on: 1 when a command fails (network,
+  checksums, damaged data or files, unknown names), 2 for a command line the
+  parser or the command's own checks reject, and 3 when a resource the command
+  needs isn't installed. Those checks run before anything is read; a few option
+  values are checked only by library code and exit 1. Only command-line
+  mistakes point to `--help`. Up to 0.44.0 nearly every failure exited 2; a partial
+  `setup` exited 1 (#155).
+- Raise `orfdata.NotInstalledError`, also a `FileNotFoundError` and a
+  `ValueError`, for catalogues, datasets, search references, genomes, chains,
+  viral collections and PyEnsembl annotations that aren't installed; opening one
+  now names the command that installs it, with its kind, version and cache root,
+  instead of only its cache path.
+- Report unexpected internal errors with their traceback instead of as a
+  one-line user error. A malformed catalogue file is reported by name. An
+  unknown dataset `--reference` or `--asset` lists the choices, and a restricted
+  chain without `--accept-terms` is a usage error in every command.
 
 # 0.44.0
 

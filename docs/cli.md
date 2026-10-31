@@ -79,6 +79,27 @@ Mapped measurements show the original observation and its mapping attribution;
 pair previews show their pairing basis, temporal relationship and target
 relationship. Full reference identities and provenance remain in JSON/JSONL.
 
+## Exit statuses
+
+| Status | Meaning |
+| --- | --- |
+| 0 | The command succeeded. |
+| 1 | The command failed: a download or checksum failed, local data or a file you passed is damaged or inconsistent, or a name the data is searched for isn't there (for example an unknown resource name or ORF ID). |
+| 2 | The command line is invalid, as the parser or the command's own checks find it: an unknown command or option, a missing argument, options that can't be combined, a restricted resource without `--accept-terms`, an out-of-range locus or length, or a value the command checks against the choices it lists (for example a dataset `--reference`). The message points to `--help`. |
+| 3 | A resource the command needs isn't installed. The message names the command that installs it, such as `orfdata data fetch NAME`. |
+
+Those checks run before anything is read, so the mistakes they catch exit 2
+whatever is installed. Some option values are checked only by the library code
+that uses them, and a bad one there exits 1 like any other failure: for example,
+an unknown `orfdata viral coverage --context` or `datasets pairs --basis`.
+
+In Python, a missing installation raises `orfdata.NotInstalledError`, which is
+also a `FileNotFoundError` and a `ValueError`. Up to 0.44.0, nearly every
+failure exited 2 (a partial `setup` exited 1); scripts that tested for 2 should
+test for a nonzero status, or for 3 before installing what is missing.
+
+## Output streams
+
 Results and exports go to stdout. Progress and errors go to stderr. `data path`
 and `viral inventory download` print a plain path by default. `proteome` writes
 FASTA to stdout unless `--output` is supplied; its summary goes to stderr.

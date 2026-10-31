@@ -4,7 +4,7 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import ArgumentParser, add_limit
+from .cli_parser import ArgumentParser, UsageError, add_limit
 from .downloads import list_data
 
 
@@ -13,7 +13,7 @@ def _source_paths(items, label):
     for item in items:
         key, separator, path = item.partition("=")
         if not separator or not key or not path or key in paths:
-            raise ValueError(f"{label} require unique NAME=PATH entries")
+            raise UsageError(f"{label} require unique NAME=PATH entries")
         paths[key] = path
     return paths or None
 
@@ -255,7 +255,12 @@ def run(argv=None, prog="orfdata download"):
             else:
                 names = list(dict.fromkeys(args.names))
                 if len(names) > 1 and (args.source_path or args.version):
-                    raise ValueError("--source-path and --version require exactly one resource")
+                    raise UsageError("--source-path and --version require exactly one resource")
+                # Terms are a command-line omission, found without verifying anything.
+                for name in names:
+                    info = data_info(name, **options)
+                    if info["restricted"] and not args.accept_terms:
+                        raise UsageError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
                 paths = _source_paths(args.source_path, "Source overrides")
                 if len(names) > 1:  # Find every name, terms and permissions problem before downloading anything.
                     for name in names:
@@ -368,19 +373,22 @@ def run(argv=None, prog="orfdata download"):
 
                 if args.source_build is None:
                     if args.source_path:
-                        raise ValueError("--source-path installs one chain; name it with FROM TO")
+                        raise UsageError("--source-path installs one chain; name it with FROM TO")
                     result = download_chains(species=args.species, accept_terms=args.accept_terms,
                                              force=args.force, cache_root=args.cache_root)
                     output = dict(downloaded={key: str(path) for key, path in result["downloaded"].items()},
                                   skipped=result["skipped"])
                 elif args.target_build is None:
-                    raise ValueError("Name both assemblies, FROM and TO, or neither")
+                    raise UsageError("Name both assemblies, FROM and TO, or neither")
                 else:
+                    from .liftover_cli import require_terms
+
+                    require_terms(args.source_build, args.target_build, args.species, args.accept_terms)
                     path = download_chain(
                         args.source_build, args.target_build, species=args.species,
                         accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,
                         cache_root=args.cache_root)
                     output = dict(path=str(path))
-    except (ImportError, KeyError, RuntimeError, TypeError, ValueError, OSError) as error:
-        parser.error(str(error))
+    except (ImportError, RuntimeError, ValueError, OSError) as error:
+        parser.fail(error)
     _show_result(output, args.json)
