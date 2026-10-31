@@ -1897,7 +1897,10 @@ alongside the human catalogues and chains, and <code>--collections none</code> s
 The command above installs only this checked collection under <code>ORFDATA_CACHE</code> (or
 the normal OpenVax cache), rather than asking for an export directory. Use
 <code>--cache-root DIRECTORY</code> to select another cache and <code>--force</code> to refresh or
-repair the installed files.</p>
+repair the installed files. A refresh replaces the collection in one step and
+keeps the copies it replaced for programs still reading them, until
+<code>prune_viral_references()</code> removes them. Each refresh is a new directory, so
+look it up with <code>orfdata data path gdc-viruses</code> rather than saving it.</p>
 <p>Here <code>--species human</code> is the target analysis species. The current collection
 is for human transcriptome analysis; a future collection may target another
 species. It does not assert that every source record declared a human host.
@@ -1957,7 +1960,7 @@ depending on a parser. The format has many edges, so the reader is compared
 against an independent implementation — <code>gb-io</code>, a development dependency —
 over every record in a downloaded collection:</p>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'orfdata[dev]'</span>
-<span class="nv">ORFDATA_GENBANK_CORPUS</span><span class="o">=</span>&lt;cache&gt;/viral/references/homo_sapiens/gdc-viruses/&lt;version&gt;/genbank<span class="w"> </span><span class="se">\</span>
+<span class="nv">ORFDATA_GENBANK_CORPUS</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>orfdata<span class="w"> </span>data<span class="w"> </span>path<span class="w"> </span>gdc-viruses<span class="k">)</span><span class="s2">/records"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>pytest<span class="w"> </span>tests/test_genbank_equivalence.py
 </code></pre></div>
 <p>The two agree on all 200 records and 1,678 CDS features. Where they differ,
