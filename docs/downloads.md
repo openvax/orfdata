@@ -26,13 +26,19 @@ prints an installed file or directory for scripts; missing data is an error,
 and never triggers a download. Use `--verify` on reads to validate local bytes,
 `--cache-root DIR` to select a cache, and `--json` for machine output.
 `fetch --json` returns one result per distinct requested name. Human tables
-preview 25 rows; use `--limit 0` for all rows. `--json` always returns complete
+preview 25 rows; `list` and `status` take those rows from each resource kind in
+turn, so every kind appears whenever there is room for one row of each (the
+default always has), and say what each kind left out. Use `--limit 0` for all
+rows. `--json` always returns complete
 results. See the [CLI guide](cli.md) for output formats and migration notes.
 
 Use `--kind` to disambiguate colliding resource names. For one resource,
 `--version VERSION` selects a historical release and `--source-path ASSET=PATH`
 provides already downloaded catalogue/dataset sources or genome files. Source
-overrides remain checksum-checked. `--force` installs a fresh generation.
+overrides remain checksum-checked. `fetch` reuses a valid installation and
+replaces one whose files fail verification, reporting it as `repaired`, as
+`setup` does; `--force` installs a fresh generation even over valid files, and is
+needed to replace files that can't be read.
 Restricted chain downloads require `--accept-terms` after reviewing `info`.
 
 The same operations are available in Python:
@@ -62,8 +68,12 @@ to every resource kind. Focused command groups such as `orfdata viral coverage` 
 
 `list` shows every bundled, downloadable or locally buildable primary resource
 and its current state, including native protein search references declared by
-quantitative datasets. `status` shows resources already usable from local
-files. Filter either command with `--kind` or `--species`; use `--installed` or
+quantitative datasets. `status` shows resources with local files: usable ones
+and damaged or unreadable installs. `data fetch` replaces damaged files;
+unreadable ones are left alone until their permissions are fixed or `--force` is
+given. For catalogues, datasets, search references, genomes and chains, a repair
+installs a fresh generation and leaves the damaged one in place until the cache
+is pruned, as `--force` does; a viral collection is rebuilt in place. Filter either command with `--kind` or `--species`; use `--installed` or
 `--missing` with `list`, `--json` for programs, and `--verify` to hash installed
 files. Discovery and status commands never acquire or repair data.
 
