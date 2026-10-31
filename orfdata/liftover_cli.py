@@ -66,6 +66,15 @@ def lift(argv=None, prog=None):
     print_result(summary, json_output=args.json, stream=sys.stderr)
 
 
+def require_terms(source_build, target_build, species, accept_terms):
+    """A usage error, as for 'data fetch', when a restricted chain is named without --accept-terms."""
+    from .liftover import _pinned
+
+    chain = _pinned(source_build, target_build, species)
+    if chain.restricted and not accept_terms:
+        raise UsageError(f"The {chain.name} chain file requires --accept-terms: {chain.terms} ({chain.terms_url})")
+
+
 def chains(argv=None, prog=None):
     parser = ArgumentParser(
         description="List and download the pinned chain files 'orfdata lift' uses.", prog=prog)
@@ -103,6 +112,7 @@ def chains(argv=None, prog=None):
         elif args.target_build is None:
             raise UsageError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
         else:
+            require_terms(args.source_build, args.target_build, args.species, args.accept_terms)
             with redirect_stdout(sys.stderr):
                 output = dict(path=str(download_chain(args.source_build, args.target_build, species=args.species,
                                                       accept_terms=args.accept_terms, force=args.force,

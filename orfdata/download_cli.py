@@ -325,6 +325,9 @@ def run(argv=None, prog="orfdata download"):
                 elif args.target_build is None:
                     raise UsageError("Name both assemblies, FROM and TO, or neither")
                 else:
+                    from .liftover_cli import require_terms
+
+                    require_terms(args.source_build, args.target_build, args.species, args.accept_terms)
                     path = download_chain(
                         args.source_build, args.target_build, species=args.species,
                         accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,

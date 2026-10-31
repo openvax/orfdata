@@ -330,7 +330,7 @@ def test_aliases_produce_identical_results(capsys):
     (["datasets", "download", "fixture"], "orfdata.datasets.DatasetRegistry.download"),
     (["datasets", "build", "fixture"], "orfdata.datasets.DatasetRegistry.build"),
     (["genomes", "install", "fixture"], "orfdata.genomes_cli.install_genome"),
-    (["chains", "download", "GRCm38", "GRCm39"], "orfdata.liftover_cli.download_chain"),
+    (["chains", "download", "GRCm38", "GRCm39", "--accept-terms"], "orfdata.liftover_cli.download_chain"),
     (["setup", "--species", "mouse"], "orfdata.install.install_species"),
     (["viral", "inventory", "download"], "orfdata.viral_cli.download_viral_inventory"),
 ])

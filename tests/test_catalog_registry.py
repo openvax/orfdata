@@ -320,7 +320,7 @@ def test_load_catalog_defaults_to_bundled_human_and_names_what_exists():
     with pytest.raises(ValueError, match="need the chain files GRCh38_to_GRCh37 to reach GRCh37 by liftover"):
         load_catalog(species="human", genome_build="GRCh37")
     with pytest.raises(ValueError, match=r"openprot-mouse 2.2-1 catalogue, which is not installed: build it from "
-                                         r"its pinned sources .* 'orfdata catalogs build openprot-mouse --version 2.2-1'"):
+                                         r"its pinned sources .* 'orfdata data fetch openprot-mouse --kind catalog --version 2.2-1'"):
         load_catalog(species="mouse")
 
 

@@ -81,14 +81,17 @@ relationship. Full reference identities and provenance remain in JSON/JSONL.
 | Status | Meaning |
 | --- | --- |
 | 0 | The command succeeded. |
-| 1 | The command failed: a download or checksum failed, local data is damaged or inconsistent, or a name or value doesn't match the data (for example an unknown resource or ORF ID). |
-| 2 | The command line is invalid: an unknown command or option, a missing argument, or options that can't be combined. The message points to `--help`. |
+| 1 | The command failed: a download or checksum failed, local data or a file you passed is damaged or inconsistent, or a name the data is searched for isn't there (for example an unknown resource name or ORF ID). |
+| 2 | The command line is invalid: an unknown command or option, a missing argument, options that can't be combined, a restricted resource without `--accept-terms`, or an option value outside the choices the message lists (for example a dataset `--reference`). The message points to `--help`. |
 | 3 | A resource the command needs isn't installed. The message names the command that installs it, such as `orfdata data fetch NAME`. |
 
+The whole command line is checked before anything is read, so a mistake in it
+exits 2 whatever is installed.
+
 In Python, a missing installation raises `orfdata.NotInstalledError`, which is
-also a `FileNotFoundError` and a `ValueError`. Up to 0.44.0, every failure
-exited 2; scripts that tested for 2 should test for a nonzero status, or for 3
-before installing what is missing.
+also a `FileNotFoundError` and a `ValueError`. Up to 0.44.0, nearly every
+failure exited 2 (a partial `setup` exited 1); scripts that tested for 2 should
+test for a nonzero status, or for 3 before installing what is missing.
 
 ## Output streams
 

@@ -7,7 +7,8 @@ from importlib.resources import files
 
 from .catalog import ORFCatalog, load_catalog
 from .catalog_manifest import CatalogManifest
-from .datasets import _datacache, _digest, get_data_dir
+from .datasets import _datacache, _digest, _installed_path, get_data_dir
+from .downloads import install_hint
 from .errors import NotInstalledError
 from .reference import species_taxon
 
@@ -82,6 +83,7 @@ class CatalogRegistry:
     """
 
     def __init__(self, definitions=None, *, cache_root=None):
+        self._packaged = definitions is None  # What 'orfdata data fetch' reads.
         if definitions is None:
             definitions = json.loads(files("orfdata").joinpath("data/catalogs.json").read_text())
         self._definitions = json.loads(json.dumps(definitions, allow_nan=False))
@@ -199,14 +201,10 @@ class CatalogRegistry:
             return self.open_build(name, version, verify_files=verify_files)
         manifest = self.info(name, version)
         version = self._published(name, version)
-        registry = self._data_registry()
-        if registry.inspect(name, version, verify_files=False).status == "missing":
-            raise NotInstalledError(
-                f"The {name} {version} ORF catalogue is not installed; download it with "
-                f"CatalogRegistry().download({name!r}, {version!r}) or "
-                f"'orfdata data fetch {name} --version {version}'")
-        path = registry.local_path(name, version, asset=_ASSET, verify_files=verify_files)
-        return _open(path, manifest)
+        hint = (f"The {name} {version} ORF catalogue is not installed; download it with "
+                + install_hint(self, f"download({name!r}, {version!r})", name, "catalog", version))
+        return _open(_installed_path(self._data_registry(), name, version, hint, asset=_ASSET,
+                                     verify_files=verify_files), manifest)
 
     def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
         """Explicitly materialize an allowlisted catalogue source adapter."""
@@ -243,8 +241,8 @@ class CatalogRegistry:
             version = self._version(name, version)
             raise NotInstalledError(
                 f"The {name} {version} ORF catalogue has no local build; build it from its pinned sources with "
-                f"CatalogRegistry().build({name!r}, {version!r}) or "
-                f"'orfdata catalogs build {name} --version {version}'")
+                + install_hint(self, f"build({name!r}, {version!r})", name, "catalog", version,
+                               build=self.published(name, version)))
         if inspected.status != "available":
             raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
         return _open(inspected.files[_ASSET].path, self.info(name, version))

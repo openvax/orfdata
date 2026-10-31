@@ -277,13 +277,8 @@ def _query(args, parser, catalog_loader):
     ):
         parser.error("Provide distinct single-base forward-genomic REF and ALT")
     try:
-        paths = args.catalog or [None]
-        if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
-            # The assembly picks the catalogue too, not only checks it.
-            catalogs = [catalog_loader(p, species=args.species, genome_build=args.genome_build) for p in paths]
-        else:
-            catalogs = [catalog_loader(p) for p in paths]
-        catalog = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
+        # The whole command line is checked before any catalogue is read, so a mistake in it exits 2
+        # whatever is installed.
         options = {
             "gene": args.gene,
             "transcript_id": args.transcript,
@@ -306,6 +301,13 @@ def _query(args, parser, catalog_loader):
                 start=start,
                 end=int(match.group(3)) if args.region else start,
             )
+        paths = args.catalog or [None]
+        if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
+            # The assembly picks the catalogue too, not only checks it.
+            catalogs = [catalog_loader(p, species=args.species, genome_build=args.genome_build) for p in paths]
+        else:
+            catalogs = [catalog_loader(p) for p in paths]
+        catalog = catalogs[0] if len(catalogs) == 1 else merge_catalogs(catalogs)
         records = catalog.query(**options)
         if args.orf_id:
             try:

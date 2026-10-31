@@ -47,7 +47,7 @@ def _resolve(name, kind, version, cache_root, verify_files):
         if verify_files:
             row = next(r for r in list_data(kind=row.kind, cache_root=cache_root, verify_files=True)
                        if r.name == name and r.version == row.version)
-    return replace(row, command=_fetch_command(row))
+    return replace(row, command=_fetch_command(row, cache_root))
 
 
 def data_info(name, *, kind=None, version=None, cache_root=None, verify_files=False):

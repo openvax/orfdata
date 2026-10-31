@@ -23,6 +23,7 @@ from urllib.parse import quote
 
 from . import _structure
 from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
+from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
 from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_assembly, _versioned
 from .reference import ReferenceContext
@@ -2432,6 +2433,8 @@ def _require_installed(genome):
             install = f"orfdata genomes install {genome.pinned_name} --force"
         elif getattr(genome, "release", None) is not None and getattr(genome, "species", None) is not None:
             install += f" --release {genome.release} --species {genome.species.latin_name}"
-        raise ValueError(f"{genome.reference_name} annotation is {status}; install it first with: {install}")
+        # Absent, partly downloaded or unindexed annotation is installed by the command; damage is a failure.
+        error = NotInstalledError if status in ("missing", "incomplete", "not indexed") else ValueError
+        raise error(f"{genome.reference_name} annotation is {status}; install it first with: {install}")
 
 

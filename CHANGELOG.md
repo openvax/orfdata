@@ -1,16 +1,20 @@
 # Unreleased
 
 - Exit with a status scripts can branch on: 1 when a command fails (network,
-  checksums, damaged data, unknown names), 2 only for an invalid command line,
-  and 3 when a resource the command needs isn't installed. Only command-line
-  mistakes point to `--help`. Up to 0.44.0 every failure exited 2 (#155).
+  checksums, damaged data or files, unknown names), 2 only for an invalid
+  command line, and 3 when a resource the command needs isn't installed. The
+  command line is checked before anything is read. Only command-line mistakes
+  point to `--help`. Up to 0.44.0 nearly every failure exited 2; a partial
+  `setup` exited 1 (#155).
 - Raise `orfdata.NotInstalledError`, also a `FileNotFoundError` and a
-  `ValueError`, for catalogues, datasets, search references, genomes, chains and
-  viral collections that aren't installed; opening one now names the command
-  that installs it instead of only its cache path.
+  `ValueError`, for catalogues, datasets, search references, genomes, chains,
+  viral collections and PyEnsembl annotations that aren't installed; opening one
+  now names the command that installs it, with its kind, version and cache root,
+  instead of only its cache path.
 - Report unexpected internal errors with their traceback instead of as a
-  one-line user error, and name the option and its choices for an unknown
-  dataset `--reference`.
+  one-line user error. A malformed catalogue file is reported by name. An
+  unknown dataset `--reference` or `--asset` lists the choices, and a restricted
+  chain without `--accept-terms` is a usage error in every command.
 
 # 0.44.0
 

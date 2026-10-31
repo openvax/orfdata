@@ -19,6 +19,16 @@ def _reference(references, key, option):
     return references[key]
 
 
+def _check_search_reference(registry, args):
+    """A usage error for a --reference or --asset that none of the dataset's search references has."""
+    specs = registry.search_references(args.name, args.version)
+    for option, value, choices in (("--reference", args.reference, [s.reference.key for s in specs]),
+                                   ("--asset", args.asset, [s.source.asset_id for s in specs])):
+        if value is not None and value not in choices:
+            raise UsageError(f"{option} {value!r} is not a search reference of this dataset; choose from "
+                             f"{', '.join(dict.fromkeys(choices)) or 'none'}")
+
+
 def run(argv=None, prog=None):
     parser = ArgumentParser(description=__doc__, prog=prog,
                             epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
@@ -117,8 +127,12 @@ def run(argv=None, prog=None):
                 definitions = json.load(handle)
         try:
             registry = DatasetRegistry(definitions, cache_root=args.cache_root)
-        except (KeyError, TypeError) as error:  # A malformed --registry file, not a bug here.
-            raise ValueError(f"Invalid dataset registry {args.registry}: {error!r}") from error
+        except (KeyError, TypeError, AttributeError) as error:
+            if not args.registry:  # The packaged registry: a bug, which keeps its traceback.
+                raise
+            raise ValueError(f"Invalid dataset registry {args.registry}: {type(error).__name__}: {error}") from error
+        if args.command in ("inspect-reference", "download-reference", "query-reference"):
+            _check_search_reference(registry, args)
         if args.command == "list":
             result = [m.to_dict() for m in registry.list(
                 species=args.species, taxon_id=args.taxon_id, assay=args.assay)]
@@ -181,6 +195,8 @@ def run(argv=None, prog=None):
             open_dataset = registry.open_build if args.built else registry.open
             dataset = open_dataset(args.name, args.version)
             references = {r.key: r for r in dataset.manifest.references}
+            if args.reference is not None:
+                _reference(references, args.reference, "--reference")
             selections = {}
             for side in ("left", "right"):
                 identifier, kind, namespace, reference = (
@@ -212,13 +228,14 @@ def run(argv=None, prog=None):
         else:
             open_dataset = registry.open_build if args.built else registry.open
             dataset = open_dataset(args.name, args.version)
+            references = {r.key: r for r in dataset.manifest.references}
+            if args.reference is not None:
+                _reference(references, args.reference, "--reference")
             target = None
             if any((args.target, args.kind, args.namespace)):
                 if not all((args.target, args.kind, args.namespace, args.reference)):
                     parser.error("Target queries require --target, --kind, --namespace and --reference")
-                references = {r.key: r for r in dataset.manifest.references}
-                target = ScopedTarget(_reference(references, args.reference, "--reference"),
-                                      args.kind, args.target, args.namespace)
+                target = ScopedTarget(references[args.reference], args.kind, args.target, args.namespace)
             filters = dict(sample_id=args.sample, assay_id=args.assay_id,
                            quantity=args.quantity, status=args.status,
                            unit=args.unit, scale=args.scale, log_base=args.log_base)

@@ -49,15 +49,61 @@ def default_collections(species: str | int) -> tuple[str, ...]:
     return tuple(collection.name for collection in viral_collections(species=species))
 
 
-def _fetch_command(row):
+# The command group that manages each kind a registry defines.
+_GROUPS = {"catalog": "catalogs", "dataset": "datasets", "reference": "datasets"}
+
+
+def install_command(name, kind, version=None, *, cache_root=None, restricted=False, force=False, verb=None,
+                    registry_file=None):
+    """The command that installs one resource in ``cache_root``, as a shell string.
+
+    By default it is ``orfdata data fetch``, which downloads or builds as the
+    release declares. ``verb`` names a command of the kind's group instead
+    (``download``, ``build`` or ``download-reference``), as an explicit build
+    or a ``registry_file`` of custom definitions needs.
+    """
+    if verb is None:
+        args = ["orfdata", "data", "fetch", name, "--kind", kind]
+        if cache_root is not None:
+            args += ["--cache-root", str(cache_root)]
+    else:  # The group's options come before its subcommand.
+        args = ["orfdata", _GROUPS[kind]] + ([] if registry_file is None else ["--registry", str(registry_file)])
+        args += ([] if cache_root is None else ["--cache-root", str(cache_root)]) + [verb]
+        dataset, _, asset = name.partition(":")
+        args += [dataset, "--asset", asset] if kind == "reference" else [name]
+    if version is not None:
+        args += ["--version", version]
+    if restricted:
+        args.append("--accept-terms")
+    if force:
+        args.append("--force")
+    return join(args)
+
+
+def install_hint(registry, call, name, kind, version, *, force=False, build=False):
+    """``"<Python call> or '<command>'"`` for one resource of ``registry``, in its cache.
+
+    ``call`` is a method call on the registry, such as ``download('x', '1')``.
+    ``build=True`` asks for an explicit source build of a published release. A
+    registry made from custom definitions is not what ``orfdata data fetch``
+    reads, so its command passes them with ``--registry``.
+    """
+    root = getattr(registry, "_cache_root", None)
+    if getattr(registry, "_packaged", True):
+        owner = f"{type(registry).__name__}({'' if root is None else f'cache_root={str(root)!r}'})"
+        command = install_command(name, kind, version, cache_root=root, force=force,
+                                  verb="build" if build else None)
+    else:
+        owner = "registry"
+        command = install_command(name, kind, version, cache_root=root, force=force,
+                                  verb=call.split("(", 1)[0].replace("_", "-"), registry_file="FILE")
+    return f"{owner}.{call} or '{command}'"
+
+
+def _fetch_command(row, cache_root=None):
     if row.acquire is None:
         return None
-    args = ["orfdata", "data", "fetch", row.name, "--kind", row.kind]
-    if row.version is not None:
-        args.extend(["--version", row.version])
-    if row.restricted:
-        args.append("--accept-terms")
-    return join(args)
+    return install_command(row.name, row.kind, row.version, cache_root=cache_root, restricted=row.restricted)
 
 
 def collection_state(
@@ -336,5 +382,5 @@ def list_data(
                 if predicate(context in row.contexts for context in selected_contexts)]
     if installed is not None:
         rows = [row for row in rows if row.installed is installed]
-    return tuple(replace(row, command=_fetch_command(row)) for row in
+    return tuple(replace(row, command=_fetch_command(row, cache_root)) for row in
                  sorted(rows, key=lambda row: (row.kind, row.name, row.version or "")))

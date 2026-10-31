@@ -57,8 +57,10 @@ def run(argv=None, prog=None):
         definitions = json.loads(Path(args.registry).read_text()) if args.registry else None
         try:
             registry = CatalogRegistry(definitions, cache_root=args.cache_root)
-        except (KeyError, TypeError) as error:  # A malformed --registry file, not a bug here.
-            raise ValueError(f"Invalid catalogue registry {args.registry}: {error!r}") from error
+        except (KeyError, TypeError, AttributeError) as error:
+            if not args.registry:  # The packaged registry: a bug, which keeps its traceback.
+                raise
+            raise ValueError(f"Invalid catalogue registry {args.registry}: {type(error).__name__}: {error}") from error
         if args.command == "list":
             output = [m.to_dict() for m in registry.list(species=args.species, taxon_id=args.taxon_id)]
         elif args.command == "status":
