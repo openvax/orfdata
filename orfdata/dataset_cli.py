@@ -6,7 +6,14 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_record_stream, print_result
-from .cli_parser import ArgumentParser, add_json, add_limit, add_timeout, share_cache_root
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 from .datasets import DatasetRegistry
 from .reference import ScopedTarget
 
@@ -14,6 +21,52 @@ from .reference import ScopedTarget
 def _download_options(args):
     """What the download, download-reference and build commands pass on to DataCache."""
     return dict(show_progress=not args.quiet, timeout=args.timeout)
+
+
+def _reference(references, key, option):
+    """The dataset reference ``option`` names, or a usage error listing the dataset's references."""
+    if key not in references:
+        raise UsageError(f"{option} {key!r} is not a reference of this dataset; choose from "
+                         f"{', '.join(references)}")
+    return references[key]
+
+
+def _check_search_reference(registry, args):
+    """A usage error for a --reference or --asset that none of the dataset's search references has."""
+    specs = registry.search_references(args.name, args.version)
+    for option, value, choices in (("--reference", args.reference, [s.reference.key for s in specs]),
+                                   ("--asset", args.asset, [s.source.asset_id for s in specs])):
+        if value is not None and value not in choices:
+            raise UsageError(f"{option} {value!r} is not a search reference of this dataset; choose from "
+                             f"{', '.join(dict.fromkeys(choices)) or 'none'}")
+
+
+def _check_query(registry, args, parser):
+    """The dataset's references, after checking the query or pairs options its manifest settles.
+
+    This needs only the registered manifest, so a command-line mistake exits 2
+    whether or not the dataset is installed.
+    """
+    references = {r.key: r for r in registry.info(args.name, args.version).references}
+    if args.reference is not None:
+        _reference(references, args.reference, "--reference")
+    if args.command == "pairs":
+        for side in ("left", "right"):
+            values = [getattr(args, f"{side}_{field}") for field in ("target", "kind", "namespace", "reference")]
+            if any(values) and not all(values):
+                parser.error(f"{side.title()} target queries require --{side}-target, --{side}-kind, "
+                             f"--{side}-namespace and --{side}-reference")
+            if values[3] is not None:
+                _reference(references, values[3], f"--{side}-reference")
+        return references
+    if any((args.target, args.kind, args.namespace)) and not all((args.target, args.kind, args.namespace,
+                                                                   args.reference)):
+        parser.error("Target queries require --target, --kind, --namespace and --reference")
+    if args.mapped and not args.target:
+        parser.error("--mapped requires an exact target and reference")
+    if not args.mapped and (args.mapping_status or args.require_sequence):
+        parser.error("Mapping filters require --mapped")
+    return references
 
 
 def run(argv=None, prog=None):
@@ -111,8 +164,18 @@ def run(argv=None, prog=None):
         definitions = None
         if args.registry:
             with open(args.registry) as handle:
-                definitions = json.load(handle)
-        registry = DatasetRegistry(definitions, cache_root=args.cache_root)
+                try:
+                    definitions = json.load(handle)
+                except ValueError as error:
+                    raise ValueError(f"Invalid dataset registry {args.registry}: {error}") from error
+        try:
+            registry = DatasetRegistry(definitions, cache_root=args.cache_root)
+        except (KeyError, TypeError, AttributeError) as error:
+            if not args.registry:  # The packaged registry: a bug, which keeps its traceback.
+                raise
+            raise ValueError(f"Invalid dataset registry {args.registry}: {type(error).__name__}: {error}") from error
+        if args.command in ("inspect-reference", "download-reference", "query-reference"):
+            _check_search_reference(registry, args)
         if args.command == "list":
             result = [m.to_dict() for m in registry.list(
                 species=args.species, taxon_id=args.taxon_id, assay=args.assay)]
@@ -163,17 +226,14 @@ def run(argv=None, prog=None):
             result = dict(path=str(dataset.path), counts=dataset.counts,
                           dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":
+            references = _check_query(registry, args, parser)
             open_dataset = registry.open_build if args.built else registry.open
             dataset = open_dataset(args.name, args.version)
-            references = {r.key: r for r in dataset.manifest.references}
             selections = {}
             for side in ("left", "right"):
                 identifier, kind, namespace, reference = (
                     getattr(args, f"{side}_{field}") for field in ("target", "kind", "namespace", "reference"))
-                if any((identifier, kind, namespace, reference)):
-                    if not all((identifier, kind, namespace, reference)):
-                        parser.error(f"{side.title()} target queries require --{side}-target, --{side}-kind, "
-                                     f"--{side}-namespace and --{side}-reference")
+                if identifier:
                     selections[f"{side}_target"] = ScopedTarget(references[reference], kind, identifier, namespace)
                 selections[f"{side}_filters"] = {
                     field: getattr(args, f"{side}_{field}")
@@ -194,26 +254,20 @@ def run(argv=None, prog=None):
                                          ("RIGHT", "target_relation.right.identifier")))
             return
         else:
+            references = _check_query(registry, args, parser)
             open_dataset = registry.open_build if args.built else registry.open
             dataset = open_dataset(args.name, args.version)
             target = None
-            if any((args.target, args.kind, args.namespace)):
-                if not all((args.target, args.kind, args.namespace, args.reference)):
-                    parser.error("Target queries require --target, --kind, --namespace and --reference")
-                references = {r.key: r for r in dataset.manifest.references}
+            if args.target:
                 target = ScopedTarget(references[args.reference], args.kind, args.target, args.namespace)
             filters = dict(sample_id=args.sample, assay_id=args.assay_id,
                            quantity=args.quantity, status=args.status,
                            unit=args.unit, scale=args.scale, log_base=args.log_base)
             if args.mapped:
-                if target is None:
-                    parser.error("--mapped requires an exact target and reference")
                 measurements = dataset.mapped_measurements(
                     target, mapping_statuses=args.mapping_status or ["unique"],
                     require_sequence=args.require_sequence, **filters)
             else:
-                if args.mapping_status or args.require_sequence:
-                    parser.error("Mapping filters require --mapped")
                 measurements = dataset.measurements(target=target, reference=args.reference, **filters)
             columns = (("REF", "target.reference"), ("TARGET", "target.identifier"), ("SAMPLE", "sample_id"),
                        ("QUANTITY", "quantity"), ("VALUE", "value"),
@@ -237,5 +291,5 @@ def run(argv=None, prog=None):
             print("\nUse --json for full source, reference, and provenance metadata.")
         if not args.json and args.command == "list":
             print("\nDetails: orfdata datasets info NAME\nInstall: orfdata data fetch NAME")
-    except (ValueError, TypeError, KeyError, OSError, ImportError, RuntimeError, sqlite3.Error) as exc:
-        parser.error(str(exc))
+    except (ValueError, OSError, ImportError, RuntimeError, sqlite3.Error) as exc:
+        parser.fail(exc)

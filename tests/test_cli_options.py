@@ -157,6 +157,9 @@ def test_viral_and_dataset_downloads_share_the_default(monkeypatch, capsys):
             calls.append(options)
             return {}
 
+        def search_references(self, name, version):
+            return ()
+
     monkeypatch.setattr("orfdata.dataset_cli.DatasetRegistry", Registry)
     run(["datasets", "build", "fixture", "--json"])
     run(["datasets", "download-reference", "fixture", "--timeout", "7", "--json"])

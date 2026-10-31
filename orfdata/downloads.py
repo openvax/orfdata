@@ -50,15 +50,80 @@ def default_collections(species: str | int) -> tuple[str, ...]:
     return tuple(collection.name for collection in viral_collections(species=species))
 
 
-def _fetch_command(row):
+# The command group that manages each kind a registry defines.
+_GROUPS = {"catalog": "catalogs", "dataset": "datasets", "reference": "datasets"}
+
+
+def install_command(name, kind, version=None, *, cache_root=None, restricted=False, force=False, verb=None,
+                    registry_file=None):
+    """The command that installs one resource in ``cache_root``, as a shell string.
+
+    By default it is ``orfdata data fetch``, which downloads or builds as the
+    release declares. ``verb`` names a command of the kind's group instead
+    (``download``, ``build`` or ``download-reference``), as an explicit build
+    or a ``registry_file`` of custom definitions needs.
+    """
+    if verb is None:
+        args = ["orfdata", "data", "fetch", name, "--kind", kind]
+        if cache_root is not None:
+            args += ["--cache-root", str(cache_root)]
+    else:  # The group's options come before its subcommand.
+        args = ["orfdata", _GROUPS[kind]] + ([] if registry_file is None else ["--registry", str(registry_file)])
+        args += ([] if cache_root is None else ["--cache-root", str(cache_root)]) + [verb]
+        dataset, _, asset = name.partition(":")
+        args += [dataset, "--asset", asset] if kind == "reference" else [name]
+    if version is not None:
+        args += ["--version", version]
+    if restricted:
+        args.append("--accept-terms")
+    if force:
+        args.append("--force")
+    return join(args)
+
+
+def install_hint(registry, call, name, kind, version, *, force=False, build=False):
+    """``"<Python call>, or on the command line: <command>"`` for one resource of ``registry``, in its cache.
+
+    ``call`` is a method call on the registry, such as ``download('x', '1')``.
+    ``build=True`` asks for an explicit source build of a published release. A
+    registry made from custom definitions is not what ``orfdata data fetch``
+    reads, so its command is the group's own, given the same ``--registry``
+    file. The command comes last and unquoted, so it can be copied as it is.
+    """
+    root = getattr(registry, "_cache_root", None)
+    if getattr(registry, "_packaged", True):
+        owner = f"{type(registry).__name__}({'' if root is None else f'cache_root={str(root)!r}'})"
+        command = install_command(name, kind, version, cache_root=root, force=force,
+                                  verb="build" if build else None)
+        return f"{owner}.{call}, or on the command line: {command}"
+    command = install_command(name, kind, version, cache_root=root, force=force,
+                              verb=call.split("(", 1)[0].replace("_", "-"))
+    return (f"registry.{call}, or on the command line, adding the same --registry file after "
+            f"'orfdata {_GROUPS[kind]}': {command}")
+
+
+def _fetch_command(row, cache_root=None):
     if row.acquire is None:
         return None
-    args = ["orfdata", "data", "fetch", row.name, "--kind", row.kind]
-    if row.version is not None:
-        args.extend(["--version", row.version])
-    if row.restricted:
-        args.append("--accept-terms")
-    return join(args)
+    return install_command(row.name, row.kind, row.version, cache_root=cache_root, restricted=row.restricted)
+
+
+def needs_replacement(status: str, *, force: bool = False) -> bool:
+    """Whether acquiring over a resource's local state replaces its files; ``data fetch`` and setup share this.
+
+    Files that fail verification are replaced; valid ones only with ``force``.
+    Check :func:`refuse_unreadable` first: unreadable files aren't replaced unless forced.
+    """
+    return force or status not in ("available", "missing")
+
+
+def refuse_unreadable(status: str, *, force: bool = False, name: str = "", command: str | None = None) -> None:
+    """Raise for unreadable files unless ``force``: replacing them could hide a permissions problem, or fail on
+    it halfway through a download. ``command`` is the command line that would replace them with ``--force``."""
+    if status == "inaccessible" and not force:
+        retry = f"force=True, or on the command line: {command} --force" if command else "force=True"
+        raise ValueError(f"{name or 'The resource'} can't be read; fix its permissions, choose another "
+                         f"cache root, or replace it with {retry}")
 
 
 def collection_state(
@@ -73,26 +138,34 @@ def collection_state(
     ``verify_files=False`` checks only that the expected files are present,
     without hashing them.
     """
-    from .viral_panel import _bundle_path, _existing_bundle, open_viral_references
     from .viral_registry import viral_collection
 
     collection = viral_collection(name, species=species)
-    chosen_species = canonical_species(collection.target_species)
-    path = _bundle_path(cache_root, chosen_species, collection)
-    if not path.is_dir():
-        return "missing"
+    return _collection_state(collection, cache_root, verify_files)[0]
+
+
+def _collection_state(collection, cache_root, verify_files):
+    """The state of a collection and the directory it describes, resolved once.
+
+    The directory is the installed bundle's, or None when there is none to name.
+    """
+    from .viral_panel import _existing_bundle, _installed_bundle, _verified_existing_bundle
+
+    species = canonical_species(collection.target_species)
+    path = None
     try:
-        if verify_files:
-            open_viral_references(collection=collection, cache_root=cache_root)
-        else:
-            _existing_bundle(path, species=chosen_species, collection=collection)
+        path = _installed_bundle(cache_root, species, collection)
+        if path is None:
+            return "missing", None
+        check = _verified_existing_bundle if verify_files else _existing_bundle
+        check(path, species=species, collection=collection)
     except FileNotFoundError:
-        return "missing"
+        return "missing", path
     except OSError:
-        return "inaccessible"
+        return "inaccessible", path
     except ValueError:
-        return "corrupt"
-    return "available"
+        return "corrupt", path
+    return "available", path
 
 
 def install_collection(
@@ -120,8 +193,8 @@ def _viral(cache_root, verify_files):
     rows = []
     for collection in viral_collections():
         species = canonical_species(collection.target_species)
-        status = collection_state(collection.name, species=species, cache_root=cache_root,
-                                  verify_files=verify_files)
+        # The directory holding the files, once installed; its store until then.
+        status, path = _collection_state(collection, cache_root, verify_files)
         rows.append(DataStatus(
             kind="viral",
             name=collection.name,
@@ -131,7 +204,7 @@ def _viral(cache_root, verify_files):
             taxon_ids=(collection.target_taxon_id,),
             contexts=collection.contexts,
             status=status,
-            path=str(_bundle_path(cache_root, species, collection)),
+            path=str(path or _bundle_path(cache_root, species, collection)),
             origin="download" if status == "available" else None,
             acquire="download",
             command=None,
@@ -285,6 +358,7 @@ def list_data(
     contexts: Iterable[str] | None = None,
     context_match: str = "any",
     installed: bool | None = None,
+    local: bool = False,
     cache_root: str | PathLike[str] | None = None,
     verify_files: bool = False,
 ) -> tuple[DataStatus, ...]:
@@ -292,8 +366,9 @@ def list_data(
 
     ``kind`` may be ``viral``, ``catalog``, ``dataset``, ``reference``,
     ``genome`` or ``chain``. ``species`` accepts ORFdata's species aliases.
-    ``installed`` can be true or false to select local resources or
-    unavailable ones. ``verify_files=True`` hashes pinned files and
+    ``installed`` can be true or false to select usable resources or
+    unavailable ones; ``local=True`` selects every resource with local files,
+    usable, damaged or unreadable, as ``orfdata data status`` shows them. ``verify_files=True`` hashes pinned files and
     validates the viral bundle.
     """
     kinds = ("viral", "catalog", "dataset", "reference", "genome", "chain")
@@ -303,6 +378,8 @@ def list_data(
         raise ValueError(f"Unknown data kind {kind!r}; choose from {', '.join(kinds)}")
     if installed is not None and type(installed) is not bool:
         raise ValueError("installed must be True, False or None")
+    if type(local) is not bool:
+        raise ValueError("local must be True or False")
     if contexts is None:
         selected_contexts = ()
     else:
@@ -337,5 +414,7 @@ def list_data(
                 if predicate(context in row.contexts for context in selected_contexts)]
     if installed is not None:
         rows = [row for row in rows if row.installed is installed]
-    return tuple(replace(row, command=_fetch_command(row)) for row in
+    if local:  # Bundled, installed, damaged or unreadable: anything not simply absent.
+        rows = [row for row in rows if row.status != "missing"]
+    return tuple(replace(row, command=_fetch_command(row, cache_root)) for row in
                  sorted(rows, key=lambda row: (row.kind, row.name, row.version or "")))

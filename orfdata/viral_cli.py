@@ -113,7 +113,7 @@ def run(argv=None, prog="orfdata viral"):
                 context_match=args.context_match, subsets=args.subset, species=args.species,
                 cache_root=args.cache_root)
         except (ImportError, ValueError, OSError, RuntimeError) as error:
-            parser.error(str(error))
+            parser.fail(error)
         _show_summary(result, args.json)
         return
     if args.command == "completeness":
@@ -123,7 +123,7 @@ def run(argv=None, prog="orfdata viral"):
                 context_match=args.context_match, subsets=args.subset, species=args.species,
                 cache_root=args.cache_root)
         except (ImportError, ValueError, OSError, RuntimeError) as error:
-            parser.error(str(error))
+            parser.fail(error)
         _show_completeness(result, args.incomplete, args.json, args.limit)
         return
     if args.command == "coverage":
@@ -134,7 +134,7 @@ def run(argv=None, prog="orfdata viral"):
         path = download_viral_inventory(cache_root=args.cache_root, force=args.force,
                                         timeout=args.timeout)
     except (ImportError, ValueError, OSError, RuntimeError) as error:
-        parser.error(str(error))
+        parser.fail(error)
     print_json(dict(path=str(path))) if args.json else print(path)
 
 
@@ -230,7 +230,7 @@ def _show_coverage(args, parser):
             context_match=args.context_match)
         all_rows = viral_panel_coverage()
     except ValueError as error:
-        parser.error(str(error))
+        parser.fail(error)
     if args.format == "json":
         print_json(dict(panel=PANEL, total=len(all_rows),
                         available=int(all_rows["available"].sum()), shown=len(rows),

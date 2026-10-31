@@ -10,7 +10,14 @@ from .catalog import catalog_status
 from .catalogs import CatalogRegistry
 from .cli import _add_query_arguments, _query
 from .cli_output import manifest_summary, print_result
-from .cli_parser import ArgumentParser, add_json, add_limit, add_timeout, share_cache_root
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 
 
 def run(argv=None, prog=None):
@@ -53,8 +60,18 @@ def run(argv=None, prog=None):
     share_cache_root(parser)
     args = parser.parse_args(argv)
     try:
-        definitions = json.loads(Path(args.registry).read_text()) if args.registry else None
-        registry = CatalogRegistry(definitions, cache_root=args.cache_root)
+        definitions = None
+        if args.registry:
+            try:
+                definitions = json.loads(Path(args.registry).read_text())
+            except ValueError as error:
+                raise ValueError(f"Invalid catalogue registry {args.registry}: {error}") from error
+        try:
+            registry = CatalogRegistry(definitions, cache_root=args.cache_root)
+        except (KeyError, TypeError, AttributeError) as error:
+            if not args.registry:  # The packaged registry: a bug, which keeps its traceback.
+                raise
+            raise ValueError(f"Invalid catalogue registry {args.registry}: {type(error).__name__}: {error}") from error
         if args.command == "list":
             output = [m.to_dict() for m in registry.list(species=args.species, taxon_id=args.taxon_id)]
         elif args.command == "status":
@@ -72,7 +89,7 @@ def run(argv=None, prog=None):
             for item in args.source_path:
                 asset, separator, path = item.partition("=")
                 if not separator or not asset or not path or asset in paths:
-                    raise ValueError("Source overrides require unique ASSET=PATH entries")
+                    raise UsageError("Source overrides require unique ASSET=PATH entries")
                 paths[asset] = path
             options = dict(timeout=args.timeout)
             with redirect_stdout(sys.stderr):
@@ -89,8 +106,8 @@ def run(argv=None, prog=None):
         else:
             method = registry.open_build if args.built else registry.open
             return _query(args, query_parser, lambda _: method(args.name, args.version))
-    except (ValueError, TypeError, KeyError, OSError, ImportError, RuntimeError) as error:
-        parser.error(str(error))
+    except (ValueError, OSError, ImportError, RuntimeError) as error:
+        parser.fail(error)
     columns = ("catalog_id", "version", "title") if args.command == "list" else (
         "species", "name", "version", "genome_build", "installed", "acquire")
     if args.command == "info" and not args.json:

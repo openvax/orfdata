@@ -182,3 +182,17 @@ def test_cli_scoped_target_and_native_filters(paired, tmp_path, capsys):
         run(prefix + ["--left-target", target.identifier] + ["--format", "jsonl"])
     assert exc.value.code == 2
     assert "Left target queries require" in capsys.readouterr().err
+    bad = ["--left-target", target.identifier, "--left-kind", target.kind,
+           "--left-namespace", target.namespace, "--left-reference", "bogus"]
+    with pytest.raises(SystemExit) as exc:
+        run(prefix + bad)
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "--left-reference 'bogus' is not a reference of this dataset; choose from" in error
+    assert target.reference.key in error
+    query = ["datasets", "--registry", str(registry_file), "--cache-root", str(cache), "query", "fixture",
+             "--target", target.identifier, "--kind", target.kind, "--namespace", target.namespace]
+    with pytest.raises(SystemExit) as exc:
+        run(query + ["--reference", "bogus"])
+    assert exc.value.code == 2
+    assert "--reference 'bogus' is not a reference of this dataset" in capsys.readouterr().err

@@ -5,7 +5,14 @@ from contextlib import redirect_stdout
 from dataclasses import asdict
 
 from .cli_output import print_result
-from .cli_parser import ArgumentParser, add_json, add_limit, add_timeout, share_cache_root
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 from .genomes import install_genome, pinned_genomes
 
 
@@ -34,7 +41,7 @@ def run(argv=None, prog=None):
             for item in args.source_path:
                 role, separator, path = item.partition("=")
                 if not separator or not role or not path or role in paths:
-                    raise ValueError("Source overrides require unique ROLE=PATH entries")
+                    raise UsageError("Source overrides require unique ROLE=PATH entries")
                 paths[role] = path
             with redirect_stdout(sys.stderr):
                 genome = install_genome(args.name, force=args.force, source_paths=paths or None,
@@ -44,7 +51,7 @@ def run(argv=None, prog=None):
                           annotation=f"{genome.annotation_name} {genome.annotation_version}",
                           transcripts=len(genome.transcript_ids()))
     except (ValueError, OSError, ImportError, RuntimeError) as error:
-        parser.error(str(error))
+        parser.fail(error)
     print_result(output, json_output=args.json, columns=("name", "species", "reference_name", "annotation_version"),
                  limit=getattr(args, "limit", 25))
     if not args.json and args.command == "list":

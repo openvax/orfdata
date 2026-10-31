@@ -10,6 +10,7 @@ from .catalogs import CatalogRegistry
 from .cli_output import print_result
 from .cli_parser import (
     ArgumentParser,
+    UsageError,
     add_cache_root,
     add_json,
     add_limit,
@@ -49,7 +50,7 @@ def lift(argv=None, prog=None):
     args = parser.parse_args(argv)
     try:
         if args.catalog and (args.species or args.genome_build):
-            raise ValueError("Pass --catalog or --species/--genome-build, not both")
+            raise UsageError("Pass --catalog or --species/--genome-build, not both")
         registry = CatalogRegistry(cache_root=args.cache_root) if args.cache_root else None
         catalog = (load_catalog(args.catalog) if args.catalog
                    else load_catalog(species=args.species, genome_build=args.genome_build, registry=registry))
@@ -59,7 +60,7 @@ def lift(argv=None, prog=None):
                   if args.chain else lift_to(catalog, args.to, cache_root=args.cache_root))
         lifted.save(args.output)
     except (ValueError, OSError, ImportError, RuntimeError) as error:
-        parser.error(str(error))
+        parser.fail(error)
     hops, metadata = [], lifted.metadata
     while metadata.get("liftover") and metadata is not catalog.metadata:  # This command's hops, last first.
         hops.insert(0, metadata["liftover"])
@@ -72,6 +73,15 @@ def lift(argv=None, prog=None):
                    records=len(catalog.records), lifted_records=len(lifted.records), unmapped=len(unmapped),
                    unmapped_reasons=dict(Counter(u["reason"] for u in unmapped)), output=args.output)
     print_result(summary, json_output=args.json, stream=sys.stderr)
+
+
+def require_terms(source_build, target_build, species, accept_terms):
+    """A usage error, as for 'data fetch', when a restricted chain is named without --accept-terms."""
+    from .liftover import _pinned
+
+    chain = _pinned(source_build, target_build, species)
+    if chain.restricted and not accept_terms:
+        raise UsageError(f"The {chain.name} chain file requires --accept-terms: {chain.terms} ({chain.terms_url})")
 
 
 def chains(argv=None, prog=None):
@@ -104,21 +114,22 @@ def chains(argv=None, prog=None):
                 output.append(dict(asdict(chain), downloaded=downloaded))
         elif args.source_build is None:
             if args.source_path:
-                raise ValueError("--source-path installs one chain; name it with FROM TO")
+                raise UsageError("--source-path installs one chain; name it with FROM TO")
             with redirect_stdout(sys.stderr):
                 result = download_chains(species=args.species, accept_terms=args.accept_terms, force=args.force,
                                          cache_root=args.cache_root, download_options=dict(timeout=args.timeout))
             output = dict(downloaded={k: str(v) for k, v in result["downloaded"].items()}, skipped=result["skipped"])
         elif args.target_build is None:
-            raise ValueError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
+            raise UsageError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
         else:
+            require_terms(args.source_build, args.target_build, args.species, args.accept_terms)
             with redirect_stdout(sys.stderr):
                 output = dict(path=str(download_chain(args.source_build, args.target_build, species=args.species,
                                                       accept_terms=args.accept_terms, force=args.force,
                                                       source_path=args.source_path, cache_root=args.cache_root,
                                                       download_options=dict(timeout=args.timeout))))
     except (ValueError, OSError, ImportError, RuntimeError) as error:
-        parser.error(str(error))
+        parser.fail(error)
     print_result(output, json_output=args.json,
                  columns=("source_build", "target_build", "species", "provider", "downloaded", "restricted"),
                  limit=getattr(args, "limit", 25))

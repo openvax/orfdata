@@ -330,7 +330,7 @@ def test_aliases_produce_identical_results(capsys):
     (["datasets", "download", "fixture"], "orfdata.datasets.DatasetRegistry.download"),
     (["datasets", "build", "fixture"], "orfdata.datasets.DatasetRegistry.build"),
     (["genomes", "install", "fixture"], "orfdata.genomes_cli.install_genome"),
-    (["chains", "download", "GRCm38", "GRCm39"], "orfdata.liftover_cli.download_chain"),
+    (["chains", "download", "GRCm38", "GRCm39", "--accept-terms"], "orfdata.liftover_cli.download_chain"),
     (["setup", "--species", "mouse"], "orfdata.install.install_species"),
     (["viral", "inventory", "download"], "orfdata.viral_cli.download_viral_inventory"),
 ])
@@ -340,7 +340,51 @@ def test_acquisition_failures_show_actionable_errors(argv, target, monkeypatch, 
     monkeypatch.setattr(target, fail)
     with pytest.raises(SystemExit) as error:
         run(argv)
-    assert error.value.code == 2
+    assert error.value.code == 1  # A failure, not a command-line mistake: no pointer to help.
     output = capsys.readouterr()
     assert not output.out and "Source unavailable" in output.err
-    assert "--help' for usage" in output.err and "Traceback" not in output.err
+    assert "--help' for usage" not in output.err and "Traceback" not in output.err
+
+
+@pytest.mark.parametrize("argv", [
+    ["data", "path", "openprot-mouse"],
+    ["catalogs", "query", "riborf-mouse"],
+    ["datasets", "query", "copy-yeast-abundance"],
+    ["proteome", "--genome", "t2t-chm13"],
+    ["lift", "--species", "human", "--genome-build", "GRCh38", "--to", "GRCh37", "--output", "lifted.json.gz"],
+])
+def test_missing_installations_exit_3_with_the_command_that_installs_them(argv, tmp_path, capsys):
+    cache = ["--cache-root", str(tmp_path / "cache")]
+    # Group options precede the subcommand; the others follow it.
+    argv = argv[:1] + cache + argv[1:] if argv[0] in ("catalogs", "datasets") else argv + cache
+    with pytest.raises(SystemExit) as error:
+        run(argv)
+    assert error.value.code == 3
+    output = capsys.readouterr()
+    assert not output.out and ("not installed" in output.err or "not downloaded" in output.err)
+    assert "orfdata " in output.err.split("error:", 1)[1]  # Names the command that installs it.
+    assert "--help' for usage" not in output.err and "Traceback" not in output.err
+
+
+def test_runtime_failures_exit_1_and_programming_errors_keep_their_traceback(monkeypatch, capsys):
+    with pytest.raises(SystemExit) as error:
+        run(["data", "fetch", "no-such-resource"])
+    assert error.value.code == 1
+    output = capsys.readouterr().err
+    assert "Unknown data resource 'no-such-resource'" in output and "--help' for usage" not in output
+
+    def bug(*args, **kwargs):
+        raise KeyError("internal")
+    monkeypatch.setattr("orfdata.data_resources.data_info", bug)
+    with pytest.raises(KeyError, match="internal"):  # Not reported as a user error.
+        run(["data", "info", "bundled"])
+
+
+def test_not_installed_errors_keep_the_types_callers_already_catch(tmp_path):
+    from orfdata import NotInstalledError, data_path, load_genome
+
+    for call in (lambda: data_path("openprot-mouse", cache_root=tmp_path),
+                 lambda: load_genome("t2t-chm13", cache_root=tmp_path)):
+        with pytest.raises(NotInstalledError) as error:
+            call()
+        assert isinstance(error.value, ValueError) and isinstance(error.value, FileNotFoundError)

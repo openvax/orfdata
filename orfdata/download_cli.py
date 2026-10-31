@@ -4,7 +4,7 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import ArgumentParser, add_limit, add_timeout, share_cache_root
+from .cli_parser import ArgumentParser, UsageError, add_limit, add_timeout, share_cache_root
 from .downloads import list_data
 
 
@@ -13,7 +13,7 @@ def _source_paths(items, label):
     for item in items:
         key, separator, path = item.partition("=")
         if not separator or not key or not path or key in paths:
-            raise ValueError(f"{label} require unique NAME=PATH entries")
+            raise UsageError(f"{label} require unique NAME=PATH entries")
         paths[key] = path
     return paths or None
 
@@ -27,18 +27,55 @@ def _add_json(parser):
     parser.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
 
+def _preview(rows, limit):
+    """At most ``limit`` rows, taken from each kind in turn, in their listed order; also what each kind hides.
+
+    Every kind appears whenever ``limit`` leaves room for one row of each.
+    """
+    if limit < 0:
+        raise ValueError("limit must be nonnegative")
+    if limit == 0 or len(rows) <= limit:
+        return list(rows), {}
+    counts, rank = {}, []
+    for row in rows:  # A row's place within its kind: the first of each kind comes before any second.
+        rank.append(counts.get(row.kind, 0))
+        counts[row.kind] = rank[-1] + 1
+    kinds = list(counts)
+    keep = set(sorted(range(len(rows)), key=lambda i: (rank[i], kinds.index(rows[i].kind)))[:limit])
+    shown = [row for index, row in enumerate(rows) if index in keep]
+    hidden = {kind: counts[kind] - sum(row.kind == kind for row in shown) for kind in kinds}
+    return shown, {kind: count for kind, count in hidden.items() if count}
+
+
 def _show(rows, json_output, limit=25):
     if json_output:
         print_json([row.to_dict() for row in rows])
         return
     headings = ("KIND", "NAME", "VERSION", "STATUS", "ACQUIRE")
-    values = []
-    for row in rows:
-        values.append((row.kind, row.name, row.version, row.status, row.acquire))
-    print_table(headings, values, empty="No matching resources", limit=limit)
+    preview, hidden = _preview(rows, limit)
+    values = [(row.kind, row.name, row.version, row.status, row.acquire) for row in preview]
+    print_table(headings, values, empty="No matching resources", limit=0)
+    if hidden:
+        more = ", ".join(f"{count} {kind}" for kind, count in hidden.items())
+        print(f"\nShowing {len(preview)} of {len(rows)} entries; not shown: {more}. Use --limit 0 for all rows.")
+    _repair_hints(rows)
     print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
           "Local path: orfdata data path NAME")
-    print("Filter with --species or --kind; use --json for versions, paths, and source metadata.")
+    print("Filter with --species or --kind; use --json for paths and source metadata.")
+
+
+def _repair_hints(rows):
+    """The exact command for each damaged or unreadable row, which a bare NAME can't give."""
+    damaged = [row for row in rows if row.command and row.status not in ("available", "missing", "inaccessible")]
+    unreadable = [row for row in rows if row.command and row.status == "inaccessible"]
+    for found, heading, suffix in ((damaged, "Damaged; 'data fetch' replaces them:", ""),
+                                   (unreadable, "Unreadable; fix their permissions, or replace them:", " --force")):
+        if found:
+            print(f"\n{heading}")
+            for row in found[:5]:
+                print(f"  {row.command}{suffix}")
+            if len(found) > 5:
+                print(f"  ... {len(found) - 5} more; see --json")
 
 
 def _show_result(result, json_output):
@@ -56,11 +93,17 @@ def _show_result(result, json_output):
             print_fields(summary)
             print("\nUse --json for complete source pins and metadata.")
             return
-        if result.get("kind") in ("viral", "viral-selection"):
-            result = {key: value for key, value in result.items() if key in (
-                "kind", "status", "collection", "path", "bundle_version", "genome_count",
-                "transcript_count", "protein_count", "target_species", "contexts", "subsets")}
+        if "acquired" in result:  # What a fetch did, whatever the kind.
+            result = {key: result[key] for key in _FETCH_FIELDS if result.get(key) not in (None, (), [], False)}
         print_fields(result)
+
+
+# What every fetch summary shows; empty contexts and an unrestricted resource are left out.
+_FETCH_FIELDS = ("kind", "name", "version", "title", "species", "contexts", "acquired", "status", "path",
+                 "restricted")
+# What `data viral` shows of the collection or selection it installed.
+_COLLECTION_FIELDS = ("kind", "status", "collection", "path", "bundle_version", "genome_count",
+                      "transcript_count", "protein_count", "target_species", "contexts", "subsets")
 
 
 def _add_discovery(parser, *, status=False):
@@ -75,14 +118,14 @@ def _add_discovery(parser, *, status=False):
     add_limit(parser)
     parser.add_argument("--verify", action="store_true", help="Hash and validate installed files")
     if status:
-        parser.set_defaults(installed=True)
+        parser.set_defaults(installed=None, local=True)  # status: anything with local files
     else:
         selection = parser.add_mutually_exclusive_group()
         selection.add_argument("--installed", dest="installed", action="store_const", const=True,
                                help="Show only locally installed or bundled resources")
         selection.add_argument("--missing", dest="installed", action="store_const", const=False,
                                help="Show only missing, corrupt or inaccessible resources")
-        parser.set_defaults(installed=None)
+        parser.set_defaults(installed=None, local=False)
 
 
 def run(argv=None, prog="orfdata download"):
@@ -95,7 +138,7 @@ def run(argv=None, prog="orfdata download"):
 
     listing = commands.add_parser("list", help="List every bundled, downloadable or buildable resource")
     _add_discovery(listing)
-    status = commands.add_parser("status", help="Show resources already available locally")
+    status = commands.add_parser("status", help="Show resources with local files, including damaged and unreadable ones")
     _add_discovery(status, status=True)
 
     for verb, description in (("info", "Describe a resource's source pins and download/build route"),
@@ -189,7 +232,7 @@ def run(argv=None, prog="orfdata download"):
     args = parser.parse_args(argv)
     try:
         if args.command in ("info", "path", "fetch"):
-            from .data_resources import data_info, data_path, fetch_data
+            from .data_resources import check_fetch, data_info, data_path, fetch_data
 
             options = dict(kind=args.kind, version=args.version, cache_root=args.cache_root)
             if args.command == "info":
@@ -200,13 +243,16 @@ def run(argv=None, prog="orfdata download"):
             else:
                 names = list(dict.fromkeys(args.names))
                 if len(names) > 1 and (args.source_path or args.version):
-                    raise ValueError("--source-path and --version require exactly one resource")
-                # Resolve every name and terms requirement before starting any downloads.
+                    raise UsageError("--source-path and --version require exactly one resource")
+                # Terms are a command-line omission, found without verifying anything.
                 for name in names:
                     info = data_info(name, **options)
                     if info["restricted"] and not args.accept_terms:
-                        raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
+                        raise UsageError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
                 paths = _source_paths(args.source_path, "Source overrides")
+                if len(names) > 1:  # Find every name, terms and permissions problem before downloading anything.
+                    for name in names:
+                        check_fetch(name, **options, force=args.force, accept_terms=args.accept_terms)
                 # Source processors may print progress; keep stdout machine-readable.
                 with redirect_stdout(sys.stderr):
                     output = [fetch_data(name, **options, force=args.force, source_paths=paths,
@@ -215,13 +261,15 @@ def run(argv=None, prog="orfdata download"):
                 if args.json:
                     print_json(output)
                 else:
-                    for result in output:
+                    for index, result in enumerate(output):
+                        if index:
+                            print()
                         _show_result(result, False)
             return
         if args.command in ("list", "status"):
             rows = list_data(
                 kind=args.kind, species=args.species, contexts=args.context,
-                context_match=args.context_match, installed=args.installed,
+                context_match=args.context_match, installed=args.installed, local=args.local,
                 cache_root=args.cache_root, verify_files=args.verify)
             _show(rows, args.json, args.limit)
             return
@@ -244,11 +292,14 @@ def run(argv=None, prog="orfdata download"):
                     output = dict(indexed.to_dict(), kind="viral-selection", status="available")
                 else:
                     output = dict(bundle.to_dict(), kind="viral", status="available")
+                if not args.json:
+                    output = {key: value for key, value in output.items() if key in _COLLECTION_FIELDS}
             elif args.command == "catalog":
                 from .catalogs import CatalogRegistry
 
                 registry = CatalogRegistry(cache_root=args.cache_root)
                 paths = _source_paths(args.source_path, "Source overrides")
+                reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
                 if registry.published(args.name, args.version):
                     registry.download(args.name, args.version, force=args.force, source_paths=paths,
                                       timeout=args.timeout)
@@ -259,14 +310,17 @@ def run(argv=None, prog="orfdata download"):
                                    download_options={"timeout": args.timeout})
                     inspection = registry.inspect_build(args.name, args.version)
                     acquired = "built"
-                output = dict(kind="catalog", name=args.name, version=registry.info(args.name, args.version).version,
-                              acquired=acquired, status=inspection.status, path=str(inspection.path))
+                manifest = registry.info(args.name, args.version)
+                output = dict(kind="catalog", name=args.name, version=manifest.version, title=manifest.title,
+                              acquired="already installed" if reused and not args.force else acquired,
+                              status=inspection.status, path=str(inspection.path))
             elif args.command == "dataset":
                 from .datasets import DatasetRegistry
 
                 registry = DatasetRegistry(cache_root=args.cache_root)
                 paths = _source_paths(args.source_path, "Source overrides")
                 options = {"timeout": args.timeout, "show_progress": not args.quiet}
+                reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
                 if registry.published(args.name, args.version):
                     registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
                     inspection = registry.inspect(args.name, args.version)
@@ -276,8 +330,10 @@ def run(argv=None, prog="orfdata download"):
                                    download_options=options)
                     inspection = registry.inspect_build(args.name, args.version)
                     acquired = "built"
-                output = dict(kind="dataset", name=args.name, version=registry.info(args.name, args.version).version,
-                              acquired=acquired, status=inspection.status, path=str(inspection.path))
+                manifest = registry.info(args.name, args.version)
+                output = dict(kind="dataset", name=args.name, version=manifest.version, title=manifest.title,
+                              acquired="already installed" if reused and not args.force else acquired,
+                              status=inspection.status, path=str(inspection.path))
             elif args.command == "reference":
                 from .datasets import DatasetRegistry
 
@@ -306,20 +362,23 @@ def run(argv=None, prog="orfdata download"):
 
                 if args.source_build is None:
                     if args.source_path:
-                        raise ValueError("--source-path installs one chain; name it with FROM TO")
+                        raise UsageError("--source-path installs one chain; name it with FROM TO")
                     result = download_chains(species=args.species, accept_terms=args.accept_terms,
                                              force=args.force, cache_root=args.cache_root,
                                              download_options=dict(timeout=args.timeout))
                     output = dict(downloaded={key: str(path) for key, path in result["downloaded"].items()},
                                   skipped=result["skipped"])
                 elif args.target_build is None:
-                    raise ValueError("Name both assemblies, FROM and TO, or neither")
+                    raise UsageError("Name both assemblies, FROM and TO, or neither")
                 else:
+                    from .liftover_cli import require_terms
+
+                    require_terms(args.source_build, args.target_build, args.species, args.accept_terms)
                     path = download_chain(
                         args.source_build, args.target_build, species=args.species,
                         accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,
                         cache_root=args.cache_root, download_options=dict(timeout=args.timeout))
                     output = dict(path=str(path))
-    except (ImportError, KeyError, RuntimeError, TypeError, ValueError, OSError) as error:
-        parser.error(str(error))
+    except (ImportError, RuntimeError, ValueError, OSError) as error:
+        parser.fail(error)
     _show_result(output, args.json)
