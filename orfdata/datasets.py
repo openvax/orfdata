@@ -18,16 +18,6 @@ def _datacache():
     return datacache
 
 
-def _resumable(options=None):
-    """DataCache transfer settings that resume an interrupted download by default.
-
-    ``resume="auto"`` continues a pinned raw HTTP(S) transfer from its private
-    partial and downloads normally where DataCache can't resume, such as an
-    asset decompressed while it downloads. A caller's own ``resume`` wins.
-    """
-    return dict(resume="auto") | dict(options or {})
-
-
 def get_data_dir(override=None):
     """Resolve ORFDATA_CACHE, OPENVAX_DATA_CACHE, or the platform OpenVax cache.
 
@@ -153,7 +143,7 @@ class DatasetRegistry:
         spec = self._search_reference(name, version, reference, asset_id)
         overrides = {spec.source.asset_id: source_path} if source_path is not None else None
         return reference_registry(spec, self._cache_root).download(
-            spec.dataset_id, spec.dataset_version, force=force, source_paths=overrides, **_resumable(options))
+            spec.dataset_id, spec.dataset_version, force=force, source_paths=overrides, **options)
 
     def open_reference(self, name, version=None, *, reference=None, asset_id=None):
         """Open and validate an installed native search set, without network access."""
@@ -240,7 +230,7 @@ class DatasetRegistry:
                 download_options=options, validator=validate)
             return {"dataset.sqlite": path}
         return self._data_registry().download(name, self._published(name, version), force=force,
-                                             source_paths=source_paths, **_resumable(options))
+                                             source_paths=source_paths, **options)
 
     def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
         """Rebuild a registered release from pinned source files, explicitly."""
@@ -382,5 +372,5 @@ def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, forc
     paths = _datacache().materialize(
         destination, sources, transform=dict(version=manifest.schema, options=identity),
         outputs={"dataset.sqlite": {}}, builder=build, force=force,
-        download_options=_resumable(download_options))
+        download_options=download_options)
     return QuantitativeDataset(paths["dataset.sqlite"])

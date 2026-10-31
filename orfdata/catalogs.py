@@ -7,7 +7,7 @@ from importlib.resources import files
 
 from .catalog import ORFCatalog, load_catalog
 from .catalog_manifest import CatalogManifest
-from .datasets import _datacache, _digest, _resumable, get_data_dir
+from .datasets import _datacache, _digest, get_data_dir
 from .reference import species_taxon
 
 _ASSET = "catalog.json.gz"
@@ -187,7 +187,7 @@ class CatalogRegistry:
     def download(self, name, version=None, *, force=False, source_paths=None, **options):
         """Explicitly install a pinned artifact; accept verified local overrides."""
         return self._data_registry().download(name, self._published(name, version), force=force,
-                                             source_paths=source_paths, **_resumable(options))
+                                             source_paths=source_paths, **options)
 
     def open(self, name, version=None, *, verify_files=True):
         """Validate installed bytes and content, then return an offline ORFCatalog.
@@ -267,5 +267,5 @@ def build_catalog(manifest, builder, *, cache_root=None, source_paths=None, forc
     paths = _datacache().materialize(
         _build_store(manifest, cache_root), sources,
         transform=dict(version=manifest.schema, options=manifest.to_dict()),
-        outputs={_ASSET: {}}, builder=build, force=force, download_options=_resumable(download_options))
+        outputs={_ASSET: {}}, builder=build, force=force, download_options=download_options)
     return _open(paths[_ASSET], manifest)

@@ -174,11 +174,11 @@ def _fetch(url, sha256, size, staging, options):
     """One pinned source file, downloaded and checked into ``staging``."""
     from pathlib import Path
 
-    from .datasets import _datacache, _resumable
+    from .datasets import _datacache
 
     name = url.rsplit("/", 1)[-1]
     registry = _datacache().VersionedDatasetRegistry(
         {"source": dict(default_version="1", versions={"1": {name: dict(url=url, sha256=sha256, size=size)}})},
         store_path=lambda dataset, version: Path(staging) / sha256)
-    registry.download("source", "1", **_resumable(options))
+    registry.download("source", "1", **options)
     return str(registry.local_path("source", "1", asset=name))

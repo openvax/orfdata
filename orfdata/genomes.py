@@ -83,10 +83,8 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None, dow
         if unknown:
             raise ValueError(f"Unknown genome files {sorted(unknown)}; use {', '.join(_ROLES)}")
         paths = {_files(genome)[role]: str(path) for role, path in source_paths.items()}
-    from .datasets import _resumable
-
     _registry(genome, cache_root).download(genome.name, "1", force=force, source_paths=paths,
-                                         **_resumable(download_options))
+                                         **(download_options or {}))
     opened = _with_genome_fasta(_open(genome, cache_root, rebuild=force), genome_fasta_path_or_url)
     if genome_fasta_path_or_url is not None:
         opened.download_genome_fasta(overwrite=force)

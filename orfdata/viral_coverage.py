@@ -199,7 +199,7 @@ def download_viral_inventory(*, collection=None, cache_root=None, force=False, t
     download and cache reuse. ``viral_panel_coverage()`` works offline without
     this download.
     """
-    from .datasets import _datacache, _resumable, get_data_dir
+    from .datasets import _datacache, get_data_dir
 
     chosen = _collection_for(collection=collection)
     cache = get_data_dir(cache_root) / "viral" / "inventories" / chosen.panel
@@ -207,4 +207,4 @@ def download_viral_inventory(*, collection=None, cache_root=None, force=False, t
         chosen.panel_url, filename=chosen.panel_filename, cache_root=cache,
         expected_sha256=chosen.panel_sha256, expected_size=chosen.panel_size,
         max_bytes=chosen.panel_size, raw=True, record_provenance=True,
-        force=force, **_resumable(dict(timeout=timeout))))
+        force=force, timeout=timeout))
