@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .catalog import load_catalog
 from .cli_output import print_result
-from .cli_parser import ArgumentParser
+from .cli_parser import ArgumentParser, add_cache_root
 from .proteome import Proteome
 
 
@@ -43,8 +43,7 @@ def run(argv=None, prog=None, *, genome_loader=None):
     parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
     parser.add_argument("--cache", action="store_true",
                         help="Reuse an identical earlier build from the OpenVax DataCache, or keep this one there")
-    parser.add_argument("--cache-root", help="Cache directory holding catalogues, chains, pinned genomes and cached builds, instead of "
-                                             "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
+    add_cache_root(parser)
     parser.add_argument("--output", help="FASTA path; standard output by default")
     parser.add_argument("--annotation", metavar="DIRECTORY",
                         help="Also write the ncORF models there as annotation.gtf with matching "

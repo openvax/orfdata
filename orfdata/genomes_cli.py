@@ -22,7 +22,7 @@ def run(argv=None, prog=None):
     install.add_argument("--genome-fasta", help="Explicit chromosome FASTA path or URL to install through PyEnsembl")
     install.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH",
                          help="Install a local copy of the gtf, transcripts or proteins file instead of downloading")
-    add_timeout(install)
+    add_timeout(install, note="; PyEnsembl downloads --genome-fasta without one")
     add_json(install)
     share_cache_root(parser)
     args = parser.parse_args(argv)

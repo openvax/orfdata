@@ -3,6 +3,8 @@
 import argparse
 import sys
 
+from .net import DOWNLOAD_TIMEOUT
+
 
 class ArgumentParser(argparse.ArgumentParser):
     """Show a command guide for bare groups and a useful help pointer on errors."""
@@ -42,45 +44,43 @@ def add_cache_root(parser):
     parser.add_argument("--cache-root", metavar="DIR", help=CACHE_ROOT_HELP)
 
 
-def share_cache_root(parser):
+def share_cache_root(parser, *, below=False):
     """Accept --cache-root before or after any of this group's subcommands.
 
     A subcommand's own default would replace a value given before it, so
     below the group the option sets nothing unless it is given there.
     """
-    if not any("--cache-root" in action.option_strings for action in parser._actions):
-        add_cache_root(parser)
-    for action in parser._actions:
-        if isinstance(action, argparse._SubParsersAction):
-            for subparser in action.choices.values():
-                _defer_cache_root(subparser)
-
-
-def _defer_cache_root(parser):
     found = [action for action in parser._actions if "--cache-root" in action.option_strings]
     for action in found:
-        action.default, action.metavar, action.help = argparse.SUPPRESS, "DIR", CACHE_ROOT_HELP
+        action.metavar, action.help = "DIR", CACHE_ROOT_HELP
+        if below:
+            action.default = argparse.SUPPRESS
     if not found:
-        parser.add_argument("--cache-root", metavar="DIR", default=argparse.SUPPRESS, help=CACHE_ROOT_HELP)
+        parser.add_argument("--cache-root", metavar="DIR", help=CACHE_ROOT_HELP,
+                            default=argparse.SUPPRESS if below else None)
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
             for subparser in action.choices.values():
-                _defer_cache_root(subparser)
+                share_cache_root(subparser, below=True)
 
 
 def seconds(value):
+    """A positive, finite number of seconds, or "none" to wait indefinitely."""
+    if value.lower() == "none":
+        return None
     try:
         number = float(value)
     except ValueError:
-        raise argparse.ArgumentTypeError("expected a positive number of seconds") from None
-    if not number > 0:
-        raise argparse.ArgumentTypeError("expected a positive number of seconds")
+        raise argparse.ArgumentTypeError("expected a positive number of seconds, or none") from None
+    if not 0 < number < float("inf"):
+        raise argparse.ArgumentTypeError("expected a positive number of seconds, or none")
     return number
 
 
-def add_timeout(parser):
-    parser.add_argument("--timeout", type=seconds, default=60, metavar="SECONDS",
-                        help="Seconds a download may stall before it is retried, then fails (default 60)")
+def add_timeout(parser, *, note=""):
+    parser.add_argument("--timeout", type=seconds, default=DOWNLOAD_TIMEOUT, metavar="SECONDS",
+                        help="Seconds a download may stall before it is retried, then fails "
+                             f"(default %(default)s; 'none' waits indefinitely){note}")
 
 
 def add_json(parser):

@@ -31,6 +31,7 @@ from os import PathLike
 from pathlib import Path
 
 from .fasta import write_fasta
+from .net import DOWNLOAD_TIMEOUT
 from .record_sources import REQUEST_INTERVAL
 from .reference import canonical_species
 from .reference_ledger import empty_ledger, ledger_row, published, same_molecule, verify_record
@@ -666,7 +667,7 @@ def open_viral_references(
     download_if_missing: bool = False,
     cache_root: str | PathLike[str] | None = None,
     force: bool = False,
-    timeout: float | None = 120,
+    timeout: float | None = DOWNLOAD_TIMEOUT,
 ) -> ViralReferenceFiles:
     """Open, or explicitly download and open, a viral source-reference collection.
 
@@ -701,7 +702,7 @@ def download_viral_references(
     collection: ViralCollection | str | None = None,
     cache_root: str | PathLike[str] | None = None,
     force: bool = False,
-    timeout: float | None = 120,
+    timeout: float | None = DOWNLOAD_TIMEOUT,
     prefer_reference_molecule: bool = True,
     annotate_from_alternate: bool = True,
     prefer_alternate_annotation: bool = False,
@@ -907,7 +908,7 @@ def select_viral_references(
     download_if_missing: bool = False,
     cache_root: str | PathLike[str] | None = None,
     force: bool = False,
-    timeout: float | None = 120,
+    timeout: float | None = DOWNLOAD_TIMEOUT,
 ) -> ViralReferenceFiles:
     """Select reusable reference files by viral context or named subset.
 

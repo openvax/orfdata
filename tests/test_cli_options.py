@@ -89,7 +89,6 @@ def test_dataset_downloads_no_longer_wait_indefinitely(monkeypatch, capsys):
 
 
 @pytest.mark.parametrize("argv", [
-    ["viral", "--cache-root", "{root}", "inventory", "download"],
     ["viral", "inventory", "--cache-root", "{root}", "download"],
     ["viral", "inventory", "download", "--cache-root", "{root}"],
 ])
@@ -100,11 +99,60 @@ def test_viral_inventory_reads_cache_root_at_any_level(argv, monkeypatch, tmp_pa
     assert calls[0]["cache_root"] == str(tmp_path) and calls[0]["timeout"] == 60
 
 
-def test_timeouts_must_be_positive(capsys):
-    for value in ("0", "-1", "nan", "soon"):
+def test_timeouts_must_be_positive_and_finite_or_none(capsys, monkeypatch):
+    for value in ("0", "-1", "nan", "inf", "1e400", "soon"):
         with pytest.raises(SystemExit):
             run(["data", "fetch", "bundled", "--timeout", value])
-        assert "positive number of seconds" in capsys.readouterr().err
+        assert "positive number of seconds, or none" in capsys.readouterr().err
+    calls = _capture(monkeypatch, "orfdata.liftover_cli.download_chain", "chain")
+    run(["chains", "download", "GRCh38", "GRCh37", "--timeout", "none", "--json"])
+    assert calls[0]["download_options"]["timeout"] is None
+
+
+def test_cache_root_is_not_offered_where_nothing_reads_it(capsys):
+    for argv in (["viral", "coverage", "--cache-root", "X"], ["viral", "--cache-root", "X", "contexts"]):
+        with pytest.raises(SystemExit):
+            run(argv)
+        assert "error:" in capsys.readouterr().err
+
+
+def test_viral_and_dataset_downloads_share_the_default(monkeypatch, capsys):
+    from orfdata.net import DOWNLOAD_TIMEOUT
+    from orfdata.viral_panel import download_viral_references
+
+    assert DOWNLOAD_TIMEOUT == 60
+    assert download_viral_references.__kwdefaults__["timeout"] == DOWNLOAD_TIMEOUT
+    viral = _capture(monkeypatch, "orfdata.viral_panel.download_viral_references")
+
+    class Bundle:
+        def to_dict(self):
+            return {}
+
+    viral.clear()
+    monkeypatch.setattr("orfdata.viral_panel.download_viral_references",
+                        lambda **options: viral.append(options) or Bundle())
+    run(["data", "viral", "--json"])
+    assert viral[0]["timeout"] == 60
+    calls = []
+
+    class Registry:
+        def __init__(self, definitions=None, *, cache_root=None):
+            pass
+
+        def build(self, name, version, *, download_options, **options):
+            calls.append(download_options)
+            return type("Built", (), dict(path="p", counts={}, manifest=type("M", (), dict(
+                dataset_id=name, version="1"))))
+
+        def download_reference(self, name, version, **options):
+            calls.append(options)
+            return {}
+
+    monkeypatch.setattr("orfdata.dataset_cli.DatasetRegistry", Registry)
+    run(["datasets", "build", "fixture", "--json"])
+    run(["datasets", "download-reference", "fixture", "--timeout", "7", "--json"])
+    capsys.readouterr()
+    assert [call["timeout"] for call in calls] == [60, 7]
 
 
 def test_suppressed_defaults_do_not_leak_into_help():

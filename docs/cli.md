@@ -37,8 +37,8 @@ groups such as `orfdata datasets` show their subcommands. `download` and
 | `chains` | Manage assembly mapping files | `list`, `download` |
 | `lift` | Write an ORF catalogue on another assembly | Requires `--to` and `--output` |
 
-`--cache-root DIR` works before or after a subcommand, in every command group,
-so these are the same:
+`--cache-root DIR` works before or after a subcommand in every command group whose
+subcommands read the cache, so these are the same:
 
 ```sh
 orfdata datasets --cache-root /path/to/cache query pfizer-atlas-dog-protein
@@ -46,7 +46,9 @@ orfdata datasets query pfizer-atlas-dog-protein --cache-root /path/to/cache
 ```
 
 Every command that downloads takes `--timeout SECONDS`: how long a download may
-stall before it is retried, then fails (default 60). The `--registry` option of
+stall before it is retried, then fails (default 60; `--timeout none` waits
+indefinitely). The chromosome FASTA that `genomes install --genome-fasta` passes
+to PyEnsembl is downloaded without a timeout. The `--registry` option of
 `catalogs` and `datasets` stays before the subcommand:
 `orfdata catalogs --registry registry.json list`.
 

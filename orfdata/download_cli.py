@@ -4,7 +4,7 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import ArgumentParser, add_cache_root, add_limit, add_timeout, share_cache_root
+from .cli_parser import ArgumentParser, add_limit, add_timeout, share_cache_root
 from .downloads import list_data
 
 
@@ -16,10 +16,6 @@ def _source_paths(items, label):
             raise ValueError(f"{label} require unique NAME=PATH entries")
         paths[key] = path
     return paths or None
-
-
-def _add_cache(parser):
-    add_cache_root(parser)
 
 
 def _add_force_timeout(parser):
@@ -68,7 +64,6 @@ def _show_result(result, json_output):
 
 
 def _add_discovery(parser, *, status=False):
-    _add_cache(parser)
     parser.add_argument(
         "--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain"))
     parser.add_argument("--species", help="Only resources for this species, e.g. human or mouse")
@@ -110,7 +105,6 @@ def run(argv=None, prog="orfdata download"):
         command.add_argument("names", metavar="NAME", nargs="+" if verb == "fetch" else None)
         command.add_argument("--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain"))
         command.add_argument("--version", help="Exact resource version; defaults to its registered version")
-        _add_cache(command)
         _add_json(command)
         if verb == "fetch":
             _add_force_timeout(command)
@@ -148,7 +142,6 @@ def run(argv=None, prog="orfdata download"):
                        help="Take the alternate source's coding features wherever it publishes "
                             "the same molecule and annotates at least as much of it, for "
                             "uniform gene models in place of each submission's own")
-    _add_cache(viral)
     _add_force_timeout(viral)
     _add_json(viral)
 
@@ -156,7 +149,6 @@ def run(argv=None, prog="orfdata download"):
     catalog.add_argument("name")
     catalog.add_argument("--version")
     catalog.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
-    _add_cache(catalog)
     _add_force_timeout(catalog)
     _add_json(catalog)
 
@@ -165,7 +157,6 @@ def run(argv=None, prog="orfdata download"):
     dataset.add_argument("--version")
     dataset.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
     dataset.add_argument("--quiet", action="store_true")
-    _add_cache(dataset)
     _add_force_timeout(dataset)
     _add_json(dataset)
 
@@ -176,14 +167,12 @@ def run(argv=None, prog="orfdata download"):
     reference.add_argument("--asset", help="Declared source asset ID")
     reference.add_argument("--source-path", metavar="FILE")
     reference.add_argument("--quiet", action="store_true")
-    _add_cache(reference)
     _add_force_timeout(reference)
     _add_json(reference)
 
     genome = commands.add_parser("genome", help="Download and index a pinned PyEnsembl annotation")
     genome.add_argument("name")
     genome.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH")
-    _add_cache(genome)
     _add_force_timeout(genome)
     _add_json(genome)
 
@@ -193,7 +182,6 @@ def run(argv=None, prog="orfdata download"):
     chains.add_argument("--species")
     chains.add_argument("--accept-terms", action="store_true")
     chains.add_argument("--source-path", metavar="FILE")
-    _add_cache(chains)
     _add_force_timeout(chains)
     _add_json(chains)
 

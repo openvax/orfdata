@@ -3,10 +3,12 @@
 - `--cache-root` works before or after the subcommand in every command group;
   previously each group accepted only one placement and rejected the other.
 - Every command that downloads takes `--timeout` with the same 60-second
-  default and meaning. `genomes install`, `chains download`, `data genome` and
-  `data chains` had no timeout, and `datasets download`/`build` had none by
-  default, so a stalled connection waited forever. `data viral` now defaults to
-  60 seconds instead of 120. Timeouts must be positive (#163).
+  default and meaning; `--timeout none` waits indefinitely. `genomes install`,
+  `chains download`, `data genome` and `data chains` had no timeout, and
+  `datasets download`/`build` had none by default, so a stalled connection
+  waited forever. One default, `orfdata.net.DOWNLOAD_TIMEOUT`, now serves the
+  CLI and the Python API, so the viral collection functions move from 120 to
+  60 seconds. Timeouts must be positive and finite, or none (#163).
 
 # 0.44.0
 

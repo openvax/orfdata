@@ -8,7 +8,14 @@ from dataclasses import asdict
 from .catalog import load_catalog
 from .catalogs import CatalogRegistry
 from .cli_output import print_result
-from .cli_parser import ArgumentParser, add_json, add_limit, add_timeout, share_cache_root
+from .cli_parser import (
+    ArgumentParser,
+    add_cache_root,
+    add_json,
+    add_limit,
+    add_timeout,
+    share_cache_root,
+)
 from .liftover import (
     ChainFile,
     chain_downloaded,
@@ -34,7 +41,7 @@ def lift(argv=None, prog=None):
     parser.add_argument("--chain", metavar="FILE",
                         help="UCSC or Ensembl chain file from the catalogue's assembly to --to, instead of the "
                              "pinned one; its direction is checked only when it is a pinned file")
-    parser.add_argument("--cache-root", help="Cache directory holding catalogues and downloaded chain files")
+    add_cache_root(parser)
     parser.add_argument("--output", required=True, metavar="FILE",
                         help="Write the lifted catalogue here; gzipped when it ends in .gz")
     parser.add_argument("--json", action="store_true", help="Write the complete build summary as JSON to stderr")

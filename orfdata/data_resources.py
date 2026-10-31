@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from .downloads import _fetch_command, list_data
+from .net import DOWNLOAD_TIMEOUT
 
 
 def _registry(kind, cache_root):
@@ -89,7 +90,7 @@ def data_path(name, *, kind=None, version=None, cache_root=None, verify_files=Fa
 
 
 def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
-               source_paths=None, timeout=60, show_progress=True, accept_terms=False):
+               source_paths=None, timeout=DOWNLOAD_TIMEOUT, show_progress=True, accept_terms=False):
     """Install one resource and return its status, downloading or building as declared.
 
     Downloads retain their checksum validation. Builds use the same pinned source
