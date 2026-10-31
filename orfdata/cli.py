@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
 from .cli_output import print_result, print_table
-from .cli_parser import ArgumentParser, add_json, add_limit
+from .cli_parser import ArgumentParser, add_json, add_limit, add_resume
 from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
 
 COMMANDS = {
@@ -126,7 +126,7 @@ def _setup(argv, prog):
     parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--timeout", type=float, default=60,
                         help="Seconds a download may stall before it is retried, then fails (default 60)")
-    parser.add_argument("--resume", action="store_true", help="Keep partial downloads so an interrupted one continues where it stopped; partials and staging stay on disk after a failure (see the download guide)")
+    add_resume(parser)
     add_json(parser)
     args = parser.parse_args(argv)
     try:

@@ -128,7 +128,11 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
         return dict(row.to_dict(), acquired="already installed")
     repair = not row.installed and row.status != "missing"
     force = needs_replacement(row.status, force=force)
-    options = dict(timeout=timeout, show_progress=show_progress, **({"resume": "auto"} if resume else {}))
+    if type(resume) is not bool:
+        raise ValueError("resume must be True or False")
+    # Nothing to resume when local files stand in for the downloads.
+    resumable = resume and not source_paths
+    options = dict(timeout=timeout, show_progress=show_progress, **({"resume": "auto"} if resumable else {}))
     if row.kind in ("catalog", "dataset"):
         registry = _registry(row.kind, cache_root)
         if row.acquire == "download":

@@ -68,6 +68,8 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     result, failed = dict(species=species, catalogs={}, chains={}), []
     retry = join(["orfdata", "setup", "--species", species] + ([] if root is None else
                                                                 ["--cache-root", str(root)]))
+    if type(resume) is not bool:
+        raise ValueError("resume must be True or False")
     options = ({} if timeout is None else dict(timeout=timeout)) | ({"resume": "auto"} if resume else {})
     states = {key: _installed(choice) for key, choice in needed.items()}
     for key in sorted(needed):

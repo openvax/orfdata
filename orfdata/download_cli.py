@@ -4,7 +4,7 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import ArgumentParser, add_limit
+from .cli_parser import ArgumentParser, add_limit, add_resume
 from .downloads import list_data
 
 
@@ -133,7 +133,7 @@ def run(argv=None, prog="orfdata download"):
             command.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
             command.add_argument("--quiet", action="store_true")
             command.add_argument("--accept-terms", action="store_true")
-            command.add_argument("--resume", action="store_true", help="Keep partial downloads so an interrupted one continues where it stopped; partials and staging stay on disk after a failure (see the download guide)")
+            add_resume(command)
         else:
             command.add_argument("--verify", action="store_true", help="Hash and validate installed files")
 

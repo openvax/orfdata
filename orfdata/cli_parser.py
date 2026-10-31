@@ -35,6 +35,12 @@ class ArgumentParser(argparse.ArgumentParser):
         self.exit(2, f"{prog}: error: {message}\nTry '{prog} --help' for usage.\n")
 
 
+def add_resume(parser):
+    parser.add_argument("--resume", action="store_true",
+                        help="Keep partial downloads so an interrupted one continues where it stopped; partials "
+                             "and staging stay on disk after a failure (see the download guide)")
+
+
 def add_json(parser):
     parser.add_argument("--json", action="store_true", help="Write complete machine-readable JSON")
 

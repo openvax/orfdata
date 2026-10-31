@@ -65,17 +65,34 @@ def test_downloads_restart_unless_resume_is_requested(path, boundary, tmp_path):
 
 
 def test_fetch_and_setup_ask_for_resume_only_when_told(boundary, tmp_path):
-    from orfdata import fetch_data
+    from orfdata import fetch_data, list_data
     from orfdata.install import InstallError, install_species
 
+    names = ["copy-yeast-abundance", next(r.name for r in list_data(kind="reference")), "t2t-chm13",
+             next(r.name for r in list_data(kind="chain") if not r.restricted)]
     for resume in (False, True):
-        with pytest.raises(Stopped):
-            fetch_data("copy-yeast-abundance", cache_root=tmp_path, show_progress=False, resume=resume)
+        boundary.clear()
+        for name in names:  # A dataset, a search reference, a genome and a chain.
+            with pytest.raises(Stopped):
+                fetch_data(name, cache_root=tmp_path, show_progress=False, resume=resume)
         with pytest.raises(InstallError):  # Setup reports each failure after trying everything.
             install_species("yeast", cache_root=tmp_path, catalogs="all", collections="none", resume=resume)
-    resumed = ["resume" in options for _, options in boundary]
-    half = len(resumed) // 2
-    assert half and not any(resumed[:half]) and all(resumed[half:])
+        assert len(boundary) > len(names)
+        assert all(("resume" in options) is resume for _, options in boundary)
+
+
+def test_resume_needs_a_boolean_and_is_dropped_for_local_sources(boundary, tmp_path):
+    from orfdata import fetch_data
+    from orfdata.install import install_species
+
+    with pytest.raises(ValueError, match="resume must be True or False"):
+        fetch_data("copy-yeast-abundance", cache_root=tmp_path, resume="false")
+    with pytest.raises(ValueError, match="resume must be True or False"):
+        install_species("yeast", cache_root=tmp_path, resume=1)
+    with pytest.raises(Stopped):
+        fetch_data("copy-yeast-abundance", cache_root=tmp_path, show_progress=False, resume=True,
+                   source_paths={"dataset.sqlite": str(tmp_path / "local.sqlite")})
+    assert "resume" not in boundary[0][1]
 
 
 def test_cli_passes_resume_through(monkeypatch, capsys):
