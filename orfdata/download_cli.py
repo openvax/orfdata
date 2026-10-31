@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
 from .cli_parser import ArgumentParser, add_limit
-from .downloads import list_data, needs_replacement
+from .downloads import list_data
 
 
 def _source_paths(items, label):
@@ -216,7 +216,7 @@ def run(argv=None, prog="orfdata download"):
     args = parser.parse_args(argv)
     try:
         if args.command in ("info", "path", "fetch"):
-            from .data_resources import data_info, data_path, fetch_data
+            from .data_resources import check_fetch, data_info, data_path, fetch_data
 
             options = dict(kind=args.kind, version=args.version, cache_root=args.cache_root)
             if args.command == "info":
@@ -228,15 +228,10 @@ def run(argv=None, prog="orfdata download"):
                 names = list(dict.fromkeys(args.names))
                 if len(names) > 1 and (args.source_path or args.version):
                     raise ValueError("--source-path and --version require exactly one resource")
-                # Resolve every name and terms requirement before starting any downloads.
-                for name in names:
-                    info = data_info(name, **options)
-                    if info["restricted"] and not args.accept_terms:
-                        raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
-                    if info["acquire"] is not None and not (info["installed"] and not args.force):
-                        needs_replacement(info["status"], force=args.force, name=f"{name!r} at {info['path']}",
-                                          command=info["command"])
                 paths = _source_paths(args.source_path, "Source overrides")
+                if len(names) > 1:  # Find every name, terms and permissions problem before downloading anything.
+                    for name in names:
+                        check_fetch(name, **options, force=args.force, accept_terms=args.accept_terms)
                 # Source processors may print progress; keep stdout machine-readable.
                 with redirect_stdout(sys.stderr):
                     output = [fetch_data(name, **options, force=args.force, source_paths=paths,

@@ -68,8 +68,9 @@ and its current state, including native protein search references declared by
 quantitative datasets. `status` shows resources with local files: usable ones
 and damaged or unreadable installs. `data fetch` replaces damaged files;
 unreadable ones are left alone until their permissions are fixed or `--force` is
-given. A repair installs a fresh generation and leaves the damaged one in place
-until the cache is pruned, as `--force` does. Filter either command with `--kind` or `--species`; use `--installed` or
+given. For catalogues, datasets, search references, genomes and chains, a repair
+installs a fresh generation and leaves the damaged one in place until the cache
+is pruned, as `--force` does; a viral collection is rebuilt in place. Filter either command with `--kind` or `--species`; use `--installed` or
 `--missing` with `list`, `--json` for programs, and `--verify` to hash installed
 files. Discovery and status commands never acquire or repair data.
 

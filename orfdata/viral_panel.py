@@ -20,6 +20,7 @@ topiary and vaxrank can annotate viral transcripts with.
 import csv
 import hashlib
 import json
+import os
 import shutil
 import tempfile
 import time
@@ -302,10 +303,21 @@ def _existing_bundle(path, *, species, collection):
                 path / _CHECKSUMS)
     if any(not file_path.is_file() for file_path in required):
         raise ValueError(f"Incomplete viral reference collection: {path}")
-    if (not result.record_directory.is_dir()
-            or len(tuple(result.record_directory.glob("*.gz"))) != result.genome_count):
+    if not result.record_directory.is_dir():
+        raise ValueError(f"Incomplete viral source records: {result.record_directory}")
+    # os.listdir, unlike glob, raises for a directory it can't read rather than finding nothing in it.
+    if sum(name.endswith(".gz") for name in os.listdir(result.record_directory)) != result.genome_count:
         raise ValueError(f"Incomplete viral source records: {result.record_directory}")
     return result
+
+
+def _installed_files(path):
+    """Every file under ``path``; an unreadable directory raises, where rglob would skip it."""
+    def refuse(error):
+        raise error
+
+    return {Path(root, name).relative_to(path).as_posix()
+            for root, _, names in os.walk(path, onerror=refuse) for name in names}
 
 
 def _verify_checksums(path):
@@ -316,8 +328,7 @@ def _verify_checksums(path):
         raise
     except OSError as error:
         raise ValueError(f"Missing viral reference checksums: {sums_path}") from error
-    expected_files = {item.relative_to(path).as_posix() for item in path.rglob("*")
-                      if item.is_file() and item.name != _CHECKSUMS}
+    expected_files = _installed_files(path) - {_CHECKSUMS}
     if (len(sums) != len(expected_files) or any(len(parts) != 2 for parts in sums)
             or {relative for _, relative in sums} != expected_files):
         raise ValueError(f"Invalid viral reference checksum manifest: {sums_path}")
@@ -752,6 +763,12 @@ def download_viral_references(
     if output.is_dir():
         try:
             existing = _verified_existing_bundle(output, species=species, collection=collection)
+        except PermissionError as error:
+            if not force:
+                raise ValueError(
+                    f"The {collection.name} viral references at {output} can't be read ({error}); fix their "
+                    "permissions, or replace them with force=True (--force on the command line)"
+                ) from error
         except (OSError, ValueError) as error:
             if not force:
                 raise FileNotFoundError(

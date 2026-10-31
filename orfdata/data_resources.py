@@ -3,7 +3,7 @@
 from dataclasses import replace
 from pathlib import Path
 
-from .downloads import _fetch_command, list_data, needs_replacement
+from .downloads import _fetch_command, list_data, needs_replacement, refuse_unreadable
 
 
 def _registry(kind, cache_root):
@@ -84,8 +84,27 @@ def data_path(name, *, kind=None, version=None, cache_root=None, verify_files=Fa
     info = data_info(name, kind=kind, version=version, cache_root=cache_root,
                      verify_files=verify_files)
     if not info["installed"] or info["path"] is None:
-        raise ValueError(f"{name!r} is {info['status']}; install it with {info['command']}")
+        if info["status"] == "inaccessible":
+            refuse_unreadable(info["status"], name=f"{name!r} at {info['path']}", command=info["command"])
+        verb = "install" if info["status"] == "missing" else "repair"
+        raise ValueError(f"{name!r} is {info['status']}; {verb} it with: {info['command']}")
     return Path(info["path"])
+
+
+def check_fetch(name, *, kind=None, version=None, cache_root=None, force=False, source_paths=None,
+                accept_terms=False):
+    """Verify a resource and raise whatever would stop :func:`fetch_data`, before anything downloads.
+
+    Returns the verified status row. Batch callers check every name first.
+    """
+    row = _resolve(name, kind, version, cache_root, True)
+    if source_paths is not None and row.kind not in ("catalog", "dataset", "genome"):
+        raise ValueError("Source overrides here require a catalogue, dataset or genome; use the focused command for other kinds")
+    if row.restricted and not accept_terms:
+        raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
+    if row.acquire is not None and not (row.installed and not force):
+        refuse_unreadable(row.status, force=force, name=f"{name!r} at {row.path}", command=row.command)
+    return row
 
 
 def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
@@ -98,15 +117,12 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
     ``force`` replaces valid files too. Discovery and ordinary queries never
     invoke this function implicitly.
     """
-    row = _resolve(name, kind, version, cache_root, True)
-    if source_paths is not None and row.kind not in ("catalog", "dataset", "genome"):
-        raise ValueError("Source overrides here require a catalogue, dataset or genome; use the focused command for other kinds")
-    if row.restricted and not accept_terms:
-        raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
+    row = check_fetch(name, kind=kind, version=version, cache_root=cache_root, force=force,
+                      source_paths=source_paths, accept_terms=accept_terms)
     if row.acquire is None or (row.installed and not force):
         return dict(row.to_dict(), acquired="already installed")
     repair = not row.installed and row.status != "missing"
-    force = needs_replacement(row.status, force=force, name=f"{name!r} at {row.path}", command=row.command)
+    force = needs_replacement(row.status, force=force)
     if row.kind in ("catalog", "dataset"):
         registry = _registry(row.kind, cache_root)
         options = dict(timeout=timeout, show_progress=show_progress)

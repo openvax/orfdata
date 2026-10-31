@@ -62,18 +62,22 @@ def _fetch_command(row, cache_root=None):
     return join(args)
 
 
-def needs_replacement(status: str, *, force: bool = False, name: str = "", command: str | None = None) -> bool:
+def needs_replacement(status: str, *, force: bool = False) -> bool:
     """Whether acquiring over a resource's local state replaces its files; ``data fetch`` and setup share this.
 
     Files that fail verification are replaced; valid ones only with ``force``.
-    Unreadable files are refused unless ``force``: replacing them could hide a
-    permissions problem, or fail on it halfway through a download.
+    Check :func:`refuse_unreadable` first: unreadable files aren't replaced unless forced.
     """
-    if status == "inaccessible" and not force:
-        retry = f"'{command} --force'" if command else "force=True"
-        raise ValueError(f"{name or 'The resource'} can't be read; fix its permissions, choose another "
-                         f"--cache-root, or replace it with {retry}")
     return force or status not in ("available", "missing")
+
+
+def refuse_unreadable(status: str, *, force: bool = False, name: str = "", command: str | None = None) -> None:
+    """Raise for unreadable files unless ``force``: replacing them could hide a permissions problem, or fail on
+    it halfway through a download. ``command`` is the command line that would replace them with ``--force``."""
+    if status == "inaccessible" and not force:
+        retry = f"force=True, or on the command line: {command} --force" if command else "force=True"
+        raise ValueError(f"{name or 'The resource'} can't be read; fix its permissions, choose another "
+                         f"cache root, or replace it with {retry}")
 
 
 def collection_state(
@@ -320,6 +324,8 @@ def list_data(
         raise ValueError(f"Unknown data kind {kind!r}; choose from {', '.join(kinds)}")
     if installed is not None and type(installed) is not bool:
         raise ValueError("installed must be True, False or None")
+    if type(local) is not bool:
+        raise ValueError("local must be True or False")
     if contexts is None:
         selected_contexts = ()
     else:

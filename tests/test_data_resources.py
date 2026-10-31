@@ -205,7 +205,7 @@ def test_fetch_does_not_replace_unreadable_files_without_force(published, monkey
     artifact.chmod(0)
     try:
         assert data_info("fixture", verify_files=True)["status"] == "inaccessible"
-        with pytest.raises(ValueError, match="can't be read.*'orfdata data fetch fixture --kind dataset.* --force'"):
+        with pytest.raises(ValueError, match="can't be read.*command line: orfdata data fetch fixture --kind dataset .* --force$"):
             fetch_data("fixture", show_progress=False)
         run(["data", "status", "--kind", "dataset", "--verify"])
         assert "Unreadable; fix their permissions, or replace them:" in capsys.readouterr().out
@@ -259,3 +259,57 @@ def test_listed_fetch_commands_name_the_cache_root(tmp_path):
     row = next(r for r in list_data(kind="chain", cache_root=tmp_path))
     assert row.command.endswith(f"--cache-root {tmp_path}")
     assert list_data(kind="chain", cache_root=tmp_path, local=True) == ()
+
+
+@unreadable_files_are_readable
+def test_an_unreadable_records_directory_is_inaccessible_not_corrupt(viral_panel, tmp_path):
+    from orfdata.downloads import collection_state
+
+    root = tmp_path / "cache"
+    fetch_data("gdc-viruses", cache_root=root)
+    path = data_path("gdc-viruses", cache_root=root)
+    records = path / "records"
+    records.chmod(0)
+    try:
+        for verify in (False, True):
+            assert collection_state("gdc-viruses", cache_root=root, verify_files=verify) == "inaccessible"
+        with pytest.raises(ValueError, match="can't be read"):
+            fetch_data("gdc-viruses", cache_root=root)
+        with pytest.raises(ValueError, match="can't be read.*on the command line: orfdata data fetch gdc-viruses"):
+            data_path("gdc-viruses", cache_root=root, verify_files=True)
+    finally:
+        records.chmod(0o755)
+    assert sorted(p.name for p in path.iterdir())  # Nothing was deleted.
+    assert collection_state("gdc-viruses", cache_root=root, verify_files=True) == "available"
+
+
+@unreadable_files_are_readable
+def test_batch_fetch_checks_verified_state_of_every_name_first(published, viral_panel, tmp_path, capsys):
+    registry, _ = published
+    root = tmp_path / "viral-cache"
+    fetch_data("gdc-viruses", cache_root=root)
+    fasta = data_path("gdc-viruses", cache_root=root) / "genomes.fasta"
+    fasta.chmod(0)
+    try:
+        with pytest.raises(SystemExit):
+            run(["data", "fetch", "fixture", "gdc-viruses", "--cache-root", str(root)])
+        assert "can't be read" in capsys.readouterr().err
+        assert registry.inspect("fixture").status == "missing"
+    finally:
+        fasta.chmod(0o644)
+
+
+def test_setup_judges_whichever_catalogue_store_is_damaged():
+    from types import SimpleNamespace
+
+    from orfdata.install import _damage
+
+    def registry(published, download, build):
+        return SimpleNamespace(published=lambda *a: published,
+                               inspect=lambda *a, **k: SimpleNamespace(status=download),
+                               inspect_build=lambda *a, **k: SimpleNamespace(status=build))
+
+    assert _damage(registry(True, "missing", "inaccessible"), "c", "1") == "inaccessible"
+    assert _damage(registry(True, "invalid", "missing"), "c", "1") == "invalid"
+    assert _damage(registry(False, "missing", "invalid"), "c", "1") == "invalid"
+    assert _damage(registry(True, "available", "missing"), "c", "1") == "missing"
