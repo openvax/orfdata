@@ -11,6 +11,12 @@
   `data list --installed`. `list_data(local=True)` selects the same rows. An
   unreadable viral collection is `inaccessible`, not `corrupt`. Fetch commands
   in listings carry `--cache-root` when one is given (#151).
+- `orfdata data list` and `status` share their 25-row preview among resource
+  kinds, so datasets, genomes, search references and viral collections appear
+  next to catalogues and chains, and report what each kind left out (#153).
+- `orfdata data fetch` summaries name the resource, its version and what the
+  command did (`downloaded`, `built`, `already installed`) for every kind,
+  including viral collections (#154).
 
 # 0.44.0
 

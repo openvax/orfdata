@@ -32,19 +32,41 @@ def _add_json(parser):
     parser.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
 
+def _preview(rows, limit):
+    """At most ``limit`` rows, taken from each kind in turn, in their listed order; also what each kind hides.
+
+    Every kind appears whenever ``limit`` leaves room for one row of each.
+    """
+    if limit < 0:
+        raise ValueError("limit must be nonnegative")
+    if limit == 0 or len(rows) <= limit:
+        return list(rows), {}
+    counts, rank = {}, []
+    for row in rows:  # A row's place within its kind: the first of each kind comes before any second.
+        rank.append(counts.get(row.kind, 0))
+        counts[row.kind] = rank[-1] + 1
+    kinds = list(counts)
+    keep = set(sorted(range(len(rows)), key=lambda i: (rank[i], kinds.index(rows[i].kind)))[:limit])
+    shown = [row for index, row in enumerate(rows) if index in keep]
+    hidden = {kind: counts[kind] - sum(row.kind == kind for row in shown) for kind in kinds}
+    return shown, {kind: count for kind, count in hidden.items() if count}
+
+
 def _show(rows, json_output, limit=25):
     if json_output:
         print_json([row.to_dict() for row in rows])
         return
     headings = ("KIND", "NAME", "VERSION", "STATUS", "ACQUIRE")
-    values = []
-    for row in rows:
-        values.append((row.kind, row.name, row.version, row.status, row.acquire))
-    print_table(headings, values, empty="No matching resources", limit=limit)
+    preview, hidden = _preview(rows, limit)
+    values = [(row.kind, row.name, row.version, row.status, row.acquire) for row in preview]
+    print_table(headings, values, empty="No matching resources", limit=0)
+    if hidden:
+        more = ", ".join(f"{count} {kind}" for kind, count in hidden.items())
+        print(f"\nShowing {len(preview)} of {len(rows)} entries; not shown: {more}. Use --limit 0 for all rows.")
     _repair_hints(rows)
     print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
           "Local path: orfdata data path NAME")
-    print("Filter with --species or --kind; use --json for versions, paths, and source metadata.")
+    print("Filter with --species or --kind; use --json for paths and source metadata.")
 
 
 def _repair_hints(rows):
@@ -76,11 +98,17 @@ def _show_result(result, json_output):
             print_fields(summary)
             print("\nUse --json for complete source pins and metadata.")
             return
-        if result.get("kind") in ("viral", "viral-selection"):
-            result = {key: value for key, value in result.items() if key in (
-                "kind", "status", "collection", "path", "bundle_version", "genome_count",
-                "transcript_count", "protein_count", "target_species", "contexts", "subsets")}
+        if "acquired" in result:  # What a fetch did, whatever the kind.
+            result = {key: result[key] for key in _FETCH_FIELDS if result.get(key) not in (None, (), [], False)}
         print_fields(result)
+
+
+# What every fetch summary shows; empty contexts and an unrestricted resource are left out.
+_FETCH_FIELDS = ("kind", "name", "version", "title", "species", "contexts", "acquired", "status", "path",
+                 "restricted")
+# What `data viral` shows of the collection or selection it installed.
+_COLLECTION_FIELDS = ("kind", "status", "collection", "path", "bundle_version", "genome_count",
+                      "transcript_count", "protein_count", "target_species", "contexts", "subsets")
 
 
 def _add_discovery(parser, *, status=False):
@@ -240,7 +268,9 @@ def run(argv=None, prog="orfdata download"):
                 if args.json:
                     print_json(output)
                 else:
-                    for result in output:
+                    for index, result in enumerate(output):
+                        if index:
+                            print()
                         _show_result(result, False)
             return
         if args.command in ("list", "status"):
@@ -269,11 +299,14 @@ def run(argv=None, prog="orfdata download"):
                     output = dict(indexed.to_dict(), kind="viral-selection", status="available")
                 else:
                     output = dict(bundle.to_dict(), kind="viral", status="available")
+                if not args.json:
+                    output = {key: value for key, value in output.items() if key in _COLLECTION_FIELDS}
             elif args.command == "catalog":
                 from .catalogs import CatalogRegistry
 
                 registry = CatalogRegistry(cache_root=args.cache_root)
                 paths = _source_paths(args.source_path, "Source overrides")
+                reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
                 if registry.published(args.name, args.version):
                     registry.download(args.name, args.version, force=args.force, source_paths=paths,
                                       timeout=args.timeout)
@@ -284,14 +317,17 @@ def run(argv=None, prog="orfdata download"):
                                    download_options={"timeout": args.timeout})
                     inspection = registry.inspect_build(args.name, args.version)
                     acquired = "built"
-                output = dict(kind="catalog", name=args.name, version=registry.info(args.name, args.version).version,
-                              acquired=acquired, status=inspection.status, path=str(inspection.path))
+                manifest = registry.info(args.name, args.version)
+                output = dict(kind="catalog", name=args.name, version=manifest.version, title=manifest.title,
+                              acquired="already installed" if reused and not args.force else acquired,
+                              status=inspection.status, path=str(inspection.path))
             elif args.command == "dataset":
                 from .datasets import DatasetRegistry
 
                 registry = DatasetRegistry(cache_root=args.cache_root)
                 paths = _source_paths(args.source_path, "Source overrides")
                 options = {"timeout": args.timeout, "show_progress": not args.quiet}
+                reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
                 if registry.published(args.name, args.version):
                     registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
                     inspection = registry.inspect(args.name, args.version)
@@ -301,8 +337,10 @@ def run(argv=None, prog="orfdata download"):
                                    download_options=options)
                     inspection = registry.inspect_build(args.name, args.version)
                     acquired = "built"
-                output = dict(kind="dataset", name=args.name, version=registry.info(args.name, args.version).version,
-                              acquired=acquired, status=inspection.status, path=str(inspection.path))
+                manifest = registry.info(args.name, args.version)
+                output = dict(kind="dataset", name=args.name, version=manifest.version, title=manifest.title,
+                              acquired="already installed" if reused and not args.force else acquired,
+                              status=inspection.status, path=str(inspection.path))
             elif args.command == "reference":
                 from .datasets import DatasetRegistry
 

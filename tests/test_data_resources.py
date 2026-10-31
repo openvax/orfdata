@@ -313,3 +313,68 @@ def test_setup_judges_whichever_catalogue_store_is_damaged():
     assert _damage(registry(True, "invalid", "missing"), "c", "1") == "invalid"
     assert _damage(registry(False, "missing", "invalid"), "c", "1") == "invalid"
     assert _damage(registry(True, "available", "missing"), "c", "1") == "missing"
+
+
+def test_default_list_preview_shows_every_kind(monkeypatch, tmp_path, capsys):
+    from orfdata import list_data
+
+    monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path))
+    rows = list_data()
+    kinds = {row.kind for row in rows}
+    assert len(rows) > 25 and len(kinds) > 1
+    run(["data", "list"])
+    output = capsys.readouterr().out
+    table = output.split("\n\n")[0].splitlines()[1:]
+    assert {line.split()[0] for line in table if line[:1].strip()} == kinds
+    assert f"Showing 25 of {len(rows)} entries; not shown:" in output
+    run(["data", "list", "--limit", "0"])
+    assert "not shown" not in capsys.readouterr().out
+
+
+def test_preview_shares_rows_among_kinds():
+    from types import SimpleNamespace
+
+    from orfdata.download_cli import _preview
+
+    rows = [SimpleNamespace(kind=kind, name=f"{kind}{index}")
+            for kind, count in (("a", 6), ("b", 1), ("c", 4)) for index in range(count)]
+    shown, hidden = _preview(rows, 5)
+    assert [row.name for row in shown] == ["a0", "a1", "b0", "c0", "c1"]
+    assert hidden == {"a": 4, "c": 2}
+    assert _preview(rows, 0) == (rows, {}) and _preview(rows, 11) == (rows, {})
+
+
+def test_fetch_summary_names_the_resource_and_what_happened(published, monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path / "isolated"))
+    run(["data", "fetch", "fixture"])
+    output = capsys.readouterr().out
+    assert "name: fixture" in output and "version: " in output and "acquired: downloaded" in output
+    run(["data", "fetch", "fixture"])
+    assert "acquired: already installed" in capsys.readouterr().out
+    # The focused command reports reuse the same way, rather than claiming another download.
+    run(["data", "dataset", "fixture"])
+    output = capsys.readouterr().out
+    assert "acquired: already installed" in output and "title: " in output
+    run(["data", "fetch", "fixture", "bundled"])
+    assert "\n\nkind: catalog" in capsys.readouterr().out
+
+
+def test_info_on_a_viral_collection_names_it(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path))
+    run(["data", "info", "gdc-viruses"])
+    output = capsys.readouterr().out
+    assert "name: gdc-viruses" in output and "version: v" in output and "command: orfdata data fetch" in output
+
+
+def test_preview_rejects_a_negative_limit():
+    from orfdata.download_cli import _preview
+
+    with pytest.raises(ValueError, match="nonnegative"):
+        _preview([object()], -1)
+
+
+def test_viral_fetch_summary_names_the_collection(viral_panel, tmp_path, capsys):
+    run(["data", "fetch", "gdc-viruses", "--cache-root", str(tmp_path)])
+    output = capsys.readouterr().out
+    assert "kind: viral" in output and "name: gdc-viruses" in output
+    assert "version: v" in output and "acquired: downloaded" in output
