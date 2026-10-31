@@ -49,7 +49,7 @@ def default_collections(species: str | int) -> tuple[str, ...]:
     return tuple(collection.name for collection in viral_collections(species=species))
 
 
-def _fetch_command(row):
+def _fetch_command(row, cache_root=None):
     if row.acquire is None:
         return None
     args = ["orfdata", "data", "fetch", row.name, "--kind", row.kind]
@@ -57,7 +57,23 @@ def _fetch_command(row):
         args.extend(["--version", row.version])
     if row.restricted:
         args.append("--accept-terms")
+    if cache_root is not None:
+        args.extend(["--cache-root", str(cache_root)])
     return join(args)
+
+
+def needs_replacement(status: str, *, force: bool = False, name: str = "", command: str | None = None) -> bool:
+    """Whether acquiring over a resource's local state replaces its files; ``data fetch`` and setup share this.
+
+    Files that fail verification are replaced; valid ones only with ``force``.
+    Unreadable files are refused unless ``force``: replacing them could hide a
+    permissions problem, or fail on it halfway through a download.
+    """
+    if status == "inaccessible" and not force:
+        retry = f"'{command} --force'" if command else "force=True"
+        raise ValueError(f"{name or 'The resource'} can't be read; fix its permissions, choose another "
+                         f"--cache-root, or replace it with {retry}")
+    return force or status not in ("available", "missing")
 
 
 def collection_state(
@@ -86,7 +102,7 @@ def collection_state(
         else:
             _existing_bundle(path, species=chosen_species, collection=collection)
     except FileNotFoundError:
-        return "corrupt"  # The collection's directory exists, but not all of its files.
+        return "missing"
     except OSError:
         return "inaccessible"
     except ValueError:
@@ -284,6 +300,7 @@ def list_data(
     contexts: Iterable[str] | None = None,
     context_match: str = "any",
     installed: bool | None = None,
+    local: bool = False,
     cache_root: str | PathLike[str] | None = None,
     verify_files: bool = False,
 ) -> tuple[DataStatus, ...]:
@@ -291,8 +308,9 @@ def list_data(
 
     ``kind`` may be ``viral``, ``catalog``, ``dataset``, ``reference``,
     ``genome`` or ``chain``. ``species`` accepts ORFdata's species aliases.
-    ``installed`` can be true or false to select local resources or
-    unavailable ones. ``verify_files=True`` hashes pinned files and
+    ``installed`` can be true or false to select usable resources or
+    unavailable ones; ``local=True`` selects every resource with local files,
+    usable, damaged or unreadable, as ``orfdata data status`` shows them. ``verify_files=True`` hashes pinned files and
     validates the viral bundle.
     """
     kinds = ("viral", "catalog", "dataset", "reference", "genome", "chain")
@@ -336,5 +354,7 @@ def list_data(
                 if predicate(context in row.contexts for context in selected_contexts)]
     if installed is not None:
         rows = [row for row in rows if row.installed is installed]
-    return tuple(replace(row, command=_fetch_command(row)) for row in
+    if local:  # Bundled, installed, damaged or unreadable: anything not simply absent.
+        rows = [row for row in rows if row.status != "missing"]
+    return tuple(replace(row, command=_fetch_command(row, cache_root)) for row in
                  sorted(rows, key=lambda row: (row.kind, row.name, row.version or "")))

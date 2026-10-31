@@ -128,7 +128,7 @@ def test_reuse_is_offline_and_tampering_is_caught(viral_panel, tmp_path):
     bundle.protein_fasta.write_text(bundle.protein_fasta.read_text() + ">EXTRA\nMM\n")
     with pytest.raises(ValueError, match="checksum mismatch"):
         open_viral_references(species="human", cache_root=str(tmp_path))
-    with pytest.raises(FileNotFoundError, match="replace them with force=True"):
+    with pytest.raises(FileNotFoundError, match="rebuild them with force=True"):
         download_viral_references(species="human", cache_root=str(tmp_path))
 
 

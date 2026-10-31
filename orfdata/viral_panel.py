@@ -256,6 +256,8 @@ def _metadata(path, *, expected_schema):
             raise ValueError(f"unexpected schema {metadata.get('schema')!r}")
         for key in ("genome_count", "transcript_count", "protein_count"):
             metadata[key] = int(metadata[key])
+    except PermissionError:
+        raise  # Unreadable, not invalid: replacing it would hide the problem.
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
         raise ValueError(f"Invalid viral reference metadata in {path}: {error}") from error
     return metadata
@@ -310,6 +312,8 @@ def _verify_checksums(path):
     sums_path = path / _CHECKSUMS
     try:
         sums = tuple(line.rstrip("\n").split("  ", 1) for line in sums_path.open())
+    except PermissionError:
+        raise
     except OSError as error:
         raise ValueError(f"Missing viral reference checksums: {sums_path}") from error
     expected_files = {item.relative_to(path).as_posix() for item in path.rglob("*")
@@ -752,7 +756,7 @@ def download_viral_references(
             if not force:
                 raise FileNotFoundError(
                     f"The {collection.name} viral references at {output} are incomplete or invalid; "
-                    f"replace them with force=True or 'orfdata data fetch {collection.name}'"
+                    "rebuild them with force=True (--force on the command line)"
                 ) from error
         else:
             if not force:

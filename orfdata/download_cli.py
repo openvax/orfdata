@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
 from .cli_parser import ArgumentParser, add_limit
-from .downloads import list_data
+from .downloads import list_data, needs_replacement
 
 
 def _source_paths(items, label):
@@ -41,13 +41,24 @@ def _show(rows, json_output, limit=25):
     for row in rows:
         values.append((row.kind, row.name, row.version, row.status, row.acquire))
     print_table(headings, values, empty="No matching resources", limit=limit)
-    damaged = [row.name for row in rows if row.status not in ("available", "missing")]
-    if damaged:
-        print(f"\n{len(damaged)} damaged or unreadable: {', '.join(damaged[:5])}"
-              f"{', ...' if len(damaged) > 5 else ''}. Repair with: orfdata data fetch NAME")
+    _repair_hints(rows)
     print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
           "Local path: orfdata data path NAME")
     print("Filter with --species or --kind; use --json for versions, paths, and source metadata.")
+
+
+def _repair_hints(rows):
+    """The exact command for each damaged or unreadable row, which a bare NAME can't give."""
+    damaged = [row for row in rows if row.command and row.status not in ("available", "missing", "inaccessible")]
+    unreadable = [row for row in rows if row.command and row.status == "inaccessible"]
+    for found, heading, suffix in ((damaged, "Damaged; 'data fetch' replaces them:", ""),
+                                   (unreadable, "Unreadable; fix their permissions, or replace them:", " --force")):
+        if found:
+            print(f"\n{heading}")
+            for row in found[:5]:
+                print(f"  {row.command}{suffix}")
+            if len(found) > 5:
+                print(f"  ... {len(found) - 5} more; see --json")
 
 
 def _show_result(result, json_output):
@@ -85,7 +96,7 @@ def _add_discovery(parser, *, status=False):
     add_limit(parser)
     parser.add_argument("--verify", action="store_true", help="Hash and validate installed files")
     if status:
-        parser.set_defaults(installed=None, local=True)
+        parser.set_defaults(installed=None, local=True)  # status: anything with local files
     else:
         selection = parser.add_mutually_exclusive_group()
         selection.add_argument("--installed", dest="installed", action="store_const", const=True,
@@ -105,7 +116,7 @@ def run(argv=None, prog="orfdata download"):
 
     listing = commands.add_parser("list", help="List every bundled, downloadable or buildable resource")
     _add_discovery(listing)
-    status = commands.add_parser("status", help="Show resources with local files, including damaged installs")
+    status = commands.add_parser("status", help="Show resources with local files, including damaged and unreadable ones")
     _add_discovery(status, status=True)
 
     for verb, description in (("info", "Describe a resource's source pins and download/build route"),
@@ -222,6 +233,9 @@ def run(argv=None, prog="orfdata download"):
                     info = data_info(name, **options)
                     if info["restricted"] and not args.accept_terms:
                         raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
+                    if info["acquire"] is not None and not (info["installed"] and not args.force):
+                        needs_replacement(info["status"], force=args.force, name=f"{name!r} at {info['path']}",
+                                          command=info["command"])
                 paths = _source_paths(args.source_path, "Source overrides")
                 # Source processors may print progress; keep stdout machine-readable.
                 with redirect_stdout(sys.stderr):
@@ -237,10 +251,8 @@ def run(argv=None, prog="orfdata download"):
         if args.command in ("list", "status"):
             rows = list_data(
                 kind=args.kind, species=args.species, contexts=args.context,
-                context_match=args.context_match, installed=args.installed,
+                context_match=args.context_match, installed=args.installed, local=args.local,
                 cache_root=args.cache_root, verify_files=args.verify)
-            if args.local:  # Bundled, installed, damaged or unreadable: anything not simply absent.
-                rows = [row for row in rows if row.status != "missing"]
             _show(rows, args.json, args.limit)
             return
         with redirect_stdout(sys.stderr):

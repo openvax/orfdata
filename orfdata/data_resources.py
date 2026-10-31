@@ -3,7 +3,7 @@
 from dataclasses import replace
 from pathlib import Path
 
-from .downloads import _fetch_command, list_data
+from .downloads import _fetch_command, list_data, needs_replacement
 
 
 def _registry(kind, cache_root):
@@ -46,7 +46,7 @@ def _resolve(name, kind, version, cache_root, verify_files):
         if verify_files:
             row = next(r for r in list_data(kind=row.kind, cache_root=cache_root, verify_files=True)
                        if r.name == name and r.version == row.version)
-    return replace(row, command=_fetch_command(row))
+    return replace(row, command=_fetch_command(row, cache_root))
 
 
 def data_info(name, *, kind=None, version=None, cache_root=None, verify_files=False):
@@ -105,12 +105,8 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
         raise ValueError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
     if row.acquire is None or (row.installed and not force):
         return dict(row.to_dict(), acquired="already installed")
-    if row.status == "inaccessible" and not force:
-        raise ValueError(f"{name!r} at {row.path} can't be read; fix its permissions, choose another "
-                         f"--cache-root, or replace it with 'orfdata data fetch {name} --force'")
-    # Files that are present but fail verification are replaced, as setup does.
     repair = not row.installed and row.status != "missing"
-    force = force or repair
+    force = needs_replacement(row.status, force=force, name=f"{name!r} at {row.path}", command=row.command)
     if row.kind in ("catalog", "dataset"):
         registry = _registry(row.kind, cache_root)
         options = dict(timeout=timeout, show_progress=show_progress)

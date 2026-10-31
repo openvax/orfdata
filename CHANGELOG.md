@@ -3,10 +3,14 @@
 - `orfdata data fetch` repairs an installation whose files fail verification,
   reporting `acquired: repaired`, as `setup` already did; `--force` still
   replaces valid files. An unreadable installation is reported, not replaced,
-  unless `--force` is given (#152).
-- `orfdata data status` lists damaged and unreadable installations with a repair
-  hint instead of hiding them. An incomplete viral collection directory is
-  `corrupt`, not `missing` (#151).
+  unless `--force` is given, in both `fetch` and `setup`, which now share one
+  policy; a multi-name fetch checks this for every name before downloading (#152).
+- `orfdata data status` lists damaged and unreadable installations, each with its
+  exact `data fetch` command, instead of hiding them. Scripts that read
+  `status --json` as "usable only" should filter on `installed` or use
+  `data list --installed`. `list_data(local=True)` selects the same rows. An
+  unreadable viral collection is `inaccessible`, not `corrupt`. Fetch commands
+  in listings carry `--cache-root` when one is given (#151).
 
 # 0.44.0
 

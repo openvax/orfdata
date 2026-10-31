@@ -1,6 +1,7 @@
 """One acquisition contract for downloaded, source-built and bundled resources."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -35,11 +36,7 @@ def test_download_reuse_corruption_and_force_preserve_existing_generation(publis
     assert list(registry.open("fixture").measurements()) == list(original.measurements())
     assert fetch_data("fixture")["acquired"] == "already installed"
     artifact = registry.open("fixture").path
-    with artifact.open("r+b") as handle:
-        handle.seek(-1, 2)
-        last = handle.read(1)
-        handle.seek(-1, 2)
-        handle.write(bytes([last[0] ^ 1]))
+    _flip_last_byte(artifact)
     with pytest.raises(ValueError, match="invalid"):
         data_path("fixture", verify_files=True)
     fetch_data("fixture", force=True, show_progress=False)
@@ -176,7 +173,8 @@ def test_status_shows_and_fetch_repairs_damaged_files(published, capsys):
     _flip_last_byte(artifact)
     run(["data", "status", "--kind", "dataset", "--verify"])
     output = capsys.readouterr().out
-    assert "fixture" in output and "invalid" in output and "Repair with: orfdata data fetch NAME" in output
+    assert "invalid" in output and "Damaged; 'data fetch' replaces them:" in output
+    assert "  orfdata data fetch fixture --kind dataset --version " in output
     run(["data", "status", "--kind", "dataset", "--verify", "--json"])
     assert [row["status"] for row in json.loads(capsys.readouterr().out)] == ["invalid"]
     repaired = fetch_data("fixture", show_progress=False)
@@ -193,16 +191,29 @@ def test_status_omits_absent_resources(published, capsys):
     assert [row["status"] for row in json.loads(capsys.readouterr().out)] == ["missing"]
 
 
-def test_fetch_does_not_replace_unreadable_files_without_force(published):
+unreadable_files_are_readable = pytest.mark.skipif(
+    os.name != "posix" or os.geteuid() == 0, reason="root reads files without read permission")
+
+
+@unreadable_files_are_readable
+def test_fetch_does_not_replace_unreadable_files_without_force(published, monkeypatch, capsys):
+    from orfdata import data_resources
+
     registry, _ = published
     fetch_data("fixture", show_progress=False)
     artifact = registry.open("fixture").path
     artifact.chmod(0)
     try:
-        if data_info("fixture", verify_files=True)["status"] != "inaccessible":
-            pytest.skip("this user can read files without read permission")
-        with pytest.raises(ValueError, match="can't be read.*--force"):
+        assert data_info("fixture", verify_files=True)["status"] == "inaccessible"
+        with pytest.raises(ValueError, match="can't be read.*'orfdata data fetch fixture --kind dataset.* --force'"):
             fetch_data("fixture", show_progress=False)
+        run(["data", "status", "--kind", "dataset", "--verify"])
+        assert "Unreadable; fix their permissions, or replace them:" in capsys.readouterr().out
+        # A multi-name fetch refuses before it downloads anything.
+        monkeypatch.setattr(data_resources, "fetch_data", lambda *a, **k: pytest.fail("downloaded"))
+        with pytest.raises(SystemExit):
+            run(["data", "fetch", "bundled", "fixture"])
+        assert "can't be read" in capsys.readouterr().err
     finally:
         artifact.chmod(0o644)
 
@@ -221,3 +232,30 @@ def test_fetch_repairs_a_damaged_or_incomplete_viral_collection(viral_panel, tmp
     assert collection_state("gdc-viruses", cache_root=root) == "corrupt"
     assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "repaired"
     assert collection_state("gdc-viruses", cache_root=root) == "available"
+
+
+@unreadable_files_are_readable
+def test_an_unreadable_viral_collection_is_not_replaced_without_force(viral_panel, tmp_path):
+    from orfdata.downloads import collection_state
+
+    root = tmp_path / "cache"
+    fetch_data("gdc-viruses", cache_root=root)
+    metadata = data_path("gdc-viruses", cache_root=root) / "metadata.json"
+    metadata.chmod(0)
+    try:
+        assert collection_state("gdc-viruses", cache_root=root) == "inaccessible"
+        with pytest.raises(ValueError, match="can't be read"):
+            fetch_data("gdc-viruses", cache_root=root)
+        assert fetch_data("gdc-viruses", cache_root=root, force=True)["acquired"] == "repaired"
+    finally:
+        if metadata.exists():
+            metadata.chmod(0o644)
+    assert collection_state("gdc-viruses", cache_root=root) == "available"
+
+
+def test_listed_fetch_commands_name_the_cache_root(tmp_path):
+    from orfdata import list_data
+
+    row = next(r for r in list_data(kind="chain", cache_root=tmp_path))
+    assert row.command.endswith(f"--cache-root {tmp_path}")
+    assert list_data(kind="chain", cache_root=tmp_path, local=True) == ()

@@ -35,7 +35,7 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
 
     from .catalog import _catalog_choices, _installed, _plan, _selected, _species
     from .catalogs import CatalogRegistry
-    from .downloads import default_collections
+    from .downloads import default_collections, needs_replacement
     from .liftover import _chain_registry, download_chain, pinned_chains
 
     species = _species(species)
@@ -73,8 +73,10 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
             if label in result["catalogs"]:
                 continue
             state = states[name, version]
-            repair = force or state == "damaged"
             try:
+                # The shared policy needs the inspection status: damaged files are replaced, unreadable refused.
+                status = registry.inspect(name, version, verify_files=False).status if state == "damaged" else "missing"
+                repair = needs_replacement(status, force=force, name=label)
                 if (name, version) in builds:
                     paths = {s.asset_id: shared[s.sha256] for s in registry.info(name, version).sources
                              if s.sha256 in shared}
@@ -98,8 +100,9 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
                 result["chains"][chain.name] = "already downloaded"
                 continue
             download_chain(chain.source_build, chain.target_build, species=chain.species, accept_terms=accept_terms,
-                           force=force or state != "missing", cache_root=root, download_options=options)
-            result["chains"][chain.name] = "downloaded" if state == "missing" else "repaired"
+                           force=needs_replacement(state, force=force, name=chain.name), cache_root=root,
+                           download_options=options)
+            result["chains"][chain.name] = {"missing": "downloaded", "available": "reinstalled"}.get(state, "repaired")
         except Exception as error:
             result["chains"][chain.name] = f"failed: {error}"
             failed.append((chain.name, str(error)))
@@ -115,7 +118,7 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
 
 def _install_collections(names, species, *, force, cache_root, timeout, failed):
     """Install each reference collection, reporting what every one needed."""
-    from .downloads import collection_state, install_collection
+    from .downloads import collection_state, install_collection, needs_replacement
 
     installed = {}
     for name in names:
@@ -124,8 +127,8 @@ def _install_collections(names, species, *, force, cache_root, timeout, failed):
             if state == "available" and not force:
                 installed[name] = "already installed"
                 continue
-            install_collection(name, species=species, force=True, cache_root=cache_root,
-                               timeout=timeout)
+            install_collection(name, species=species, force=needs_replacement(state, force=force, name=name),
+                               cache_root=cache_root, timeout=timeout)
             installed[name] = {"missing": "downloaded",
                                "available": "reinstalled"}.get(state, "repaired")
         except Exception as error:  # Reported with the rest, after everything else is tried.
