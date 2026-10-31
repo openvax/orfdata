@@ -126,13 +126,14 @@ def _setup(argv, prog):
     parser.add_argument("--cache-root", help="Cache directory instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--timeout", type=float, default=60,
                         help="Seconds a download may stall before it is retried, then fails (default 60)")
+    parser.add_argument("--resume", action="store_true", help="Keep partial downloads so an interrupted one continues where it stopped; partials and staging stay on disk after a failure (see the download guide)")
     add_json(parser)
     args = parser.parse_args(argv)
     try:
         with redirect_stdout(sys.stderr):
             result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
                                      cache_root=args.cache_root, timeout=args.timeout, catalogs=args.catalogs,
-                                     collections=args.collections)
+                                     collections=args.collections, resume=args.resume)
     except InstallError as error:  # What did install is still reported.
         print_result(error.result, json_output=args.json)
         parser.exit(1, f"{parser.prog}: error: {error}\n")

@@ -1,4 +1,4 @@
-"""Every acquisition path asks DataCache to resume an interrupted download, unless told not to."""
+"""Downloads restart unless resuming is requested; when it is, every acquisition path asks DataCache."""
 
 import datacache
 import datacache.bundles
@@ -31,41 +31,64 @@ def boundary(monkeypatch):
 
 
 ACQUISITIONS = {
-    "published catalogue": ("bundle", lambda root: CatalogRegistry(cache_root=root).download("ncorf-mammals-mouse")),
-    "published single-file dataset": (
-        "bundle", lambda root: DatasetRegistry(cache_root=root).download("copy-yeast-abundance")),
-    "published archive parts": (
-        "archive", lambda root: DatasetRegistry(cache_root=root).download("pfizer-atlas-dog-peptide-evidence")),
-    "search reference": (
-        "bundle", lambda root: DatasetRegistry(cache_root=root).download_reference("pfizer-atlas-dog-protein")),
-    "pinned genome": ("bundle", lambda root: install_genome("t2t-chm13", cache_root=root)),
-    "pinned chain": ("bundle", lambda root: download_chain("GRCh38", "GRCh37", cache_root=root)),
-    "catalogue build sources": ("materialize", lambda root: CatalogRegistry(cache_root=root).build("openprot-mouse")),
-    "dataset build sources": (
-        "materialize", lambda root: DatasetRegistry(cache_root=root).build("peptideatlas-dog-peptides")),
-    "archived build source": (
-        "archive", lambda root: DatasetRegistry(cache_root=root).build("pfizer-atlas-dog-peptide-evidence")),
-    "setup's shared source": ("bundle", lambda root: _fetch(
-        "https://example.invalid/shared.tsv", "0" * 64, 10, root, dict(timeout=5))),
+    "published catalogue": ("bundle", lambda root, options: CatalogRegistry(cache_root=root).download(
+        "ncorf-mammals-mouse", **options)),
+    "published single-file dataset": ("bundle", lambda root, options: DatasetRegistry(cache_root=root).download(
+        "copy-yeast-abundance", **options)),
+    "published archive parts": ("archive", lambda root, options: DatasetRegistry(cache_root=root).download(
+        "pfizer-atlas-dog-peptide-evidence", **options)),
+    "search reference": ("bundle", lambda root, options: DatasetRegistry(cache_root=root).download_reference(
+        "pfizer-atlas-dog-protein", **options)),
+    "pinned genome": ("bundle", lambda root, options: install_genome(
+        "t2t-chm13", cache_root=root, download_options=options)),
+    "pinned chain": ("bundle", lambda root, options: download_chain(
+        "GRCh38", "GRCh37", cache_root=root, download_options=options)),
+    "catalogue build sources": ("materialize", lambda root, options: CatalogRegistry(cache_root=root).build(
+        "openprot-mouse", download_options=options)),
+    "dataset build sources": ("materialize", lambda root, options: DatasetRegistry(cache_root=root).build(
+        "peptideatlas-dog-peptides", download_options=options)),
+    "archived build source": ("archive", lambda root, options: DatasetRegistry(cache_root=root).build(
+        "pfizer-atlas-dog-peptide-evidence", download_options=options)),
+    "setup's shared source": ("bundle", lambda root, options: _fetch(
+        "https://example.invalid/shared.tsv", "0" * 64, 10, root, options)),
 }
 
 
 @pytest.mark.parametrize("path", ACQUISITIONS)
-def test_acquisition_resumes_by_default(path, boundary, tmp_path):
+def test_downloads_restart_unless_resume_is_requested(path, boundary, tmp_path):
     kind, acquire = ACQUISITIONS[path]
-    with pytest.raises(Stopped):
-        acquire(tmp_path)
-    assert boundary == [(kind, boundary[0][1])]
-    assert boundary[0][1]["resume"] == "auto"
+    for options in (dict(timeout=5), dict(timeout=5, resume="auto")):
+        with pytest.raises(Stopped):
+            acquire(tmp_path, options)
+    assert [found for found, _ in boundary] == [kind, kind]
+    assert "resume" not in boundary[0][1] and boundary[1][1]["resume"] == "auto"
 
 
-def test_explicit_settings_win(boundary, tmp_path):
-    registry = DatasetRegistry(cache_root=tmp_path)
-    with pytest.raises(Stopped):
-        registry.download("copy-yeast-abundance", resume=False, timeout=7)
-    with pytest.raises(Stopped):
-        registry.build("peptideatlas-dog-peptides", download_options=dict(resume=True))
-    with pytest.raises(Stopped):
-        _fetch("https://example.invalid/shared.tsv", "0" * 64, 10, tmp_path, dict(timeout=5))
-    assert [options for _, options in boundary] == [
-        dict(resume=False, timeout=7), dict(resume=True), dict(resume="auto", timeout=5)]
+def test_fetch_and_setup_ask_for_resume_only_when_told(boundary, tmp_path):
+    from orfdata import fetch_data
+    from orfdata.install import InstallError, install_species
+
+    for resume in (False, True):
+        with pytest.raises(Stopped):
+            fetch_data("copy-yeast-abundance", cache_root=tmp_path, show_progress=False, resume=resume)
+        with pytest.raises(InstallError):  # Setup reports each failure after trying everything.
+            install_species("yeast", cache_root=tmp_path, catalogs="all", collections="none", resume=resume)
+    resumed = ["resume" in options for _, options in boundary]
+    half = len(resumed) // 2
+    assert half and not any(resumed[:half]) and all(resumed[half:])
+
+
+def test_cli_passes_resume_through(monkeypatch, capsys):
+    from orfdata import data_resources, install
+    from orfdata.cli import run
+
+    calls = []
+    monkeypatch.setattr(data_resources, "check_fetch", lambda *a, **k: None)
+    monkeypatch.setattr(data_resources, "fetch_data", lambda name, **options: calls.append(options) or {})
+    monkeypatch.setattr(install, "install_species", lambda species, **options: calls.append(options) or {})
+    run(["data", "fetch", "copy-yeast-abundance", "--resume", "--json"])
+    run(["data", "fetch", "copy-yeast-abundance", "--json"])
+    run(["setup", "--species", "yeast", "--resume", "--json"])
+    run(["setup", "--species", "yeast", "--json"])
+    capsys.readouterr()
+    assert [call["resume"] for call in calls] == [True, False, True, False]
