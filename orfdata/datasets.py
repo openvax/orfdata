@@ -41,13 +41,15 @@ def _build_store(manifest, cache_root):
 def _installed_path(registry, name, version, hint, **options):
     """A DataCache registry's local path, or a NotInstalledError saying ``hint`` when nothing is installed.
 
+    ``hint`` may be a function, called only then.
+
     DataCache raises FileNotFoundError only for a missing bundle; damaged files
     raise its own validation error, which passes through.
     """
     try:
         return registry.local_path(name, version, **options)
     except FileNotFoundError as error:
-        raise NotInstalledError(hint) from error
+        raise NotInstalledError(hint() if callable(hint) else hint) from error
 
 
 class DatasetRegistry:

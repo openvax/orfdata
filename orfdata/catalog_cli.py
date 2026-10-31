@@ -54,7 +54,12 @@ def run(argv=None, prog=None):
             add_json(subparser)
     args = parser.parse_args(argv)
     try:
-        definitions = json.loads(Path(args.registry).read_text()) if args.registry else None
+        definitions = None
+        if args.registry:
+            try:
+                definitions = json.loads(Path(args.registry).read_text())
+            except ValueError as error:
+                raise ValueError(f"Invalid catalogue registry {args.registry}: {error}") from error
         try:
             registry = CatalogRegistry(definitions, cache_root=args.cache_root)
         except (KeyError, TypeError, AttributeError) as error:

@@ -296,11 +296,14 @@ def _query(args, parser, catalog_loader):
                 raise UsageError(f"Invalid locus {locus!r}; use CONTIG:START-END for --region, CONTIG:POSITION "
                                  "for --position")
             start = int(match.group(2))
-            options.update(
-                contig=match.group(1),
-                start=start,
-                end=int(match.group(3)) if args.region else start,
-            )
+            end = int(match.group(3)) if args.region else start
+            if start < 1 or end < start:
+                raise UsageError(f"Invalid locus {locus!r}; positions are 1-based and END must be at least START")
+            options.update(contig=match.group(1), start=start, end=end)
+        if args.min_protein_length is not None and args.min_protein_length < 1:
+            raise UsageError("--min-protein-length must be a positive number of amino acids")
+        if args.species and catalog_loader is not load_catalog:
+            raise UsageError("--species is not available here: this command reads one catalogue")
         paths = args.catalog or [None]
         if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
             # The assembly picks the catalogue too, not only checks it.

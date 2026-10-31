@@ -2137,11 +2137,14 @@ def _onto(catalogs, reference, cache_root=None):
             route = chain_routes(_species(catalog.species), catalog.genome_build)[reference.genome_build]
             missing = [c.name for c in route if not chain_downloaded(c, cache_root=cache_root)]
             if missing:
-                accept = " --accept-terms" if any(c.restricted for c in route) else ""
-                raise ValueError(f"The {catalog.source} catalogue is on {catalog.genome_build}; lifting it to "
-                                 f"{reference.genome_build} needs the chain files {', '.join(missing)}: download "
-                                 f"them once with 'orfdata chains download --species "
-                                 f"{_species(catalog.species)}{accept}'")
+                from shlex import join
+
+                command = ["orfdata", "chains"] + ([] if cache_root is None else ["--cache-root", str(cache_root)])
+                command += ["download", "--species", _species(catalog.species)]
+                command += ["--accept-terms"] if any(c.restricted for c in route) else []
+                raise NotInstalledError(f"The {catalog.source} catalogue is on {catalog.genome_build}; lifting it to "
+                                        f"{reference.genome_build} needs the chain files {', '.join(missing)}, "
+                                        f"which are not installed; download them once with: {join(command)}")
             catalog = lift_to(catalog, reference.genome_build, cache_root=cache_root)
         placed.append(catalog)
     return placed[0] if len(placed) == 1 else merge_catalogs(placed)

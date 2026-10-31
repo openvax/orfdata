@@ -133,5 +133,113 @@ def test_install_hints_name_kind_version_cache_root_and_custom_registries(offlin
     with pytest.raises(NotInstalledError) as missing:
         custom.open("fixture")
     message = str(missing.value)
-    assert "registry.download('fixture'" in message and "orfdata datasets --registry FILE" in message
-    assert "data fetch" not in message
+    assert "registry.download('fixture'" in message and "the same --registry file after 'orfdata datasets'" in message
+    assert f"on the command line, adding the same --registry file after 'orfdata datasets': orfdata datasets " \
+           f"--cache-root {root} download fixture" in message
+    assert "data fetch" not in message and "FILE" not in message
+
+
+def test_install_hints_are_not_requoted(offline, tmp_path, capsys):
+    root = tmp_path / "my cache"
+    status, err = _exit(["catalogs", "--cache-root", str(root), "query", "riborf-mouse"], capsys)
+    assert status == 3
+    assert f"or on the command line: orfdata data fetch riborf-mouse --kind catalog --cache-root '{root}'" in err
+    assert "'orfdata" not in err
+
+
+def _gzip_cut(path, payload):
+    import gzip
+
+    data = gzip.compress(json.dumps(payload).encode())
+    path.write_bytes(data[: len(data) // 2])
+
+
+def test_every_catalogue_loader_names_a_malformed_or_truncated_file(offline, tmp_path, capsys):
+    from orfdata.catalog import load_uorf_catalog
+
+    truncated, corrupt, shapeless = tmp_path / "cut.json.gz", tmp_path / "bad.json.gz", tmp_path / "shape.json"
+    _gzip_cut(truncated, {"schema": "orfdata.catalog.v1", "metadata": {}, "records": []})
+    corrupt.write_bytes(b"\x1f\x8b" + b"not gzip at all" * 4)
+    shapeless.write_text(json.dumps({"schema": "isovar.uorf_evidence.v1"}))
+    for path in (truncated, corrupt, shapeless):
+        for loader in (None, load_uorf_catalog):  # isovar-uorf-evidence injects load_uorf_catalog.
+            with pytest.raises(SystemExit) as error:
+                run(["query", "--catalog", str(path)], **({} if loader is None else {"catalog_loader": loader}))
+            err = capsys.readouterr().err
+            assert error.value.code == 1 and f"{path} is not a valid ORF catalogue" in err, (path, loader)
+
+
+def test_species_selection_needs_the_species_catalogue_loader(offline, capsys):
+    from orfdata.catalog import load_uorf_catalog
+
+    with pytest.raises(SystemExit) as error:
+        run(["query", "--species", "mouse"], catalog_loader=load_uorf_catalog)
+    err = capsys.readouterr().err
+    assert error.value.code == 2 and "--species is not available here" in err
+
+
+@pytest.mark.parametrize("argv", [
+    ["query", "canine-mammary-stroma", "--reference", "bogus"],
+    ["query", "canine-mammary-stroma", "--target", "X", "--kind", "gene"],
+    ["query", "canine-mammary-stroma", "--mapping-status", "unique"],
+    ["query", "canine-mammary-stroma", "--mapped"],
+    ["pairs", "canine-mammary-stroma", "--basis", "same_specimen", "--left-target", "X"],
+    ["pairs", "canine-mammary-stroma", "--basis", "same_specimen", "--right-reference", "bogus"],
+])
+def test_dataset_query_mistakes_exit_2_on_an_empty_cache(argv, offline, capsys):
+    status, err = _exit(["datasets", *argv], capsys)
+    assert status == 2 and "not installed" not in err
+
+
+def test_bad_reference_lists_the_registered_choices_without_opening(offline, capsys):
+    status, err = _exit(["datasets", "query", "canine-mammary-stroma", "--reference", "bogus"], capsys)
+    assert status == 2 and "choose from ref:" in err
+
+
+@pytest.mark.parametrize("argv", [
+    ["query", "--region", "chr1:20-10", "--genome-build", "GRCh38"],
+    ["query", "--region", "chr1:0-10", "--genome-build", "GRCh38"],
+    ["query", "--position", "chr1:0", "--genome-build", "GRCh38"],
+    ["query", "--species", "mouse", "--min-protein-length", "0"],
+    ["proteome", "--species", "human", "--release", "115", "--min-protein-length", "5"],
+    ["proteome", "--species", "human", "--release", "115", "--nc-orf-sources", "ms", "--min-protein-length", "0"],
+])
+def test_out_of_range_values_are_usage_errors_before_loading(argv, offline, capsys):
+    status, err = _exit(argv, capsys)
+    assert status == 2 and "--help' for usage" in err
+
+
+def test_missing_chains_for_a_supplied_catalogue_are_not_installed(tmp_path):
+    from orfdata.catalog import load_catalog
+    from orfdata.proteome import _onto
+    from orfdata.reference import ReferenceContext
+
+    catalog = load_catalog()  # The bundled GRCh38 catalogue.
+    target = ReferenceContext(9606, "homo_sapiens", "GRCh37", "ensembl", "75")
+    with pytest.raises(NotInstalledError) as error:
+        _onto(catalog, target, cache_root=tmp_path / "my cache")
+    message = str(error.value)
+    assert "needs the chain files GRCh38_to_GRCh37" in message
+    assert f"orfdata chains --cache-root '{tmp_path / 'my cache'}' download --species homo_sapiens" in message
+
+
+@pytest.mark.parametrize("group, label", [("catalogs", "catalogue"), ("datasets", "dataset")])
+def test_a_registry_file_with_a_json_syntax_error_is_named(group, label, offline, tmp_path, capsys):
+    path = tmp_path / "registry.json"
+    path.write_text("{bad")
+    status, err = _exit([group, "--registry", str(path), "list"], capsys)
+    assert status == 1 and f"Invalid {label} registry {path}" in err
+
+
+def test_an_undownloaded_published_catalogue_with_a_build_points_to_it(tmp_path):
+    from test_catalog_registry import definition as catalog_definition
+    from test_catalog_registry import setup_release
+
+    manifest, source, _ = setup_release(tmp_path)
+    registry = CatalogRegistry(catalog_definition(manifest), cache_root=tmp_path / "cache")
+    with pytest.raises(NotInstalledError, match="is not installed"):
+        registry.open(manifest.catalog_id)
+    registry.build(manifest.catalog_id, source_paths={"source.json": source})
+    with pytest.raises(NotInstalledError) as error:
+        registry.open(manifest.catalog_id)
+    assert "a local build is installed" in str(error.value) and "--built" in str(error.value)

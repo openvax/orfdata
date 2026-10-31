@@ -361,7 +361,7 @@ def test_build_only_release_builds_opens_and_inspects_locally(tmp_path, capsys):
     definitions = _build_only(manifest)
     registry = DatasetRegistry(definitions, cache_root=tmp_path)
     assert registry.inspect("peptideatlas-dog-peptides").status == "missing"
-    with pytest.raises(FileNotFoundError, match="hasn't been built.*orfdata datasets --registry FILE .*build peptideatlas-dog-peptides"):
+    with pytest.raises(FileNotFoundError, match="hasn't been built.*same --registry file.*orfdata datasets .*build peptideatlas-dog-peptides"):
         registry.open("peptideatlas-dog-peptides")
     config = tmp_path / "registry.json"
     config.write_text(json.dumps(definitions))

@@ -29,6 +29,34 @@ def _check_search_reference(registry, args):
                              f"{', '.join(dict.fromkeys(choices)) or 'none'}")
 
 
+def _check_query(registry, args, parser):
+    """The dataset's references, after checking the query or pairs options its manifest settles.
+
+    This needs only the registered manifest, so a command-line mistake exits 2
+    whether or not the dataset is installed.
+    """
+    references = {r.key: r for r in registry.info(args.name, args.version).references}
+    if args.reference is not None:
+        _reference(references, args.reference, "--reference")
+    if args.command == "pairs":
+        for side in ("left", "right"):
+            values = [getattr(args, f"{side}_{field}") for field in ("target", "kind", "namespace", "reference")]
+            if any(values) and not all(values):
+                parser.error(f"{side.title()} target queries require --{side}-target, --{side}-kind, "
+                             f"--{side}-namespace and --{side}-reference")
+            if values[3] is not None:
+                _reference(references, values[3], f"--{side}-reference")
+        return references
+    if any((args.target, args.kind, args.namespace)) and not all((args.target, args.kind, args.namespace,
+                                                                   args.reference)):
+        parser.error("Target queries require --target, --kind, --namespace and --reference")
+    if args.mapped and not args.target:
+        parser.error("--mapped requires an exact target and reference")
+    if not args.mapped and (args.mapping_status or args.require_sequence):
+        parser.error("Mapping filters require --mapped")
+    return references
+
+
 def run(argv=None, prog=None):
     parser = ArgumentParser(description=__doc__, prog=prog,
                             epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
@@ -124,7 +152,10 @@ def run(argv=None, prog=None):
         definitions = None
         if args.registry:
             with open(args.registry) as handle:
-                definitions = json.load(handle)
+                try:
+                    definitions = json.load(handle)
+                except ValueError as error:
+                    raise ValueError(f"Invalid dataset registry {args.registry}: {error}") from error
         try:
             registry = DatasetRegistry(definitions, cache_root=args.cache_root)
         except (KeyError, TypeError, AttributeError) as error:
@@ -192,21 +223,15 @@ def run(argv=None, prog=None):
             result = dict(path=str(dataset.path), counts=dataset.counts,
                           dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":
+            references = _check_query(registry, args, parser)
             open_dataset = registry.open_build if args.built else registry.open
             dataset = open_dataset(args.name, args.version)
-            references = {r.key: r for r in dataset.manifest.references}
-            if args.reference is not None:
-                _reference(references, args.reference, "--reference")
             selections = {}
             for side in ("left", "right"):
                 identifier, kind, namespace, reference = (
                     getattr(args, f"{side}_{field}") for field in ("target", "kind", "namespace", "reference"))
-                if any((identifier, kind, namespace, reference)):
-                    if not all((identifier, kind, namespace, reference)):
-                        parser.error(f"{side.title()} target queries require --{side}-target, --{side}-kind, "
-                                     f"--{side}-namespace and --{side}-reference")
-                    selections[f"{side}_target"] = ScopedTarget(
-                        _reference(references, reference, f"--{side}-reference"), kind, identifier, namespace)
+                if identifier:
+                    selections[f"{side}_target"] = ScopedTarget(references[reference], kind, identifier, namespace)
                 selections[f"{side}_filters"] = {
                     field: getattr(args, f"{side}_{field}")
                     for field in ("quantity", "status", "unit", "scale", "log_base")
@@ -226,28 +251,20 @@ def run(argv=None, prog=None):
                                          ("RIGHT", "target_relation.right.identifier")))
             return
         else:
+            references = _check_query(registry, args, parser)
             open_dataset = registry.open_build if args.built else registry.open
             dataset = open_dataset(args.name, args.version)
-            references = {r.key: r for r in dataset.manifest.references}
-            if args.reference is not None:
-                _reference(references, args.reference, "--reference")
             target = None
-            if any((args.target, args.kind, args.namespace)):
-                if not all((args.target, args.kind, args.namespace, args.reference)):
-                    parser.error("Target queries require --target, --kind, --namespace and --reference")
+            if args.target:
                 target = ScopedTarget(references[args.reference], args.kind, args.target, args.namespace)
             filters = dict(sample_id=args.sample, assay_id=args.assay_id,
                            quantity=args.quantity, status=args.status,
                            unit=args.unit, scale=args.scale, log_base=args.log_base)
             if args.mapped:
-                if target is None:
-                    parser.error("--mapped requires an exact target and reference")
                 measurements = dataset.mapped_measurements(
                     target, mapping_statuses=args.mapping_status or ["unique"],
                     require_sequence=args.require_sequence, **filters)
             else:
-                if args.mapping_status or args.require_sequence:
-                    parser.error("Mapping filters require --mapped")
                 measurements = dataset.measurements(target=target, reference=args.reference, **filters)
             columns = (("REF", "target.reference"), ("TARGET", "target.identifier"), ("SAMPLE", "sample_id"),
                        ("QUANTITY", "quantity"), ("VALUE", "value"),

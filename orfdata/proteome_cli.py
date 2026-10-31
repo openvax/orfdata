@@ -63,6 +63,10 @@ def run(argv=None, prog=None, *, genome_loader=None):
             raise UsageError("--nc-orf-sources requires nonempty source names")
         if args.no_reference_cds and not names and not args.viral:
             raise UsageError("No protein layers selected: add --nc-orf-sources or --viral")
+        if args.min_protein_length is not None and not names:
+            raise UsageError("--min-protein-length applies to ncORFs; add --nc-orf-sources")
+        if args.min_protein_length is not None and args.min_protein_length < 1:
+            raise UsageError("--min-protein-length must be a positive number of amino acids")
         sources = [load_catalog(name) if "/" in name or name.endswith((".json", ".json.gz"))
                    or Path(name).is_file() else name for name in names]
         if args.genome is not None:

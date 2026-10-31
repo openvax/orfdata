@@ -81,23 +81,24 @@ def install_command(name, kind, version=None, *, cache_root=None, restricted=Fal
 
 
 def install_hint(registry, call, name, kind, version, *, force=False, build=False):
-    """``"<Python call> or '<command>'"`` for one resource of ``registry``, in its cache.
+    """``"<Python call>, or on the command line: <command>"`` for one resource of ``registry``, in its cache.
 
     ``call`` is a method call on the registry, such as ``download('x', '1')``.
     ``build=True`` asks for an explicit source build of a published release. A
     registry made from custom definitions is not what ``orfdata data fetch``
-    reads, so its command passes them with ``--registry``.
+    reads, so its command is the group's own, given the same ``--registry``
+    file. The command comes last and unquoted, so it can be copied as it is.
     """
     root = getattr(registry, "_cache_root", None)
     if getattr(registry, "_packaged", True):
         owner = f"{type(registry).__name__}({'' if root is None else f'cache_root={str(root)!r}'})"
         command = install_command(name, kind, version, cache_root=root, force=force,
                                   verb="build" if build else None)
-    else:
-        owner = "registry"
-        command = install_command(name, kind, version, cache_root=root, force=force,
-                                  verb=call.split("(", 1)[0].replace("_", "-"), registry_file="FILE")
-    return f"{owner}.{call} or '{command}'"
+        return f"{owner}.{call}, or on the command line: {command}"
+    command = install_command(name, kind, version, cache_root=root, force=force,
+                              verb=call.split("(", 1)[0].replace("_", "-"))
+    return (f"registry.{call}, or on the command line, adding the same --registry file after "
+            f"'orfdata {_GROUPS[kind]}': {command}")
 
 
 def _fetch_command(row, cache_root=None):

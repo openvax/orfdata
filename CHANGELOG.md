@@ -1,10 +1,11 @@
 # Unreleased
 
 - Exit with a status scripts can branch on: 1 when a command fails (network,
-  checksums, damaged data or files, unknown names), 2 only for an invalid
-  command line, and 3 when a resource the command needs isn't installed. The
-  command line is checked before anything is read. Only command-line mistakes
-  point to `--help`. Up to 0.44.0 nearly every failure exited 2; a partial
+  checksums, damaged data or files, unknown names), 2 for a command line the
+  parser or the command's own checks reject, and 3 when a resource the command
+  needs isn't installed. Those checks run before anything is read; a few option
+  values are checked only by library code and exit 1. Only command-line
+  mistakes point to `--help`. Up to 0.44.0 nearly every failure exited 2; a partial
   `setup` exited 1 (#155).
 - Raise `orfdata.NotInstalledError`, also a `FileNotFoundError` and a
   `ValueError`, for catalogues, datasets, search references, genomes, chains,

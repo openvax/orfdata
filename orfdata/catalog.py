@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import zlib
 from collections import Counter
 from copy import copy, deepcopy
 from dataclasses import asdict, dataclass, field, replace
@@ -916,23 +917,52 @@ def _load_catalog(path=None, *, expected_sha256=None, resource="orf-evidence"):
             raise ValueError("Packaged uORF catalogue checksum mismatch")
     if expected_sha256 is not None and hashlib.sha256(raw).hexdigest() != expected_sha256:
         raise ValueError("uORF catalogue checksum mismatch")
+    try:
+        records, metadata = _parse_catalog(raw)
+    except _MALFORMED as error:
+        if path is None:
+            raise
+        raise _invalid_catalog(path, error) from error
+    try:
+        return ORFCatalog(records, metadata)
+    except (KeyError, ValueError) as error:  # Metadata the file lacks or gets wrong; anything else is a bug.
+        if path is None:
+            raise
+        raise _invalid_catalog(path, error) from error
+
+
+# What reading a damaged or malformed catalogue file raises: truncated or corrupt
+# gzip, undecodable bytes, invalid JSON, and fields that are missing or of the wrong type.
+_MALFORMED = (ValueError, KeyError, TypeError, EOFError, zlib.error, gzip.BadGzipFile)
+
+
+def _invalid_catalog(path, error):
+    detail = str(error) if isinstance(error, ValueError) else f"{type(error).__name__}: {error}"
+    return ValueError(f"{path} is not a valid ORF catalogue: {detail}")
+
+
+def _parse_catalog(raw):
+    """A catalogue file's records and metadata, checking its shape."""
     if raw.startswith(b"\x1f\x8b"):
         raw = gzip.decompress(raw)
     data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("the file is not a JSON object")
     if data.get("schema") not in ("isovar.uorf_evidence.v1", "orfdata.catalog.v1"):
         raise ValueError("Unsupported uORF evidence schema")
-    if data["metadata"].get("coordinates") != "1-based-inclusive":
+    metadata = data["metadata"]
+    if not isinstance(metadata, dict) or not isinstance(data["records"], list):
+        raise ValueError("metadata must be an object and records a list")
+    if metadata.get("coordinates") != "1-based-inclusive":
         raise ValueError("Unsupported uORF coordinate convention")
     legacy = data["schema"] == "isovar.uorf_evidence.v1"
-    metadata = data["metadata"]
     if legacy:
         if metadata.get("genome_build") != "GRCh38":
             raise ValueError("Legacy Isovar data are explicitly human GRCh38 only")
         metadata = dict(metadata, taxon_id=9606, species="homo_sapiens")
     elif not metadata.get("sources"):
         raise ValueError("Generic catalogues require source provenance")
-    records = [_record(row, legacy) for row in data["records"]]
-    return ORFCatalog(records, metadata)
+    return [_record(row, legacy) for row in data["records"]], metadata
 
 
 def _record(row, legacy=False):
@@ -1039,12 +1069,7 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     if path is not None:
         if registry is not None:
             raise ValueError("Pass a catalogue path or a registry, not both")
-        try:
-            catalog = _load_catalog(path, expected_sha256=expected_sha256)
-        except ValueError as error:
-            raise ValueError(f"{path} is not a valid ORF catalogue: {error}") from error
-        except (KeyError, TypeError, AttributeError) as error:  # The file's structure, not a bug here.
-            raise ValueError(f"{path} is not a valid ORF catalogue: {type(error).__name__}: {error}") from error
+        catalog = _load_catalog(path, expected_sha256=expected_sha256)
         if species is not None and _species(species) != _species(catalog.species):
             raise ValueError(f"{path} is a {_species(catalog.species)} catalogue, not {_species(species)}")
         if genome_build is not None and genome_build != catalog.genome_build:

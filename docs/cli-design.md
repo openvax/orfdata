@@ -23,7 +23,8 @@ draw on OpenVax's OncoRef inventory summaries and MHCtools' shared table formatt
 - Discovery and help never acquire resources. Downloads and builds require an
   explicit acquisition command and continue to enforce source terms and pins.
 - Errors identify the problem and return a status a script can branch on: 1 when
-  the command fails, 2 for a mistake in the command line itself, and 3 when a
+  the command fails, 2 for a command-line mistake the parser or the command's own
+  checks catch (library code validates a few values itself, and those exit 1), and 3 when a
   resource it needs isn't installed. Only command-line mistakes point to command
   help; a missing installation names the command that installs it. Unexpected
   internal errors keep their traceback rather than being reported as user errors.

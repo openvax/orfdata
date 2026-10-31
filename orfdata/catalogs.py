@@ -201,8 +201,14 @@ class CatalogRegistry:
             return self.open_build(name, version, verify_files=verify_files)
         manifest = self.info(name, version)
         version = self._published(name, version)
-        hint = (f"The {name} {version} ORF catalogue is not installed; download it with "
-                + install_hint(self, f"download({name!r}, {version!r})", name, "catalog", version))
+        def hint():
+            download = install_hint(self, f"download({name!r}, {version!r})", name, "catalog", version)
+            if self.inspect_build(name, version, verify_files=False).status == "available":
+                return (f"The {name} {version} ORF catalogue's published artifact is not downloaded, but a local "
+                        f"build is installed: open it with open_build({name!r}, {version!r}) or "
+                        f"'orfdata catalogs query {name} --built', or download the artifact with {download}")
+            return f"The {name} {version} ORF catalogue is not installed; download it with {download}"
+
         return _open(_installed_path(self._data_registry(), name, version, hint, asset=_ASSET,
                                      verify_files=verify_files), manifest)
 
