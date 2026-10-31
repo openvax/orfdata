@@ -102,9 +102,9 @@ that uses them, and a bad one there exits 1 like any other failure: for example,
 an unknown `orfdata viral coverage --context` or `datasets pairs --basis`.
 
 In Python, a missing installation raises `orfdata.NotInstalledError`, which is
-also a `FileNotFoundError` and a `ValueError`. Up to 0.44.0, nearly every
-failure exited 2 (a partial `setup` exited 1); scripts that tested for 2 should
-test for a nonzero status, or for 3 before installing what is missing.
+also a `FileNotFoundError` and a `ValueError`. Up to 0.43, nearly every failure
+exited 2 (a partial `setup` exited 1); scripts that tested for 2 should test for
+a nonzero status, or for 3 before installing what is missing.
 
 ## Output streams
 
@@ -124,7 +124,19 @@ default.
 Add `--json` to management commands or ORF queries whose JSON output your script
 parses. Add `--format jsonl` to dataset queries or paired-measurement exports to
 retain their previous streaming representation. Explicit FASTA, TSV and GTF
-exports retain their formats. Python APIs and stored data formats are unchanged.
+exports retain their formats.
+
+Check exit statuses again: failures now exit 1, command-line mistakes 2 and a
+missing installation 3, where 0.42 and 0.43 exited 2 for nearly every failure (see
+[Exit statuses](#exit-statuses)). `orfdata data status` and
+`list_data(local=True)` now include damaged and unreadable installations, so a
+script that reads them as usable installations only should filter on
+`installed`.
+
+Stored data keeps its format, apart from viral collections: new installs go to a
+store that earlier versions don't read, and collections they installed still
+open. The [release notes](https://github.com/openvax/orfdata/blob/main/CHANGELOG.md)
+list every change, including those to Python APIs.
 
 The [CLI design and audit](cli-design.md) explains the conventions and the
 fixture-backed command audit that checks them in CI.

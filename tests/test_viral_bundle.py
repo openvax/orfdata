@@ -344,7 +344,7 @@ def test_concurrent_refreshes_take_turns_and_pruning_is_explicit(viral_panel, tm
 
 def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
         viral_panel, tmp_path, monkeypatch):
-    # ORFdata 0.44 kept a collection as one plain directory.
+    # ORFdata 0.43 kept a collection as one plain directory.
     installed = _install(tmp_path)
     legacy = (get_data_dir(str(tmp_path)) / "viral" / "references" / "homo_sapiens" /
               "gdc-viruses" / bundle_version(GDC_VIRUSES))
@@ -359,7 +359,7 @@ def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
     assert data_path("gdc-viruses", cache_root=str(tmp_path)) == legacy
     with monkeypatch.context() as offline:
         offline.setattr(viral_panel_module, "_write_bundle",
-                        lambda *a, **k: pytest.fail("a verified 0.44 collection is reused"))
+                        lambda *a, **k: pytest.fail("a verified 0.43 collection is reused"))
         assert download_viral_references(species="human", cache_root=str(tmp_path)) == opened
 
     with opened.annotation_gtf.open() as held:
@@ -530,5 +530,5 @@ def test_a_linked_044_directory_still_opens(viral_panel, tmp_path):
     assert opened.path == legacy and collection_state("gdc-viruses", cache_root=str(tmp_path)) == "available"
     download_viral_references(species="human", cache_root=str(tmp_path), force=True)
     pruned = prune_viral_references(species="human", cache_root=str(tmp_path))
-    assert pruned["deleted"] == () and "link to a 0.44 directory" in pruned["skipped"][str(legacy)]
+    assert pruned["deleted"] == () and "link to a 0.43 directory" in pruned["skipped"][str(legacy)]
     assert moved.is_dir()

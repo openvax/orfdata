@@ -1,5 +1,16 @@
-# Unreleased
+# 0.44.0
 
+- Show a command guide for bare `orfdata` and command groups; add `help COMMAND`
+  and an explicit `query` subcommand with discoverable examples.
+- Default to concise human summaries and bounded, wrapped tables across every
+  command. Preserve native measurement units, reference scopes and pairing basis.
+- Require explicit machine output: `--json` for complete JSON documents and
+  dataset `--format jsonl` for the former streaming representation. Explicit
+  FASTA/TSV/GTF formats and Python return values keep their shape. Human `--limit` settings
+  never truncate exports. Proteome/lift summaries remain on stderr.
+- Run every CLI leaf in human and JSON modes against tiny offline fixtures in CI,
+  with exhaustive help, error and output-contract checks. See the
+  [CLI migration guide](https://openvax.github.io/orfdata/cli/#migrating-scripts-from-042-or-043).
 - `orfdata data fetch` repairs an installation whose files fail verification,
   reporting `acquired: repaired`, as `setup` already did; `--force` still
   replaces valid files. An unreadable installation is reported, not replaced,
@@ -25,14 +36,14 @@
   store it can't validate. A selection is rebuilt after its collection is
   refreshed, so its recorded source is always the copy it was built from. A
   forced install repairs a store that lost its marker; an interrupted install's
-  working files are swept by the next one. Collections installed by 0.44 or
+  working files are swept by the next one. Collections installed by 0.43 or
   earlier, including ones linked into place, still open (#158).
 - Exit with a status scripts can branch on: 1 when a command fails (network,
   checksums, damaged data or files, unknown names), 2 for a command line the
   parser or the command's own checks reject, and 3 when a resource the command
   needs isn't installed. Those checks run before anything is read; a few option
   values are checked only by library code and exit 1. Only command-line
-  mistakes point to `--help`. Up to 0.44.0 nearly every failure exited 2; a partial
+  mistakes point to `--help`. Up to 0.43 nearly every failure exited 2; a partial
   `setup` exited 1 (#155).
 - Raise `orfdata.NotInstalledError`, also a `FileNotFoundError` and a
   `ValueError`, for catalogues, datasets, search references, genomes, chains,
@@ -64,20 +75,6 @@
   staging after a failure, and archive installs keep every part until the
   dataset is published. The eleven compressed single-file datasets can't
   resume; see "Interrupted downloads" in the download guide (part of #156).
-
-# 0.44.0
-
-- Show a command guide for bare `orfdata` and command groups; add `help COMMAND`
-  and an explicit `query` subcommand with discoverable examples.
-- Default to concise human summaries and bounded, wrapped tables across every
-  command. Preserve native measurement units, reference scopes and pairing basis.
-- Require explicit machine output: `--json` for complete JSON documents and
-  dataset `--format jsonl` for the former streaming representation. Explicit
-  FASTA/TSV/GTF formats and Python APIs are unchanged. Human `--limit` settings
-  never truncate exports. Proteome/lift summaries remain on stderr.
-- Run every CLI leaf in human and JSON modes against tiny offline fixtures in CI,
-  with exhaustive help, error and output-contract checks. See the
-  [CLI migration guide](https://openvax.github.io/orfdata/cli/#migrating-scripts-from-042-or-043).
 
 # 0.43.1
 

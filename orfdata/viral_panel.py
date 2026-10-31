@@ -676,7 +676,7 @@ def _bundle_readme(collection, genome_rows, transcript_rows, complete, retrieved
 # reader finds the old bundle or the new one, never a missing or partial one.
 # Replaced bundles are kept, as DataCache keeps its own, because a running
 # program may still be reading them; prune_viral_references removes them. ORFdata
-# 0.44 and earlier kept one plain directory per version, under "references" and
+# 0.43 and earlier kept one plain directory per version, under "references" and
 # "indexes"; such a directory is still read while the store has no bundle, and
 # counts as the oldest bundle.
 _STORE_KIND = "orfdata-viral"
@@ -706,7 +706,7 @@ def _bundle_store():
 
 
 def _bundle_path(cache_root, species, collection, *, area=_COLLECTIONS):
-    """The store a collection's version is published in; ``area`` selects the 0.44 directory."""
+    """The store a collection's version is published in; ``area`` selects the 0.43 directory."""
     from .datasets import get_data_dir
 
     collection = viral_collection(collection)
@@ -727,7 +727,7 @@ def _is_directory(path):
 
 
 def _legacy_directory(path):
-    """Whether a 0.44 directory is there, following a link to it as 0.44 did; unreadable counts as absent."""
+    """Whether a 0.43 directory is there, following a link to it as 0.43 did; unreadable counts as absent."""
     try:
         return Path(path).is_dir()
     except OSError:
@@ -799,10 +799,10 @@ _SELECTION_REPAIR = "select_viral_references rebuilds it"
 
 
 def _current(path, legacy, repair):
-    """The directory holding a store's current bundle, else a 0.44 directory, else None.
+    """The directory holding a store's current bundle, else a 0.43 directory, else None.
 
     A damaged store raises ValueError naming what fixes it (``repair`` when a
-    forced install can), an unreadable one its OSError. An unreadable 0.44
+    forced install can), an unreadable one its OSError. An unreadable 0.43
     directory counts as absent.
     """
     store = _store(path)
@@ -902,14 +902,14 @@ def prune_viral_references(
     A refresh keeps the bundle it replaces, as DataCache keeps its own,
     because a running program may still be reading it; nothing is pruned
     automatically. Paths into deleted bundles stop working, so prune only
-    when no program still uses them. A directory installed by ORFdata 0.44 or
+    when no program still uses them. A directory installed by ORFdata 0.43 or
     earlier counts as the oldest bundle. The PyEnsembl indexes
     :func:`viral_genome` built under ``cache_root`` for deleted bundles are
     removed too.
 
     Returns ``{"deleted": (bundle, ...), "skipped": {path: reason}}``. A store
     that can't be read or doesn't validate is skipped untouched, with the
-    reason, and pruning goes on with the rest; so is a 0.44 directory that is
+    reason, and pruning goes on with the rest; so is a 0.43 directory that is
     a link, and a bundle that can't be removed.
     """
     if isinstance(keep, bool) or not isinstance(keep, int) or keep < 1:
@@ -939,7 +939,7 @@ def prune_viral_references(
             skipped[str(path)] = problem[1]
             continue
         if not _is_directory(path):
-            continue  # At most a 0.44 directory: the current bundle, which is kept.
+            continue  # At most a 0.43 directory: the current bundle, which is kept.
         with store.lock():
             bundles = [legacy] if _legacy_directory(legacy) else []
             if _is_directory(store.bundles):
@@ -947,7 +947,7 @@ def prune_viral_references(
             for bundle in bundles[:-keep]:
                 if not _is_directory(bundle):
                     if bundle == legacy:
-                        skipped[str(bundle)] = "is a link to a 0.44 directory; remove it by hand"
+                        skipped[str(bundle)] = "is a link to a 0.43 directory; remove it by hand"
                     continue  # Never follow a link out of the store.
                 index = _annotation_index(cache_root, collection, bundle)
                 try:
@@ -1120,7 +1120,7 @@ def _copy_gtf(source, destination, genome_ids):
 
 def _index_path(cache_root, species, collection, contexts, excluded_contexts,
                 context_match, subsets, genome_ids, *, area=_SELECTIONS):
-    """The store a selection is published in; ``area`` selects the 0.44 directory."""
+    """The store a selection is published in; ``area`` selects the 0.43 directory."""
     from .datasets import get_data_dir
 
     version = bundle_version(viral_collection(collection))
