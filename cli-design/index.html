@@ -1495,7 +1495,12 @@ draw on OpenVax's OncoRef inventory summaries and MHCtools' shared table formatt
   stdout and its build summary stays on stderr, as does the lift summary.</li>
 <li>Discovery and help never acquire resources. Downloads and builds require an
   explicit acquisition command and continue to enforce source terms and pins.</li>
-<li>Errors identify the problem, return nonzero, and point to command help.</li>
+<li>Errors identify the problem and return a status a script can branch on: 1 when
+  the command fails, 2 for a command-line mistake the parser or the command's own
+  checks catch (library code validates a few values itself, and those exit 1), and 3 when a
+  resource it needs isn't installed. Only command-line mistakes point to command
+  help; a missing installation names the command that installs it. Unexpected
+  internal errors keep their traceback rather than being reported as user errors.</li>
 </ul>
 <h2 id="audit">Audit<a class="headerlink" href="#audit" title="Permanent link">&para;</a></h2>
 <p>The command audit tests enumerate the parser tree, exercise help and bare groups,

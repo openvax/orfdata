@@ -337,6 +337,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#exit-statuses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit statuses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output streams
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#migrating-scripts-from-042-or-043" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1468,6 +1490,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#exit-statuses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit statuses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output streams
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#migrating-scripts-from-042-or-043" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1610,6 +1654,42 @@ labels distinguish scoped identifiers that happen to have the same spelling.
 Mapped measurements show the original observation and its mapping attribution;
 pair previews show their pairing basis, temporal relationship and target
 relationship. Full reference identities and provenance remain in JSON/JSONL.</p>
+<h2 id="exit-statuses">Exit statuses<a class="headerlink" href="#exit-statuses" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>The command succeeded.</td>
+</tr>
+<tr>
+<td>1</td>
+<td>The command failed: a download or checksum failed, local data or a file you passed is damaged or inconsistent, or a name the data is searched for isn't there (for example an unknown resource name or ORF ID).</td>
+</tr>
+<tr>
+<td>2</td>
+<td>The command line is invalid, as the parser or the command's own checks find it: an unknown command or option, a missing argument, options that can't be combined, a restricted resource without <code>--accept-terms</code>, an out-of-range locus or length, or a value the command checks against the choices it lists (for example a dataset <code>--reference</code>). The message points to <code>--help</code>.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>A resource the command needs isn't installed. The message names the command that installs it, such as <code>orfdata data fetch NAME</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Those checks run before anything is read, so the mistakes they catch exit 2
+whatever is installed. Some option values are checked only by the library code
+that uses them, and a bad one there exits 1 like any other failure: for example,
+an unknown <code>orfdata viral coverage --context</code> or <code>datasets pairs --basis</code>.</p>
+<p>In Python, a missing installation raises <code>orfdata.NotInstalledError</code>, which is
+also a <code>FileNotFoundError</code> and a <code>ValueError</code>. Up to 0.44.0, nearly every
+failure exited 2 (a partial <code>setup</code> exited 1); scripts that tested for 2 should
+test for a nonzero status, or for 3 before installing what is missing.</p>
+<h2 id="output-streams">Output streams<a class="headerlink" href="#output-streams" title="Permanent link">&para;</a></h2>
 <p>Results and exports go to stdout. Progress and errors go to stderr. <code>data path</code>
 and <code>viral inventory download</code> print a plain path by default. <code>proteome</code> writes
 FASTA to stdout unless <code>--output</code> is supplied; its summary goes to stderr.
