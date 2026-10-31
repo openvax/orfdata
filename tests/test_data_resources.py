@@ -190,12 +190,33 @@ def test_preview_shares_rows_among_kinds():
     assert _preview(rows, 0) == (rows, {}) and _preview(rows, 11) == (rows, {})
 
 
-def test_fetch_summary_names_the_resource_and_what_happened(published, capsys):
+def test_fetch_summary_names_the_resource_and_what_happened(published, monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path / "isolated"))
     run(["data", "fetch", "fixture"])
     output = capsys.readouterr().out
     assert "name: fixture" in output and "version: " in output and "acquired: downloaded" in output
     run(["data", "fetch", "fixture"])
     assert "acquired: already installed" in capsys.readouterr().out
+    # The focused command reports reuse the same way, rather than claiming another download.
+    run(["data", "dataset", "fixture"])
+    output = capsys.readouterr().out
+    assert "acquired: already installed" in output and "title: " in output
+    run(["data", "fetch", "fixture", "bundled"])
+    assert "\n\nkind: catalog" in capsys.readouterr().out
+
+
+def test_info_on_a_viral_collection_names_it(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path))
+    run(["data", "info", "gdc-viruses"])
+    output = capsys.readouterr().out
+    assert "name: gdc-viruses" in output and "version: v" in output and "command: orfdata data fetch" in output
+
+
+def test_preview_rejects_a_negative_limit():
+    from orfdata.download_cli import _preview
+
+    with pytest.raises(ValueError, match="nonnegative"):
+        _preview([object()], -1)
 
 
 def test_viral_fetch_summary_names_the_collection(viral_panel, tmp_path, capsys):

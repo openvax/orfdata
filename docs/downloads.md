@@ -26,8 +26,9 @@ prints an installed file or directory for scripts; missing data is an error,
 and never triggers a download. Use `--verify` on reads to validate local bytes,
 `--cache-root DIR` to select a cache, and `--json` for machine output.
 `fetch --json` returns one result per distinct requested name. Human tables
-preview 25 rows; `list` and `status` share those rows among resource kinds, so
-every kind appears, and say what each kind left out. Use `--limit 0` for all
+preview 25 rows; `list` and `status` take those rows from each resource kind in
+turn, so every kind appears whenever there is room for one row of each (the
+default always has), and say what each kind left out. Use `--limit 0` for all
 rows. `--json` always returns complete
 results. See the [CLI guide](cli.md) for output formats and migration notes.
 
