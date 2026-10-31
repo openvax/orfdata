@@ -111,7 +111,7 @@ def check_fetch(name, *, kind=None, version=None, cache_root=None, force=False, 
 
 
 def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
-               source_paths=None, timeout=DOWNLOAD_TIMEOUT, show_progress=True, accept_terms=False):
+               source_paths=None, timeout=DOWNLOAD_TIMEOUT, show_progress=True, accept_terms=False, resume=False):
     """Install one resource and return its status, downloading or building as declared.
 
     Downloads retain their checksum validation. Builds use the same pinned source
@@ -119,6 +119,11 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
     that fail verification are replaced (``acquired`` is then ``"repaired"``);
     ``force`` replaces valid files too. Discovery and ordinary queries never
     invoke this function implicitly.
+
+    ``resume=True`` keeps partial downloads so an interrupted one continues
+    where it stopped (DataCache's ``resume="auto"``). Partials and staging then
+    stay on disk after a failure, and an archive keeps every part until it is
+    installed. A viral collection, fetched record by record, doesn't resume.
     """
     row = check_fetch(name, kind=kind, version=version, cache_root=cache_root, force=force,
                       source_paths=source_paths, accept_terms=accept_terms)
@@ -126,9 +131,13 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
         return dict(row.to_dict(), acquired="already installed")
     repair = not row.installed and row.status != "missing"
     force = needs_replacement(row.status, force=force)
+    if type(resume) is not bool:
+        raise ValueError("resume must be True or False")
+    # Nothing to resume when local files stand in for the downloads.
+    resumable = resume and not source_paths
+    options = dict(timeout=timeout, show_progress=show_progress, **({"resume": "auto"} if resumable else {}))
     if row.kind in ("catalog", "dataset"):
         registry = _registry(row.kind, cache_root)
-        options = dict(timeout=timeout, show_progress=show_progress)
         if row.acquire == "download":
             registry.download(name, row.version, force=force, source_paths=source_paths, **options)
         else:
@@ -139,20 +148,19 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
 
         dataset, asset = name.split(":", 1)
         DatasetRegistry(cache_root=cache_root).download_reference(
-            dataset, row.version, asset_id=asset, force=force, timeout=timeout,
-            show_progress=show_progress)
+            dataset, row.version, asset_id=asset, force=force, **options)
     elif row.kind == "genome":
         from .genomes import install_genome
 
         install_genome(name, cache_root=cache_root, force=force, source_paths=source_paths,
-                       download_options=dict(timeout=timeout, show_progress=show_progress))
+                       download_options=options)
     elif row.kind == "chain":
         from .liftover import download_chain, pinned_chains
 
         chain = next(c for c in pinned_chains() if c.name == name)
         download_chain(chain.source_build, chain.target_build, species=chain.species,
                        cache_root=cache_root, force=force, accept_terms=accept_terms,
-                       download_options=dict(timeout=timeout, show_progress=show_progress))
+                       download_options=options)
     elif row.kind == "viral":
         from .downloads import install_collection
 

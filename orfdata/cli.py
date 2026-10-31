@@ -9,7 +9,15 @@ from contextlib import redirect_stdout
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
 from .cli_output import print_result, print_table
-from .cli_parser import ArgumentParser, UsageError, add_cache_root, add_json, add_limit, add_timeout
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_cache_root,
+    add_json,
+    add_limit,
+    add_resume,
+    add_timeout,
+)
 from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
 
 COMMANDS = {
@@ -125,13 +133,14 @@ def _setup(argv, prog):
                              "collection, 'all', or comma-separated names; the default set by default")
     add_cache_root(parser)
     add_timeout(parser)
+    add_resume(parser)
     add_json(parser)
     args = parser.parse_args(argv)
     try:
         with redirect_stdout(sys.stderr):
             result = install_species(args.species, accept_terms=args.accept_terms, force=args.force,
                                      cache_root=args.cache_root, timeout=args.timeout, catalogs=args.catalogs,
-                                     collections=args.collections)
+                                     collections=args.collections, resume=args.resume)
     except InstallError as error:  # What did install is still reported.
         print_result(error.result, json_output=args.json)
         parser.exit(1, f"{parser.prog}: error: {error}\n")

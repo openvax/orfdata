@@ -56,6 +56,14 @@
   functions, which move from 120 to 60 seconds; registry, genome and chain
   calls in Python still take their timeout in `download_options`. Timeouts must
   be positive and finite, or none (#163).
+- `orfdata data fetch --resume` and `orfdata setup --resume` (`resume=True` in
+  `fetch_data` and `install_species`) continue interrupted downloads of
+  published catalogues, genome and chain files, search references, archive
+  parts and build sources from the bytes already received. It is off by
+  default because resumable transfers keep their partial downloads and
+  staging after a failure, and archive installs keep every part until the
+  dataset is published. The eleven compressed single-file datasets can't
+  resume; see "Interrupted downloads" in the download guide (part of #156).
 
 # 0.44.0
 

@@ -14,7 +14,7 @@ class InstallError(ValueError):
 
 
 def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=DOWNLOAD_TIMEOUT,
-                    catalogs=None, collections=None):
+                    catalogs=None, collections=None, resume=False):
     """Install a species' registered catalogues, chains and default reference collections.
 
     Afterwards ``load_catalog``, ``extra_orfs`` and ``Proteome.build`` work
@@ -28,6 +28,10 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     source file several catalogues pin, such as an Ensembl GTF, is downloaded
     once. ``catalogs`` chooses which of the species' catalogues, as in
     ``load_catalog``: its default set unless ``"all"`` or names are given.
+
+    ``resume=True`` lets an interrupted catalogue, chain or source download
+    continue where it stopped, as in :func:`~orfdata.fetch_data`. Sources
+    shared between catalogues are staged for one run, so those restart.
 
     Human setup also installs the default GDC viral reference collection.
 
@@ -66,7 +70,9 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     result, failed = dict(species=species, catalogs={}, chains={}), []
     retry = join(["orfdata", "setup", "--species", species] + ([] if root is None else
                                                                 ["--cache-root", str(root)]))
-    options = {} if timeout is None else dict(timeout=timeout)
+    if type(resume) is not bool:
+        raise ValueError("resume must be True or False")
+    options = ({} if timeout is None else dict(timeout=timeout)) | ({"resume": "auto"} if resume else {})
     states = {key: _installed(choice) for key, choice in needed.items()}
     for key in sorted(needed):
         if states[key] in ("downloaded", "built") and not force:

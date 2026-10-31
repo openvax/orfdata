@@ -107,6 +107,50 @@ command, and resolved cache path. Status values follow DataCache: `available`,
 an error rather than an empty listing, so a typo never reads as "nothing is
 available".
 
+## Interrupted downloads
+
+A published download restarts from the beginning by default. (A local build
+already keeps the source files it finished downloading, so rerunning it fetches
+only what is missing.) On an unreliable connection, add `--resume` to
+`orfdata data fetch` or `orfdata setup` (`resume=True` in `fetch_data` and
+`install_species`, or `resume="auto"` in a registry's download options).
+Rerunning the same command with `--resume` then requests only the bytes not yet
+received for published catalogues, genome and chain files, search references,
+a build's source files, and split archives such as the four parts of
+`pfizer-atlas-dog-peptide-evidence`.
+
+Resuming costs disk space, which is why it is off by default:
+
+- Partial downloads and their staging stay in the cache after a failure, in
+  owner-only `.staging-*` and `.datacache-resume-*` directories beside the
+  resource. Only a later successful `--resume` install of the same resource
+  removes them; an install without `--resume` uses its own staging and leaves
+  them. Delete them yourself to reclaim the space from a download you abandon.
+- An archive keeps every downloaded part until the dataset is installed. For
+  `pfizer-atlas-dog-peptide-evidence` that adds the 6.9 GB of parts to the peak
+  space the install needs, which is otherwise about 32 GB.
+- A finished resumed file is copied out of its partial before it is installed,
+  briefly needing twice that file's size.
+- An archive's resumable staging isn't named per user, so in a shared cache one
+  user's interrupted `--resume` install stops another user's `--resume` install
+  of the same dataset until it is removed. Installs without `--resume` aren't
+  affected.
+
+Datasets published as one compressed SQLite file can't resume: that is every
+published dataset except `pfizer-atlas-dog-peptide-evidence`, including the
+1.27 GB `pfizer-atlas-mouse-rna`. DataCache can't resume a transfer it
+decompresses while downloading, so with `--resume` these still restart, and
+publishing them in a resumable form is tracked in
+[#156](https://github.com/openvax/orfdata/issues/156). Sources that `setup`
+shares between catalogues are staged for one run and restart too. A viral
+collection is fetched record by record and doesn't resume. `--resume` is
+ignored when `--source-path` supplies the files.
+
+A resumed file is checked against the same pinned SHA-256 and size as a
+complete one. If it doesn't match, DataCache discards the partial and the
+install fails; rerun the same command, with `--resume`, to download that file
+again in full while keeping the other parts already received.
+
 ## Viral collections and contexts
 
 The Python API uses the same collection object for discovery, inventory reads,

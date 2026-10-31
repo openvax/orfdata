@@ -4,7 +4,14 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import ArgumentParser, UsageError, add_limit, add_timeout, share_cache_root
+from .cli_parser import (
+    ArgumentParser,
+    UsageError,
+    add_limit,
+    add_resume,
+    add_timeout,
+    share_cache_root,
+)
 from .downloads import list_data
 
 
@@ -154,6 +161,7 @@ def run(argv=None, prog="orfdata download"):
             command.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
             command.add_argument("--quiet", action="store_true")
             command.add_argument("--accept-terms", action="store_true")
+            add_resume(command)
         else:
             command.add_argument("--verify", action="store_true", help="Hash and validate installed files")
 
@@ -257,7 +265,7 @@ def run(argv=None, prog="orfdata download"):
                 with redirect_stdout(sys.stderr):
                     output = [fetch_data(name, **options, force=args.force, source_paths=paths,
                                          timeout=args.timeout, show_progress=not args.quiet and not args.json,
-                                         accept_terms=args.accept_terms) for name in names]
+                                         accept_terms=args.accept_terms, resume=args.resume) for name in names]
                 if args.json:
                     print_json(output)
                 else:
