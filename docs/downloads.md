@@ -300,9 +300,28 @@ which does download.
 
 A viral collection or selection is replaced the way DataCache replaces its own
 bundles. The refresh is built beside the installed copy and switched in with one
-rename while installs of the same collection wait their turn, so its path is
-never missing and a reader sees the old files or the new ones, never a mix. The
-copy it replaced is kept for programs still reading it, and older copies, with
-their PyEnsembl indexes, are removed. A collection installed by ORFdata 0.44 or
-earlier still opens, and is kept as the previous copy after its first refresh.
-`orfdata data path gdc-viruses` prints the directory holding the current files.
+rename while installs of the same collection wait their turn, so a reader sees
+the old files or the new ones, never a gap or a mix. Each refresh is a new
+directory: `orfdata data path gdc-viruses` prints the one holding the current
+files, so look it up again rather than saving it. Replaced copies are kept, as
+DataCache keeps its own, because a running program may still be reading them;
+nothing is pruned automatically. A collection installed by ORFdata 0.44 or
+earlier still opens, and is kept like any replaced copy after its first refresh.
+
+A collection is about 10 MB. To reclaim the space of replaced copies once no
+program uses them, run:
+
+```python
+from orfdata import prune_viral_references
+
+prune_viral_references(species="human", collection="gdc-viruses", keep=1)
+```
+
+This keeps the newest `keep` copies of the collection and of each of its
+selections, deletes the rest with the PyEnsembl indexes built for them under
+the same cache root, and returns the deleted directories.
+
+A forced install (`--force`, `force=True`) also repairs a store that lost its
+`.datacache-store.json` marker or whose newest copy isn't a directory. A path
+ORFdata didn't write in the store's place is never removed; the error names it
+so you can remove it yourself.

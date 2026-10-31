@@ -20,6 +20,7 @@ from orfdata.viral_panel import (
     bundle_version,
     download_viral_references,
     open_viral_references,
+    prune_viral_references,
     select_viral_references,
     viral_reference_summary,
 )
@@ -261,6 +262,11 @@ def _slowed(monkeypatch, seconds=0.2):
     return counts
 
 
+def _store_path(tmp_path):
+    return (get_data_dir(str(tmp_path)) / "viral" / "collections" / "homo_sapiens" /
+            "gdc-viruses" / bundle_version(GDC_VIRUSES))
+
+
 def test_a_refresh_never_removes_the_files_a_reader_holds(viral_panel, tmp_path, monkeypatch):
     old = _install(tmp_path)
     gtf = old.annotation_gtf.read_text()
@@ -284,12 +290,18 @@ def test_a_refresh_never_removes_the_files_a_reader_holds(viral_panel, tmp_path,
             reader.join()
         assert held.read() == gtf
     assert seen and all(path in (old.path, new.path) for path in seen), seen
-    # The replaced collection stays whole for programs still reading it.
-    assert new.path != old.path and old.annotation_gtf.read_text() == gtf
-    assert open_viral_references(species="human", cache_root=str(tmp_path)) == new
+    assert new.path != old.path and open_viral_references(species="human", cache_root=str(tmp_path)) == new
+    # Nothing is pruned automatically: a program that resolved the old bundle
+    # can still open it by path after one refresh, and after another.
+    newer = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    for bundle in (old, new):
+        assert bundle.annotation_gtf.read_text() == gtf
+        assert viral_panel_module._verified_existing_bundle(
+            bundle.path, species="homo_sapiens", collection=GDC_VIRUSES) == bundle
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == newer
 
 
-def test_concurrent_refreshes_take_turns(viral_panel, tmp_path, monkeypatch):
+def test_concurrent_refreshes_take_turns_and_pruning_is_explicit(viral_panel, tmp_path, monkeypatch):
     first = _install(tmp_path)
     counts = _slowed(monkeypatch)
     results, errors = [], []
@@ -309,10 +321,24 @@ def test_concurrent_refreshes_take_turns(viral_panel, tmp_path, monkeypatch):
     assert not errors and len(results) == 2 and max(counts) == 1
     newest = max(results, key=lambda result: result.path.name)
     assert open_viral_references(species="human", cache_root=str(tmp_path)) == newest
-    # The current bundle and the one before it are kept; the first is pruned.
-    assert sorted(p.name for p in newest.path.parent.iterdir()) == sorted(
-        result.path.name for result in results)
-    assert not first.path.exists()
+    bundles = newest.path.parent
+    assert sorted(p.name for p in bundles.iterdir()) == sorted(
+        bundle.path.name for bundle in (first, *results))
+
+    selection = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    rebuilt = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path),
+                                      force=True)
+    index = viral_panel_module._annotation_index(str(tmp_path), GDC_VIRUSES, first.path)
+    index.mkdir(parents=True)
+    with pytest.raises(ValueError, match="keep must be a positive integer"):
+        prune_viral_references(species="human", cache_root=str(tmp_path), keep=0)
+    deleted = prune_viral_references(species="human", cache_root=str(tmp_path))
+    assert set(deleted) == {first.path, *(r.path for r in results if r != newest), selection.path}
+    assert [p.name for p in bundles.iterdir()] == [newest.path.name] and not index.exists()
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == newest
+    assert select_viral_references(contexts=[CONTEXT], species="human",
+                                  cache_root=str(tmp_path)) == rebuilt
+    assert prune_viral_references(species="human", cache_root=str(tmp_path)) == ()
 
 
 def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
@@ -343,4 +369,102 @@ def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
     assert data_path("gdc-viruses", cache_root=str(tmp_path)) == refreshed.path
 
     again = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
-    assert not legacy.exists() and refreshed.path.is_dir() and again.path.is_dir()
+    assert legacy.is_dir() and refreshed.path.is_dir() and again.path.is_dir()
+    assert set(prune_viral_references(species="human", cache_root=str(tmp_path))) == {
+        legacy, refreshed.path}
+    assert not legacy.exists() and again.path.is_dir()
+
+
+def test_publishing_hashes_the_new_bundle_once(viral_panel, tmp_path, monkeypatch):
+    _install(tmp_path)
+    calls = []
+    verify = viral_panel_module._verify_checksums
+    monkeypatch.setattr(viral_panel_module, "_verify_checksums",
+                        lambda path: calls.append(path) or verify(path))
+    refreshed = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    assert len(calls) == 1 and calls[0].name == "bundle"  # The staged copy, before publication.
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == refreshed
+
+
+def test_a_store_that_lost_its_marker_is_repaired_by_force(viral_panel, tmp_path):
+    installed = _install(tmp_path)
+    marker = _store_path(tmp_path) / ".datacache-store.json"
+    marker.unlink()
+    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "corrupt"
+    for attempt in (open_viral_references, download_viral_references):
+        with pytest.raises(ValueError, match="lost its .datacache-store.json marker; replace it with force=True"):
+            attempt(species="human", cache_root=str(tmp_path))
+    repaired = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    assert marker.is_file() and repaired.path != installed.path
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == repaired
+    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "available"
+
+
+def test_a_broken_newest_bundle_is_replaced_by_force(viral_panel, tmp_path):
+    installed = _install(tmp_path)
+    broken = installed.path.parent / "2999-01-01T00-00-00Z"
+    broken.symlink_to(tmp_path)
+    with pytest.raises(ValueError, match="isn't a directory; replace it with force=True"):
+        open_viral_references(species="human", cache_root=str(tmp_path))
+    repaired = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    assert repaired.path.name > broken.name
+    assert open_viral_references(species="human", cache_root=str(tmp_path)) == repaired
+
+
+def test_store_damage_force_cannot_fix_names_the_path_to_remove(viral_panel, tmp_path):
+    installed = _install(tmp_path)
+    bundles = installed.path.parent
+    shutil.rmtree(bundles)
+    bundles.write_text("not a directory\n")
+    for force in (False, True):
+        with pytest.raises(ValueError, match=f"remove {bundles} and install again"):
+            download_viral_references(species="human", cache_root=str(tmp_path), force=force)
+    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "corrupt"
+
+
+def test_a_damaged_selection_store_is_rebuilt(viral_panel, tmp_path):
+    _install(tmp_path)
+    selection = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    (selection.path.parent.parent / ".datacache-store.json").unlink()
+    rebuilt = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    assert rebuilt.path != selection.path and rebuilt.genome_count == selection.genome_count
+
+
+def test_an_interrupted_install_leaves_nothing_behind_for_long(viral_panel, tmp_path, monkeypatch):
+    import os
+
+    _install(tmp_path)
+    store = _store_path(tmp_path)
+    stale = store / f".staging-{os.getuid()}-dead"
+    (stale / "bundle").mkdir(parents=True)
+    stale.chmod(0o700)
+    monkeypatch.setattr(viral_panel_module, "_write_bundle",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("interrupted")))
+    with pytest.raises(RuntimeError, match="interrupted"):
+        download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    assert not stale.exists()
+    assert not [entry for entry in store.iterdir() if entry.name.startswith(".staging-")]
+
+
+def test_an_unreadable_044_directory_does_not_block_an_install(viral_panel, tmp_path):
+    import os
+
+    if os.geteuid() == 0:
+        pytest.skip("root reads directories without read permission")
+    legacy_root = get_data_dir(str(tmp_path)) / "viral" / "references"
+    legacy_root.mkdir(parents=True)
+    legacy_root.chmod(0)
+    try:
+        installed = _install(tmp_path)
+        assert installed.path.parent == _store_path(tmp_path) / "bundles"
+        assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "available"
+    finally:
+        legacy_root.chmod(0o755)
+
+
+def test_a_moved_datacache_store_module_is_reported(monkeypatch):
+    from datacache import bundle_store
+
+    monkeypatch.delattr(bundle_store, "user_key")
+    with pytest.raises(ImportError, match="need datacache.bundle_store"):
+        viral_panel_module._bundle_store()

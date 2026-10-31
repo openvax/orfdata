@@ -150,8 +150,9 @@ The command above installs only this checked collection under `ORFDATA_CACHE` (o
 the normal OpenVax cache), rather than asking for an export directory. Use
 `--cache-root DIRECTORY` to select another cache and `--force` to refresh or
 repair the installed files. A refresh replaces the collection in one step and
-keeps the previous copy for programs still reading it;
-`orfdata data path gdc-viruses` prints where the current files are.
+keeps the copies it replaced for programs still reading them, until
+`prune_viral_references()` removes them. Each refresh is a new directory, so
+look it up with `orfdata data path gdc-viruses` rather than saving it.
 
 Here `--species human` is the target analysis species. The current collection
 is for human transcriptome analysis; a future collection may target another

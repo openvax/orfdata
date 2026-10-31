@@ -3,8 +3,10 @@
 - Replace a viral collection or derived selection without ever removing its
   files first. A refresh is built beside the installed copy, switched in with
   one rename under DataCache's store lock, and concurrent installs take turns.
-  The previous copy is kept for running programs and older ones are pruned.
-  Collections installed by 0.44 or earlier still open (#158).
+  Replaced copies stay for running programs, as DataCache keeps its own, until
+  the new `prune_viral_references()` removes them. A forced install repairs a
+  store that lost its marker; an interrupted install's working files are swept
+  by the next one. Collections installed by 0.44 or earlier still open (#158).
 
 # 0.44.0
 

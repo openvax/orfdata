@@ -21,7 +21,7 @@ import csv
 import hashlib
 import json
 import shutil
-import tempfile
+import stat
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -29,6 +29,7 @@ from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from os import PathLike
 from pathlib import Path
+from uuid import uuid4
 
 from .fasta import write_fasta
 from .record_sources import REQUEST_INTERVAL
@@ -656,15 +657,35 @@ def _bundle_readme(collection, genome_rows, transcript_rows, complete, retrieved
 # bundles/, the newest of which is current. An install builds a whole new bundle
 # beside the current one, under the store's lock, and renames it into place, so a
 # reader finds the old bundle or the new one, never a missing or partial one.
-# ORFdata 0.44 and earlier kept one plain directory per version, under
-# "references" and "indexes"; such a directory is still read when the store is
-# empty, and counts as the oldest bundle.
+# Replaced bundles are kept, as DataCache keeps its own, because a running
+# program may still be reading them; prune_viral_references removes them. ORFdata
+# 0.44 and earlier kept one plain directory per version, under "references" and
+# "indexes"; such a directory is still read while the store has no bundle, and
+# counts as the oldest bundle.
 _STORE_KIND = "orfdata-viral"
 _COLLECTIONS, _LEGACY_COLLECTIONS = "collections", "references"
 _SELECTIONS, _LEGACY_SELECTIONS = "selections", "indexes"
-# A program may still be reading the bundle a refresh replaced, so the previous
-# bundle is kept; older ones, and their PyEnsembl indexes, are removed.
-_KEPT_BUNDLES = 2
+
+
+def _bundle_store():
+    """DataCache's store primitives: its lock, bundle naming and private working directories.
+
+    ``datacache.bundle_store`` is not part of DataCache's exported API, so a
+    DataCache release could move it; this is the one place ORFdata imports it,
+    and it fails naming the cause. Publishing viral collections through
+    DataCache's public registries (#159) removes the dependency.
+    """
+    try:
+        from datacache import bundle_store
+
+        for name in ("BundleStore", "FORMAT", "MARKER", "private_directory",
+                     "discard_private_directory", "user_key"):
+            getattr(bundle_store, name)
+    except (ImportError, AttributeError) as error:
+        raise ImportError(
+            "ORFdata's viral collections need datacache.bundle_store, as DataCache 1.29.3 "
+            f"provides it, and the installed DataCache doesn't ({error})") from error
+    return bundle_store
 
 
 def _bundle_path(cache_root, species, collection, *, area=_COLLECTIONS):
@@ -677,20 +698,80 @@ def _bundle_path(cache_root, species, collection, *, area=_COLLECTIONS):
 
 
 def _store(path):
-    # BundleStore supplies DataCache's lock, naming and takeover rules, so a
-    # viral store behaves exactly like the stores beside it in the cache.
-    from datacache.bundle_store import BundleStore
+    return _bundle_store().BundleStore(path, _STORE_KIND)
 
-    return BundleStore(path, _STORE_KIND)
+
+def _is_directory(path):
+    """Whether ``path`` is a real directory; an unreadable one, as in a shared cache, counts as absent."""
+    try:
+        return stat.S_ISDIR(Path(path).lstat().st_mode)
+    except OSError:
+        return False
+
+
+def _store_problem(store):
+    """What keeps a store from being read, as ``(reason, target, repairable)``; None when it reads.
+
+    A forced install repairs a store whose marker is lost but which holds only
+    what a viral store keeps, and one whose newest bundle isn't a directory,
+    by publishing a newer bundle. Anything else is never taken over: the
+    ``target`` path has to be removed by hand. An unreadable store raises.
+    """
+    path, marker = store.path, store.path / _bundle_store().MARKER
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISDIR(info.st_mode):
+        return "is not a directory", path, False
+    entries = [entry.name for entry in path.iterdir()]
+    try:
+        found = json.loads(marker.read_text())
+    except FileNotFoundError:
+        if all(name.startswith(".datacache-") for name in entries):
+            return None  # Empty: the first install creates the store here.
+        found = None
+    except IsADirectoryError:
+        return "keeps its marker in something that isn't a file", marker, False
+    except (ValueError, RecursionError):
+        found = None
+    if found !={"format": _bundle_store().FORMAT, "kind": _STORE_KIND}:
+        ours = all(name in ("bundles", marker.name) or name.startswith((".staging-", ".datacache-"))
+                   for name in entries)
+        if found is None and ours:
+            return f"has lost its {marker.name} marker", path, True
+        return "is not an ORFdata viral store", path, False
+    try:
+        bundles = store.bundles.lstat()
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISDIR(bundles.st_mode):
+        return "keeps its bundles in something that isn't a directory", store.bundles, False
+    names = store.bundle_names()
+    if names and not _is_directory(store.bundles / names[-1]):
+        return f"has a newest bundle, {names[-1]}, that isn't a directory", path, True
+    return None
+
+
+def _damaged(store, problem):
+    reason, target, repairable = problem
+    remedy = ("replace it with force=True" if repairable else
+              f"ORFdata never takes over or deletes such a path; remove {target} and install again")
+    return ValueError(f"The viral reference store {store.path} {reason}; {remedy}")
 
 
 def _current(path, legacy):
-    """The directory holding a store's current bundle, else a 0.44 directory, else None."""
-    try:
-        current = _store(path).current_bundle()
-    except (KeyError, TypeError, RecursionError) as error:
-        raise ValueError(f"Invalid viral reference store {path}: {error}") from error
-    if current is None and legacy.is_dir():
+    """The directory holding a store's current bundle, else a 0.44 directory, else None.
+
+    A damaged store raises ValueError naming what fixes it, an unreadable one
+    its OSError. An unreadable 0.44 directory counts as absent.
+    """
+    store = _store(path)
+    problem = _store_problem(store)
+    if problem is not None:
+        raise _damaged(store, problem)
+    current = store.current_bundle()
+    if current is None and _is_directory(legacy):
         return legacy
     return current
 
@@ -701,50 +782,122 @@ def _installed_bundle(cache_root, species, collection):
                     _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS))
 
 
-def _publish(path, legacy, build, open_bundle, reuse, *, cache_root, collection):
+def _repair(store):
+    """Make a damaged store installable again, if a forced install can; otherwise raise."""
+    problem = _store_problem(store)
+    if problem is None:
+        return
+    if not problem[2]:
+        raise _damaged(store, problem)
+    marker = store.path / _bundle_store().MARKER
+    if problem[0].startswith("has lost"):
+        # A lost marker is rewritten; the bundle published next replaces a broken newest one.
+        temporary = store.path / f".datacache-json-{uuid4().hex}"
+        temporary.write_text(json.dumps({"format": _bundle_store().FORMAT, "kind": _STORE_KIND}))
+        temporary.replace(marker)
+
+
+def _publish(path, legacy, build, verify, describe, reuse, *, force, rebuild_damaged=False):
     """Build a bundle with ``build(directory)`` and make it the store's current one.
 
     ``reuse(current)`` returns the installed bundle to keep, or None to build a
     new one. It is asked once without the lock, so a cache hit writes nothing,
     and again under it, since another install may have finished meanwhile.
-    Installs into one store take turns; ``open_bundle`` checks the new bundle
-    before it is published and returns it opened.
+    ``force`` builds a new bundle whatever is installed, repairing the store
+    where it can; ``rebuild_damaged`` does that only for a damaged store.
+    Installs into one store take turns. ``verify`` checks the staged bundle,
+    hashing it, and ``describe`` returns the published one without hashing it
+    again.
     """
-    current = _current(path, legacy)
-    if current is not None and (found := reuse(current)) is not None:
-        return found
     store = _store(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with store.lock():
-        store.create()
-        current = _current(path, legacy)
-        if current is not None and (found := reuse(current)) is not None:
-            return found
-        # The working directory is private; the bundle inside it takes the
-        # cache's normal sharing mode, so others can read it once published.
-        working = Path(tempfile.mkdtemp(prefix=".staging-", dir=path))
+    if not force:
         try:
+            current = _current(path, legacy)
+        except ValueError:
+            if not rebuild_damaged:
+                raise
+            force = True
+        else:
+            if current is not None and (found := reuse(current)) is not None:
+                return found
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tools = _bundle_store()
+    with store.lock():
+        if force:
+            _repair(store)
+        store.create()
+        if not force:
+            current = _current(path, legacy)
+            if current is not None and (found := reuse(current)) is not None:
+                return found
+        # Installs hold the lock, so a working directory of this user's found
+        # here was left by one that died; it is swept before this one starts.
+        prefix = f".staging-{tools.user_key()}-"
+        for stale in path.glob(prefix + "*"):
+            tools.discard_private_directory(stale)
+        working = tools.private_directory(path / f"{prefix}{uuid4().hex}")
+        try:
+            # The working directory is private; the bundle inside it takes the
+            # cache's normal sharing mode, so others can read it once published.
             staged = working / "bundle"
             staged.mkdir()
             build(staged)
-            open_bundle(staged)
+            verify(staged)
             published = store.publish(staged)
         finally:
-            shutil.rmtree(working, ignore_errors=True)
-        _prune(store, legacy, cache_root=cache_root, collection=collection)
-        return open_bundle(published)
+            tools.discard_private_directory(working)
+    return describe(published)
 
 
-def _prune(store, legacy, *, cache_root, collection):
-    """Keep the newest bundles; a 0.44 directory counts as older than any of them."""
-    names = store.bundle_names()
-    removed = [store.bundles / name for name in names[:-_KEPT_BUNDLES]]
-    if len(names) >= _KEPT_BUNDLES and legacy.is_dir():
-        removed.append(legacy)
-    for bundle in removed:  # Cleanup never fails an install that has already published.
-        index = _annotation_index(cache_root, collection, bundle)
-        shutil.rmtree(bundle, ignore_errors=True)
-        shutil.rmtree(index, ignore_errors=True)
+def prune_viral_references(
+    *,
+    species: str | int | None = None,
+    collection: ViralCollection | str | None = None,
+    keep: int = 1,
+    cache_root: str | PathLike[str] | None = None,
+) -> tuple[Path, ...]:
+    """Delete all but the newest ``keep`` bundles of a collection and of its selections.
+
+    A refresh keeps the bundle it replaces, as DataCache keeps its own,
+    because a running program may still be reading it; nothing is pruned
+    automatically. Paths into deleted bundles stop working, so prune only
+    when no program still uses them. A directory installed by ORFdata 0.44 or
+    earlier counts as the oldest bundle. The PyEnsembl indexes
+    :func:`viral_genome` built under ``cache_root`` for deleted bundles are
+    removed too. Returns the deleted bundle directories.
+    """
+    if isinstance(keep, bool) or not isinstance(keep, int) or keep < 1:
+        raise ValueError("keep must be a positive integer; the current bundle is always kept")
+    species, collection = _selection(species, collection)
+    stores = [(_bundle_path(cache_root, species, collection),
+               _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS))]
+    selections = _bundle_path(cache_root, species, collection, area=_SELECTIONS)
+    legacy_selections = _bundle_path(cache_root, species, collection, area=_LEGACY_SELECTIONS)
+    names = set()
+    for parent in (selections, legacy_selections):
+        if _is_directory(parent):
+            names.update(entry.name for entry in parent.iterdir() if not entry.name.startswith("."))
+    stores.extend((selections / name, legacy_selections / name) for name in sorted(names))
+    deleted = []
+    for path, legacy in stores:
+        store = _store(path)
+        problem = _store_problem(store)
+        if problem is not None:
+            raise _damaged(store, problem)
+        if not _is_directory(path):
+            continue  # At most a 0.44 directory: the current bundle, which is kept.
+        with store.lock():
+            bundles = [legacy] if _is_directory(legacy) else []
+            if _is_directory(store.bundles):
+                bundles += [store.bundles / name for name in store.bundle_names()]
+            for bundle in bundles[:-keep]:
+                if not _is_directory(bundle):
+                    continue  # Never follow a link out of the store.
+                index = _annotation_index(cache_root, collection, bundle)
+                shutil.rmtree(bundle)
+                shutil.rmtree(index, ignore_errors=True)
+                deleted.append(bundle)
+    return tuple(deleted)
 
 
 def _annotation_index(cache_root, collection, path):
@@ -814,11 +967,13 @@ def download_viral_references(
     create a filtered derived set, use :func:`select_viral_references`. The
     collection is stored under ``ORFDATA_CACHE`` (or the normal OpenVax cache);
     a verified cache is reused and ``force=True`` refreshes or repairs it. A
-    refresh is built beside the installed collection and replaces it in one
-    step, so the collection's files are never missing; the previous copy is
-    kept for programs still reading it, and installs of one collection take
-    turns. A request that stalls for ``timeout`` seconds is retried, then
-    fails; ``timeout=None`` waits.
+    refresh is built beside the installed collection and switched in with one
+    rename, so a reader finds the old files or the new ones, never a gap; the
+    current directory therefore changes with each refresh. Replaced copies
+    stay for programs still reading them until :func:`prune_viral_references`
+    removes them, and installs of one collection take turns. A request that
+    stalls for ``timeout`` seconds is retried, then fails; ``timeout=None``
+    waits.
 
     An inventory can name an entry at two sources whose molecules differ. With
     ``prefer_reference_molecule=True`` (the default) the collection carries the
@@ -864,9 +1019,10 @@ def download_viral_references(
 
     return _publish(
         _bundle_path(cache_root, species, collection),
-        _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS),
-        build, lambda path: _verified_existing_bundle(path, species=species, collection=collection),
-        reuse, cache_root=cache_root, collection=collection)
+        _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS), build,
+        lambda path: _verified_existing_bundle(path, species=species, collection=collection),
+        lambda path: _existing_bundle(path, species=species, collection=collection),
+        reuse, force=force)
 
 
 def _copy_fasta(source, destination, keys):
@@ -1016,8 +1172,11 @@ def select_viral_references(
     The derived set carries the same genome, transcriptome and proteome layers
     as the collection, including its GTF. ``force=True`` rebuilds the selection from
     the collection, and also repairs the collection itself when ``download_if_missing``
-    allows the network; a damaged selection is rebuilt either way, since it is
-    derived from local files.
+    allows the network. A damaged selection, or a selection store that lost its
+    marker, is rebuilt either way, since it is derived from local files; a path
+    in the store's place that ORFdata didn't write is reported, never removed.
+    Each rebuild is a new bundle, so the selection's directory changes, and
+    replaced ones stay until :func:`prune_viral_references` removes them.
     """
     contexts = normalize_viral_contexts(contexts)
     excluded_contexts = normalize_viral_contexts(exclude_contexts)
@@ -1099,8 +1258,8 @@ def select_viral_references(
 
     return _publish(
         _index_path(*location), _index_path(*location, area=_LEGACY_SELECTIONS), build,
-        lambda path: _verified_existing_index(path, **identity), reuse,
-        cache_root=cache_root, collection=bundle.collection)
+        lambda path: _verified_existing_index(path, **identity),
+        lambda path: _index_result(path, **identity), reuse, force=force, rebuild_damaged=True)
 
 
 def viral_reference_summary(*, contexts=None, exclude_contexts=None, context_match="any",
