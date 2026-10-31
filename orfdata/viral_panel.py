@@ -20,6 +20,7 @@ topiary and vaxrank can annotate viral transcripts with.
 import csv
 import hashlib
 import json
+import os
 import shutil
 import stat
 import time
@@ -257,6 +258,8 @@ def _metadata(path, *, expected_schema):
             raise ValueError(f"unexpected schema {metadata.get('schema')!r}")
         for key in ("genome_count", "transcript_count", "protein_count"):
             metadata[key] = int(metadata[key])
+    except PermissionError:
+        raise  # Unreadable, not invalid: replacing it would hide the problem.
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
         raise ValueError(f"Invalid viral reference metadata in {path}: {error}") from error
     return metadata
@@ -301,20 +304,32 @@ def _existing_bundle(path, *, species, collection):
                 path / _CHECKSUMS)
     if any(not file_path.is_file() for file_path in required):
         raise ValueError(f"Incomplete viral reference collection: {path}")
-    if (not result.record_directory.is_dir()
-            or len(tuple(result.record_directory.glob("*.gz"))) != result.genome_count):
+    if not result.record_directory.is_dir():
+        raise ValueError(f"Incomplete viral source records: {result.record_directory}")
+    # os.listdir, unlike glob, raises for a directory it can't read rather than finding nothing in it.
+    if sum(name.endswith(".gz") for name in os.listdir(result.record_directory)) != result.genome_count:
         raise ValueError(f"Incomplete viral source records: {result.record_directory}")
     return result
+
+
+def _installed_files(path):
+    """Every file under ``path``; an unreadable directory raises, where rglob would skip it."""
+    def refuse(error):
+        raise error
+
+    return {Path(root, name).relative_to(path).as_posix()
+            for root, _, names in os.walk(path, onerror=refuse) for name in names}
 
 
 def _verify_checksums(path):
     sums_path = path / _CHECKSUMS
     try:
         sums = tuple(line.rstrip("\n").split("  ", 1) for line in sums_path.open())
+    except PermissionError:
+        raise
     except OSError as error:
         raise ValueError(f"Missing viral reference checksums: {sums_path}") from error
-    expected_files = {item.relative_to(path).as_posix() for item in path.rglob("*")
-                      if item.is_file() and item.name != _CHECKSUMS}
+    expected_files = _installed_files(path) - {_CHECKSUMS}
     if (len(sums) != len(expected_files) or any(len(parts) != 2 for parts in sums)
             or {relative for _, relative in sums} != expected_files):
         raise ValueError(f"Invalid viral reference checksum manifest: {sums_path}")
@@ -1045,9 +1060,15 @@ def download_viral_references(
     def reuse(current):
         try:
             return _verified_existing_bundle(current, species=species, collection=collection)
+        except PermissionError as error:
+            raise ValueError(
+                f"The {collection.name} viral references at {current} can't be read ({error}); fix their "
+                "permissions, or replace them with force=True (--force on the command line)"
+            ) from error
         except (OSError, ValueError) as error:
             raise FileNotFoundError(
-                "Viral source-reference cache is incomplete or invalid; rerun with force=True."
+                f"The {collection.name} viral references at {current} are incomplete or invalid; "
+                "rebuild them with force=True (--force on the command line)"
             ) from error
 
     def build(directory):
