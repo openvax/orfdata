@@ -332,13 +332,14 @@ def test_concurrent_refreshes_take_turns_and_pruning_is_explicit(viral_panel, tm
     index.mkdir(parents=True)
     with pytest.raises(ValueError, match="keep must be a positive integer"):
         prune_viral_references(species="human", cache_root=str(tmp_path), keep=0)
-    deleted = prune_viral_references(species="human", cache_root=str(tmp_path))
-    assert set(deleted) == {first.path, *(r.path for r in results if r != newest), selection.path}
+    pruned = prune_viral_references(species="human", cache_root=str(tmp_path))
+    assert set(pruned["deleted"]) == {first.path, *(r.path for r in results if r != newest), selection.path}
+    assert pruned["skipped"] == {}
     assert [p.name for p in bundles.iterdir()] == [newest.path.name] and not index.exists()
     assert open_viral_references(species="human", cache_root=str(tmp_path)) == newest
     assert select_viral_references(contexts=[CONTEXT], species="human",
                                   cache_root=str(tmp_path)) == rebuilt
-    assert prune_viral_references(species="human", cache_root=str(tmp_path)) == ()
+    assert prune_viral_references(species="human", cache_root=str(tmp_path)) == dict(deleted=(), skipped={})
 
 
 def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
@@ -370,7 +371,7 @@ def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
 
     again = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
     assert legacy.is_dir() and refreshed.path.is_dir() and again.path.is_dir()
-    assert set(prune_viral_references(species="human", cache_root=str(tmp_path))) == {
+    assert set(prune_viral_references(species="human", cache_root=str(tmp_path))["deleted"]) == {
         legacy, refreshed.path}
     assert not legacy.exists() and again.path.is_dir()
 
@@ -392,7 +393,9 @@ def test_a_store_that_lost_its_marker_is_repaired_by_force(viral_panel, tmp_path
     marker.unlink()
     assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "corrupt"
     for attempt in (open_viral_references, download_viral_references):
-        with pytest.raises(ValueError, match="lost its .datacache-store.json marker; replace it with force=True"):
+        with pytest.raises(ValueError, match=r"lost its .datacache-store.json marker; "
+                                             r"download_viral_references\(force=True\), or "
+                                             r"'orfdata data fetch gdc-viruses --force', repairs it"):
             attempt(species="human", cache_root=str(tmp_path))
     repaired = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
     assert marker.is_file() and repaired.path != installed.path
@@ -404,7 +407,7 @@ def test_a_broken_newest_bundle_is_replaced_by_force(viral_panel, tmp_path):
     installed = _install(tmp_path)
     broken = installed.path.parent / "2999-01-01T00-00-00Z"
     broken.symlink_to(tmp_path)
-    with pytest.raises(ValueError, match="isn't a directory; replace it with force=True"):
+    with pytest.raises(ValueError, match=r"isn't a directory; download_viral_references\(force=True\)"):
         open_viral_references(species="human", cache_root=str(tmp_path))
     repaired = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
     assert repaired.path.name > broken.name
@@ -468,3 +471,64 @@ def test_a_moved_datacache_store_module_is_reported(monkeypatch):
     monkeypatch.delattr(bundle_store, "user_key")
     with pytest.raises(ImportError, match="need datacache.bundle_store"):
         viral_panel_module._bundle_store()
+
+
+def test_prune_skips_a_damaged_store_untouched_and_goes_on(viral_panel, tmp_path):
+    first = _install(tmp_path)
+    selection = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path), force=True)
+    newest = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    selection_store = selection.path.parent.parent
+    (selection_store / ".datacache-store.json").unlink()
+    pruned = prune_viral_references(species="human", cache_root=str(tmp_path))
+    assert pruned["deleted"] == (first.path,) and newest.path.is_dir()
+    assert selection.path.is_dir()  # Nothing is deleted from a store that doesn't validate.
+    assert list(pruned["skipped"]) == [str(selection_store)]
+    reason = pruned["skipped"][str(selection_store)]
+    assert "lost its .datacache-store.json marker" in reason and "force" not in reason
+
+
+def test_a_selection_follows_a_refreshed_collection(viral_panel, tmp_path):
+    import json
+
+    installed = _install(tmp_path)
+    selection = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    assert selection.source_collection == installed.path
+    assert select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path)) == selection
+    refreshed = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    again = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
+    assert again.path != selection.path and again.source_collection == refreshed.path
+    metadata = json.loads((again.path / "metadata.json").read_text())
+    assert metadata["source_bundle"] == str(refreshed.path)
+    # The replaced selection keeps its own provenance, not the collection's newest.
+    assert json.loads((selection.path / "metadata.json").read_text())["source_bundle"] == str(installed.path)
+
+
+def test_a_damaged_collection_seen_through_a_selection_names_what_repairs_it(viral_panel, tmp_path):
+    _install(tmp_path)
+    (_store_path(tmp_path) / ".datacache-store.json").unlink()
+    for force in (False, True):
+        with pytest.raises(ValueError, match=r"download_viral_references\(force=True\), or "
+                                             r"'orfdata data fetch gdc-viruses --force', repairs it"):
+            select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path), force=force)
+    download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    assert select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path)).genome_count
+
+
+def test_a_linked_044_directory_still_opens(viral_panel, tmp_path):
+    installed = _install(tmp_path)
+    moved = tmp_path / "elsewhere" / "collection"
+    moved.parent.mkdir()
+    store = installed.path.parent.parent
+    shutil.move(installed.path, moved)
+    shutil.rmtree(store)
+    legacy = (get_data_dir(str(tmp_path)) / "viral" / "references" / "homo_sapiens" /
+              "gdc-viruses" / bundle_version(GDC_VIRUSES))
+    legacy.parent.mkdir(parents=True)
+    legacy.symlink_to(moved, target_is_directory=True)
+    opened = open_viral_references(species="human", cache_root=str(tmp_path))
+    assert opened.path == legacy and collection_state("gdc-viruses", cache_root=str(tmp_path)) == "available"
+    download_viral_references(species="human", cache_root=str(tmp_path), force=True)
+    pruned = prune_viral_references(species="human", cache_root=str(tmp_path))
+    assert pruned["deleted"] == () and "link to a 0.44 directory" in pruned["skipped"][str(legacy)]
+    assert moved.is_dir()

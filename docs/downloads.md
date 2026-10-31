@@ -319,7 +319,12 @@ prune_viral_references(species="human", collection="gdc-viruses", keep=1)
 
 This keeps the newest `keep` copies of the collection and of each of its
 selections, deletes the rest with the PyEnsembl indexes built for them under
-the same cache root, and returns the deleted directories.
+the same cache root, and returns `{"deleted": (...), "skipped": {path: reason}}`.
+A store that can't be read or doesn't validate is skipped untouched, with the
+reason, and the others are still pruned. A selection records the collection
+copy it was built from; after a refresh, asking for the same selection builds a
+new one from the current collection rather than reusing one built from the
+replaced copy.
 
 A forced install (`--force`, `force=True`) also repairs a store that lost its
 `.datacache-store.json` marker or whose newest copy isn't a directory. A path
