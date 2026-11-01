@@ -175,7 +175,26 @@ def test_species_selection_needs_the_species_catalogue_loader(offline, capsys):
     with pytest.raises(SystemExit) as error:
         run(["query", "--species", "mouse"], catalog_loader=load_uorf_catalog)
     err = capsys.readouterr().err
-    assert error.value.code == 2 and "--species is not available here" in err
+    assert error.value.code == 2 and "unrecognized arguments: --species mouse" in err
+
+
+def test_query_runs_alone_under_another_program(offline, capsys):
+    from orfdata.catalog import load_uorf_catalog
+    from orfdata.cli import query
+
+    with pytest.raises(SystemExit) as error:
+        query(["--help"], "tool orfs", catalog_loader=load_uorf_catalog)
+    assert error.value.code == 0
+    text = capsys.readouterr().out
+    assert text.startswith("usage: tool orfs ") and "  tool orfs --gene TP53" in text
+    assert "--species" not in text and "catalogs list" not in text and "orfdata" not in text
+    with pytest.raises(SystemExit) as error:
+        query(["--not-an-option"], "tool orfs", catalog_loader=load_uorf_catalog)
+    assert error.value.code == 2
+    assert capsys.readouterr().err.startswith("tool orfs: error: unrecognized arguments: --not-an-option\n"
+                                              "Try 'tool orfs --help' for usage.")
+    query(["--orf-id", "c7riboseqorf56", "--json"], "tool orfs", catalog_loader=load_uorf_catalog)
+    assert json.loads(capsys.readouterr().out)["records"][0]["orf_id"] == "c7riboseqorf56"
 
 
 @pytest.mark.parametrize("argv", [

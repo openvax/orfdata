@@ -1,3 +1,13 @@
+# 0.45.0
+
+- Add `orfdata.cli.query(argv, prog, catalog_loader=...)`, the `query` command on
+  its own, so another tool can offer ORF queries as one of its commands. Help,
+  errors and examples name that tool's command. With a catalogue loader other
+  than `load_catalog`, `--species` is not offered, and passing it is an
+  unrecognized-argument error (exit 2) instead of a separate usage check.
+  `run(..., catalog_loader=...)` still accepts every command; the query
+  examples in `orfdata query --help` keep their wording.
+
 # 0.44.0
 
 - Show a command guide for bare `orfdata` and command groups; add `help COMMAND`
