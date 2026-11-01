@@ -950,6 +950,10 @@ class _ViralInput:
 def _viral_reference_input(reference: ViralReference) -> _ViralInput:
     if not isinstance(reference, ViralReference):
         raise TypeError("Expected a ViralReference")
+    if reference.bundle is not None:
+        raise ValueError(
+            f"{reference.id} comes from an installed collection, which records no source host "
+            "or source-record hash; Proteome viral layers take bundled references until #104")
     proteins = ProteinSet(
         name=f"{reference.virus_type}@{reference.id}",
         proteins=tuple((orf.orf_id, orf.protein_sequence) for orf in reference.orfs),

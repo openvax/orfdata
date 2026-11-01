@@ -75,8 +75,8 @@ def _tables(files):
     """Genome rows, transcript rows, exon paths and genome sequences of one bundle.
 
     The bundle's checksums are verified once per process, the first time any of
-    its tables is read, so a reference is never built from a file that no longer
-    matches what was installed.
+    its tables is read. A bundle is a versioned directory that is never edited, so
+    this is cached for the process; a replaced bundle is a new directory.
     """
     from . import viral_panel
 
@@ -102,7 +102,7 @@ def _tables(files):
         if (len(found) != int(row.length_nt)
                 or hashlib.sha256(found.encode("ascii")).hexdigest() != row.genome_sha256):
             raise ValueError(f"Viral genome {row.genome_id} does not match its table: {files.path}")
-    return genomes, transcripts, exons, sequences
+    return genomes, transcripts, exons, sequences, _fasta(files.protein_fasta)
 
 
 def _candidates(transcripts):
@@ -123,14 +123,13 @@ def _bind(files, genome_id, sequence, label):
     named in ``skipped`` with the reason, so one odd feature does not make the
     rest of the reference unusable and nothing is dropped without a record.
     """
-    genomes, transcripts, exons, _ = _tables(files)
+    genomes, transcripts, exons, _, proteins = _tables(files)
     row = genomes[genomes["genome_id"] == genome_id].iloc[0]
     context = ReferenceContext(
         taxon_id=int(row.viral_taxon_id), species=_species(row["name"]), genome_build=genome_id,
         annotation_name=files.collection, annotation_version=row.accession_version,
         sequence_sha256=row.genome_sha256)
     source = f"{files.collection} inventory {row.accession_version}"
-    proteins = _fasta(files.protein_fasta)
     orfs, skipped = [], []
     for item in _candidates(transcripts[transcripts["genome_id"] == genome_id]).itertuples():
         blocks, strand = exons[item.transcript_id]
@@ -151,7 +150,7 @@ def _bind(files, genome_id, sequence, label):
                 start_complete=item.initiation not in _UNESTABLISHED)
             if orf.coding_sequence != coding or not orf.stop_complete:
                 raise ValueError("coding boundaries do not translate exactly")
-        except ValueError as error:
+        except (ValueError, KeyError) as error:
             skipped.append((item.protein_id, str(error)))
         else:
             orfs.append(orf)
@@ -164,33 +163,55 @@ def _placed(files, genome_id):
     return _bind(files, genome_id, _tables(files)[3][genome_id], genome_id)
 
 
-def installed_references(cache_root=None):
-    """Every reference of every installed collection, as :class:`ViralReference` rows."""
+@lru_cache(maxsize=8)
+def _references_of(files, collection_name):
+    """One bundle's references, built once per process."""
     from .viral import ViralProduct, ViralReference
 
+    genomes, transcripts, _, sequences, _ = _tables(files)
+    catalogue = hashlib.sha256((files.path / "SHA256SUMS").read_bytes()).hexdigest()
     references = []
+    for row in genomes.itertuples():
+        sequence = sequences[row.genome_id]
+        orfs, _ = _placed(files, row.genome_id)
+        held = int((transcripts["genome_id"] == row.genome_id).sum())
+        left = f"; {held - len(orfs)} of {held} source CDS not offered as ORFs" if held > len(orfs) else ""
+        references.append(ViralReference(
+            id=row.genome_id, species=_species(row.name), taxon_id=int(row.viral_taxon_id),
+            host_taxon_ids=tuple(int(value) for value in row.source_host_taxon_ids.split(",") if value),
+            host_source="", group="", virus_type=row.abbreviation, ictv_species="",
+            taxonomy_source=f"{collection_name} inventory", length=len(sequence),
+            sequence_md5=hashlib.md5(sequence.encode("ascii"), usedforsecurity=False).hexdigest(),
+            sequence_sha256=row.genome_sha256, native_to_reference_rotation=0,
+            source_accession=row.accession_version, source_sha256="", source_url="",
+            coding_models=len(orfs),
+            products=tuple(ViralProduct(orf.orf_id, orf.transcript.gene_name or "", "")
+                           for orf in orfs),
+            scope=(f"Source CDS features of the installed {collection_name} collection "
+                   f"({files.path.name}); not complete transcript models{left}"),
+            catalogue_sha256=catalogue, bundle=str(files.path)))
+    return tuple(references)
+
+
+def installed_references(cache_root=None):
+    """Every reference of every installed collection, as :class:`ViralReference` rows.
+
+    A genome whose bases an earlier one already has is listed once, so an exact
+    sequence names one reference. A collection that is damaged is ignored with a
+    warning rather than failing the lookup.
+    """
+    references, seen = [], set()
     for collection, files in _bundles(cache_root):
-        genomes, transcripts, _, sequences = _tables(files)
-        catalogue = hashlib.sha256((files.path / "SHA256SUMS").read_bytes()).hexdigest()
-        for row in genomes.itertuples():
-            sequence = sequences[row.genome_id]
-            orfs, _ = _placed(files, row.genome_id)
-            held = int((transcripts["genome_id"] == row.genome_id).sum())
-            left = f"; {held - len(orfs)} of {held} source CDS not offered as ORFs" if held > len(orfs) else ""
-            references.append(ViralReference(
-                id=row.genome_id, species=_species(row.name), taxon_id=int(row.viral_taxon_id),
-                host_taxon_ids=tuple(int(value) for value in row.source_host_taxon_ids.split(",") if value),
-                host_source="", group="", virus_type=row.abbreviation, ictv_species="",
-                taxonomy_source=f"{collection.name} inventory", length=len(sequence),
-                sequence_md5=hashlib.md5(sequence.encode("ascii"), usedforsecurity=False).hexdigest(),
-                sequence_sha256=row.genome_sha256, native_to_reference_rotation=0,
-                source_accession=row.accession_version, source_sha256="", source_url="",
-                coding_models=len(orfs),
-                products=tuple(ViralProduct(orf.orf_id, orf.transcript.gene_name or "", "")
-                               for orf in orfs),
-                scope=(f"Source CDS features of the installed {collection.name} collection "
-                       f"({files.path.name}); not complete transcript models{left}"),
-                catalogue_sha256=catalogue, bundle=str(files.path)))
+        try:
+            found = _references_of(files, collection.name)
+        except (ValueError, OSError, KeyError) as error:
+            warnings.warn(f"Ignoring the installed {collection.name} viral references: {error}",
+                          stacklevel=4)
+            continue
+        for item in found:
+            if item.sequence_sha256 not in seen:
+                seen.add(item.sequence_sha256)
+                references.append(item)
     return tuple(references)
 
 
@@ -203,7 +224,7 @@ def _files_at(bundle):
         try:
             return viral_panel._existing_bundle(
                 Path(bundle), species=species, collection=collection)
-        except ValueError:
+        except (ValueError, OSError):
             continue
     raise ValueError(f"Not an installed viral reference collection: {bundle}")
 
@@ -219,9 +240,10 @@ def installed_orfs(reference, *, sequence=None, contig=None):
     if not isinstance(label, str) or not label:
         raise ValueError("contig must be a nonempty name")
     files = _files_at(reference.bundle)
-    if sequence is None and label == reference.id:
+    stored = _tables(files)[3][reference.id]
+    if (sequence is None or sequence == stored) and label == reference.id:
         return _placed(files, reference.id)[0]
-    sequence = _tables(files)[3][reference.id] if sequence is None else sequence
+    sequence = stored if sequence is None else sequence
     return _bind(files, reference.id, sequence, label)[0]
 
 

@@ -73,6 +73,7 @@ class ViralReference:
     def to_dict(self):
         """Return serializable metadata without loading DNA or ORF models."""
         row = asdict(self)
+        row.pop("bundle")  # A local path is not part of the reference's identity.
         row["host_taxon_ids"] = list(self.host_taxon_ids)
         row["products"] = list(row["products"])
         row["virus"] = dict(group=row.pop("group"), type=row.pop("virus_type"),
@@ -115,12 +116,16 @@ def _every_reference(installed, cache_root):
 
     A collection's genome with the sequence of a bundled reference is that
     reference, so it is listed once, as the bundled one. A different sequence
-    under a bundled ID would make the ID ambiguous and is refused.
+    under a bundled ID would make the ID ambiguous, so that installed genome is
+    ignored with a warning, as is a collection that is damaged: bundled
+    lookups never fail because of what is installed.
     """
     data = _catalog()
     found = [_reference(row, data) for row in data["references"]]
     if not installed:
         return found
+    import warnings
+
     from .viral_installed import installed_references
 
     held = {item.sequence_sha256 for item in found}
@@ -129,8 +134,10 @@ def _every_reference(installed, cache_root):
         if item.sequence_sha256 in held:
             continue
         if item.id in taken:
-            raise ValueError(f"Viral reference ID {item.id!r} names two different sequences: "
-                             f"the bundled catalogue and {item.bundle}")
+            warnings.warn(f"Ignoring installed viral reference {item.id!r}: the bundled catalogue "
+                          f"already uses that ID for a different sequence ({item.bundle})",
+                          stacklevel=3)
+            continue
         held.add(item.sequence_sha256)
         taken[item.id] = item
         found.append(item)

@@ -139,3 +139,26 @@ def test_the_viral_genome_is_declared_for_downstream_consumers(viral_panel, tmp_
     assert context.annotation_name == genome.annotation_name
     assert context.annotation_version == genome.annotation_version
     assert ReferenceContext.from_genome(genome, context=context) == context
+
+
+def test_a_damaged_installed_collection_never_breaks_bundled_lookups(viral_panel, tmp_path):
+    bundle = _install(tmp_path)
+    bundle.genome_fasta.write_text(bundle.genome_fasta.read_text() + "\n")  # Breaks the checksums.
+    with pytest.warns(UserWarning, match="Ignoring the installed gdc-viruses"):
+        found = viral_references(cache_root=str(tmp_path))
+    assert [item.id for item in found] == [item.id for item in viral_references(installed=False)]
+    # A bundled reference resolves without consulting the installed collection.
+    assert len(viral_orfs(reference_id="NC_001526.4", cache_root=str(tmp_path))) == 9
+
+
+def test_installed_references_are_not_proteome_inputs_and_hide_their_path(viral_panel, tmp_path):
+    from orfdata import Proteome
+
+    _install(tmp_path)
+    item = viral_reference("VTEST001.1", cache_root=str(tmp_path))
+    assert "bundle" not in item.to_dict()
+    assert "bundle" not in viral_references(installed=False)[0].to_dict()
+    from orfdata.proteome import _viral_reference_input
+    with pytest.raises(ValueError, match="installed collection"):
+        _viral_reference_input(item)
+    assert Proteome  # Public name still importable.
