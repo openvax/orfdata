@@ -982,7 +982,7 @@ def _viral_inputs(selection, host_taxon_id, *, host_taxon_ids=None, host_source=
     if selection is None or selection is False:
         return ()
     if selection is True or selection == "all":
-        references = viral_references(host=host_taxon_id)
+        references = viral_references(host=host_taxon_id, installed=False)
         if not references:
             raise ValueError(f"No bundled viral references for host taxon {host_taxon_id}")
         selection = _canonical_viral_references(references)
@@ -1017,9 +1017,9 @@ def _viral_inputs(selection, host_taxon_id, *, host_taxon_ids=None, host_source=
             resolved.append(_viral_reference_input(item))
         elif isinstance(item, str):
             try:
-                reference = viral_reference(item)
+                reference = viral_reference(item, installed=False)
             except ValueError:
-                matches = viral_references(host=host_taxon_id, virus_type=item)
+                matches = viral_references(host=host_taxon_id, virus_type=item, installed=False)
                 if not matches:
                     raise ValueError(f"No bundled viral reference ID or virus type matches {item!r} "
                                      f"for host taxon {host_taxon_id}") from None

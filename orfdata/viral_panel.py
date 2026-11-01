@@ -1074,7 +1074,7 @@ def download_viral_references(
             ) from error
 
     def build(directory):
-        inventory = viral_panel_coverage(collection=collection.name)
+        inventory = viral_panel_coverage(collection=collection.name, installed=False)
         primaries = _primary_ledger(collection, inventory)
         _write_bundle(directory, collection, inventory, primaries, timeout=timeout,
                       prefer_reference_molecule=prefer_reference_molecule,
@@ -1200,7 +1200,7 @@ def _selected_abbreviations(contexts, excluded_contexts, context_match, subsets)
     """The inventory entries a context and subset selection resolves to."""
     inventory = viral_panel_coverage(
         contexts=contexts or None, exclude_contexts=excluded_contexts or None,
-        context_match=context_match)
+        context_match=context_match, installed=False)
     if subsets:
         selected = list(viral_subset_abbreviations(subsets))
         inventory = inventory[inventory["abbreviation"].isin(selected)]
@@ -1494,6 +1494,26 @@ def viral_annotation_survey(*, contexts=None, exclude_contexts=None, context_mat
         "genomes_behind_alternate": sum(bool(row["shortfall"]) for row in surveyed),
         "coding_features_behind_alternate": sum(row["shortfall"] or 0 for row in surveyed),
     })
+
+
+def viral_reference_context(reference_set: ViralReferenceFiles):
+    """The :class:`ReferenceContext` that declares what :func:`viral_genome` opens.
+
+    A PyEnsembl genome over viral contigs carries no species, so consumers that
+    check a host reference against the analysis (vaxrank's ``reference_context``)
+    need it stated. The context names the collection's *target* species, the
+    analysis the set is for; it asserts no source host. It validates against the
+    genome ``viral_genome(reference_set)`` returns.
+    """
+    from .reference import ReferenceContext
+
+    collection = viral_collection(reference_set.collection)
+    return ReferenceContext(
+        taxon_id=reference_set.target_taxon_id,
+        species=canonical_species(reference_set.target_species),
+        genome_build=f"{collection.panel}-viral",
+        annotation_name=f"orfdata-{collection.name}",
+        annotation_version=bundle_version(collection))
 
 
 def viral_genome(

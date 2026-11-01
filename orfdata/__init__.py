@@ -101,6 +101,7 @@ from .viral_panel import (
     select_viral_references,
     viral_annotation_survey,
     viral_genome,
+    viral_reference_context,
     viral_reference_summary,
 )
 from .viral_registry import ViralCollection, viral_collection, viral_collections
@@ -117,6 +118,7 @@ __all__ = [
     "viral_reference",
     "viral_reference_sequence",
     "viral_references",
+    "viral_reference_context",
     "download_viral_inventory",
     "viral_contexts",
     "viral_panel_coverage",

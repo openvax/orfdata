@@ -52,15 +52,22 @@ class ViralReference:
     products: tuple[ViralProduct, ...]
     scope: str
     catalogue_sha256: str
+    bundle: str | None = None  # The installed collection this came from; None when bundled.
 
     @cached_property
     def dna(self):
         """Complete, checksum-verified forward FASTA bases for this reference."""
+        if self.bundle is not None:
+            from .viral_installed import installed_sequence
+            return installed_sequence(self)
         return viral_reference_sequence(self.id)
 
     @cached_property
     def orfs(self):
         """Source-defined CDS paths placed on this exact reference."""
+        if self.bundle is not None:
+            from .viral_installed import installed_orfs
+            return installed_orfs(self)
         return viral_orfs(reference_id=self.id)
 
     def to_dict(self):
@@ -103,9 +110,38 @@ def _reference(row, data):
         scope=data["scope"], catalogue_sha256=_CATALOG_SHA256)
 
 
-def viral_references(*, host=None, group=None, virus_type=None):
+def _every_reference(installed, cache_root):
+    """Bundled references, then those of installed collections the bundle does not already hold.
+
+    A collection's genome with the sequence of a bundled reference is that
+    reference, so it is listed once, as the bundled one. A different sequence
+    under a bundled ID would make the ID ambiguous and is refused.
+    """
+    data = _catalog()
+    found = [_reference(row, data) for row in data["references"]]
+    if not installed:
+        return found
+    from .viral_installed import installed_references
+
+    held = {item.sequence_sha256 for item in found}
+    taken = {item.id: item for item in found}
+    for item in installed_references(cache_root):
+        if item.sequence_sha256 in held:
+            continue
+        if item.id in taken:
+            raise ValueError(f"Viral reference ID {item.id!r} names two different sequences: "
+                             f"the bundled catalogue and {item.bundle}")
+        held.add(item.sequence_sha256)
+        taken[item.id] = item
+        found.append(item)
+    return found
+
+
+def viral_references(*, host=None, group=None, virus_type=None, installed=True, cache_root=None):
     """Find released viral references by documented host, group and type.
 
+    References of installed collections are listed after the bundled ones.
+    
     Parameters
     ----------
     host : str or int, optional
@@ -115,6 +151,15 @@ def viral_references(*, host=None, group=None, virus_type=None):
         Convenience group label, such as ``"HPV"``; not a taxonomy rank.
     virus_type : str, optional
         Named virus type, such as ``"HPV16"``; distinct from ICTV species.
+    installed : bool, default True
+        Also list the references of collections installed under ``cache_root``.
+        This reads local files only. An installed reference has a ``bundle``,
+        an empty ``group`` and ``ictv_species`` (a collection records neither),
+        and host associations only where its inventory states them, so
+        ``host=`` and ``group=`` select bundled references until those are
+        curated (#104). Pass ``False`` for the bundled catalogue alone.
+    cache_root : path, optional
+        Where collections are installed; the default ORFdata cache otherwise.
 
     Returns
     -------
@@ -134,30 +179,34 @@ def viral_references(*, host=None, group=None, virus_type=None):
     if any(value is not None and (not isinstance(value, str) or not value)
            for value in (group, virus_type)):
         raise ValueError("group and virus_type must be nonempty names")
-    data = _catalog()
-    return tuple(_reference(row, data)
-                 for row in data["references"]
-                 if (host_taxon_id is None or host_taxon_id in row["host_taxon_ids"])
-                 and (group is None or row["virus"]["group"].casefold() == group.casefold())
-                 and (virus_type is None or row["virus"]["type"].casefold() == virus_type.casefold()))
+    return tuple(item for item in _every_reference(installed, cache_root)
+                 if (host_taxon_id is None or host_taxon_id in item.host_taxon_ids)
+                 and (group is None or item.group.casefold() == group.casefold())
+                 and (virus_type is None or item.virus_type.casefold() == virus_type.casefold()))
 
 
-def viral_reference(reference_id):
-    """Return one exact viral reference by stable ID, without positional selection."""
-    data = _catalog()
-    matches = [row for row in data["references"] if row["id"] == reference_id]
+def viral_reference(reference_id, *, installed=True, cache_root=None):
+    """Return one exact viral reference by stable ID, without positional selection.
+
+    Installed collections are searched after the bundled catalogue; see
+    :func:`viral_references`.
+    """
+    matches = [item for item in _every_reference(installed, cache_root) if item.id == reference_id]
     if len(matches) != 1:
         raise ValueError("No unique released viral reference ID matches this name")
-    return _reference(matches[0], data)
+    return matches[0]
 
 
-def viral_reference_sequence(reference_id):
-    """Return bundled, checksum-verified reference bases for one exact ID.
+def viral_reference_sequence(reference_id, *, installed=True, cache_root=None):
+    """Return checksum-verified reference bases for one exact ID.
 
     The sequence uses the forward FASTA alphabet (T rather than U) and may
     represent a virus whose biological genome is RNA. No network is accessed.
+    An ID not in the bundled catalogue is looked up in installed collections.
     """
     matches = [row for row in _catalog()["references"] if row["id"] == reference_id]
+    if not matches and installed:
+        return viral_reference(reference_id, cache_root=cache_root).dna
     if len(matches) != 1:
         raise ValueError("No unique released viral reference ID matches this name")
     row = matches[0]
@@ -168,7 +217,8 @@ def viral_reference_sequence(reference_id):
     return sequence
 
 
-def viral_orfs(reference_sequence=None, *, reference_id=None, contig=None):
+def viral_orfs(reference_sequence=None, *, reference_id=None, contig=None, installed=True,
+               cache_root=None):
     """Load source-defined CDSs for one exactly matching viral DNA reference.
 
     Parameters
@@ -183,6 +233,14 @@ def viral_orfs(reference_sequence=None, *, reference_id=None, contig=None):
     contig : str, optional
         The caller's name for this exact DNA in an alignment reference. The
         original versioned source identity remains on every ORF's context.
+    installed : bool, default True
+        Also match the references of collections installed under ``cache_root``
+        (see :func:`viral_references`). An installed collection offers a source
+        CDS as an ORF only when its annotation is complete, translation starts
+        at the first base and the source claims no recoding; the others stay in
+        its transcriptome layer. Local files only; nothing is downloaded.
+    cache_root : path, optional
+        Where collections are installed; the default ORFdata cache otherwise.
 
     Returns
     -------
@@ -200,12 +258,19 @@ def viral_orfs(reference_sequence=None, *, reference_id=None, contig=None):
     """
     if (reference_sequence is None) == (reference_id is None):
         raise ValueError("Provide exactly one of reference_sequence or reference_id")
-    sequence = (viral_reference_sequence(reference_id) if reference_id is not None
-                else str(reference_sequence).upper())
+    sequence = (viral_reference_sequence(reference_id, installed=installed, cache_root=cache_root)
+                if reference_id is not None else str(reference_sequence).upper())
     fingerprint = hashlib.sha256(sequence.encode("ascii")).hexdigest()
     data = _catalog()
     matches = [row for row in data["references"] if row["sequence_sha256"] == fingerprint
                and row["length"] == len(sequence)]
+    if not matches and installed:
+        from .viral_installed import installed_orfs, installed_references
+
+        found = [item for item in installed_references(cache_root)
+                 if item.sequence_sha256 == fingerprint and item.length == len(sequence)]
+        if len(found) == 1:
+            return installed_orfs(found[0], sequence=sequence, contig=contig)
     if len(matches) != 1:
         raise ValueError("No unique released viral coding reference matches this DNA; "
                          "inspect viral_references() for available sequence identities")
