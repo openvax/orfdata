@@ -102,14 +102,27 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         argv = argv[1:]
     elif not argv[0].startswith("-"):
         _command_guide(prog).error(f"Unknown command {argv[0]!r}")
+    return query(argv, prog + " query", catalog_loader=catalog_loader)
+
+
+def query(argv=None, prog="orfdata query", *, catalog_loader=load_catalog):
+    """Run the ``query`` command on its own, under ``prog``.
+
+    Another tool can expose ORF queries as one of its commands with its own catalogue loader. Its help,
+    errors and examples name ``prog``, and exit statuses follow :func:`run`. Any ``catalog_loader`` other
+    than :func:`~orfdata.load_catalog` reads one catalogue, so ``--species`` is not offered.
+    """
+    argv = list(sys.argv[1:] if argv is None else argv)
+    default = catalog_loader is load_catalog
+    epilog = (f"Examples:\n  {prog} --gene TP53\n"
+              f"  {prog} --orf-id c7riboseqorf56 --json\n")
+    if default:
+        epilog += (f"  {prog} --species mouse --format fasta\n\n"
+                   "Find optional sources with 'orfdata catalogs list'.")
     parser = ArgumentParser(
         description="Query an installed ORF catalogue; preview records or export them explicitly.",
-        prog=prog + " query",
-        epilog="Examples:\n  orfdata query --gene TP53\n"
-               "  orfdata query --orf-id c7riboseqorf56 --json\n"
-               "  orfdata query --species mouse --format fasta\n\n"
-               "Find optional sources with 'orfdata catalogs list'.")
-    _add_query_arguments(parser)
+        prog=prog, epilog=epilog)
+    _add_query_arguments(parser, species=default)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
 
@@ -154,13 +167,16 @@ def _catalog_names(value):
     return value if value == "all" else [name for name in value.split(",") if name]
 
 
-def _add_query_arguments(parser, *, catalog_path=True):
+def _add_query_arguments(parser, *, catalog_path=True, species=True):
     if catalog_path:
         parser.add_argument("--catalog", action="append",
                             help="Use a compatible local JSON/JSON.gz catalogue; repeat to merge several")
+    else:
+        parser.set_defaults(catalog=None)
+    if catalog_path and species:
         parser.add_argument("--species", help="Use this species' catalogue, e.g. human or mouse (default human)")
     else:
-        parser.set_defaults(catalog=None, species=None)
+        parser.set_defaults(species=None)
     parser.add_argument("--gene", help="Exact source gene symbol or identifier")
     parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
@@ -310,8 +326,6 @@ def _query(args, parser, catalog_loader):
             options.update(contig=match.group(1), start=start, end=end)
         if args.min_protein_length is not None and args.min_protein_length < 1:
             raise UsageError("--min-protein-length must be a positive number of amino acids")
-        if args.species and catalog_loader is not load_catalog:
-            raise UsageError("--species is not available here: this command reads one catalogue")
         paths = args.catalog or [None]
         if args.species or (args.genome_build and not args.catalog and catalog_loader is load_catalog):
             # The assembly picks the catalogue too, not only checks it.
