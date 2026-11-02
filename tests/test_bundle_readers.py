@@ -45,3 +45,20 @@ def test_unreadable_files_are_errors_not_silent_losses(tmp_path):
     gtf.write_text('g\torfdata\texon\t1\t5\t.\t+\t.\ttranscript_id "t";\n')
     with pytest.raises(ValueError, match="exon_number"):
         read_exons(gtf)
+
+
+def test_inconsistent_input_is_refused_with_its_location(tmp_path):
+    import pytest
+
+    path = tmp_path / "x.fasta"
+    path.write_text("AC\n>a\nGT\n")
+    with pytest.raises(ValueError, match="before the first header"):
+        read_fasta(path)
+    gtf = tmp_path / "x.gtf"
+    row = 'g\torfdata\texon\t{}\t{}\t.\t{}\t.\ttranscript_id "t"; exon_number "{}";\n'
+    gtf.write_text(row.format(1, 5, "+", 1) + row.format(9, 12, "+", 1))
+    with pytest.raises(ValueError, match="repeats an exon number"):
+        read_exons(gtf)
+    gtf.write_text(row.format(1, "NA", "+", 1))
+    with pytest.raises(ValueError, match="x.gtf:1"):
+        read_exons(gtf)

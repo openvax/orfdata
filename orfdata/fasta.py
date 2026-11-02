@@ -34,6 +34,9 @@ def read_fasta(path):
                 if tokens[0] in records:
                     raise ValueError(f"FASTA identifier repeated: {tokens[0]} in {path}")
                 name, parts = tokens[0], []
+            elif name is None:
+                if line.strip():
+                    raise ValueError(f"FASTA sequence before the first header: {path}:{number}")
             else:
                 parts.append(line.strip())
     keep()
