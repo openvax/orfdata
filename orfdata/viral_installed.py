@@ -14,8 +14,8 @@ start it declares and the codon its first whole codon begins at. It is offered
 as an ORF when the bases translate exactly to the source protein, and keeps the
 start and stop completeness the source establishes. One that does not stays in
 the transcriptome layer, where PyEnsembl still sees it, and ``coding_models``
-counts only the ORFs offered. A CDS with an ambiguous base, or whose source
-protein does not match its codons, is among them.
+counts only the ORFs offered. A CDS with an ambiguous base, whose source
+protein does not match its codons, or that reads a base twice (#65), is among them.
 """
 
 import hashlib
