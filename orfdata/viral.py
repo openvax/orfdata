@@ -6,13 +6,11 @@ import json
 from dataclasses import asdict, dataclass
 from functools import cached_property, lru_cache
 
-from .model import TranscriptORF
 from .reference import ReferenceContext, species_taxon
 from .reference_table import packaged_bytes
-from .rna import SourceRNA
+from .source_cds import source_cds_orf
 
 _CATALOG_SHA256 = "aca0c72948d4cda896d14b32203981bce4759e0c70212c05dca6f3d0e16ed4b4"
-_COMPLEMENT = str.maketrans("ACGT", "TGCA")
 
 
 @dataclass(frozen=True)
@@ -296,18 +294,14 @@ def viral_orfs(reference_sequence=None, *, reference_id=None, contig=None, insta
     for cds in data["cds"]:
         protein_id = cds["protein_id"]
         blocks = reference["coding_blocks"][protein_id]
-        coding = "".join(sequence[a - 1:b] if cds["strand"] == "+" else
-                         sequence[a - 1:b].translate(_COMPLEMENT)[::-1] for a, b in blocks)
         if cds["phase"] != 0:
             raise ValueError(f"Unsupported partial source codon: {protein_id}")
-        rna = SourceRNA(
-            id=f"{source['accession']}:CDS:{protein_id}", sequence=coding, reference=context,
-            source=f"NCBI RefSeq {source['accession']}", contig=label, strand=cds["strand"],
-            exons=blocks, gene_name=cds["gene"], biotype="source_CDS_fragment")
-        orf = TranscriptORF.at(rna, 0, orf_id=protein_id, source=rna.source,
-                               protein=cds["protein_sequence"], translation_table=cds["translation_table"],
-                               orf_type="reference_CDS", start_complete=cds["start_complete"])
-        if orf.coding_sequence != coding or orf.stop_complete != cds["stop_complete"]:
+        orf = source_cds_orf(
+            sequence, blocks, cds["strand"], context=context, label=label,
+            accession=source["accession"], protein_id=protein_id, gene=cds["gene"],
+            source=f"NCBI RefSeq {source['accession']}", protein=cds["protein_sequence"],
+            translation_table=cds["translation_table"], start_complete=cds["start_complete"])
+        if orf.stop_complete != cds["stop_complete"]:
             raise ValueError(f"Source coding boundaries do not translate exactly: {protein_id}")
         result.append(orf)
     return tuple(result)

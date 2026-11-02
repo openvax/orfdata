@@ -68,7 +68,7 @@ def test_installed_dna_and_orfs_load_from_the_bundle(viral_panel, tmp_path):
         viral_orfs(first.dna, installed=False)
 
 
-def test_minus_strand_cds_is_offered_and_an_origin_wrap_is_counted_as_not(
+def test_minus_strand_and_origin_wrapping_cds_are_both_offered(
         viral_panel, tmp_path, monkeypatch):
     from conftest import _genbank, serve_records, viral_documents
 
@@ -82,7 +82,7 @@ def test_minus_strand_cds_is_offered_and_an_origin_wrap_is_counted_as_not(
         ("complement(1..30)", {"gene": "E1", "product": "protein E1", "codon_start": 1,
                                "translation": "MAAAAAAAA"})], name="VTEST001", taxon=10001)
     # The reading frame runs off the end of the record and wraps to its start,
-    # which SourceRNA cannot yet hold (#66); the transcriptome layer still has it.
+    # as HBV's polymerase does on its circular genome.
     records["VTEST002.1"] = _genbank("VTEST002.1", coding[15:] + "ACGT" * 7 + "AC" + coding[:15], [
         ("join(46..60,1..15)", {"gene": "P", "product": "protein P", "codon_start": 1,
                                 "translation": "MAAAAAAAA"})], name="VTEST002", taxon=10002)
@@ -96,7 +96,10 @@ def test_minus_strand_cds_is_offered_and_an_origin_wrap_is_counted_as_not(
     assert reverse.transcript.strand == "-" and reverse.protein_sequence == "MAAAAAAAA"
     assert reverse.coding_sequence == coding
     wrapped = viral_reference("VTEST002.1", cache_root=root)
-    assert wrapped.coding_models == 0 and "1 of 1 source CDS not offered" in wrapped.scope
+    assert wrapped.coding_models == 1 and "not offered" not in wrapped.scope
+    (across,) = wrapped.orfs
+    assert across.protein_sequence == "MAAAAAAAA" and across.coding_sequence == coding
+    assert sorted(across.coding_blocks) == [(1, 15), (46, 60)]
 
 
 def test_the_coverage_ledger_reports_installed_references(viral_panel, tmp_path, monkeypatch):

@@ -8,13 +8,14 @@ functions answer for every installed collection, from the bundle's own files
 and with no second format. Lookup is offline: nothing here downloads, and a
 collection that is not installed contributes nothing.
 
-A source CDS is offered as an ORF only when it binds exactly: the annotation is
-complete, translation starts at the first base, the source claims no recoding,
-and the bases translate to the source protein from a start and stop codon the
-source supports. The rest stay in the transcriptome layer, where PyEnsembl
-still sees them, and ``coding_models`` counts only the ORFs offered. Today that
-leaves out frameshifts and recoding (#65) and a CDS wrapping a circular origin,
-such as HBV's polymerase (#66), which SourceRNA cannot yet hold.
+Every source CDS is read the same way, as the source gives it: its blocks in
+reading order (across a circular origin, or sharing a base at a frameshift), the
+start it declares and the codon its first whole codon begins at. It is offered
+as an ORF when the bases translate exactly to the source protein, and keeps the
+start and stop completeness the source establishes. One that does not stays in
+the transcriptome layer, where PyEnsembl still sees it, and ``coding_models``
+counts only the ORFs offered. A CDS with an ambiguous base, or whose source
+protein does not match its codons, is among them.
 """
 
 import hashlib
@@ -27,11 +28,9 @@ import pandas as pd
 
 from .fasta import read_fasta
 from .gtf import read_exons
-from .model import TranscriptORF
 from .reference import ReferenceContext, canonical_species
-from .rna import SourceRNA
+from .source_cds import source_cds_orf
 
-_COMPLEMENT = str.maketrans("ACGT", "TGCA")
 _DECLARED = ("alternative", "declared", "non_canonical")
 _UNESTABLISHED = ("partial", "unknown")
 
@@ -81,23 +80,18 @@ def _tables(files):
     return genomes, transcripts, exons, sequences, read_fasta(files.protein_fasta, upper=True)
 
 
-def _candidates(transcripts):
-    """The transcripts worth binding: complete, starting at the first base, with no claimed recoding."""
-    return transcripts[(transcripts["annotation_complete"] == "yes")
-                       & (transcripts["codon_start"] == "1")
-                       & (transcripts["recoding"] == "")]
-
-
 def _species(name):
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
 
 def _bind(files, genome_id, sequence, label):
-    """Bind a genome's candidate CDSs; returns ``(orfs, skipped)``.
+    """Place a genome's source CDSs; returns ``(orfs, skipped)``.
 
-    A CDS that does not translate exactly to its source protein is skipped and
-    named in ``skipped`` with the reason, so one odd feature does not make the
-    rest of the reference unusable and nothing is dropped without a record.
+    Every CDS is read from the table the same way. One that does not translate
+    exactly to its source protein is named in ``skipped`` with the reason, so one
+    odd feature does not make the rest of the reference unusable and nothing is
+    dropped without a record. The source's own statement of how a CDS starts and
+    where its first whole codon is (``initiation``, ``codon_start``) is passed on.
     """
     genomes, transcripts, exons, _, proteins = _tables(files)
     row = genomes[genomes["genome_id"] == genome_id].iloc[0]
@@ -107,29 +101,21 @@ def _bind(files, genome_id, sequence, label):
         sequence_sha256=row.genome_sha256)
     source = f"{files.collection} inventory {row.accession_version}"
     orfs, skipped = [], []
-    for item in _candidates(transcripts[transcripts["genome_id"] == genome_id]).itertuples():
+    for item in transcripts[transcripts["genome_id"] == genome_id].itertuples():
         blocks, strand = exons[item.transcript_id]
-        coding = "".join(sequence[a - 1:b] if strand == "+" else
-                         sequence[a - 1:b].translate(_COMPLEMENT)[::-1] for a, b in blocks)
         try:
-            rna = SourceRNA(
-                id=f"{row.accession_version}:CDS:{item.protein_id}", sequence=coding,
-                reference=context, source=source, contig=label, strand=strand, exons=blocks,
-                gene_name=item.gene, biotype="source_CDS_fragment")
-            orf = TranscriptORF.at(
-                rna, 0, orf_id=item.protein_id, source=source,
-                protein=proteins[item.protein_id].removesuffix("*"),
-                translation_table=int(item.translation_table), orf_type="reference_CDS",
-                # How the source starts the CDS: a non-ATG start it declares is passed
-                # on, and a start it does not establish is read as an ordinary codon.
+            orfs.append(source_cds_orf(
+                sequence, blocks, strand, context=context, label=label,
+                accession=row.accession_version, protein_id=item.protein_id, gene=item.gene,
+                source=source, protein=proteins[item.protein_id].removesuffix("*"),
+                translation_table=int(item.translation_table),
+                # A start the source declares is passed on; one it does not establish
+                # is read as an ordinary codon.
                 start_codon=item.start_codon if item.initiation in _DECLARED else None,
-                start_complete=item.initiation not in _UNESTABLISHED)
-            if orf.coding_sequence != coding or not orf.stop_complete:
-                raise ValueError("coding boundaries do not translate exactly")
+                start_complete=item.initiation not in _UNESTABLISHED,
+                phase=int(item.codon_start) - 1))
         except (ValueError, KeyError) as error:
             skipped.append((item.protein_id, str(error)))
-        else:
-            orfs.append(orf)
     return tuple(orfs), tuple(skipped)
 
 

@@ -1,3 +1,20 @@
+# 0.48.0
+
+- Installed viral collections offer far more of their CDSs as ORFs. The binder
+  reads every source CDS one way instead of filtering first: a CDS that wraps the
+  origin of a circular genome (HBV's polymerase), shares a base at a ribosomal
+  frameshift, is partial at either end, or has a later first whole codon is
+  offered when it translates exactly to its source protein, with the start and
+  stop completeness the source establishes. In the GDC collection 1,760 ORFs are
+  offered, up from 1,678, and six references have a CDS left out, not 64. Their
+  `scope` says which.
+- `SourceRNA` takes `contig_length` for a circular contig. A block must follow
+  the strand's direction and may share one base with the previous one; only a
+  circular contig lets a block continue from its last base to its first. This
+  replaces the rule that exons ascend without touching. The bundled HPV16
+  catalogue and installed collections now bind a CDS through one function,
+  `source_cds.source_cds_orf`.
+
 # 0.47.0
 
 - Fix installed viral collections being ignored by 0.46.1 and misread by
