@@ -205,8 +205,9 @@ def setup(argv=None, prog="orfdata setup"):
     Raises
     ------
     SystemExit
-        With status 2 for invalid arguments and 1 when anything failed to
-        install; what did install is still reported first.
+        With status 2 when the arguments don't parse, and 1 when the species
+        is unknown or anything failed to install; what did install is still
+        reported first.
     """
     from .install import InstallError, install_species
 
