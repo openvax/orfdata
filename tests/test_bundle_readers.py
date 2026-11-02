@@ -29,3 +29,19 @@ def test_read_exons_gives_transcript_order_for_both_strands(tmp_path):
         "t_m": (((30, 40), (10, 20)), "-"),
         "t_w": (((90, 100), (1, 5)), "+"),
     }
+
+
+def test_unreadable_files_are_errors_not_silent_losses(tmp_path):
+    import pytest
+
+    path = tmp_path / "x.fasta"
+    path.write_text(">a\nAC\n>a\nGT\n")
+    with pytest.raises(ValueError, match="repeated"):
+        read_fasta(path)
+    path.write_text(">\nAC\n")
+    with pytest.raises(ValueError, match="without an identifier"):
+        read_fasta(path)
+    gtf = tmp_path / "x.gtf"
+    gtf.write_text('g\torfdata\texon\t1\t5\t.\t+\t.\ttranscript_id "t";\n')
+    with pytest.raises(ValueError, match="exon_number"):
+        read_exons(gtf)

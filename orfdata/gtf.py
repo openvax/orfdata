@@ -137,6 +137,8 @@ def read_exons(path):
             fields = line.rstrip("\n").split("\t")
             if len(fields) == 9 and fields[2] == "exon":
                 attributes = dict(re.findall(r'(\w+) "([^"]*)"', fields[8]))
+                if not {"transcript_id", "exon_number"} <= attributes.keys():
+                    raise ValueError(f"GTF exon without transcript_id and exon_number: {path}")
                 rows.setdefault(attributes["transcript_id"], []).append(
                     (int(attributes["exon_number"]), int(fields[3]), int(fields[4]), fields[6]))
     return {name: (tuple((start, end) for _, start, end, _ in sorted(blocks)), blocks[0][3])

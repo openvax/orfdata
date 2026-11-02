@@ -79,7 +79,9 @@ def _tables(files):
         if (len(found) != int(row.length_nt)
                 or hashlib.sha256(found.encode("ascii")).hexdigest() != row.genome_sha256):
             raise ValueError(f"Viral genome {row.genome_id} does not match its table: {files.path}")
-    return genomes, transcripts, exons, sequences, read_fasta(files.protein_fasta)
+    proteins = {name: sequence.upper()
+                for name, sequence in read_fasta(files.protein_fasta).items()}
+    return genomes, transcripts, exons, sequences, proteins
 
 
 def _candidates(transcripts):

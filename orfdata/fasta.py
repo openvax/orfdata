@@ -15,16 +15,26 @@ def read_fasta(path):
     """Every record of a FASTA file as ``{identifier: sequence}``, in file order.
 
     The identifier is the first header token, as :func:`write_fasta` writes it.
+    A header without one, or an identifier used twice, is an error rather than a
+    silently dropped record.
     """
     records, name, parts = {}, None, []
+
+    def keep():
+        if name is not None:
+            records[name] = "".join(parts)
+
     with open(path) as stream:
-        for line in stream:
+        for number, line in enumerate(stream, 1):
             if line.startswith(">"):
-                if name is not None:
-                    records[name] = "".join(parts)
-                name, parts = line[1:].split()[0], []
+                keep()
+                tokens = line[1:].split()
+                if not tokens:
+                    raise ValueError(f"FASTA header without an identifier: {path}:{number}")
+                if tokens[0] in records:
+                    raise ValueError(f"FASTA identifier repeated: {tokens[0]} in {path}")
+                name, parts = tokens[0], []
             else:
                 parts.append(line.strip())
-    if name is not None:
-        records[name] = "".join(parts)
+    keep()
     return records
