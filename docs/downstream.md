@@ -57,10 +57,14 @@ Isovar asks ORFdata for coding references by exact genome sequence, not through
 a PyEnsembl genome. `viral_references()`, `viral_orfs()` and
 `viral_panel_coverage()` read every installed collection as well as the bundled
 HPV16 catalogue, so a collection installed with `orfdata data fetch` supplies
-Isovar's viral models for every contig it holds. Only CDSs that translate
-exactly to their source protein are offered; `viral_references()` says in each
-reference's `scope` how many were left out, and they remain in the
-transcriptome layer.
+Isovar's viral models for every contig it holds. A CDS is offered when it
+translates exactly to its source protein, wherever it lies: on either strand,
+across the origin of a circular genome, with a frameshift, or partial at either
+end (the ORF says which boundaries the source establishes). `viral_references()`
+says in each reference's `scope` how many were left out, and they remain in the
+transcriptome layer. In the GDC collection that is six of 1,758: three with an
+ambiguous base, two whose source protein does not match their codons, and an EBV
+gene spliced back across the terminal repeat.
 
 An installed reference carries what its own GenBank record says: its `group` is
 the genus in the record's lineage, and `host_taxon_ids` and `host_source` name

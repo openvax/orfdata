@@ -26,6 +26,12 @@ class SourceRNA:
     cover the sequence exactly once; a circular RNA's junction joins its last
     base to its first. ``related_transcript_ids`` names annotated transcripts it
     derives from; no Ensembl transcript identity is invented for it.
+
+    A block follows the previous one in the strand's direction and may share its
+    boundary base, as a ribosomal frameshift rereads one. On a circular contig
+    (``contig_length`` is its size) a block may also continue across the origin,
+    from the contig's last base to its first on the plus strand, or from its
+    first to its last on the minus strand.
     """
 
     id: str
@@ -40,6 +46,7 @@ class SourceRNA:
     gene_name: Optional[str] = None
     biotype: Optional[str] = None
     related_transcript_ids: tuple = ()
+    contig_length: Optional[int] = None
 
     def __post_init__(self):
         object.__setattr__(self, "sequence", str(self.sequence).upper())
@@ -56,12 +63,19 @@ class SourceRNA:
                 raise ValueError("Genomic exons need a contig and strand")
             if any(a < 1 or b < a for a, b in self.exons):
                 raise ValueError("Exons are 1-based inclusive blocks")
-            ascending = sorted(self.exons)
-            if list(self.exons) != (ascending[::-1] if self.strand == "-" else ascending) or any(
-                    b >= c for (_, b), (c, _) in zip(ascending, ascending[1:])):
-                raise ValueError("Exons must be in RNA order, descending on the minus strand, without overlaps")
+            if self.contig_length is not None and max(b for _, b in self.exons) > self.contig_length:
+                raise ValueError("Exons lie beyond the end of the contig")
+            if not all(self._follows(*before, *after) for before, after in zip(self.exons, self.exons[1:])):
+                raise ValueError("Exons must be in RNA order along the strand, sharing at most one base")
             if sum(b - a + 1 for a, b in self.exons) != len(self.sequence):
                 raise ValueError("Exons must cover the RNA sequence exactly once")
+
+    def _follows(self, start, end, next_start, next_end):
+        """Whether a block can come right after another in RNA order."""
+        last = self.contig_length
+        if self.strand == "+":
+            return next_start >= end or (end == last and next_start == 1)
+        return next_end <= start or (start == 1 and next_end == last)
 
     @property
     def versioned_id(self):
