@@ -11,10 +11,11 @@ def source_cds_orf(genome, blocks, strand, *, context, label, accession, protein
     """The ORF of one source CDS on ``genome`` (named ``label``), exactly as the source gives it.
 
     ``blocks`` are the CDS's 1-based inclusive genomic blocks in reading order,
-    which wrap the origin of a circular genome or share a base across a
-    frameshift where the source says so. The ORF is read from the first base to
-    the first stop, and must translate to the source ``protein``; otherwise this
-    raises ``ValueError`` and the caller keeps the CDS out, with the reason.
+    which wrap the origin of a circular genome or skip bases at a frameshift
+    where the source says so. The ORF is read from the first base to the first
+    stop, and must translate to the source ``protein`` with its genomic blocks
+    accounting for every coding base; otherwise this raises ``ValueError`` and
+    the caller keeps the CDS out, with the reason.
     """
     coding = "".join(genome[a - 1:b] if strand == "+" else genome[a - 1:b].translate(_COMPLEMENT)[::-1]
                      for a, b in blocks)
@@ -27,4 +28,9 @@ def source_cds_orf(genome, blocks, strand, *, context, label, accession, protein
         orf_type="reference_CDS", start_codon=start_codon, start_complete=start_complete, phase=phase)
     if orf.coding_sequence != coding:
         raise ValueError("coding boundaries do not translate exactly")
+    # An ORF's genomic blocks merge a base the source reads twice (a -1 ribosomal
+    # frameshift), so they would no longer map every coding base; keep it out
+    # until the ORF can record that, rather than offer coordinates that drift.
+    if sum(b - a + 1 for a, b in orf.coding_blocks) != len(orf.coding_sequence):
+        raise ValueError("a base is read twice, which the ORF's genomic blocks cannot yet record")
     return orf

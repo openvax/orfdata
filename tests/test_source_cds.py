@@ -38,11 +38,19 @@ def test_a_cds_continues_across_the_origin_of_a_circular_genome():
     assert orf(genome, ((1, 6), (last - 5, last)), "-", "MAK").coding_sequence == coding
 
 
-def test_a_frameshift_may_read_one_base_twice():
-    # Bases 1..12 then 12..14: base 12 is read twice, giving ATG GCT AAA GCT TAA.
-    genome = "ATGGCTAAAGCT" + "AA" + "CCCC"
-    found = orf(genome, ((1, 12), (12, 14)), "+", "MAKA")
+def test_a_frameshift_that_skips_bases_is_recorded_as_a_subcodon_intron():
+    # Bases 1..12 then 14..16: base 13 is skipped, as OAZ1's +1 frameshift skips one.
+    genome = "ATGGCTAAAGCT" + "C" + "TAA" + "CC"
+    found = orf(genome, ((1, 12), (14, 16)), "+", "MAKA")
     assert found.coding_sequence == "ATGGCTAAAGCTTAA" and found.protein_sequence == "MAKA"
+    assert found.subcodon_introns == ((12, 13, 13, 1),)
+
+
+def test_a_base_read_twice_is_kept_out_until_the_orf_can_record_it():
+    # Bases 1..12 then 12..14 read base 12 twice, which the ORF's merged blocks would lose.
+    genome = "ATGGCTAAAGCT" + "AA" + "CCCC"
+    with pytest.raises(ValueError, match="read twice"):
+        orf(genome, ((1, 12), (12, 14)), "+", "MAKA")
 
 
 def test_a_cds_without_a_start_or_a_stop_keeps_what_the_source_established():

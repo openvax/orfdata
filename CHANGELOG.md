@@ -1,3 +1,13 @@
+# 0.48.1
+
+- Fix two HTLV-1 ORFs offered by 0.48.0 with coordinates that drifted. Their
+  ribosomal slippage reads a base twice, but an ORF's genomic blocks merge it, so
+  the blocks covered fewer bases than the coding sequence and no frameshift was
+  recorded. A CDS whose blocks do not account for every coding base is now kept
+  out of the ORF layer, with its `scope` saying so, until an ORF can record a
+  reread base (#65). A frameshift that skips bases is unchanged and is recorded
+  as a `subcodon_intron`. In the GDC collection 1,758 ORFs are offered.
+
 # 0.48.0
 
 - Installed viral collections offer far more of their CDSs as ORFs. The binder
