@@ -1,4 +1,4 @@
-"""Write coding transcripts as GTF, so other tools can read ORFdata's models.
+"""Write coding transcripts as GTF, so other tools can read ORFdata's models, and read their exons back.
 
 A transcript here is a sequence of genomic exon blocks in transcript order
 plus the offset of its first codon. That is enough to emit the feature rows
@@ -9,6 +9,8 @@ vaxrank need to give a variant a coding consequence.
 Both producers use it: viral CDS features from source GenBank records, and
 noncanonical ORFs from an :class:`~orfdata.ORFCatalog`.
 """
+
+import re
 
 GTF_SOURCE = "orfdata"
 _CODING = "protein_coding"
@@ -119,3 +121,23 @@ def orf_gtf_lines(records):
                    ("orf_biotype", record.biotype),
                    ("orf_source", getattr(record, "source", "") or ""))))
     return tuple(lines)
+
+
+def read_exons(path):
+    """Exon blocks of every transcript in a GTF, as ``{transcript_id: (blocks, strand)}``.
+
+    Blocks are ``(start, end)``, 1-based and inclusive, in transcript order as
+    ``exon_number`` gives it (which is not coordinate order for a minus-strand
+    transcript or one joined across a circular origin). This reads back what
+    :func:`transcript_lines` writes.
+    """
+    rows = {}
+    with open(path) as stream:
+        for line in stream:
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) == 9 and fields[2] == "exon":
+                attributes = dict(re.findall(r'(\w+) "([^"]*)"', fields[8]))
+                rows.setdefault(attributes["transcript_id"], []).append(
+                    (int(attributes["exon_number"]), int(fields[3]), int(fields[4]), fields[6]))
+    return {name: (tuple((start, end) for _, start, end, _ in sorted(blocks)), blocks[0][3])
+            for name, blocks in rows.items()}

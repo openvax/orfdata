@@ -25,6 +25,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .fasta import read_fasta
+from .gtf import read_exons
 from .model import TranscriptORF
 from .reference import ReferenceContext, canonical_species
 from .rna import SourceRNA
@@ -55,21 +57,6 @@ def _bundles(cache_root, only=None):
     return tuple(found)
 
 
-def _fasta(path):
-    sequences, name, parts = {}, None, []
-    with path.open() as stream:
-        for line in stream:
-            if line.startswith(">"):
-                if name is not None:
-                    sequences[name] = "".join(parts).upper()
-                name, parts = line[1:].split()[0], []
-            else:
-                parts.append(line.strip())
-    if name is not None:
-        sequences[name] = "".join(parts).upper()
-    return sequences
-
-
 @lru_cache(maxsize=8)
 def _tables(files):
     """Genome rows, transcript rows, exon paths and genome sequences of one bundle.
@@ -84,25 +71,15 @@ def _tables(files):
     read = {"dtype": str, "sep": "\t", "keep_default_na": False}
     genomes = pd.read_csv(files.genome_table, **read)
     transcripts = pd.read_csv(files.transcript_table, **read)
-    exons = {}
-    with files.annotation_gtf.open() as stream:
-        for line in stream:
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) == 9 and fields[2] == "exon":
-                attributes = dict(re.findall(r'(\w+) "([^"]*)"', fields[8]))
-                exons.setdefault(attributes["transcript_id"], []).append(
-                    (int(attributes["exon_number"]), int(fields[3]), int(fields[4]), fields[6]))
-    # Exon numbers give transcript order, which differs from coordinate order
-    # for a minus-strand gene and for a gene joined across a circular origin.
-    exons = {name: (tuple((start, end) for _, start, end, _ in sorted(rows)), rows[0][3])
-             for name, rows in exons.items()}
-    sequences = _fasta(files.genome_fasta)
+    exons = read_exons(files.annotation_gtf)
+    sequences = {name: sequence.upper()
+                 for name, sequence in read_fasta(files.genome_fasta).items()}
     for row in genomes.itertuples():
         found = sequences.get(row.genome_id, "")
         if (len(found) != int(row.length_nt)
                 or hashlib.sha256(found.encode("ascii")).hexdigest() != row.genome_sha256):
             raise ValueError(f"Viral genome {row.genome_id} does not match its table: {files.path}")
-    return genomes, transcripts, exons, sequences, _fasta(files.protein_fasta)
+    return genomes, transcripts, exons, sequences, read_fasta(files.protein_fasta)
 
 
 def _candidates(transcripts):
