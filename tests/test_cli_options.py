@@ -127,7 +127,7 @@ def test_viral_summary_reads_cache_root_before_or_after(monkeypatch, tmp_path, c
 
 
 def test_viral_and_dataset_downloads_share_the_default(monkeypatch, capsys):
-    from orfdata.net import DOWNLOAD_TIMEOUT
+    from orfdata.cache import DOWNLOAD_TIMEOUT
     from orfdata.viral_panel import download_viral_references
 
     assert DOWNLOAD_TIMEOUT == 60

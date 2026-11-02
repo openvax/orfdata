@@ -96,17 +96,18 @@ def test_every_frame_carries_exactly_the_columns_it_documents():
 
 
 def test_inventory_download_uses_datacache_with_the_published_pin(monkeypatch, tmp_path):
-    import orfdata.datasets as datasets
+    import datacache
+
+    import orfdata.cache as cache
 
     called = {}
 
-    class FakeDataCache:
-        def fetch_file(self, url, **kwargs):
-            called.update(url=url, **kwargs)
-            return tmp_path / "inventory.txt"
+    def fetch_file(url, **kwargs):
+        called.update(url=url, **kwargs)
+        return tmp_path / "inventory.txt"
 
-    monkeypatch.setattr(datasets, "_datacache", lambda: FakeDataCache())
-    monkeypatch.setattr(datasets, "get_data_dir", lambda root: tmp_path / "orfdata")
+    monkeypatch.setattr(datacache, "fetch_file", fetch_file)
+    monkeypatch.setattr(cache, "get_data_dir", lambda root: tmp_path / "orfdata")
     assert download_viral_inventory(cache_root=tmp_path, force=True, timeout=12) == (
         tmp_path / "inventory.txt")
     assert called["url"] == "https://gdc.cancer.gov/system/files/public/file/GRCh83.d1.vd1_virus_decoy.txt"

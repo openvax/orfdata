@@ -237,14 +237,32 @@ class SearchReference:
 
 
 def reference_registry(spec, cache_root=None):
-    """Use a separate immutable DataCache store without altering abundance caches."""
-    from .datasets import _datacache, _digest, get_data_dir
+    """Return the DataCache registry that installs a dataset's pinned protein search FASTA.
+
+    The FASTA has its own store, ``references/<dataset>/<version>/<digest of
+    spec>`` in the cache, apart from the dataset's measurements, so installing
+    or replacing one never touches the other. Nothing is downloaded until the
+    registry is asked to.
+
+    Parameters
+    ----------
+    spec : SearchReferenceSpec
+        The declared search reference, as ``DatasetRegistry.search_references``
+        lists it.
+    cache_root : str or os.PathLike, optional
+        A cache root instead of ``ORFDATA_CACHE``, ``OPENVAX_DATA_CACHE`` or the
+        default.
+
+    Returns
+    -------
+    datacache.VersionedDatasetRegistry
+        Holds the one FASTA as published (never decompressed), as release
+        ``spec.dataset_id`` version ``spec.dataset_version``.
+    """
+    from .cache import content_digest, get_data_dir, pinned_registry
 
     asset = spec.source
-    definitions = {spec.dataset_id: dict(default_version=spec.dataset_version, versions={
-        spec.dataset_version: {asset.asset_id: dict(url=asset.url, sha256=asset.sha256,
-                                                   size=asset.size, decompress=False)},
-    })}
+    assets = {asset.asset_id: dict(url=asset.url, sha256=asset.sha256, size=asset.size, decompress=False)}
     destination = (get_data_dir(cache_root) / "references" / spec.dataset_id /
-                   spec.dataset_version / _digest(spec.to_dict()))
-    return _datacache().VersionedDatasetRegistry(definitions, store_path=lambda name, version: destination)
+                   spec.dataset_version / content_digest(spec.to_dict()))
+    return pinned_registry(spec.dataset_id, spec.dataset_version, assets, destination)

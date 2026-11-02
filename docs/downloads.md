@@ -300,6 +300,13 @@ resource identity, update and verification behavior. Use `--cache-root` to put
 the managed cache elsewhere. The command prints the installed paths; add
 `--json` for structured output.
 
+In Python, `orfdata.cache.get_data_dir(cache_root)` returns the `orfdata`
+directory of the cache root a call uses, without creating it. Downloaded
+catalogues, datasets, search references, genomes and chain files each have an
+area there (`catalogs/`, `datasets/`, `references/`, `genomes/`, `chains/`), and
+each store in it is named by the SHA-256 of its release's pins, so a new pin
+never reuses old files.
+
 ## Python acquisition convention
 
 ORFdata follows the OpenVax split between explicit acquisition and offline

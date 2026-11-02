@@ -6,7 +6,7 @@ from os import PathLike
 from shlex import join
 from typing import Optional
 
-from .net import DOWNLOAD_TIMEOUT
+from .cache import DOWNLOAD_TIMEOUT
 from .reference import canonical_species, species_taxon
 
 
@@ -303,11 +303,11 @@ def _references(cache_root, verify_files):
 
 
 def _genomes(cache_root, verify_files):
-    from .genomes import _registry, pinned_genomes
+    from .genomes import genome_registry, pinned_genomes
 
     rows = []
     for genome in pinned_genomes():
-        inspection = _registry(genome, cache_root).inspect(
+        inspection = genome_registry(genome, cache_root).inspect(
             genome.name, "1", verify_files=verify_files)
         rows.append(DataStatus(
             kind="genome",
@@ -327,11 +327,11 @@ def _genomes(cache_root, verify_files):
 
 
 def _chains(cache_root, verify_files):
-    from .liftover import _chain_registry, pinned_chains
+    from .liftover import chain_registry, pinned_chains
 
     rows = []
     for chain in pinned_chains():
-        inspection = _chain_registry(chain, cache_root).inspect(
+        inspection = chain_registry(chain, cache_root).inspect(
             chain.name, "1", verify_files=verify_files)
         rows.append(DataStatus(
             kind="chain",

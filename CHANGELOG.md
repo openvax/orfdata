@@ -1,3 +1,20 @@
+# 0.48.3
+
+- Add `orfdata.cache`, the one module for where ORFdata keeps what it downloads
+  and builds: `get_data_dir`, `content_digest` (how stores are named),
+  `pinned_registry` (a DataCache registry of one pinned release),
+  `fetch_pinned_file`, `installed_path` and `DOWNLOAD_TIMEOUT`. Catalogues,
+  datasets, search references, genomes, chains, proteome snapshots, viral
+  collections and `setup`'s shared sources use it, instead of importing private
+  helpers from `orfdata.datasets`. `orfdata.datasets.get_data_dir` and
+  `orfdata.net.DOWNLOAD_TIMEOUT` still work.
+- `orfdata.genomes.genome_registry` and `orfdata.liftover.chain_registry` are
+  public and documented; they were private helpers that `data list`, `setup`
+  and the genome and chain commands already shared.
+- Every cache path is unchanged, so existing installations are reused. DataCache
+  is imported directly rather than through a wrapper left from when it was an
+  optional extra.
+
 # 0.48.2
 
 - Documentation only. The README follows the layout shared by the OpenVax

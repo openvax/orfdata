@@ -6,10 +6,11 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+# Defined in orfdata.cache with the rest of ORFdata's download settings; still importable from here.
+from .cache import DOWNLOAD_TIMEOUT  # noqa: F401
+
 USER_AGENT = "orfdata/viral (https://github.com/openvax/orfdata)"
 MAX_ATTEMPTS = 5
-# Seconds any ORFdata download may stall before it is retried, then fails; the CLI's --timeout default too.
-DOWNLOAD_TIMEOUT = 60
 # A request the server rejects will be rejected again; only a timeout or a rate
 # limit is worth repeating.
 _RETRYABLE_STATUS = (408, 429)

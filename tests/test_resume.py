@@ -5,8 +5,8 @@ import datacache.bundles
 import pytest
 
 from orfdata import CatalogRegistry, DatasetRegistry
+from orfdata.cache import fetch_pinned_file
 from orfdata.genomes import install_genome
-from orfdata.install import _fetch
 from orfdata.liftover import download_chain
 
 
@@ -49,8 +49,8 @@ ACQUISITIONS = {
         "peptideatlas-dog-peptides", download_options=options)),
     "archived build source": ("archive", lambda root, options: DatasetRegistry(cache_root=root).build(
         "pfizer-atlas-dog-peptide-evidence", download_options=options)),
-    "setup's shared source": ("bundle", lambda root, options: _fetch(
-        "https://example.invalid/shared.tsv", "0" * 64, 10, root, options)),
+    "setup's shared source": ("bundle", lambda root, options: fetch_pinned_file(
+        "https://example.invalid/shared.tsv", "0" * 64, 10, root, download_options=options)),
 }
 
 

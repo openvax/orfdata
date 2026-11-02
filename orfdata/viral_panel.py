@@ -32,9 +32,9 @@ from os import PathLike
 from pathlib import Path
 from uuid import uuid4
 
+from .cache import DOWNLOAD_TIMEOUT
 from .errors import NotInstalledError
 from .fasta import write_fasta
-from .net import DOWNLOAD_TIMEOUT
 from .record_sources import REQUEST_INTERVAL
 from .reference import canonical_species, species_taxon
 from .reference_ledger import empty_ledger, ledger_row, published, same_molecule, verify_record
@@ -715,7 +715,7 @@ def _bundle_store():
 
 def _bundle_path(cache_root, species, collection, *, area=_COLLECTIONS):
     """The store a collection's version is published in; ``area`` selects the 0.43 directory."""
-    from .datasets import get_data_dir
+    from .cache import get_data_dir
 
     collection = viral_collection(collection)
     return (get_data_dir(cache_root) / "viral" / area / species /
@@ -970,7 +970,7 @@ def prune_viral_references(
 
 def _annotation_index(cache_root, collection, path):
     """Where :func:`viral_genome` keeps the PyEnsembl index of the files in ``path``."""
-    from .datasets import get_data_dir
+    from .cache import get_data_dir
 
     collection = viral_collection(collection)
     digest = hashlib.sha256(str(Path(path).resolve()).encode("utf-8")).hexdigest()[:16]
@@ -1129,7 +1129,7 @@ def _copy_gtf(source, destination, genome_ids):
 def _index_path(cache_root, species, collection, contexts, excluded_contexts,
                 context_match, subsets, genome_ids, *, area=_SELECTIONS):
     """The store a selection is published in; ``area`` selects the 0.43 directory."""
-    from .datasets import get_data_dir
+    from .cache import get_data_dir
 
     version = bundle_version(viral_collection(collection))
     identity = json.dumps({
