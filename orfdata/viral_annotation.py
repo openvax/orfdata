@@ -12,6 +12,7 @@ CDS stays in transcript order and a truncated one says so.
 """
 
 import re
+from collections import Counter
 from itertools import product
 
 from . import genbank
@@ -35,10 +36,10 @@ class GenBankRecord:
     """One parsed GenBank record: its sequence, its CDS features and its own text."""
 
     __slots__ = ("accession_version", "sequence", "source_text", "circular", "coding_features",
-                 "definition", "taxon_id")
+                 "definition", "taxon_id", "host", "group")
 
     def __init__(self, *, accession_version, sequence, source_text, coding_features,
-                 circular=False, definition="", taxon_id=0):
+                 circular=False, definition="", taxon_id=0, host="", group=""):
         self.accession_version = accession_version
         self.sequence = sequence
         self.source_text = source_text
@@ -46,6 +47,8 @@ class GenBankRecord:
         self.coding_features = tuple(coding_features)
         self.definition = definition
         self.taxon_id = taxon_id
+        self.host = host
+        self.group = group
 
 
 def safe_token(value):
@@ -391,6 +394,28 @@ def source_taxon(record):
     return 0
 
 
+def genus(lineage):
+    """The genus in an NCBI lineage: its last name ending in ``virus``, as ICTV genus names do.
+
+    A lineage often ends in a species or species group (``Alphapapillomavirus 9``),
+    so the last name is not the genus. Empty when the lineage names no genus.
+    """
+    return next((name for name in reversed(lineage) if name.endswith("virus")), "")
+
+
+def source_host(record):
+    """The host the record's own ``source`` feature says the sequence was isolated from, if any.
+
+    GenBank allows notes after a semicolon (``Homo sapiens; child``); they are kept here.
+    """
+    for feature in record.features:
+        if feature.kind == "source":
+            for name, value in feature.qualifiers:
+                if name == "host":
+                    return " ".join(str(value).split())
+    return ""
+
+
 def parse_genbank(payload):
     """Parse one EFetch response into records that keep their own source text."""
     records = []
@@ -407,8 +432,21 @@ def parse_genbank(payload):
             coding_features=features,
             definition=parsed.definition,
             taxon_id=source_taxon(parsed),
+            host=source_host(parsed),
+            group=genus(parsed.lineage),
         ))
     return tuple(records)
+
+
+def unique_source_proteins(features):
+    """The source protein accessions that name exactly one protein, as written to the files.
+
+    Counted after :func:`safe_token`, since two accessions can sanitize to one
+    token (``E6*`` and ``E6``) and would then name two proteins by one ID.
+    """
+    uses = Counter(safe_token(feature["source_protein_id"])
+                   for feature in features if feature["source_protein_id"])
+    return {value for value, count in uses.items() if count == 1}
 
 
 def name_transcripts(genome_id, features, *, unique_protein_ids):
@@ -417,7 +455,8 @@ def name_transcripts(genome_id, features, *, unique_protein_ids):
     for feature in features:
         transcript_id = f"{genome_id}_cds{feature['ordinal']}"
         source_protein_id = feature["source_protein_id"]
-        protein_id = (source_protein_id if source_protein_id in unique_protein_ids
+        protein_id = (source_protein_id
+                      if source_protein_id and safe_token(source_protein_id) in unique_protein_ids
                       else f"{transcript_id}.p")
         gene = feature.get("gene_label") or f"cds{feature['ordinal']}"
         # Two CDSs sharing a gene label on opposite strands are two genes, not one.

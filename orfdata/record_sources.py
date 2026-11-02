@@ -63,6 +63,8 @@ class FetchedGenome:
     circular: bool = False
     title: str = ""
     taxon_id: int = 0
+    host: str = ""
+    group: str = ""
 
     @property
     def length(self):
@@ -195,6 +197,8 @@ class GenBankSource(ReferenceSource):
             circular=record.circular,
             title=record.definition,
             taxon_id=record.taxon_id,
+            host=record.host,
+            group=record.group,
         ) for record in parsed)
 
     def record(self, identifier, *, timeout):

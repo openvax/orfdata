@@ -1,3 +1,18 @@
+# 0.47.0
+
+- Fix installed viral collections being ignored by 0.46.1 and misread by
+  earlier releases. Seven HPV types name two proteins `E6` and `E6*`, and the
+  files wrote both as `HPVnn-E6`, so the protein FASTA repeated an ID. Protein
+  IDs are now counted as written and a colliding pair gets generated IDs. The
+  reader refuses a repeated ID, so a collection installed by 0.46 and earlier
+  (bundle schema 6) is not read again: reinstall it with `orfdata data fetch`.
+- Installed viral references now carry a host and a group. `group` is the genus
+  in the source GenBank record's lineage, and `host_taxon_ids` and `host_source`
+  record the isolation host that record names, with the accession as the source.
+  `viral_references(host="human")` and `group=...` select installed references.
+  A record that names no host gives none; the collection's target species is
+  never read as a host. The genome table gains `group` and `source_host`.
+
 # 0.46.2
 
 - GTF attribute values are made safe in one place. A `"` in a gene name or ORF

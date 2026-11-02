@@ -61,15 +61,21 @@ class Unquoted(str):
     """A qualifier value GenBank writes without quotes, such as transl_except."""
 
 
-def _genbank(accession, sequence, features, *, name, description="test genome", taxon=10000):
+def _genbank(accession, sequence, features, *, name, description="test genome", taxon=10000,
+             host=None, lineage=None):
     """One GenBank flat file, laid out as NCBI EFetch returns it."""
     lines = [f"LOCUS       {name:<16}{len(sequence):>10} bp    DNA     linear   VRL 01-JAN-2020",
              f"DEFINITION  {description}.",
              f"ACCESSION   {accession.split('.')[0]}",
-             f"VERSION     {accession}",
-             "FEATURES             Location/Qualifiers",
-             f"     source          1..{len(sequence)}",
-             f'                     /db_xref="taxon:{taxon}"']
+             f"VERSION     {accession}"]
+    if lineage:
+        lines += ["SOURCE      Test virus", "  ORGANISM  Test virus",
+                  f"            {lineage}."]
+    lines += ["FEATURES             Location/Qualifiers",
+              f"     source          1..{len(sequence)}",
+              f'                     /db_xref="taxon:{taxon}"']
+    if host:
+        lines.append(f'                     /host="{host}"')
     for location, qualifiers in features:
         lines.append(f"     CDS             {location}")
         for key, value in qualifiers.items():
@@ -123,7 +129,8 @@ def viral_documents():
     first = _genbank("VTEST001.1", coding + "ACGT" * 10, [
         ("1..30", {"gene": "E1", "product": "protein E1", "protein_id": "AAA00001.1",
                    "codon_start": 1, "translation": "MAAAAAAAA"}),
-    ], name="VTEST001", description="Test virus 1", taxon=10001)
+    ], name="VTEST001", description="Test virus 1", taxon=10001, host="Homo sapiens",
+        lineage="Viruses; Testviridae; Alphatestvirus")
     # A spliced, minus-strand CDS that starts one base in: partial, so not complete.
     second = _genbank("VTEST002.1", "ACGT" * 25, [
         ("complement(join(11..40,61..90))",
@@ -131,7 +138,8 @@ def viral_documents():
           "translation": "MCCCCCCCCCCCCCCCCCC"}),
         ("91..99", {"gene": "E6", "product": "protein E6 short", "protein_id": "AAA00001.1",
                     "codon_start": 1, "translation": "MD"}),
-    ], name="VTEST002", description="Test virus 2", taxon=10002)
+    ], name="VTEST002", description="Test virus 2", taxon=10002, host="Gallus gallus",
+        lineage="Viruses; Testviridae; Betatestvirus")
     # A non-standard genetic code the source declares.
     third = _genbank("VTEST003.1", "ATG" + "GCT" * 13 + "TAA" + "ACGT" * 5, [
         ("1..45", {"gene": "L1", "product": "protein L1", "protein_id": "AAA00003.1",

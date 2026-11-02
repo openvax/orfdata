@@ -160,11 +160,12 @@ def viral_references(*, host=None, group=None, virus_type=None, installed=True, 
         Named virus type, such as ``"HPV16"``; distinct from ICTV species.
     installed : bool, default True
         Also list the references of collections installed under ``cache_root``.
-        This reads local files only. An installed reference has a ``bundle``,
-        an empty ``group`` and ``ictv_species`` (a collection records neither),
-        and host associations only where its inventory states them, so
-        ``host=`` and ``group=`` select bundled references until those are
-        curated (#104). Pass ``False`` for the bundled catalogue alone.
+        This reads local files only. An installed reference has a ``bundle``.
+        Its ``group`` is the genus in its GenBank record's lineage (a bundled
+        reference's is a curated label such as ``"HPV"``),
+        and its host is the isolation host that record names, with the record
+        as ``host_source``; ``ictv_species`` is empty until curated (#104).
+        Pass ``False`` for the bundled catalogue alone.
     cache_root : path, optional
         Where collections are installed; the default ORFdata cache otherwise.
 
