@@ -1,3 +1,12 @@
+# 0.46.1
+
+- Read installed viral bundles through `fasta.read_fasta` and `gtf.read_exons`,
+  the readers that pair with `write_fasta` and `transcript_lines`, in place of
+  private parsers in `viral_installed`. They refuse a header without an
+  identifier, a repeated identifier, sequence before the first header, and GTF
+  exons that lack `exon_number`, repeat one, mix strands or have unreadable
+  coordinates, with the file and line in the message.
+
 # 0.46.0
 
 - `viral_references()`, `viral_reference()`, `viral_reference_sequence()`,
