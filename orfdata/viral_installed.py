@@ -72,16 +72,13 @@ def _tables(files):
     genomes = pd.read_csv(files.genome_table, **read)
     transcripts = pd.read_csv(files.transcript_table, **read)
     exons = read_exons(files.annotation_gtf)
-    sequences = {name: sequence.upper()
-                 for name, sequence in read_fasta(files.genome_fasta).items()}
+    sequences = read_fasta(files.genome_fasta, upper=True)
     for row in genomes.itertuples():
         found = sequences.get(row.genome_id, "")
         if (len(found) != int(row.length_nt)
                 or hashlib.sha256(found.encode("ascii")).hexdigest() != row.genome_sha256):
             raise ValueError(f"Viral genome {row.genome_id} does not match its table: {files.path}")
-    proteins = {name: sequence.upper()
-                for name, sequence in read_fasta(files.protein_fasta).items()}
-    return genomes, transcripts, exons, sequences, proteins
+    return genomes, transcripts, exons, sequences, read_fasta(files.protein_fasta, upper=True)
 
 
 def _candidates(transcripts):

@@ -62,3 +62,19 @@ def test_inconsistent_input_is_refused_with_its_location(tmp_path):
     gtf.write_text(row.format(1, "NA", "+", 1))
     with pytest.raises(ValueError, match="x.gtf:1"):
         read_exons(gtf)
+
+
+def test_a_row_that_lost_its_tabs_is_refused_not_skipped(tmp_path):
+    import pytest
+
+    gtf = tmp_path / "x.gtf"
+    gtf.write_text("# header\n\ng orfdata exon 1 5 . + . transcript_id \"t\"; exon_number \"1\";\n")
+    with pytest.raises(ValueError, match="x.gtf:3"):
+        read_exons(gtf)
+
+
+def test_upper_case_is_applied_while_reading(tmp_path):
+    path = tmp_path / "x.fasta"
+    path.write_text(">a\nacgt\nnn\n")
+    assert read_fasta(path, upper=True) == {"a": "ACGTNN"}
+    assert read_fasta(path) == {"a": "acgtnn"}

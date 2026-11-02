@@ -134,8 +134,12 @@ def read_exons(path):
     rows = {}
     with open(path) as stream:
         for number, line in enumerate(stream, 1):
+            if not line.strip() or line.startswith("#"):
+                continue
             fields = line.rstrip("\n").split("\t")
-            if len(fields) != 9 or fields[2] != "exon":
+            if len(fields) != 9:
+                raise ValueError(f"GTF row without nine tab-separated fields: {path}:{number}")
+            if fields[2] != "exon":
                 continue
             attributes = dict(re.findall(r'(\w+) "([^"]*)"', fields[8]))
             try:
