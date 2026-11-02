@@ -388,6 +388,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Viral transcripts in a tumour sample">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#coding-references-by-exact-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coding references by exact sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#declaring-the-genome-for-vaxrank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Declaring the genome for vaxrank
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1476,6 +1504,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Viral transcripts in a tumour sample">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#coding-references-by-exact-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coding references by exact sequence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#declaring-the-genome-for-vaxrank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Declaring the genome for vaxrank
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1585,6 +1641,25 @@ orfdata<span class="w"> </span>viral<span class="w"> </span>summary<span class="
 the checksummed reference directory. The same object goes to isovar with the
 tumour RNA alignment, and to topiary or vaxrank with an MHC predictor, wherever
 those take a genome.</p>
+<h3 id="coding-references-by-exact-sequence">Coding references by exact sequence<a class="headerlink" href="#coding-references-by-exact-sequence" title="Permanent link">&para;</a></h3>
+<p>Isovar asks ORFdata for coding references by exact genome sequence, not through
+a PyEnsembl genome. <code>viral_references()</code>, <code>viral_orfs()</code> and
+<code>viral_panel_coverage()</code> read every installed collection as well as the bundled
+HPV16 catalogue, so a collection installed with <code>orfdata data fetch</code> supplies
+Isovar's viral models for every contig it holds. Only CDSs that translate
+exactly to their source protein are offered; <code>viral_references()</code> says in each
+reference's <code>scope</code> how many were left out, and they remain in the
+transcriptome layer. Installed references carry no host or group until those are
+curated, so <code>host=</code> and <code>group=</code> still select bundled references.</p>
+<h3 id="declaring-the-genome-for-vaxrank">Declaring the genome for vaxrank<a class="headerlink" href="#declaring-the-genome-for-vaxrank" title="Permanent link">&para;</a></h3>
+<p>A PyEnsembl genome over viral contigs has no species, so vaxrank cannot check it
+against the analysis host. <code>viral_reference_context(references)</code> states it, for
+the species the collection targets, and validates against <code>viral_genome()</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">viral_genome</span><span class="p">,</span> <span class="n">viral_reference_context</span>
+
+<span class="n">genome</span> <span class="o">=</span> <span class="n">viral_genome</span><span class="p">(</span><span class="n">references</span><span class="p">)</span>
+<span class="n">context</span> <span class="o">=</span> <span class="n">viral_reference_context</span><span class="p">(</span><span class="n">references</span><span class="p">)</span>  <span class="c1"># Pass as vaxrank's reference_context.</span>
+</code></pre></div>
 <p>Four things are worth knowing before the first run:</p>
 <ul>
 <li><strong>Contig names are the source <code>accession.version</code></strong>, such as <code>AY446894.2</code>,
