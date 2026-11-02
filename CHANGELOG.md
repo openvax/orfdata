@@ -1,3 +1,11 @@
+# 0.46.2
+
+- GTF attribute values are made safe in one place. A `"` in a gene name or ORF
+  source is written as `'` (GTF has no escape, and PyEnsembl's parser reads to
+  the next quote), and a tab or newline as a space, so one value can no longer
+  break its row. `gtf.parse_attributes` reads a column back the way
+  `gtf.attributes` writes it.
+
 # 0.46.1
 
 - Read installed viral bundles through `fasta.read_fasta` and `gtf.read_exons`,
