@@ -1648,12 +1648,14 @@ a PyEnsembl genome. <code>viral_references()</code>, <code>viral_orfs()</code> a
 HPV16 catalogue, so a collection installed with <code>orfdata data fetch</code> supplies
 Isovar's viral models for every contig it holds. A CDS is offered when it
 translates exactly to its source protein, wherever it lies: on either strand,
-across the origin of a circular genome, with a frameshift, or partial at either
-end (the ORF says which boundaries the source establishes). <code>viral_references()</code>
+across the origin of a circular genome, with a frameshift that skips bases
+(recorded as a <code>subcodon_intron</code>), or partial at either end (the ORF says which
+boundaries the source establishes). <code>viral_references()</code>
 says in each reference's <code>scope</code> how many were left out, and they remain in the
-transcriptome layer. In the GDC collection that is six of 1,758: three with an
-ambiguous base, two whose source protein does not match their codons, and an EBV
-gene spliced back across the terminal repeat.</p>
+transcriptome layer. In the GDC collection that is eight of 1,758: three with an
+ambiguous base, two whose source protein does not match their codons, two HTLV-1
+ribosomal-slippage CDSs that read a base twice (#65), and an EBV gene spliced
+back across the terminal repeat.</p>
 <p>An installed reference carries what its own GenBank record says: its <code>group</code> is
 the genus in the record's lineage, and <code>host_taxon_ids</code> and <code>host_source</code> name
 the host the sequence was isolated from, with the accession as the source.
