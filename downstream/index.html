@@ -1646,11 +1646,21 @@ those take a genome.</p>
 a PyEnsembl genome. <code>viral_references()</code>, <code>viral_orfs()</code> and
 <code>viral_panel_coverage()</code> read every installed collection as well as the bundled
 HPV16 catalogue, so a collection installed with <code>orfdata data fetch</code> supplies
-Isovar's viral models for every contig it holds. Only CDSs that translate
-exactly to their source protein are offered; <code>viral_references()</code> says in each
-reference's <code>scope</code> how many were left out, and they remain in the
-transcriptome layer. Installed references carry no host or group until those are
-curated, so <code>host=</code> and <code>group=</code> still select bundled references.</p>
+Isovar's viral models for every contig it holds. A CDS is offered when it
+translates exactly to its source protein, wherever it lies: on either strand,
+across the origin of a circular genome, with a frameshift, or partial at either
+end (the ORF says which boundaries the source establishes). <code>viral_references()</code>
+says in each reference's <code>scope</code> how many were left out, and they remain in the
+transcriptome layer. In the GDC collection that is six of 1,758: three with an
+ambiguous base, two whose source protein does not match their codons, and an EBV
+gene spliced back across the terminal repeat.</p>
+<p>An installed reference carries what its own GenBank record says: its <code>group</code> is
+the genus in the record's lineage, and <code>host_taxon_ids</code> and <code>host_source</code> name
+the host the sequence was isolated from, with the accession as the source.
+That is an isolation host, not a host range, and it is empty when the record
+names none, so <code>viral_references(host="human")</code> returns the references whose
+record says human and not every virus a human can carry. <code>ictv_species</code> stays
+empty until curated (#104).</p>
 <h3 id="declaring-the-genome-for-vaxrank">Declaring the genome for vaxrank<a class="headerlink" href="#declaring-the-genome-for-vaxrank" title="Permanent link">&para;</a></h3>
 <p>A PyEnsembl genome over viral contigs has no species, so vaxrank cannot check it
 against the analysis host. <code>viral_reference_context(references)</code> states it, for
