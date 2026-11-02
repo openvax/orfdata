@@ -1,12 +1,5 @@
-# 0.45.0
+# 0.46.0
 
-- Add `orfdata.cli.query(argv, prog, catalog_loader=...)`, the `query` command on
-  its own, so another tool can offer ORF queries as one of its commands. Help,
-  errors and examples name that tool's command. With a catalogue loader other
-  than `load_catalog`, `--species` is not offered, and passing it is an
-  unrecognized-argument error (exit 2) instead of a separate usage check.
-  `run(..., catalog_loader=...)` still accepts every command; the query
-  examples in `orfdata query --help` keep their wording.
 - `viral_references()`, `viral_reference()`, `viral_reference_sequence()`,
   `viral_orfs()` and `viral_panel_coverage()` also answer for installed viral
   collections, so Isovar and anything else that asks for coding references by
@@ -22,6 +15,16 @@
   of the genome `viral_genome(files)` opens, which has none of its own, so
   consumers that check a host reference against the analysis (vaxrank's
   `reference_context`) can accept it.
+
+# 0.45.0
+
+- Add `orfdata.cli.query(argv, prog, catalog_loader=...)`, the `query` command on
+  its own, so another tool can offer ORF queries as one of its commands. Help,
+  errors and examples name that tool's command. With a catalogue loader other
+  than `load_catalog`, `--species` is not offered, and passing it is an
+  unrecognized-argument error (exit 2) instead of a separate usage check.
+  `run(..., catalog_loader=...)` still accepts every command; the query
+  examples in `orfdata query --help` keep their wording.
 
 # 0.44.0
 
