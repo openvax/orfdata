@@ -16,9 +16,28 @@ GTF_SOURCE = "orfdata"
 _CODING = "protein_coding"
 
 
+_PAIR = re.compile(r'(\w+) "([^"]*)"')
+
+
+def _safe(value):
+    """A value as one quoted GTF token.
+
+    GTF has no escape for ``"``, and PyEnsembl's parser reads up to the next
+    one, so a quote becomes an apostrophe and a tab or newline becomes a space.
+    A semicolon is left alone, since quoted values may contain it.
+    """
+    return re.sub(r"[\t\r\n]", " ", str(value).replace('"', "'"))
+
+
 def attributes(pairs):
     """One GTF attribute column; empty values are left out rather than quoted."""
-    return " ".join(f'{key} "{value}";' for key, value in pairs if value not in (None, ""))
+    return " ".join(f'{key} "{_safe(value)}";' for key, value in pairs
+                    if value not in (None, ""))
+
+
+def parse_attributes(column):
+    """The ``{key: value}`` pairs of one attribute column, as :func:`attributes` writes them."""
+    return dict(_PAIR.findall(column))
 
 
 def transcript_blocks(exons, offset, length):
@@ -141,7 +160,7 @@ def read_exons(path):
                 raise ValueError(f"GTF row without nine tab-separated fields: {path}:{number}")
             if fields[2] != "exon":
                 continue
-            attributes = dict(re.findall(r'(\w+) "([^"]*)"', fields[8]))
+            attributes = parse_attributes(fields[8])
             try:
                 row = (int(attributes["exon_number"]), int(fields[3]), int(fields[4]), fields[6])
                 name = attributes["transcript_id"]

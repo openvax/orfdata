@@ -78,3 +78,20 @@ def test_upper_case_is_applied_while_reading(tmp_path):
     path.write_text(">a\nacgt\nnn\n")
     assert read_fasta(path, upper=True) == {"a": "ACGTNN"}
     assert read_fasta(path) == {"a": "acgtnn"}
+
+
+def test_attribute_values_with_quotes_and_semicolons_survive_a_round_trip(tmp_path):
+    from orfdata.gtf import attributes, parse_attributes
+
+    column = attributes([("gene_name", 'a "b"; c\td'), ("empty", ""), ("gene_id", "g1")])
+    assert parse_attributes(column) == {"gene_name": "a 'b'; c d", "gene_id": "g1"}
+    # The row stays readable as a whole, and a PyEnsembl-style parser agrees.
+    path = tmp_path / "x.gtf"
+    path.write_text(
+        "".join(transcript_lines("g", ((1, 9, "+"),), gene_id="g1", gene_name='say "hi";',
+                                 transcript_id="t", protein_id="p")))
+    assert read_exons(path) == {"t": (((1, 9),), "+")}
+    import gtfparse
+
+    frame = gtfparse.read_gtf(str(path))
+    assert set(frame["gene_name"].to_list()) == {"say 'hi';"}
