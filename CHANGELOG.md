@@ -1,3 +1,21 @@
+# 0.46.0
+
+- `viral_references()`, `viral_reference()`, `viral_reference_sequence()`,
+  `viral_orfs()` and `viral_panel_coverage()` also answer for installed viral
+  collections, so Isovar and anything else that asks for coding references by
+  exact sequence sees every installed genome, not only HPV16. The lookup is local
+  and read-only; `installed=False` restores the bundled catalogue alone, and
+  `Proteome.build(viral=...)` and `orfdata viral coverage` keep ignoring what is
+  installed. A collection offers a CDS as an ORF only when it translates exactly
+  to its source protein: frameshifts and recoding (#65), a CDS wrapping a
+  circular origin (#66) and NCBI tables ORFdata cannot yet translate stay in the
+  transcriptome layer, and a reference's `scope` says how many were left out.
+  Coverage reports `source_cds_installed` or `installed_without_cds` per row.
+- `viral_reference_context(files)` declares the species, assembly and annotation
+  of the genome `viral_genome(files)` opens, which has none of its own, so
+  consumers that check a host reference against the analysis (vaxrank's
+  `reference_context`) can accept it.
+
 # 0.45.0
 
 - Add `orfdata.cli.query(argv, prog, catalog_loader=...)`, the `query` command on

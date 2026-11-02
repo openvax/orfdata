@@ -51,6 +51,31 @@ the checksummed reference directory. The same object goes to isovar with the
 tumour RNA alignment, and to topiary or vaxrank with an MHC predictor, wherever
 those take a genome.
 
+### Coding references by exact sequence
+
+Isovar asks ORFdata for coding references by exact genome sequence, not through
+a PyEnsembl genome. `viral_references()`, `viral_orfs()` and
+`viral_panel_coverage()` read every installed collection as well as the bundled
+HPV16 catalogue, so a collection installed with `orfdata data fetch` supplies
+Isovar's viral models for every contig it holds. Only CDSs that translate
+exactly to their source protein are offered; `viral_references()` says in each
+reference's `scope` how many were left out, and they remain in the
+transcriptome layer. Installed references carry no host or group until those are
+curated, so `host=` and `group=` still select bundled references.
+
+### Declaring the genome for vaxrank
+
+A PyEnsembl genome over viral contigs has no species, so vaxrank cannot check it
+against the analysis host. `viral_reference_context(references)` states it, for
+the species the collection targets, and validates against `viral_genome()`:
+
+```python
+from orfdata import viral_genome, viral_reference_context
+
+genome = viral_genome(references)
+context = viral_reference_context(references)  # Pass as vaxrank's reference_context.
+```
+
 Four things are worth knowing before the first run:
 
 - **Contig names are the source `accession.version`**, such as `AY446894.2`,

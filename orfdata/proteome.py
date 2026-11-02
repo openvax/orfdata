@@ -950,6 +950,10 @@ class _ViralInput:
 def _viral_reference_input(reference: ViralReference) -> _ViralInput:
     if not isinstance(reference, ViralReference):
         raise TypeError("Expected a ViralReference")
+    if reference.bundle is not None:
+        raise ValueError(
+            f"{reference.id} comes from an installed collection, which records no source host "
+            "or source-record hash; Proteome viral layers take bundled references until #104")
     proteins = ProteinSet(
         name=f"{reference.virus_type}@{reference.id}",
         proteins=tuple((orf.orf_id, orf.protein_sequence) for orf in reference.orfs),
@@ -982,7 +986,7 @@ def _viral_inputs(selection, host_taxon_id, *, host_taxon_ids=None, host_source=
     if selection is None or selection is False:
         return ()
     if selection is True or selection == "all":
-        references = viral_references(host=host_taxon_id)
+        references = viral_references(host=host_taxon_id, installed=False)
         if not references:
             raise ValueError(f"No bundled viral references for host taxon {host_taxon_id}")
         selection = _canonical_viral_references(references)
@@ -1017,9 +1021,9 @@ def _viral_inputs(selection, host_taxon_id, *, host_taxon_ids=None, host_source=
             resolved.append(_viral_reference_input(item))
         elif isinstance(item, str):
             try:
-                reference = viral_reference(item)
+                reference = viral_reference(item, installed=False)
             except ValueError:
-                matches = viral_references(host=host_taxon_id, virus_type=item)
+                matches = viral_references(host=host_taxon_id, virus_type=item, installed=False)
                 if not matches:
                     raise ValueError(f"No bundled viral reference ID or virus type matches {item!r} "
                                      f"for host taxon {host_taxon_id}") from None

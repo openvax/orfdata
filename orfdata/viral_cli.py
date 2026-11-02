@@ -227,8 +227,8 @@ def _show_coverage(args, parser):
         rows = viral_panel_coverage(
             available=available, virus=args.virus, search=args.search,
             contexts=args.context, exclude_contexts=args.exclude_context,
-            context_match=args.context_match)
-        all_rows = viral_panel_coverage()
+            context_match=args.context_match, installed=False)
+        all_rows = viral_panel_coverage(installed=False)
     except ValueError as error:
         parser.fail(error)
     if args.format == "json":

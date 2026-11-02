@@ -17,9 +17,11 @@ column                    dtype   meaning
 ``genbank``               str     the GenBank accession the panel lists, or ``""``
 ``pave_id``               str     the PaVE reference the panel lists, or ``""``
 ``pave_notes``            str     the panel's own note about that PaVE reference
-``bundled_reference_id``  str     the ORFdata coding reference for this row, or ``""``
+``bundled_reference_id``  str     the coding reference ``viral_orfs(reference_id=...)``
+                                  loads for this row, or ``""``
 ``coding_models``         Int64   how many source CDS models that reference carries
-``status``                str     ``source_cds_bundled`` or ``not_bundled``
+``status``                str     ``source_cds_bundled``, ``source_cds_installed``,
+                                  ``installed_without_cds`` or ``not_bundled``
 ``available``             bool    whether ``bundled_reference_id`` is set
 ``contexts``              object  tuple of context names this row belongs to
 ========================  ======  ======================================================
@@ -149,7 +151,7 @@ def normalize_viral_contexts(contexts, *, allow_unknown=False):
 
 def viral_panel_coverage(panel=None, *, collection=None, available=None, virus=None,
                          search=None, contexts=None, exclude_contexts=None,
-                         context_match="any"):
+                         context_match="any", installed=True, cache_root=None):
     """Every inventory row of one collection, named by panel or by collection.
 
     Returns a frame whose columns are :data:`COVERAGE_COLUMNS`, described in
@@ -157,6 +159,13 @@ def viral_panel_coverage(panel=None, *, collection=None, available=None, virus=N
     ORFdata. This is an inventory and coverage query, not a selection of
     protein sequences. The released coding references are available separately
     through ``viral_references()``.
+
+    With ``installed=True`` (the default) a row whose genome is in the
+    collection installed under ``cache_root`` reports that installed reference:
+    ``source_cds_installed`` when it offers ORFs, ``installed_without_cds``
+    when its source annotates none the bundle can place. The lookup is local;
+    ``installed=False`` gives the packaged ledger alone. A row the bundled
+    catalogue already covers stays ``source_cds_bundled``.
     """
     chosen = _collection_for(panel, collection)
     if available is not None and type(available) is not bool:
@@ -171,6 +180,22 @@ def viral_panel_coverage(panel=None, *, collection=None, available=None, virus=N
         raise ValueError("context_match must be 'any' or 'all'")
 
     frame = _coverage(chosen)
+    if installed:
+        from .viral_installed import installed_coverage
+
+        held = installed_coverage(chosen, cache_root)
+        if held:
+            frame = frame.copy()
+            for position, row in frame.iterrows():
+                if row["bundled_reference_id"] != "" or row["abbreviation"] not in held:
+                    continue
+                genome_id, models = held[row["abbreviation"]]
+                frame.loc[position, "coding_models"] = models
+                frame.loc[position, "status"] = ("source_cds_installed" if models
+                                                 else "installed_without_cds")
+                if models:
+                    frame.loc[position, "bundled_reference_id"] = genome_id
+                    frame.loc[position, "available"] = True
     keep = pd.Series(True, index=frame.index)
     if selected:
         match = any if context_match == "any" else all
