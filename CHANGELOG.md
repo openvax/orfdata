@@ -1,3 +1,12 @@
+# 0.48.4
+
+- One table, `orfdata.cli.COMMAND_TABLE`, now lists each top-level command in
+  the command guide and runs it. Before, `run` had a hand-written `if` chain
+  that repeated the `COMMANDS` table (#166). `COMMAND_ALIASES` holds `download`
+  and `downloads`. `COMMANDS` still maps each name to its guide line. The
+  `setup` command and the guide's parser are public as `orfdata.cli.setup` and
+  `orfdata.cli.command_guide`. Help, errors and exit statuses are unchanged.
+
 # 0.48.3
 
 - Add `orfdata.cache`, the one module for where ORFdata keeps what it downloads
