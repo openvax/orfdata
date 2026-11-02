@@ -1,5 +1,13 @@
 # Viral coding references for human analysis
 
+This page is for analysing human tumour samples that may carry viral
+transcripts. It covers which viruses of the GDC screen orfdata has coding
+references for, how to download their genomes, coding transcripts and proteins,
+how complete their annotation is, and the cancer-specific subsets. To add viral
+proteins to a host proteome, see
+[Build a reference proteome](proteome.md#viral-proteomes); to use the
+references with varcode or vaxrank, see [Downstream tools](downstream.md).
+
 ## GDC panel coverage
 
 `gdc-viruses` is ORFdata's default 200-reference GDC viral collection for
@@ -22,12 +30,18 @@ print(available.iloc[0]["abbreviation"], available.iloc[0]["bundled_reference_id
 # HPV16 GRCh38.d1.vd1:HPV16
 ```
 
+That output is for a cache with no viral collection installed: only the
+bundled HPV16 reference is available. Rows whose genome is in an installed
+collection also count as available (status `source_cds_installed`), so after
+`orfdata setup --species human`, which installs `gdc-viruses`, the same code
+prints `200 200 0`. Pass `installed=False` to see the packaged inventory alone.
+
 An inventory is a `pandas.DataFrame`, so the arguments below are a convenience
 rather than the only way to narrow one — anything pandas does to a frame works
 here, and `coverage.attrs` carries the packaged table's own header: which panel
 it follows and where it came from.
 
-Use `viral_panel_coverage(available=True)` for bundled references,
+Use `viral_panel_coverage(available=True)` for bundled or installed references,
 `available=False` for rows still missing from ORFdata, `virus="HPV18"` for one
 exact GDC abbreviation, or `search="NC_001357"` to search labels, names and
 source accessions. The equivalent CLI works offline:
@@ -455,16 +469,6 @@ proteins are correct, and varcode reads them per product — but a variant at
 the reused base itself is reported as an exon loss, because a GTF exon is a
 genomic interval and effect predictors assume exons do not overlap.
 
-Because the GTF, transcript FASTA and protein FASTA share identifiers, the set
-opens as a PyEnsembl genome — see [Downstream tools](downstream.md):
-
-```python
-from orfdata import viral_genome
-
-genome = viral_genome(references)
-print(genome.transcript_by_id("AY446894.2_cds1").protein_sequence)
-```
-
 The Python API returns the generated paths and record counts:
 
 ```python
@@ -481,7 +485,7 @@ references: ViralReferenceFiles = open_viral_references(
 )
 print(references.genome_fasta)
 print(references.transcript_fasta, references.protein_fasta, references.annotation_gtf)
-print(references.genome_count, references.protein_count)  # 200, 1678 for the pinned records
+print(references.genome_count, references.protein_count)  # 200 1758
 print(references.collection, references.contexts)
 
 for layer in references.layers:  # genome, transcriptome, proteome
@@ -500,6 +504,16 @@ cancer = select_viral_references(
     download_if_missing=True,
 )
 print(cancer.protein_fasta)
+```
+
+Because the GTF, transcript FASTA and protein FASTA share identifiers, the set
+opens as a PyEnsembl genome — see [Downstream tools](downstream.md):
+
+```python
+from orfdata import viral_genome
+
+genome = viral_genome(references)
+print(genome.transcript_by_id("AY446894.2_cds1").protein_sequence)
 ```
 
 Summarize what is installed, or what a selection of it holds, without writing

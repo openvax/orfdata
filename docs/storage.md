@@ -1,5 +1,11 @@
 # Quantitative storage
 
+This page describes how measurement datasets are stored on disk, for
+maintainers and anyone reading a `dataset.sqlite` directly. Dataset users need
+only the [query API](measurements.md). Generic dataset creation writes SQLite
+storage version 5, canine native-evidence builds write version 6, and versions
+1–6 are all readable. The sections below follow the history of the layout.
+
 ORFdata 0.8 writes compact SQLite storage version 4. `Measurement`,
 `QuantitativeDataset`, the registry and CLI keep the same public records and
 query semantics. Human, mouse, dog, yeast and arbitrary taxa retain separate
@@ -19,7 +25,7 @@ reference, which its row already names. The dog DLA ligand dataset, with 62,492
 mappings, is 255 MB, against 389 MB in the version 4 layout. Version 4 files remain readable, and a
 version 4 fixture written by the released ORFdata 0.30.0 tests that.
 
-Published storage versions 1, 2, 3 and 4 remain readable. There is no automatic
+Published storage versions 1 to 6 remain readable. There is no automatic
 migration or replacement of downloaded artifacts. A new source rebuild can use
 a different storage layout and therefore a different file checksum while
 returning the same records. Registry downloads always verify the exact published

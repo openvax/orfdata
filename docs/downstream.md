@@ -41,8 +41,13 @@ references = select_viral_references(
 )
 genome = viral_genome(references)  # A PyEnsembl genome over the viral contigs.
 
-variant = Variant(contig="AY446894.2", start=1500, ref="C", alt="T", genome=genome)
+# EBV (AJ507799.2), codon 11 of BNRF1
+variant = Variant(contig="AJ507799.2", start=1766, ref="C", alt="T", genome=genome)
 print(variant.effects().top_priority_effect().short_description)
+```
+
+```text
+p.P11S
 ```
 
 `viral_genome()` indexes the set's `annotation.gtf`, `transcripts.fasta` and
@@ -101,7 +106,7 @@ Four things are worth knowing before the first run:
 - **A partial or frameshifted source CDS gets no start or stop codon rows**, so
   effect predictors will not translate it. `annotation_complete` says which
   transcripts are whole and `partial` says which end the source marks as
-  running past the record: 78 of 1,703, mostly HPV E4 and E5 ORFs that are
+  running past the record: 69 of 1,758, mostly HPV E4 and E5 ORFs that are
   really expressed from spliced transcripts, plus HIV-1's `pol`, which is a
   Gag-Pol frameshift fusion. HPV16's E6, E7, E1, E2, L1 and L2 are complete,
   and HBV's polymerase is joined back together across the circular origin, so

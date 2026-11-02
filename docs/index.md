@@ -12,23 +12,25 @@ is a recorded host of the virus.
 Use Python 3.11 or later. Install orfdata and one PyEnsembl annotation:
 
 ```sh
-python -m pip install 'orfdata'
+python -m pip install orfdata
 pyensembl install --release 115 --species human
 orfdata setup --species human --catalogs all  # For ncORF presets and "all"
 ```
 
+The second command downloads and indexes Ensembl 115 for human GRCh38. The
+third builds human's optional Ribo-seq ORF catalogues from their pinned sources
+and downloads the assembly chains and the GDC viral collection
+(`--collections none` skips it). Opening ORFdata resources never downloads them
+implicitly; use the explicit commands under `orfdata data` or the
+corresponding PyEnsembl command when data is missing.
+
 Viral support is part of the base install; only the data is downloaded. Get
 the human GDC viral references — genomes, coding transcripts and proteins, as
 three named layers — with `orfdata download viral --species human`. Use
-`orfdata download list` to see every known resource and `orfdata download
-status` to see what is local. To annotate variants in viral transcripts or
-noncanonical ORFs with varcode, isovar, topiary or vaxrank, see
+`orfdata data list` to see every known resource and `orfdata data status` to
+see what is local. To annotate variants in viral transcripts or noncanonical
+ORFs with varcode, isovar, topiary or vaxrank, see
 [Downstream tools](downstream.md).
-
-The second command downloads and indexes Ensembl 115 for human GRCh38. Opening
-ORFdata resources never downloads them implicitly; use the explicit commands
-under `orfdata download` or the corresponding PyEnsembl command when data is
-missing.
 
 ## Build a human proteome
 
@@ -41,11 +43,11 @@ transcriptome = ReferenceTranscriptome.from_genome(genome)
 reference = transcriptome.proteome()  # Reference CDS proteins only.
 proteome = transcriptome.proteome(nc_orf_sources="ms")
 proteome.write_fasta("human-e115.fasta")
-print(proteome.summary()["kinds"], len(proteome.excluded))
+print(proteome.summary()["protein_sources"], len(proteome.excluded))
 ```
 
 ```text
-{'annotated': 245535, 'extra_orf': 2181} 5
+{'reference_cds': 245535, 'nc_orf': 2181} 5
 ```
 
 `proteome()` takes every reference CDS protein in the Ensembl 115 annotation.
@@ -140,8 +142,13 @@ and yeast; see [released data and gaps](coverage.md).
 
 - [Build a reference proteome](proteome.md): evidence filters, excluded ORFs,
   restricting contigs, viral proteomes and FASTA headers.
+- [Discover and download data](downloads.md): the `orfdata data` workflow and
+  the cache.
+- [Downstream tools](downstream.md): ncORFs and viral references in varcode,
+  isovar, topiary and vaxrank.
 - [ORFs and evidence](reference.md): the ORF classes, what each kind of
   evidence supports, and the per-transcript API used by Varcode and Isovar.
 - [Species, references and genetic codes](species.md): reference identity and
   mitochondrial translation tables.
 - [Measurements](measurements.md): quantitative datasets with native units.
+- [Command-line guide](cli.md): every command and its output formats.

@@ -1,5 +1,9 @@
 # Species and references
 
+This page explains how orfdata names a species, assembly and annotation, and
+which genetic code it translates with. Read it when working outside human
+GRCh38, with a custom species, or with mitochondrial ORFs.
+
 Resolve names and IDs offline with `orfdata.reference.species_taxon(name)` and
 `species_name_for_taxon(taxon_id)`. The latter returns a canonical species name,
 or `None` for an unknown positive ID, without requiring an Ensembl annotation.

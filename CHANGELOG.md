@@ -1,3 +1,21 @@
+# 0.48.2
+
+- Documentation only. The README follows the layout shared by the OpenVax
+  libraries (Install, Quick start, Command line, Documentation, Development,
+  License) and drops from 240 to 124 lines; its species table, viral notes and
+  measurement-dataset table already had fuller versions in the docs, and the
+  dataset table moves to the Measurements page, now with the canine
+  mammary-stroma dataset. The docs navigation runs from the home page through
+  the proteome and data guides to concepts, with the command-line guide last.
+- Docs corrections: the downstream varcode example used a CMV contig that is
+  not in the `cancer-causing` subset it selects, and now uses EBV; 69 of 1,758
+  viral coding transcripts are partial, not 78 of 1,703; the viral collection
+  holds 1,758 proteins, not 1,678; `viral_panel_coverage()` counts installed
+  references as available, so after `orfdata setup` it reports 200 of 200;
+  storage versions 1 to 6 are readable, not 1 to 4. The home page reports
+  `summary()["protein_sources"]` like the README, and the viral, species and
+  storage pages open by saying what they cover.
+
 # 0.48.1
 
 - Fix two HTLV-1 ORFs offered by 0.48.0 with coordinates that drifted. Their
