@@ -36,7 +36,7 @@ from .errors import NotInstalledError
 from .fasta import write_fasta
 from .net import DOWNLOAD_TIMEOUT
 from .record_sources import REQUEST_INTERVAL
-from .reference import canonical_species
+from .reference import canonical_species, species_taxon
 from .reference_ledger import empty_ledger, ledger_row, published, same_molecule, verify_record
 from .viral_annotation import (
     NON_CANONICAL_START,
@@ -44,13 +44,14 @@ from .viral_annotation import (
     gtf_transcript_lines,
     name_transcripts,
     safe_token,
+    unique_source_proteins,
 )
 from .viral_coverage import normalize_viral_contexts, viral_panel_coverage
 from .viral_registry import ViralCollection, viral_collection
 from .viral_subsets import normalize_viral_subsets, viral_subset_abbreviations
 
-BUNDLE_SCHEMA_VERSION = "6"
-BUNDLE_SCHEMA = "orfdata.viral_reference_bundle.v6"
+BUNDLE_SCHEMA_VERSION = "7"
+BUNDLE_SCHEMA = "orfdata.viral_reference_bundle.v7"
 INDEX_SCHEMA = "orfdata.viral_reference_index.v7"
 VIRAL_LAYERS = ("genome", "transcriptome", "proteome")
 
@@ -73,7 +74,8 @@ _RECORD_DIRECTORY = "records"
 
 _GENOME_COLUMNS = (
     "index", "abbreviation", "name", "genome_id", "accession_version", "source_genbank",
-    "source_refseq", "viral_taxon_id", "source_host_taxon_ids", "length_nt", "genome_sha256",
+    "source_refseq", "viral_taxon_id", "group", "source_host", "source_host_taxon_ids",
+    "length_nt", "genome_sha256",
     "transcript_count", "genome_source", "annotation_source", "alternate_source",
     "alternate_id", "alternate_sequence", "inventory_notes",
 )
@@ -359,7 +361,7 @@ def _verified_existing_bundle(path, *, species, collection):
     return result
 
 
-def _genome_row(entry, primary, molecule, transcripts, alternate):
+def _genome_row(entry, primary, molecule, transcripts, alternate, record):
     """One row of the genome layer's table, as the inventory and the record describe it."""
     sources = {transcript["annotation_source"] for transcript in transcripts}
     return {
@@ -371,8 +373,11 @@ def _genome_row(entry, primary, molecule, transcripts, alternate):
         "source_genbank": entry.genbank,
         "source_refseq": entry.refseq,
         "viral_taxon_id": primary["taxon_id"],
-        # The target species is an analysis choice, not a claim about the source host.
-        "source_host_taxon_ids": "",
+        # What the primary GenBank record says: its genus and the host it was isolated from. The target species is an analysis
+        # choice and says nothing about either.
+        "group": record.group,
+        "source_host": record.host,
+        "source_host_taxon_ids": str(species_taxon(record.host.split(";")[0]) or ""),
         "length_nt": len(molecule.sequence),
         "genome_sha256": hashlib.sha256(molecule.sequence.encode("ascii")).hexdigest(),
         "transcript_count": len(transcripts),
@@ -563,9 +568,8 @@ def _write_bundle(path, collection, inventory, primaries, *, timeout,
         molecules[entry.index] = molecule
 
     # A source protein accession names the protein only when it names one protein.
-    protein_uses = Counter(feature["source_protein_id"] for molecule in molecules.values()
-                           for feature in molecule.features if feature["source_protein_id"])
-    unique_protein_ids = {value for value, uses in protein_uses.items() if uses == 1}
+    unique_protein_ids = unique_source_proteins(
+        feature for molecule in molecules.values() for feature in molecule.features)
 
     genome_rows, transcript_rows, gtf_lines, complete = [], [], [], 0
     with (path / _GENOME_FASTA).open("w") as genome_stream, \
@@ -597,7 +601,8 @@ def _write_bundle(path, collection, inventory, primaries, *, timeout,
                 for transcript in members:
                     gtf_lines.extend(gtf_transcript_lines(transcript))
             genome_rows.append(_genome_row(entry, primary, molecule, placed,
-                                           ledger_row(ledger, entry.abbreviation)))
+                                           ledger_row(ledger, entry.abbreviation),
+                                           downloaded[primary["identifier"]]))
 
     _write_table(path / _GENOME_TABLE, _GENOME_COLUMNS, genome_rows)
     _write_table(path / _TRANSCRIPT_TABLE, _TRANSCRIPT_COLUMNS, transcript_rows)
@@ -662,8 +667,11 @@ def _bundle_readme(collection, genome_rows, transcript_rows, complete, retrieved
         + "The GTF, transcript FASTA and protein FASTA share identifiers, so this set opens as a "
         "PyEnsembl genome for varcode, isovar, topiary and vaxrank.\n\n"
         f"The `{collection.name}` collection is for {collection.target_species} analysis. That "
-        "target does not assert a source host; `source_host_taxon_ids` is empty when the source "
-        "inventory does not establish one.\n\n"
+        "target does not assert a source host. `source_host` is the host each primary GenBank "
+        "record names for its sequence, an isolation host and not a host range, and "
+        "`source_host_taxon_ids` its NCBI taxon where ORFdata knows the species; both are empty "
+        "when the record says nothing. `group` is the genus in the record's taxonomic "
+        "lineage.\n\n"
         "This is a source-record download, not an ORFdata curated viral-reference release. "
         "It does not alter `viral_references()` or `Proteome.build(..., viral=...)`.\n"
     )

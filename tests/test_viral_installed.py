@@ -30,14 +30,15 @@ def test_an_installed_collection_lists_its_references(viral_panel, tmp_path):
     assert {"VTEST001.1", "VTEST002.1", "VTEST003.1", "VTEST004.1"} <= set(found)
     first = found["VTEST001.1"]
     assert first.bundle is not None and first.virus_type == "TV1"
-    assert first.group == "" and first.host_taxon_ids == ()
+    assert first.group == "Alphatestvirus" and first.host_taxon_ids == (9606,)
     assert first.coding_models == 1
     assert [item.protein_id for item in first.products] == ["VTEST001.1_cds1.p"]
     assert viral_reference("VTEST001.1", cache_root=str(tmp_path)) == first
     assert viral_references(virus_type="tv1", cache_root=str(tmp_path)) == (first,)
-    # Host and bundled-only queries are unchanged by what is installed.
+    # A host query adds the installed references whose own record names that host,
+    # and installed=False leaves the bundled answer unchanged.
     assert viral_references(host="human", cache_root=str(tmp_path)) == \
-        viral_references(host="human", installed=False)
+        viral_references(host="human", installed=False) + (first,)
     assert all(item.bundle is None for item in viral_references(installed=False))
     with pytest.raises(ValueError, match="No unique"):
         viral_reference("VTEST001.1", installed=False)

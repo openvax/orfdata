@@ -74,6 +74,7 @@ class Record:
     features: tuple
     name: str = ""
     definition: str = ""
+    lineage: tuple = ()
 
 
 def positions(location):
@@ -197,7 +198,7 @@ def parse(text):
     """
     lines = text.splitlines()
     accession_version, circular, name, declared = None, False, "", None
-    feature_lines, sequence, definition, section = [], [], [], None
+    feature_lines, sequence, definition, organism, section = [], [], [], [], None
     for line in lines:
         if line.startswith("LOCUS"):
             circular = " circular " in f" {' '.join(line.split()[1:])} "
@@ -209,6 +210,9 @@ def parse(text):
         elif line.startswith("DEFINITION"):
             section = "definition"
             definition.append(line[len("DEFINITION"):].strip())
+            continue
+        elif line.startswith("  ORGANISM"):
+            section = "organism"
             continue
         elif line.startswith("FEATURES"):
             section = "features"
@@ -224,6 +228,8 @@ def parse(text):
             feature_lines.append(line)
         elif section == "definition":
             definition.append(line.strip())
+        elif section == "organism":
+            organism.append(line.strip())
         elif section == "sequence":
             match = _SEQUENCE_LINE.match(line)
             if match is None:
@@ -251,4 +257,7 @@ def parse(text):
                   features=features, name=name,
                   # NCBI writes a record's one-line description as a sentence; its
                   # own titles elsewhere drop the full stop, and so does this.
-                  definition=" ".join(definition).strip().rstrip("."))
+                  definition=" ".join(definition).strip().rstrip("."),
+                  # ORGANISM's continuation lines: "Viruses; ...; Genus."
+                  lineage=tuple(part.strip() for part in " ".join(organism).rstrip(".").split(";")
+                                if part.strip()))

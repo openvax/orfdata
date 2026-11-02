@@ -155,7 +155,9 @@ def _references_of(files, collection_name):
         references.append(ViralReference(
             id=row.genome_id, species=_species(row.name), taxon_id=int(row.viral_taxon_id),
             host_taxon_ids=tuple(int(value) for value in row.source_host_taxon_ids.split(",") if value),
-            host_source="", group="", virus_type=row.abbreviation, ictv_species="",
+            host_source=(f"{row.accession_version} isolation host: {row.source_host}"
+                         if row.source_host else ""),
+            group=row.group, virus_type=row.abbreviation, ictv_species="",
             taxonomy_source=f"{collection_name} inventory", length=len(sequence),
             sequence_md5=hashlib.md5(sequence.encode("ascii"), usedforsecurity=False).hexdigest(),
             sequence_sha256=row.genome_sha256, native_to_reference_rotation=0,

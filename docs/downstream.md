@@ -60,8 +60,15 @@ HPV16 catalogue, so a collection installed with `orfdata data fetch` supplies
 Isovar's viral models for every contig it holds. Only CDSs that translate
 exactly to their source protein are offered; `viral_references()` says in each
 reference's `scope` how many were left out, and they remain in the
-transcriptome layer. Installed references carry no host or group until those are
-curated, so `host=` and `group=` still select bundled references.
+transcriptome layer.
+
+An installed reference carries what its own GenBank record says: its `group` is
+the genus in the record's lineage, and `host_taxon_ids` and `host_source` name
+the host the sequence was isolated from, with the accession as the source.
+That is an isolation host, not a host range, and it is empty when the record
+names none, so `viral_references(host="human")` returns the references whose
+record says human and not every virus a human can carry. `ictv_species` stays
+empty until curated (#104).
 
 ### Declaring the genome for vaxrank
 
