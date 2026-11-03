@@ -1830,6 +1830,12 @@ not require <code>--output</code>: an arbitrary export path would also need to d
 resource identity, update and verification behavior. Use <code>--cache-root</code> to put
 the managed cache elsewhere. The command prints the installed paths; add
 <code>--json</code> for structured output.</p>
+<p>In Python, <code>orfdata.cache.get_data_dir(cache_root)</code> returns the <code>orfdata</code>
+directory of the cache root a call uses, without creating it. Downloaded
+catalogues, datasets, search references, genomes and chain files each have an
+area there (<code>catalogs/</code>, <code>datasets/</code>, <code>references/</code>, <code>genomes/</code>, <code>chains/</code>), and
+each store in it is named by the SHA-256 of its release's pins, so a new pin
+never reuses old files.</p>
 <h2 id="python-acquisition-convention">Python acquisition convention<a class="headerlink" href="#python-acquisition-convention" title="Permanent link">&para;</a></h2>
 <p>ORFdata follows the OpenVax split between explicit acquisition and offline
 lookup:</p>
