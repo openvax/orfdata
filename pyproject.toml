@@ -42,7 +42,7 @@ version = {attr = "orfdata.version.__version__"}
 include = ["orfdata*"]
 
 [tool.setuptools.package-data]
-orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/ires/*", "data/viral/*", "data/datasets.json", "data/catalogs.json", "data/chains.json", "data/genomes.json"]
+orfdata = ["data/uorf-evidence/*", "data/orf-evidence/*", "data/ires/*", "data/viral/*", "data/datasets.json", "data/catalogs.json", "data/chains.json", "data/genomes.json", "data/source_records.json"]
 
 [tool.ruff]
 target-version = "py311"
@@ -54,3 +54,4 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["real_data: needs the pinned real source records, downloaded from GitHub (run with --real-data)"]

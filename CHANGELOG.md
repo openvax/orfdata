@@ -1,3 +1,14 @@
+# 0.48.6
+
+- Add the `records` data kind. `gdc-viruses-records` is the 227 GenBank and
+  PaVE documents a `gdc-viruses` build requests, pinned by checksum in a GitHub
+  data release, so `orfdata data list`, `info` and `fetch` show it beside the
+  other data and `orfdata.source_records.read_records` reads it offline.
+- `tests/test_full_collection.py` builds the whole collection from that archive
+  and asserts its counts (201 references, 1,758 ORFs, eight source CDS left
+  out). It runs with `pytest --real-data`, and `deploy.sh` runs it before every
+  release, so a defect that only real records show cannot ship unseen.
+
 # 0.48.5
 
 - Test the viral binder on real source records: six GenBank records and the

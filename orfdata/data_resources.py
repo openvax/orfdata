@@ -66,6 +66,12 @@ def data_info(name, *, kind=None, version=None, cache_root=None, verify_files=Fa
         registry = DatasetRegistry(cache_root=cache_root)
         result["sources"] = [s.source.to_dict() for s in registry.search_references(dataset, row.version)
                              if s.source.asset_id == asset]
+    elif row.kind == "records":
+        from dataclasses import asdict
+
+        from .source_records import pinned_records
+
+        result["source"] = asdict(next(r for r in pinned_records() if r.name == name))
     elif row.kind == "chain":
         from dataclasses import asdict
 
@@ -161,6 +167,10 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
         download_chain(chain.source_build, chain.target_build, species=chain.species,
                        cache_root=cache_root, force=force, accept_terms=accept_terms,
                        download_options=options)
+    elif row.kind == "records":
+        from .source_records import install_records
+
+        install_records(name, cache_root=cache_root, force=force, download_options=options)
     elif row.kind == "viral":
         from .downloads import install_collection
 

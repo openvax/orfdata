@@ -10,6 +10,8 @@ version="$($PYTHON -c 'from orfdata.version import __version__; print(__version_
 if git rev-parse "v$version" >/dev/null 2>&1; then echo 'Version tag already exists' >&2; exit 1; fi
 ./lint.sh
 ./test.sh
+# The whole collection, built from its pinned real records (one download from GitHub).
+"$PYTHON" -m pytest tests/test_full_collection.py --real-data
 "$PYTHON" -m build
 "$PYTHON" -m twine check "dist/orfdata-$version.tar.gz" "dist/orfdata-$version-py3-none-any.whl"
 if [[ "${1:-}" == --dry-run ]]; then exit 0; fi

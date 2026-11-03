@@ -216,3 +216,17 @@ def serve_records(monkeypatch, genbank=(), alternate=()):
 
     monkeypatch.setattr(record_sources, "fetch", fetch)
     return asked
+
+
+def pytest_addoption(parser):
+    parser.addoption("--real-data", action="store_true",
+                     help="Also run the checks that download the pinned real source records")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--real-data"):
+        return
+    skip = pytest.mark.skip(reason="needs the pinned real source records; run with --real-data")
+    for item in items:
+        if "real_data" in item.keywords:
+            item.add_marker(skip)
