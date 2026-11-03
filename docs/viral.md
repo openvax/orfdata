@@ -34,7 +34,9 @@ That output is for a cache with no viral collection installed: only the
 bundled HPV16 reference is available. Rows whose genome is in an installed
 collection also count as available (status `source_cds_installed`), so after
 `orfdata setup --species human`, which installs `gdc-viruses`, the same code
-prints `200 200 0`. Pass `installed=False` to see the packaged inventory alone.
+prints `200 200 0` and its first available row is `CMV ( HHV-5) AY446894.2`.
+Pass `installed=False` to see the packaged inventory alone, which prints the
+output above.
 
 An inventory is a `pandas.DataFrame`, so the arguments below are a convenience
 rather than the only way to narrow one — anything pandas does to a frame works

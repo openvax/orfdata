@@ -25,7 +25,7 @@ Released datasets, each with its own guide:
 | [Paired canine mammary stroma](mammary-stroma.md) | Dog | Normal and cancer-associated stroma RNA and protein from the same specimens (Amini et al.) |
 | [Yeast protein and RNA](copy-yeast.md) | Budding yeast | Calibrated protein and RNA abundance (CoPY) |
 | [Yeast RNA and ribosome occupancy](ingolia-yeast.md) | Budding yeast | Source regions, including UTR and ncRNA labels (Ingolia et al.) |
-| [Dog peptides](dog-peptides.md) | Dog | DLA class I ligands from tumours (Kaabinejadian et al.); Canine PeptideAtlas peptides and protein calls, built locally |
+| [Dog peptides](dog-peptides.md) | Dog | DLA class I ligands from tumours (Kaabinejadian et al.); Canine PeptideAtlas peptides and protein calls (Kusebauch et al.), built locally |
 
 Gene RNA and canonical protein measurements do not establish noncanonical ORF
 abundance. See [released coverage and gaps](coverage.md); the
