@@ -19,12 +19,11 @@ extra_css:
   - stylesheets/docs.css
 nav:
   - Home: index.md
-  - Command-line guide: cli.md
-  - Discover and download data: downloads.md
-  - Downstream tools: downstream.md
   - Proteomes:
       - Build a reference proteome: proteome.md
       - Viral coding references: viral.md
+  - Discover and download data: downloads.md
+  - Downstream tools: downstream.md
   - Noncanonical ORFs:
       - ORFs and evidence: reference.md
       - Examples: examples.md
@@ -47,6 +46,7 @@ nav:
       - Yeast RNA and ribosome occupancy: ingolia-yeast.md
       - Dog MHC ligands and PeptideAtlas: dog-peptides.md
       - Dog paired-data and Ribo-seq source audit: dog-data-sources.md
+  - Command-line guide: cli.md
   - Project:
       - CLI design and audit: cli-design.md
       - Release notes: https://github.com/openvax/orfdata/blob/main/CHANGELOG.md

@@ -11,7 +11,9 @@ transcript model but not another. The catalogue is source-backed; it does not
 discover every possible ORF. The larger Phase 2 set is planned
 ([#16](https://github.com/openvax/orfdata/issues/16)). Most users start with a
 [reference proteome](proteome.md) or `extra_orfs(genome)`; this page describes
-the objects and evidence underneath.
+the objects and evidence underneath. Its examples continue the Python session
+from the [home page](index.md), where
+`genome = EnsemblRelease(115, species="human")`.
 
 ## ORF categories
 

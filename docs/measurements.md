@@ -6,17 +6,29 @@ A measurement stays at the resolution the experiment supports. Parent-gene RNA
 abundance is useful context for an ORF; it is not a separate measurement of each
 ORF in that gene.
 
+Each measurement dataset is a separate download with the same species-scoped
+API. Download and query one explicitly:
+
+```sh
+orfdata datasets list
+orfdata datasets download ingolia-yeast-rna-ribo
+```
+
 Released datasets, each with its own guide:
 
-- [Human, mouse and dog protein abundance](pfizer-protein.md) (Pfizer/Oziolor atlas)
-- [Dog and mouse RNA abundance](pfizer-rna.md) (Pfizer/Oziolor atlas)
-- [Matched human tissue RNA and protein](human-tissue.md) (Wang et al.)
-- [Yeast protein and RNA abundance](copy-yeast.md) (CoPY)
-- [Yeast RNA and ribosome occupancy](ingolia-yeast.md) (Ingolia et al.)
-- [Dog MHC ligands and PeptideAtlas peptides](dog-peptides.md) (Kaabinejadian et al.; Kusebauch et al.)
-- [Pfizer dog peptide and protein-group evidence](pfizer-peptides.md) (Oziolor et al.)
+| Guide | Species | Measurements |
+| --- | --- | --- |
+| [Protein abundance](pfizer-protein.md) | Human, mouse, dog | TMT protein groups (Oziolor et al.) |
+| [Native peptide evidence](pfizer-peptides.md) | Dog | Peptide/PSM quantities and reported protein-group memberships (Oziolor et al.) |
+| [RNA abundance](pfizer-rna.md) | Dog, mouse | Native gene counts (Oziolor et al.) |
+| [Matched human tissues](human-tissue.md) | Human | RNA and protein from adjacent cryosections (Wang et al.) |
+| [Paired canine mammary stroma](mammary-stroma.md) | Dog | Normal and cancer-associated stroma RNA and protein from the same specimens (Amini et al.) |
+| [Yeast protein and RNA](copy-yeast.md) | Budding yeast | Calibrated protein and RNA abundance (CoPY) |
+| [Yeast RNA and ribosome occupancy](ingolia-yeast.md) | Budding yeast | Source regions, including UTR and ncRNA labels (Ingolia et al.) |
+| [Dog peptides](dog-peptides.md) | Dog | DLA class I ligands from tumours (Kaabinejadian et al.); Canine PeptideAtlas peptides and protein calls (Kusebauch et al.), built locally |
 
-See [released coverage and gaps](coverage.md); the
+Gene RNA and canonical protein measurements do not establish noncanonical ORF
+abundance. See [released coverage and gaps](coverage.md); the
 [data roadmap](https://github.com/openvax/orfdata/issues/3) tracks further
 imports. The bundled human ORF evidence catalogue remains available offline.
 Its pooled PSM counts describe spectra, not sample-level protein abundance.
