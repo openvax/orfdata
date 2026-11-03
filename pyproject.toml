@@ -11,6 +11,8 @@ license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{name = "OpenVax"}]
 dependencies = [
+    # Tab completion for the orfdata command.
+    "argcomplete>=3",
     "datacache>=1.29.3,<2",
     "pandas>=3,<4",
     "pyyaml>=6,<7",

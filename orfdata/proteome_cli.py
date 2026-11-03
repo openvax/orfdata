@@ -6,7 +6,8 @@ from pathlib import Path
 
 from .catalog import load_catalog
 from .cli_output import print_result
-from .cli_parser import ArgumentParser, UsageError, add_cache_root
+from .cli_parser import UsageError
+from .command_parsers import proteome_parser
 from .proteome import Proteome
 
 
@@ -17,39 +18,7 @@ def _ensembl_genome(release, species):
 
 
 def run(argv=None, prog=None, *, genome_loader=None):
-    parser = ArgumentParser(
-        description=__doc__, prog=prog,
-        epilog="The PyEnsembl annotation must already be installed, e.g. "
-               "'pyensembl install --release 115 --species human', or, for --genome, with "
-               "'orfdata genomes install NAME'.")
-    parser.add_argument("--species", help="PyEnsembl species, e.g. human, mouse or dog")
-    parser.add_argument("--release", type=int, help="Ensembl release")
-    parser.add_argument("--genome", metavar="NAME",
-                        help="A pinned annotation installed with 'orfdata genomes install', e.g. t2t-chm13, "
-                             "instead of --species and --release")
-    parser.add_argument("--isoforms", choices=("all", "longest"), default="all",
-                        help="Reference CDS isoforms: all (default), or the longest protein per gene")
-    parser.add_argument("--nc-orf-sources", action="append", metavar="SOURCE[,SOURCE...]",
-                        help="Add ncORFs from 'all', evidence presets such as 'ms' or 'ribosome', "
-                             "dataset names, or local JSON/JSON.gz files. Repeat or separate by commas "
-                             "to combine sources. No ncORFs by default")
-    parser.add_argument("--no-reference-cds", action="store_true",
-                        help="Omit proteins translated from the reference annotation's CDS features")
-    parser.add_argument("--min-protein-length", type=int, metavar="AA",
-                        help="Add only ncORFs with at least this many amino acids; source catalogues stay unfiltered")
-    parser.add_argument("--viral", action="append", metavar="REFERENCE",
-                        help="Add a bundled virus by type (e.g. HPV16) or exact reference ID; "
-                             "use 'all' for every distinct bundled virus recorded for this host; repeat for several")
-    parser.add_argument("--snapshot", help="Also save a checksummed snapshot that Proteome.load reads offline")
-    parser.add_argument("--cache", action="store_true",
-                        help="Reuse an identical earlier build from the OpenVax DataCache, or keep this one there")
-    add_cache_root(parser, help="Cache directory holding catalogues, chains, pinned genomes and cached builds, "
-                                "instead of ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
-    parser.add_argument("--output", help="FASTA path; standard output by default")
-    parser.add_argument("--annotation", metavar="DIRECTORY",
-                        help="Also write the ncORF models there as annotation.gtf with matching "
-                             "transcripts.fasta and proteins.fasta, for PyEnsembl-based tools")
-    parser.add_argument("--json", action="store_true", help="Write the complete build summary as JSON to stderr")
+    parser = proteome_parser(prog)
     args = parser.parse_args(argv)
     try:
         # The command line is checked before any file, catalogue or genome is read.

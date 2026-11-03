@@ -4,14 +4,8 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import (
-    ArgumentParser,
-    UsageError,
-    add_limit,
-    add_resume,
-    add_timeout,
-    share_cache_root,
-)
+from .cli_parser import UsageError
+from .command_parsers import data_parser
 from .downloads import list_data
 
 
@@ -23,15 +17,6 @@ def _source_paths(items, label):
             raise UsageError(f"{label} require unique NAME=PATH entries")
         paths[key] = path
     return paths or None
-
-
-def _add_force_timeout(parser):
-    parser.add_argument("--force", action="store_true", help="Replace or repair an existing installation")
-    add_timeout(parser)
-
-
-def _add_json(parser):
-    parser.add_argument("--json", action="store_true", help="Write machine-readable JSON")
 
 
 def _preview(rows, limit):
@@ -113,130 +98,8 @@ _COLLECTION_FIELDS = ("kind", "status", "collection", "path", "bundle_version", 
                       "transcript_count", "protein_count", "target_species", "contexts", "subsets")
 
 
-def _add_discovery(parser, *, status=False):
-    parser.add_argument(
-        "--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain", "records"))
-    parser.add_argument("--species", help="Only resources for this species, e.g. human or mouse")
-    parser.add_argument("--context", action="append",
-                        help="Only resources in this context; repeat for a union")
-    parser.add_argument("--context-match", choices=("any", "all"), default="any",
-                        help="Match any selected context (default) or require all")
-    _add_json(parser)
-    add_limit(parser)
-    parser.add_argument("--verify", action="store_true", help="Hash and validate installed files")
-    if status:
-        parser.set_defaults(installed=None, local=True)  # status: anything with local files
-    else:
-        selection = parser.add_mutually_exclusive_group()
-        selection.add_argument("--installed", dest="installed", action="store_const", const=True,
-                               help="Show only locally installed or bundled resources")
-        selection.add_argument("--missing", dest="installed", action="store_const", const=False,
-                               help="Show only missing, corrupt or inaccessible resources")
-        parser.set_defaults(installed=None, local=False)
-
-
 def run(argv=None, prog="orfdata download"):
-    parser = ArgumentParser(prog=prog, description=__doc__,
-                            epilog="Start here:\n  orfdata data list --species dog\n"
-                                   "  orfdata data status\n  orfdata data info NAME\n"
-                                   "  orfdata data fetch NAME\n\n"
-                                   "List, status, info, and path never download data.")
-    commands = parser.add_subparsers(dest="command", required=True)
-
-    listing = commands.add_parser("list", help="List every bundled, downloadable or buildable resource")
-    _add_discovery(listing)
-    status = commands.add_parser("status", help="Show resources with local files, including damaged and unreadable ones")
-    _add_discovery(status, status=True)
-
-    for verb, description in (("info", "Describe a resource's source pins and download/build route"),
-                              ("path", "Print the installed path without downloading"),
-                              ("fetch", "Install named resources, downloading or building as needed")):
-        command = commands.add_parser(verb, help=description)
-        command.add_argument("names", metavar="NAME", nargs="+" if verb == "fetch" else None)
-        command.add_argument("--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain", "records"))
-        command.add_argument("--version", help="Exact resource version; defaults to its registered version")
-        _add_json(command)
-        if verb == "fetch":
-            _add_force_timeout(command)
-            command.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
-            command.add_argument("--quiet", action="store_true")
-            command.add_argument("--accept-terms", action="store_true")
-            add_resume(command)
-        else:
-            command.add_argument("--verify", action="store_true", help="Hash and validate installed files")
-
-    viral = commands.add_parser(
-        "viral", help="Download the current human-targeted viral collection and paired FASTAs")
-    viral.add_argument("--species", default="human",
-                       help="Target analysis species (currently human; future collections may differ)")
-    viral.add_argument(
-        "--collection", default="gdc-viruses",
-        help="Reference collection (default gdc-viruses: 200 GDC references for human analysis)")
-    viral.add_argument("--context", action="append",
-                       help="Build an index for this context; repeat for a union")
-    viral.add_argument("--exclude-context", action="append",
-                       help="Exclude this context from the derived index; repeat as needed")
-    viral.add_argument("--context-match", choices=("any", "all"), default="any",
-                       help="Match any selected context (default) or require all")
-    viral.add_argument("--subset", action="append",
-                       help="Build an index for this named viral subset; repeat for a union")
-    viral.add_argument("--inventory-molecules", dest="prefer_reference_molecule",
-                       action="store_false",
-                       help="Carry the molecule each inventory row names first, even where the "
-                            "reference the collection follows was built from the other one")
-    viral.add_argument("--no-annotation-fill", dest="annotate_from_alternate",
-                       action="store_false",
-                       help="Keep strictly to each entry's own record, leaving one whose source "
-                            "annotates nothing without transcripts")
-    viral.add_argument("--alternate-annotations", dest="prefer_alternate_annotation",
-                       action="store_true",
-                       help="Take the alternate source's coding features wherever it publishes "
-                            "the same molecule and annotates at least as much of it, for "
-                            "uniform gene models in place of each submission's own")
-    _add_force_timeout(viral)
-    _add_json(viral)
-
-    catalog = commands.add_parser("catalog", help="Download or build a registered ORF catalogue")
-    catalog.add_argument("name")
-    catalog.add_argument("--version")
-    catalog.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
-    _add_force_timeout(catalog)
-    _add_json(catalog)
-
-    dataset = commands.add_parser("dataset", help="Download or build a registered quantitative dataset")
-    dataset.add_argument("name")
-    dataset.add_argument("--version")
-    dataset.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
-    dataset.add_argument("--quiet", action="store_true")
-    _add_force_timeout(dataset)
-    _add_json(dataset)
-
-    reference = commands.add_parser("reference", help="Download a dataset's native protein search FASTA")
-    reference.add_argument("dataset")
-    reference.add_argument("--version")
-    reference.add_argument("--reference", help="Exact native reference context key")
-    reference.add_argument("--asset", help="Declared source asset ID")
-    reference.add_argument("--source-path", metavar="FILE")
-    reference.add_argument("--quiet", action="store_true")
-    _add_force_timeout(reference)
-    _add_json(reference)
-
-    genome = commands.add_parser("genome", help="Download and index a pinned PyEnsembl annotation")
-    genome.add_argument("name")
-    genome.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH")
-    _add_force_timeout(genome)
-    _add_json(genome)
-
-    chains = commands.add_parser("chains", help="Download pinned assembly chain files")
-    chains.add_argument("source_build", metavar="FROM", nargs="?")
-    chains.add_argument("target_build", metavar="TO", nargs="?")
-    chains.add_argument("--species")
-    chains.add_argument("--accept-terms", action="store_true")
-    chains.add_argument("--source-path", metavar="FILE")
-    _add_force_timeout(chains)
-    _add_json(chains)
-
-    share_cache_root(parser)
+    parser = data_parser(prog)
     args = parser.parse_args(argv)
     try:
         if args.command in ("info", "path", "fetch"):

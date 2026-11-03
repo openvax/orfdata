@@ -7,6 +7,7 @@ installed.
 """
 
 import argparse
+import os
 import sys
 
 from .cache import DOWNLOAD_TIMEOUT
@@ -40,7 +41,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def parse_known_args(self, args=None, namespace=None):
         args = list(sys.argv[1:] if args is None else args)
-        if not args and self._subparsers is not None:
+        # A bare group shows its guide, except while the shell's Tab key asks argcomplete for its commands.
+        if not args and self._subparsers is not None and "_ARGCOMPLETE" not in os.environ:
             self.print_help()
             self.exit()
         return super().parse_known_args(args, namespace)
@@ -115,8 +117,17 @@ def add_resume(parser):
                              "and staging stay on disk after a failure (see the download guide)")
 
 
-def add_json(parser):
-    parser.add_argument("--json", action="store_true", help="Write complete machine-readable JSON")
+def add_json(parser, *, help="Write complete machine-readable JSON"):
+    """Add ``--json``, which asks a command for machine-readable output.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        The parser to add the option to.
+    help : str, optional
+        The option's help text.
+    """
+    parser.add_argument("--json", action="store_true", help=help)
 
 
 def nonnegative(value):

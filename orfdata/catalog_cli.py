@@ -8,56 +8,14 @@ from pathlib import Path
 
 from .catalog import catalog_status
 from .catalogs import CatalogRegistry
-from .cli import _add_query_arguments, _query
+from .cli import _query
 from .cli_output import manifest_summary, print_result
-from .cli_parser import (
-    ArgumentParser,
-    UsageError,
-    add_json,
-    add_limit,
-    add_timeout,
-    share_cache_root,
-)
+from .cli_parser import UsageError
+from .command_parsers import catalogs_parser
 
 
 def run(argv=None, prog=None):
-    parser = ArgumentParser(description=__doc__, prog=prog,
-                            epilog="Start with 'orfdata catalogs list', then 'orfdata catalogs info NAME'.\n"
-                                   "Use 'orfdata data fetch NAME' to select the published download or source build.")
-    parser.add_argument("--registry", help="Local JSON catalogue registry definitions")
-    commands = parser.add_subparsers(dest="command", required=True)
-    listing = commands.add_parser("list", help="Discover release manifests without downloading")
-    listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
-    listing.add_argument("--taxon-id", type=int)
-    add_json(listing)
-    add_limit(listing)
-    status = commands.add_parser("status", help="Show bundled and installed catalogue status for every species")
-    add_json(status)
-    add_limit(status)
-    query_parser = None
-    for command, description in {
-        "info": "Describe a catalogue's references, sources, and evidence coverage",
-        "inspect": "Check the local artifact without downloading",
-        "download": "Download and verify a published catalogue",
-        "build": "Build a catalogue from pinned source files",
-        "query": "Find ORFs in an installed catalogue and export records",
-    }.items():
-        subparser = commands.add_parser(command, help=description, description=description)
-        subparser.add_argument("name", help="Catalogue name, as 'orfdata catalogs list' shows it")
-        subparser.add_argument("--version", help="Release to use instead of the catalogue's default")
-        if command in ("inspect", "query"):
-            subparser.add_argument("--built", action="store_true", help="Select a local source build explicitly")
-        if command in ("download", "build"):
-            subparser.add_argument("--force", action="store_true", help="Replace an existing installation")
-            subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
-                                   help="Use this local copy of a pinned source asset instead of downloading it")
-            add_timeout(subparser)
-        if command == "query":
-            query_parser = subparser
-            _add_query_arguments(subparser, catalog_path=False)
-        else:
-            add_json(subparser)
-    share_cache_root(parser)
+    parser = catalogs_parser(prog)
     args = parser.parse_args(argv)
     try:
         definitions = None
@@ -105,7 +63,8 @@ def run(argv=None, prog=None):
                 output["verified"] = result.verified
         else:
             method = registry.open_build if args.built else registry.open
-            return _query(args, query_parser, lambda _: method(args.name, args.version))
+            # The parser reports errors under the subcommand it parsed, 'orfdata catalogs query'.
+            return _query(args, parser, lambda _: method(args.name, args.version))
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.fail(error)
     columns = ("catalog_id", "version", "title") if args.command == "list" else (

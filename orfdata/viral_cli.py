@@ -8,82 +8,14 @@ import sys
 from pathlib import Path
 
 from .cli_output import print_fields, print_json, print_table, records
-from .cli_parser import (
-    ArgumentParser,
-    add_cache_root,
-    add_json,
-    add_limit,
-    add_timeout,
-    share_cache_root,
-)
+from .command_parsers import viral_parser
 from .viral_coverage import PANEL, download_viral_inventory, viral_contexts, viral_panel_coverage
 from .viral_panel import viral_annotation_survey, viral_reference_summary
 from .viral_subsets import viral_subsets
 
 
-def _add_selection(parser):
-    parser.add_argument("--context", action="append",
-                        help="Select references in this context; repeat for a union")
-    parser.add_argument("--exclude-context", action="append",
-                        help="Exclude references in this context; repeat as needed")
-    parser.add_argument("--context-match", choices=("any", "all"), default="any",
-                        help="Match any selected context (default) or require all")
-
-
 def run(argv=None, prog="orfdata viral"):
-    parser = ArgumentParser(prog=prog, description=__doc__)
-    commands = parser.add_subparsers(dest="command", required=True)
-    coverage = commands.add_parser("coverage", help="List all GDC human-screen rows and coding-reference status")
-    selection = coverage.add_mutually_exclusive_group()
-    selection.add_argument("--available", action="store_true", help="Show rows with bundled source CDSs")
-    selection.add_argument("--missing", action="store_true", help="Show rows not yet bundled in ORFdata")
-    coverage.add_argument("--virus", help="Exact GDC inventory abbreviation, e.g. HPV18")
-    coverage.add_argument("--search", help="Case-insensitive name, label or source-accession search")
-    _add_selection(coverage)
-    output = coverage.add_mutually_exclusive_group()
-    output.add_argument("--format", choices=("table", "json", "tsv"), default="table")
-    output.add_argument("--json", dest="format", action="store_const", const="json",
-                        help="Write machine-readable JSON")
-    add_limit(coverage)
-
-    contexts = commands.add_parser("contexts", help="List selectable viral-reference contexts")
-    contexts.add_argument("--json", action="store_true", help="Write machine-readable JSON")
-    add_limit(contexts)
-
-    subsets = commands.add_parser("subsets", help="List named viral-reference subsets")
-    subsets.add_argument("--json", action="store_true", help="Write machine-readable JSON")
-    add_limit(subsets)
-
-    summary = commands.add_parser(
-        "summary", help="Summarize the installed collection's genome, transcriptome and proteome")
-    _add_selection(summary)
-    summary.add_argument("--subset", action="append",
-                         help="Count only this named viral subset; repeat for a union")
-    summary.add_argument("--species", default="human", help="Target analysis species (currently human)")
-    add_cache_root(summary)  # share_cache_root also accepts it before the subcommand.
-    summary.add_argument("--json", action="store_true", help="Write machine-readable JSON")
-
-    completeness = commands.add_parser(
-        "completeness", help="Report how completely each installed genome is annotated")
-    _add_selection(completeness)
-    completeness.add_argument("--subset", action="append",
-                              help="Survey only this named viral subset; repeat for a union")
-    completeness.add_argument("--species", default="human",
-                              help="Target analysis species (currently human)")
-    add_cache_root(completeness)
-    completeness.add_argument("--incomplete", action="store_true",
-                              help="Show only genomes with a gap worth looking at")
-    completeness.add_argument("--json", action="store_true", help="Write machine-readable JSON")
-    add_limit(completeness)
-
-    inventory = commands.add_parser("inventory", help="Manage the published GDC inventory metadata")
-    inventory_commands = inventory.add_subparsers(dest="inventory_command", required=True)
-    download = inventory_commands.add_parser("download", help="Download the pinned inventory via DataCache")
-    download.add_argument("--force", action="store_true", help="Replace the cached copy from the pinned source")
-    add_timeout(download)
-
-    add_json(download)
-    share_cache_root(parser)
+    parser = viral_parser(prog)
     args = parser.parse_args(argv)
     if args.cache_root is not None and args.command in ("coverage", "contexts", "subsets"):
         # These read the packaged inventory only; a cache they'd ignore is a mistake worth saying so.

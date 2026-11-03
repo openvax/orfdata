@@ -5,33 +5,13 @@ from contextlib import redirect_stdout
 from dataclasses import asdict
 
 from .cli_output import print_result
-from .cli_parser import (
-    ArgumentParser,
-    UsageError,
-    add_json,
-    add_limit,
-    add_timeout,
-    share_cache_root,
-)
+from .cli_parser import UsageError
+from .command_parsers import genomes_parser
 from .genomes import install_genome, pinned_genomes
 
 
 def run(argv=None, prog=None):
-    parser = ArgumentParser(description=__doc__, prog=prog)
-    commands = parser.add_subparsers(dest="command", required=True)
-    listing = commands.add_parser("list", help="Show pinned annotations, without downloading")
-    listing.add_argument("--species", help="Only this species' annotations, e.g. human")
-    add_json(listing)
-    add_limit(listing)
-    install = commands.add_parser("install", help="Download, check and index a pinned annotation")
-    install.add_argument("name", help="Annotation name, as 'orfdata genomes list' shows it, e.g. t2t-chm13")
-    install.add_argument("--force", action="store_true", help="Download again even when present")
-    install.add_argument("--genome-fasta", help="Explicit chromosome FASTA path or URL to install through PyEnsembl")
-    install.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH",
-                         help="Install a local copy of the gtf, transcripts or proteins file instead of downloading")
-    add_timeout(install, note="; PyEnsembl downloads --genome-fasta without one")
-    add_json(install)
-    share_cache_root(parser)
+    parser = genomes_parser(prog)
     args = parser.parse_args(argv)
     try:
         if args.command == "list":

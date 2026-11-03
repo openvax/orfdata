@@ -1,31 +1,42 @@
-"""The ``orfdata`` command: its command guide, dispatch to each command, and the ``query`` and ``setup`` commands."""
+# PYTHON_ARGCOMPLETE_OK
+"""The ``orfdata`` command: its command guide, dispatch to each command, and the ``query`` and ``setup`` commands.
 
-import argparse
+Importing this module is cheap, because the shell's Tab key runs it up to
+argcomplete on every press: commands import pandas, DataCache and the data
+modules only when they run.
+"""
+
 import csv
 import json
+import os
 import re
 import sys
+from collections.abc import Callable
 from contextlib import redirect_stdout
 from dataclasses import dataclass
 from importlib import import_module
 
-from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
-from .cli_output import print_result, print_table
-from .cli_parser import (
-    ArgumentParser,
-    UsageError,
-    add_cache_root,
-    add_json,
-    add_limit,
-    add_resume,
-    add_timeout,
+import argcomplete
+
+from .cli_parser import ArgumentParser, UsageError
+from .command_parsers import (
+    catalogs_parser,
+    chains_parser,
+    data_parser,
+    datasets_parser,
+    genomes_parser,
+    lift_parser,
+    proteome_parser,
+    query_parser,
+    setup_parser,
+    viral_parser,
 )
-from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
+from .evidence import MS, RiboSeq, evidence_rule
 
 
 @dataclass(frozen=True)
 class Command:
-    """One top-level ``orfdata`` command: its line in the command guide and the function that runs it.
+    """One top-level ``orfdata`` command: its line in the command guide, the function that runs it, and its parser.
 
     Attributes
     ----------
@@ -37,10 +48,14 @@ class Command:
         It is imported only when the command runs, so the guide and the other
         commands never load it. None for ``help``, which :func:`run` answers
         itself.
+    parser : callable or None
+        Builds the parser ``function`` parses its arguments with, called as
+        ``parser(prog=...)``; tab completion reads it. None for ``help``.
     """
 
     description: str
     function: str | None = None
+    parser: Callable[..., ArgumentParser] | None = None
 
     def load(self):
         """Import and return the function that runs this command.
@@ -64,16 +79,19 @@ class Command:
 # Every top-level command, in the command guide's order. Adding one here lists it and runs it.
 COMMAND_TABLE = {
     "data": Command("Discover downloadable data, inspect local files, and fetch resources",
-                    "orfdata.download_cli:run"),
-    "query": Command("Find ORFs and export catalogue records", "orfdata.cli:query"),
-    "catalogs": Command("Manage optional ORF catalogues", "orfdata.catalog_cli:run"),
-    "datasets": Command("Manage and query quantitative RNA/protein datasets", "orfdata.dataset_cli:run"),
-    "proteome": Command("Build a reference proteome and export FASTA", "orfdata.proteome_cli:run"),
-    "viral": Command("Inspect viral coverage, subsets, and installed reference layers", "orfdata.viral_cli:run"),
-    "setup": Command("Install a species' default catalogues and reference collections", "orfdata.cli:setup"),
-    "genomes": Command("Manage pinned genome annotations", "orfdata.genomes_cli:run"),
-    "chains": Command("List and download assembly mapping files", "orfdata.liftover_cli:chains"),
-    "lift": Command("Map an ORF catalogue to another genome assembly", "orfdata.liftover_cli:lift"),
+                    "orfdata.download_cli:run", data_parser),
+    "query": Command("Find ORFs and export catalogue records", "orfdata.cli:query", query_parser),
+    "catalogs": Command("Manage optional ORF catalogues", "orfdata.catalog_cli:run", catalogs_parser),
+    "datasets": Command("Manage and query quantitative RNA/protein datasets", "orfdata.dataset_cli:run",
+                        datasets_parser),
+    "proteome": Command("Build a reference proteome and export FASTA", "orfdata.proteome_cli:run", proteome_parser),
+    "viral": Command("Inspect viral coverage, subsets, and installed reference layers", "orfdata.viral_cli:run",
+                     viral_parser),
+    "setup": Command("Install a species' default catalogues and reference collections", "orfdata.cli:setup",
+                     setup_parser),
+    "genomes": Command("Manage pinned genome annotations", "orfdata.genomes_cli:run", genomes_parser),
+    "chains": Command("List and download assembly mapping files", "orfdata.liftover_cli:chains", chains_parser),
+    "lift": Command("Map an ORF catalogue to another genome assembly", "orfdata.liftover_cli:lift", lift_parser),
     "help": Command("Show help for a command"),
 }
 # Other names a command answers to; its help and errors name it as typed.
@@ -82,7 +100,7 @@ COMMAND_ALIASES = {"download": "data", "downloads": "data"}
 COMMANDS = {name: command.description for name, command in COMMAND_TABLE.items()}
 
 
-def command_guide(prog="orfdata"):
+def command_guide(prog="orfdata", *, parsers=None):
     """Return the parser whose help is the ``orfdata`` command guide.
 
     It lists every command in :data:`COMMAND_TABLE`, and parses nothing else:
@@ -92,6 +110,10 @@ def command_guide(prog="orfdata"):
     ----------
     prog : str, optional
         The program name the guide shows, ``orfdata`` by default.
+    parsers : dict, optional
+        Parsers to put under the guide by command name or alias, in place of
+        the empty ones it lists, as :func:`completion_parser` does so tab
+        completion reaches a command's options. The guide's help is the same.
 
     Returns
     -------
@@ -113,17 +135,71 @@ def command_guide(prog="orfdata"):
     commands = parser.add_subparsers()
     for name, command in COMMAND_TABLE.items():
         commands.add_parser(name, help=command.description)
+    # Only tab completion reads this: run() answers 'help COMMAND' itself.
+    commands.choices["help"].add_argument("command", nargs="?", metavar="COMMAND",
+                                          choices=[name for name in COMMAND_TABLE if name != "help"])
+    commands.choices.update(parsers or {})
     return parser
 
 
-def run(argv=None, prog=None, *, catalog_loader=load_catalog):
+def completion_words(environ=None):
+    """Return the words typed after the program name and before the cursor, from a tab-completion request.
+
+    Parameters
+    ----------
+    environ : mapping, optional
+        The environment argcomplete's shell hook sets, with ``COMP_LINE``,
+        ``COMP_POINT`` and ``_ARGCOMPLETE``; :data:`os.environ` by default.
+
+    Returns
+    -------
+    list of str
+        The complete words, without the program name and without the word
+        being completed.
+    """
+    environ = os.environ if environ is None else environ
+    words = argcomplete.split_line(environ["COMP_LINE"], int(environ["COMP_POINT"]))[3]
+    # _ARGCOMPLETE is where the program's own arguments start: 1 for 'orfdata', 3 for 'python -m orfdata.cli'.
+    return words[int(environ["_ARGCOMPLETE"]):]
+
+
+def completion_parser(words, prog="orfdata"):
+    """Return the parser tab completion reads: the command guide, with the typed command's parser under it.
+
+    Only the command named in ``words`` gets its parser built, so a Tab press
+    builds one command's options at most, and imports none of the modules that
+    run commands.
+
+    Parameters
+    ----------
+    words : list of str
+        The words already typed after the program name, as
+        :func:`completion_words` returns them.
+    prog : str, optional
+        The program name, ``orfdata`` by default.
+
+    Returns
+    -------
+    ArgumentParser
+        Completes command names, and the options and subcommands of the
+        command in ``words``, aliases included.
+    """
+    name = next((word for word in words if not word.startswith("-")), None)
+    command = COMMAND_TABLE.get(COMMAND_ALIASES.get(name, name))
+    if command is None or command.parser is None:
+        return command_guide(prog)
+    return command_guide(prog, parsers={name: command.parser(prog=f"{prog} {name}")})
+
+
+def run(argv=None, prog=None, *, catalog_loader=None):
     """Run the ``orfdata`` command line: the command guide, ``--version``, or one command.
 
     ``help COMMAND`` shows that command's help. A command named in
     :data:`COMMAND_TABLE` or :data:`COMMAND_ALIASES` runs with the arguments
     after its name. Arguments that start with an option, such as
     ``--gene TP53``, are a ``query``, as they were before ``query`` was a
-    command.
+    command. When the shell's Tab key runs it, through argcomplete, it prints
+    the completions and exits instead.
 
     Parameters
     ----------
@@ -133,7 +209,7 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
         The program name that help and errors show, ``orfdata`` by default.
     catalog_loader : callable, optional
         What ``query`` opens catalogues with, as in :func:`query`; other
-        commands don't use it.
+        commands don't use it. None means :func:`~orfdata.load_catalog`.
 
     Returns
     -------
@@ -148,6 +224,8 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     """
     argv = list(sys.argv[1:] if argv is None else argv)
     prog = prog or "orfdata"
+    if "_ARGCOMPLETE" in os.environ:  # A Tab press: argcomplete prints the completions and exits.
+        argcomplete.autocomplete(completion_parser(completion_words(), prog))
     if argv[:1] == ["help"]:
         argv = argv[1:] + ["--help"]
     if not argv or argv in (["--help"], ["-h"]):
@@ -169,24 +247,19 @@ def run(argv=None, prog=None, *, catalog_loader=load_catalog):
     return command.load()(arguments, prog=f"{prog} {name}")
 
 
-def query(argv=None, prog="orfdata query", *, catalog_loader=load_catalog):
+def query(argv=None, prog="orfdata query", *, catalog_loader=None):
     """Run the ``query`` command on its own, under ``prog``.
 
     Another tool can expose ORF queries as one of its commands with its own catalogue loader. Its help,
     errors and examples name ``prog``, and exit statuses follow :func:`run`. Any ``catalog_loader`` other
-    than :func:`~orfdata.load_catalog` reads one catalogue, so ``--species`` is not offered.
+    than :func:`~orfdata.load_catalog`, which None stands for, reads one catalogue, so ``--species`` is not
+    offered.
     """
+    from .catalog import load_catalog
+
     argv = list(sys.argv[1:] if argv is None else argv)
-    default = catalog_loader is load_catalog
-    epilog = (f"Examples:\n  {prog} --gene TP53\n"
-              f"  {prog} --orf-id c7riboseqorf56 --json\n")
-    if default:
-        epilog += (f"  {prog} --species mouse --format fasta\n\n"
-                   "Find optional sources with 'orfdata catalogs list'.")
-    parser = ArgumentParser(
-        description="Query an installed ORF catalogue; preview records or export them explicitly.",
-        prog=prog, epilog=epilog)
-    _add_query_arguments(parser, species=default)
+    catalog_loader = load_catalog if catalog_loader is None else catalog_loader
+    parser = query_parser(prog, species=catalog_loader is load_catalog)
     args = parser.parse_args(argv)
     return _query(args, parser, catalog_loader)
 
@@ -209,26 +282,10 @@ def setup(argv=None, prog="orfdata setup"):
         is unknown or anything failed to install; what did install is still
         reported first.
     """
+    from .cli_output import print_result
     from .install import InstallError, install_species
 
-    parser = ArgumentParser(
-        prog=prog, description="Install a species' ORF catalogues, chains and default reference collections, so its "
-                               "proteomes work offline on every assembly the chains reach. Human setup downloads "
-                               "the GDC viral collection too; '--collections none' skips it.")
-    parser.add_argument("--species", required=True, help="e.g. human or mouse")
-    parser.add_argument("--accept-terms", action="store_true",
-                        help="Accept usage terms of restricted chain files, such as UCSC's non-commercial ones")
-    parser.add_argument("--force", action="store_true", help="Install again even what is already installed")
-    parser.add_argument("--catalogs", metavar="NAMES", type=_catalog_names,
-                        help="'all' to add the species' optional catalogues, such as human's Ribo-seq ones, or "
-                             "comma-separated catalogue names; the species' default set by default")
-    parser.add_argument("--collections", metavar="NAMES", type=_catalog_names,
-                        help="'none' to skip the species' reference collections, such as human's GDC viral "
-                             "collection, 'all', or comma-separated names; the default set by default")
-    add_cache_root(parser)
-    add_timeout(parser)
-    add_resume(parser)
-    add_json(parser)
+    parser = setup_parser(prog)
     args = parser.parse_args(argv)
     try:
         with redirect_stdout(sys.stderr):
@@ -241,89 +298,6 @@ def setup(argv=None, prog="orfdata setup"):
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.fail(error)
     print_result(result, json_output=args.json)
-
-
-def _catalog_names(value):
-    """``--catalogs``: "all", or comma-separated catalogue names."""
-    return value if value == "all" else [name for name in value.split(",") if name]
-
-
-def _add_query_arguments(parser, *, catalog_path=True, species=True):
-    if catalog_path:
-        parser.add_argument("--catalog", action="append",
-                            help="Use a compatible local JSON/JSON.gz catalogue; repeat to merge several")
-    else:
-        parser.set_defaults(catalog=None)
-    if catalog_path and species:
-        parser.add_argument("--species", help="Use this species' catalogue, e.g. human or mouse (default human)")
-    else:
-        parser.set_defaults(species=None)
-    parser.add_argument("--gene", help="Exact source gene symbol or identifier")
-    parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
-    parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
-    parser.add_argument("--evidence", type=_evidence_name(), metavar="NAME",
-                        help="Evidence an ORF needs: ms, ribosome (or riboseq), proteomics, immunopeptidomics, "
-                             "ms_unclassified, or all (the default)")
-    _add_rule_arguments(parser)
-    parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
-                                          "(GENCODE, human); uORF, uoORF, iORF, dORF, doORF, lncORF (mouse Ribo-seq; "
-                                          "RibORF also truncation, extension); AltProt, Isoform (OpenProt)")
-    parser.add_argument("--min-protein-length", type=int, metavar="AA",
-                        help="Select ORFs with at least this many amino acids; source catalogues stay unfiltered")
-    parser.add_argument("--region", help="1-based inclusive interval: chr7:66205483-66205522")
-    parser.add_argument(
-        "--position", help="Map a 1-based variant position: chr7:66205483 (table or JSON)"
-    )
-    parser.add_argument(
-        "--include-initiation-context",
-        action="store_true",
-        help="Include spliced start flanks in locus lookup",
-    )
-    parser.add_argument("--ref", help="Forward-genomic SNV REF; requires --alt and --position")
-    parser.add_argument("--alt", help="Forward-genomic SNV ALT; compare initiation contexts")
-    parser.add_argument(
-        "--genome-build", help="Required for genomic queries; selects or must match the catalogue's assembly"
-    )
-    output = parser.add_mutually_exclusive_group()
-    output.add_argument("--format", choices=("table", "json", "tsv", "fasta", "gtf"), default="table",
-                        help="Output format (default table; exports contain all matching records)")
-    output.add_argument("--json", dest="format", action="store_const", const="json",
-                        help="Write complete machine-readable JSON")
-    add_limit(parser)
-
-
-def _evidence_name(*extra):
-    """An argparse type for evidence names: those evidence_rule takes, then ``extra``.
-
-    Names from before 0.28.0 are accepted but not listed.
-    """
-    names = EVIDENCE_METHODS + tuple(SYNONYMS) + ("all",) + extra
-
-    def name(value):
-        if value not in names and value not in _RENAMED:
-            raise argparse.ArgumentTypeError(f"invalid choice: {value!r} (choose from {', '.join(names)})")
-        return value
-
-    return name
-
-
-def _add_rule_arguments(parser):
-    """Ribo-seq and MS requirements, shared by ORF queries and proteome builds."""
-    parser.add_argument("--min-ribo-seq-studies", type=int, metavar="N",
-                        help="Require Ribo-seq in at least N studies the source names")
-    parser.add_argument("--min-ms-peptides", type=int, metavar="N",
-                        help="Require at least N distinct supporting MS peptides")
-    parser.add_argument("--ms-methods", metavar="KINDS",
-                        help="Count only these MS peptide kinds, comma-separated: proteomics (digested cellular "
-                             "proteins), immunopeptidomics (peptides eluted from MHC molecules), ms_unclassified")
-    parser.add_argument("--either", action="store_true",
-                        help="Accept ORFs meeting the Ribo-seq or the MS requirement, instead of both")
-    parser.add_argument("--require-resolved", action="store_true",
-                        help="Require peptide records or named ribosome studies, not aggregate counts")
-    parser.add_argument("--require-unique", action="store_true",
-                        help="Require a peptide with one protein mapping in its MS source")
-    parser.add_argument("--require-reviewed", action="store_true",
-                        help="Require convincing reviewed spectra (benchmark scores 4-5)")
 
 
 def _rule(args, method, flag, *, default=None):
@@ -365,6 +339,9 @@ def _rule(args, method, flag, *, default=None):
 
 
 def _query(args, parser, catalog_loader):
+    from .catalog import UORFCatalog, load_catalog, merge_catalogs
+    from .cli_output import print_table
+
     if args.region and args.position:
         parser.error("Choose --region or --position")
     if args.position and args.format not in ("table", "json"):

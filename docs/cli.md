@@ -27,6 +27,14 @@ lives outside the default cache, and `--verify` when you want to hash local file
 groups such as `orfdata datasets` show their subcommands. `download` and
 `downloads` are aliases for `data`.
 
+The Tab key completes commands, subcommands, options and the values an option
+lists, such as `orfdata data list --kind`. Turn it on once with
+`activate-global-python-argcomplete`, for every command that supports
+argcomplete, or for `orfdata` alone with
+`eval "$(register-python-argcomplete orfdata)"` in your shell's startup file.
+Both come with [argcomplete](https://github.com/kislyuk/argcomplete), which
+ORFdata installs.
+
 | Command | Purpose | Subcommands |
 | --- | --- | --- |
 | `data` | Discover and acquire resources across all sources | `list`, `status`, `info`, `path`, `fetch`, `catalog`, `dataset`, `reference`, `genome`, `chains`, `viral` |
