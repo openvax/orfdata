@@ -363,7 +363,8 @@ def catalog_names(value):
     -------
     str or list of str
         ``"all"`` as given; otherwise the nonempty names, in order. ``"none"``
-        is a name here, which ``setup`` reads as no collections.
+        comes back as ``["none"]``, which ``setup`` reads as no reference
+        collections when ``--collections`` gives it.
     """
     return value if value == "all" else [name for name in value.split(",") if name]
 
