@@ -1570,6 +1570,13 @@ turn, so every kind appears whenever there is room for one row of each (the
 default always has), and say what each kind left out. Use <code>--limit 0</code> for all
 rows. <code>--json</code> always returns complete
 results. See the <a href="../cli/">CLI guide</a> for output formats and migration notes.</p>
+<p>The <code>records</code> kind holds verbatim source documents rather than a reference you
+query: <code>orfdata data fetch gdc-viruses-records</code> installs the 227 GenBank and
+PaVE documents a <code>gdc-viruses</code> build requests (1.8 MB, pinned by checksum, from a
+GitHub data release), so the collection can be rebuilt or checked without
+asking NCBI or PaVE. <code>orfdata.source_records.read_records</code> returns them offline.
+The release check, <code>pytest tests/test_full_collection.py --real-data</code>, builds the
+whole collection from them and asserts its published counts.</p>
 <p>Use <code>--kind</code> to disambiguate colliding resource names. For one resource,
 <code>--version VERSION</code> selects a historical release and <code>--source-path ASSET=PATH</code>
 provides already downloaded catalogue/dataset sources or genome files. Source
