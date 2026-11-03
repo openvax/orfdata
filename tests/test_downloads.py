@@ -9,7 +9,7 @@ from orfdata.cli import run
 from orfdata.downloads import collection_state, default_collections
 from orfdata.install import _selected_collections
 
-KINDS = {"viral", "catalog", "dataset", "reference", "genome", "chain"}
+KINDS = {"viral", "catalog", "dataset", "reference", "genome", "chain", "records"}
 
 
 def test_every_kind_is_listed_with_an_acquisition_command():

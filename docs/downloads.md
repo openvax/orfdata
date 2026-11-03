@@ -32,6 +32,14 @@ default always has), and say what each kind left out. Use `--limit 0` for all
 rows. `--json` always returns complete
 results. See the [CLI guide](cli.md) for output formats and migration notes.
 
+The `records` kind holds verbatim source documents rather than a reference you
+query: `orfdata data fetch gdc-viruses-records` installs the 227 GenBank and
+PaVE documents a `gdc-viruses` build requests (1.8 MB, pinned by checksum, from a
+GitHub data release), so the collection can be rebuilt or checked without
+asking NCBI or PaVE. `orfdata.source_records.read_records` returns them offline.
+The release check, `pytest tests/test_full_collection.py --real-data`, builds the
+whole collection from them and asserts its published counts.
+
 Use `--kind` to disambiguate colliding resource names. For one resource,
 `--version VERSION` selects a historical release and `--source-path ASSET=PATH`
 provides already downloaded catalogue/dataset sources or genome files. Source

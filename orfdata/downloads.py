@@ -351,6 +351,30 @@ def _chains(cache_root, verify_files):
     return tuple(rows)
 
 
+def _records(cache_root, verify_files):
+    from .source_records import pinned_records, records_registry
+
+    rows = []
+    for pin in pinned_records():
+        inspection = records_registry(pin, cache_root).inspect(
+            pin.name, "1", verify_files=verify_files)
+        rows.append(DataStatus(
+            kind="records",
+            name=pin.name,
+            version="1",
+            title=pin.title,
+            species=(pin.species,),
+            taxon_ids=(species_taxon(pin.species),),
+            contexts=(),
+            status=inspection.status,
+            path=str(inspection.path),
+            origin="download" if inspection.status == "available" else None,
+            acquire="download",
+            command=None,
+        ))
+    return tuple(rows)
+
+
 def list_data(
     *,
     kind: str | None = None,
@@ -365,13 +389,13 @@ def list_data(
     """List known data resources and local state without acquiring anything.
 
     ``kind`` may be ``viral``, ``catalog``, ``dataset``, ``reference``,
-    ``genome`` or ``chain``. ``species`` accepts ORFdata's species aliases.
+    ``genome``, ``chain`` or ``records``. ``species`` accepts ORFdata's species aliases.
     ``installed`` can be true or false to select usable resources or
     unavailable ones; ``local=True`` selects every resource with local files,
     usable, damaged or unreadable, as ``orfdata data status`` shows them. ``verify_files=True`` hashes pinned files and
     validates the viral bundle.
     """
-    kinds = ("viral", "catalog", "dataset", "reference", "genome", "chain")
+    kinds = ("viral", "catalog", "dataset", "reference", "genome", "chain", "records")
     if kind == "all":
         kind = None
     if kind is not None and kind not in kinds:
@@ -402,6 +426,7 @@ def list_data(
         "reference": _references,
         "genome": _genomes,
         "chain": _chains,
+        "records": _records,
     }
     rows = []
     for current in kinds if kind is None else (kind,):

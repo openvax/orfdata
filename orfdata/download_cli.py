@@ -115,7 +115,7 @@ _COLLECTION_FIELDS = ("kind", "status", "collection", "path", "bundle_version", 
 
 def _add_discovery(parser, *, status=False):
     parser.add_argument(
-        "--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain"))
+        "--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain", "records"))
     parser.add_argument("--species", help="Only resources for this species, e.g. human or mouse")
     parser.add_argument("--context", action="append",
                         help="Only resources in this context; repeat for a union")
@@ -153,7 +153,7 @@ def run(argv=None, prog="orfdata download"):
                               ("fetch", "Install named resources, downloading or building as needed")):
         command = commands.add_parser(verb, help=description)
         command.add_argument("names", metavar="NAME", nargs="+" if verb == "fetch" else None)
-        command.add_argument("--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain"))
+        command.add_argument("--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain", "records"))
         command.add_argument("--version", help="Exact resource version; defaults to its registered version")
         _add_json(command)
         if verb == "fetch":

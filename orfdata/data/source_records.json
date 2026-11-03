@@ -1,0 +1,12 @@
+{
+  "gdc-viruses-records": {
+    "species": "homo_sapiens",
+    "title": "Source documents of the gdc-viruses collection (227 GenBank and PaVE records)",
+    "url": "https://github.com/openvax/orfdata/releases/download/data-gdc-viruses-records-1/gdc-viruses-records.tar.gz",
+    "sha256": "fa4e15f38b665a937eef1481ff685171f61dba8fb99ddc9b3f41e96d55fa810a",
+    "size": 1834418,
+    "fetched": "2026-11-03",
+    "orfdata_version": "0.48.4",
+    "provider": "NCBI GenBank and the Papillomavirus Episteme"
+  }
+}
