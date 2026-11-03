@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from importlib.resources import files
 from typing import Mapping, Optional
 
+from .cache import content_digest, get_data_dir, pinned_registry
 from .errors import NotInstalledError
 
 _ROLES = ("gtf", "transcripts", "proteins")
@@ -79,8 +80,6 @@ def genome_registry(genome, cache_root=None):
         Holds the GTF, transcript FASTA and protein FASTA under their published
         file names.
     """
-    from .cache import content_digest, get_data_dir, pinned_registry
-
     assets = {_files(genome)[role]: dict(genome.assets[role]) for role in _ROLES}
     return pinned_registry(genome.name, "1", assets,
                            get_data_dir(cache_root) / "genomes" / genome.name / content_digest(assets))
@@ -149,7 +148,6 @@ def _open(genome, cache_root, *, rebuild=False):
     from pathlib import Path
 
     from ._pinned_genome import PinnedEnsemblGenome
-    from .cache import content_digest, get_data_dir
 
     registry = genome_registry(genome, cache_root)
     # Absolute paths, so the genome works from any directory and when unpickled elsewhere.

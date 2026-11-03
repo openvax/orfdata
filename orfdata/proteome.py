@@ -22,6 +22,7 @@ from typing import Mapping, Optional
 from urllib.parse import quote
 
 from . import _structure
+from .cache import content_digest, get_data_dir
 from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
 from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
@@ -1560,7 +1561,6 @@ class Proteome:
 
         if not cache:
             return make()
-        from .cache import content_digest
         from .version import __version__
 
         extra_selection = (dict(evidence=None if rule is None else rule.to_dict(),
@@ -2332,8 +2332,6 @@ def _cached_snapshot(key, make, cache_root):
     import time
 
     import datacache
-
-    from .cache import content_digest, get_data_dir
 
     store = get_data_dir(cache_root) / "proteomes" / content_digest(key)
     inspected = datacache.inspect_bundle(store)

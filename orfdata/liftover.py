@@ -24,6 +24,7 @@ from dataclasses import asdict, dataclass, replace
 from importlib.resources import files
 from pathlib import Path
 
+from .cache import content_digest, get_data_dir, pinned_registry
 from .errors import NotInstalledError
 
 
@@ -270,8 +271,6 @@ def chain_registry(chain, cache_root=None):
     datacache.VersionedDatasetRegistry
         Holds the one file, named ``chain.filename``.
     """
-    from .cache import content_digest, get_data_dir, pinned_registry
-
     assets = {chain.filename: dict(url=chain.url, sha256=chain.sha256, size=chain.size)}
     return pinned_registry(chain.name, "1", assets,
                            get_data_dir(cache_root) / "chains" / chain.name / content_digest(assets))

@@ -46,7 +46,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .cache import DOWNLOAD_TIMEOUT
+from .cache import DOWNLOAD_TIMEOUT, get_data_dir
 from .viral_registry import (
     GDC_VIRUSES,
     INVENTORY_COLUMNS,
@@ -226,8 +226,6 @@ def download_viral_inventory(*, collection=None, cache_root=None, force=False, t
     this download.
     """
     import datacache
-
-    from .cache import get_data_dir
 
     chosen = _collection_for(collection=collection)
     cache = get_data_dir(cache_root) / "viral" / "inventories" / chosen.panel

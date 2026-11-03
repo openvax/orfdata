@@ -9,6 +9,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Optional
 
+from .cache import content_digest, get_data_dir, pinned_registry
 from .measurements import SourceAsset, _identifier, _Record
 from .reference import ReferenceContext, ScopedTarget
 
@@ -259,8 +260,6 @@ def reference_registry(spec, cache_root=None):
         Holds the one FASTA as published (never decompressed), as release
         ``spec.dataset_id`` version ``spec.dataset_version``.
     """
-    from .cache import content_digest, get_data_dir, pinned_registry
-
     asset = spec.source
     assets = {asset.asset_id: dict(url=asset.url, sha256=asset.sha256, size=asset.size, decompress=False)}
     destination = (get_data_dir(cache_root) / "references" / spec.dataset_id /
