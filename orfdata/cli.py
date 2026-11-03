@@ -1,4 +1,4 @@
-"""Query and export the offline ORF evidence reference."""
+"""The ``orfdata`` command: its command guide, dispatch to each command, and the ``query`` and ``setup`` commands."""
 
 import argparse
 import csv
@@ -6,6 +6,8 @@ import json
 import re
 import sys
 from contextlib import redirect_stdout
+from dataclasses import dataclass
+from importlib import import_module
 
 from .catalog import EVIDENCE_METHODS, UORFCatalog, load_catalog, merge_catalogs
 from .cli_output import print_result, print_table
@@ -20,22 +22,83 @@ from .cli_parser import (
 )
 from .evidence import _RENAMED, MS, SYNONYMS, RiboSeq, evidence_rule
 
-COMMANDS = {
-    "data": "Discover downloadable data, inspect local files, and fetch resources",
-    "query": "Find ORFs and export catalogue records",
-    "catalogs": "Manage optional ORF catalogues",
-    "datasets": "Manage and query quantitative RNA/protein datasets",
-    "proteome": "Build a reference proteome and export FASTA",
-    "viral": "Inspect viral coverage, subsets, and installed reference layers",
-    "setup": "Install a species' default catalogues and reference collections",
-    "genomes": "Manage pinned genome annotations",
-    "chains": "List and download assembly mapping files",
-    "lift": "Map an ORF catalogue to another genome assembly",
-    "help": "Show help for a command",
+
+@dataclass(frozen=True)
+class Command:
+    """One top-level ``orfdata`` command: its line in the command guide and the function that runs it.
+
+    Attributes
+    ----------
+    description : str
+        What the command guide says the command does.
+    function : str or None
+        ``"module:name"`` of the function that runs the command, called as
+        ``function(argv, prog=...)`` with the arguments after the command name.
+        It is imported only when the command runs, so the guide and the other
+        commands never load it. None for ``help``, which :func:`run` answers
+        itself.
+    """
+
+    description: str
+    function: str | None = None
+
+    def load(self):
+        """Import and return the function that runs this command.
+
+        Returns
+        -------
+        callable
+            Takes the command's own arguments and ``prog``.
+
+        Raises
+        ------
+        ValueError
+            If the command has no function of its own, as for ``help``.
+        """
+        if self.function is None:
+            raise ValueError("This command is answered by orfdata.cli.run itself")
+        module, name = self.function.split(":")
+        return getattr(import_module(module), name)
+
+
+# Every top-level command, in the command guide's order. Adding one here lists it and runs it.
+COMMAND_TABLE = {
+    "data": Command("Discover downloadable data, inspect local files, and fetch resources",
+                    "orfdata.download_cli:run"),
+    "query": Command("Find ORFs and export catalogue records", "orfdata.cli:query"),
+    "catalogs": Command("Manage optional ORF catalogues", "orfdata.catalog_cli:run"),
+    "datasets": Command("Manage and query quantitative RNA/protein datasets", "orfdata.dataset_cli:run"),
+    "proteome": Command("Build a reference proteome and export FASTA", "orfdata.proteome_cli:run"),
+    "viral": Command("Inspect viral coverage, subsets, and installed reference layers", "orfdata.viral_cli:run"),
+    "setup": Command("Install a species' default catalogues and reference collections", "orfdata.cli:setup"),
+    "genomes": Command("Manage pinned genome annotations", "orfdata.genomes_cli:run"),
+    "chains": Command("List and download assembly mapping files", "orfdata.liftover_cli:chains"),
+    "lift": Command("Map an ORF catalogue to another genome assembly", "orfdata.liftover_cli:lift"),
+    "help": Command("Show help for a command"),
 }
+# Other names a command answers to; its help and errors name it as typed.
+COMMAND_ALIASES = {"download": "data", "downloads": "data"}
+# Each command's guide line by name, as before COMMAND_TABLE existed.
+COMMANDS = {name: command.description for name, command in COMMAND_TABLE.items()}
 
 
-def _command_guide(prog):
+def command_guide(prog="orfdata"):
+    """Return the parser whose help is the ``orfdata`` command guide.
+
+    It lists every command in :data:`COMMAND_TABLE`, and parses nothing else:
+    :func:`run` uses it to print the guide and to report an unknown command.
+
+    Parameters
+    ----------
+    prog : str, optional
+        The program name the guide shows, ``orfdata`` by default.
+
+    Returns
+    -------
+    ArgumentParser
+        Its ``print_help()`` prints the guide; its ``error()`` exits with
+        status 2.
+    """
     parser = ArgumentParser(
         prog=prog, description="ORFdata: discover reference data, query ORFs, and build proteomes.",
         epilog="Start here:\n"
@@ -48,61 +111,62 @@ def _command_guide(prog):
                "Documentation: https://openvax.github.io/orfdata/")
     parser.add_argument("--version", action="store_true", help="Show the installed version")
     commands = parser.add_subparsers()
-    for name, description in COMMANDS.items():
-        commands.add_parser(name, help=description)
+    for name, command in COMMAND_TABLE.items():
+        commands.add_parser(name, help=command.description)
     return parser
 
 
 def run(argv=None, prog=None, *, catalog_loader=load_catalog):
-    """Discover commands, inspect resources, and explicitly query or export records."""
+    """Run the ``orfdata`` command line: the command guide, ``--version``, or one command.
+
+    ``help COMMAND`` shows that command's help. A command named in
+    :data:`COMMAND_TABLE` or :data:`COMMAND_ALIASES` runs with the arguments
+    after its name. Arguments that start with an option, such as
+    ``--gene TP53``, are a ``query``, as they were before ``query`` was a
+    command.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        The arguments after the program name; ``sys.argv[1:]`` by default.
+    prog : str, optional
+        The program name that help and errors show, ``orfdata`` by default.
+    catalog_loader : callable, optional
+        What ``query`` opens catalogues with, as in :func:`query`; other
+        commands don't use it.
+
+    Returns
+    -------
+    object
+        What the command's function returns; None for the guide and
+        ``--version``.
+
+    Raises
+    ------
+    SystemExit
+        With status 2 for an unknown command, and however the command exits.
+    """
     argv = list(sys.argv[1:] if argv is None else argv)
     prog = prog or "orfdata"
     if argv[:1] == ["help"]:
         argv = argv[1:] + ["--help"]
     if not argv or argv in (["--help"], ["-h"]):
-        _command_guide(prog).print_help()
+        command_guide(prog).print_help()
         return
     if argv == ["--version"]:
         from .version import __version__
 
         print(f"orfdata {__version__}")
         return
-    if argv and argv[0] == "catalogs":
-        from .catalog_cli import run as catalog_run
-
-        return catalog_run(argv[1:], prog=(prog or "orfdata") + " catalogs")
-    if argv and argv[0] == "datasets":
-        from .dataset_cli import run as dataset_run
-
-        return dataset_run(argv[1:], prog=(prog or "orfdata") + " datasets")
-    if argv and argv[0] == "proteome":
-        from .proteome_cli import run as proteome_run
-
-        return proteome_run(argv[1:], prog=(prog or "orfdata") + " proteome")
-    if argv and argv[0] in ("data", "download", "downloads"):
-        from .download_cli import run as download_run
-
-        return download_run(argv[1:], prog=f"{prog or 'orfdata'} {argv[0]}")
-    if argv and argv[0] == "viral":
-        from .viral_cli import run as viral_run
-
-        return viral_run(argv[1:], prog=(prog or "orfdata") + " viral")
-    if argv and argv[0] == "setup":
-        return _setup(argv[1:], prog=(prog or "orfdata") + " setup")
-    if argv and argv[0] == "genomes":
-        from .genomes_cli import run as genomes_run
-
-        return genomes_run(argv[1:], prog=(prog or "orfdata") + " genomes")
-    if argv and argv[0] in ("lift", "chains"):
-        from . import liftover_cli
-
-        command = liftover_cli.lift if argv[0] == "lift" else liftover_cli.chains
-        return command(argv[1:], prog=f"{prog or 'orfdata'} {argv[0]}")
-    if argv[0] == "query":
-        argv = argv[1:]
-    elif not argv[0].startswith("-"):
-        _command_guide(prog).error(f"Unknown command {argv[0]!r}")
-    return query(argv, prog + " query", catalog_loader=catalog_loader)
+    name, arguments = argv[0], argv[1:]
+    if name.startswith("-"):
+        return query(argv, prog + " query", catalog_loader=catalog_loader)
+    if name == "query":  # The one command that takes a catalogue loader.
+        return query(arguments, prog + " query", catalog_loader=catalog_loader)
+    command = COMMAND_TABLE.get(COMMAND_ALIASES.get(name, name))
+    if command is None or command.function is None:
+        command_guide(prog).error(f"Unknown command {name!r}")  # Exits with status 2.
+    return command.load()(arguments, prog=f"{prog} {name}")
 
 
 def query(argv=None, prog="orfdata query", *, catalog_loader=load_catalog):
@@ -127,7 +191,24 @@ def query(argv=None, prog="orfdata query", *, catalog_loader=load_catalog):
     return _query(args, parser, catalog_loader)
 
 
-def _setup(argv, prog):
+def setup(argv=None, prog="orfdata setup"):
+    """Run the ``setup`` command: install a species' catalogues, chains and default reference collections.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        The command's arguments, such as ``["--species", "human"]``;
+        ``sys.argv[1:]`` by default.
+    prog : str, optional
+        The program name that help and errors show.
+
+    Raises
+    ------
+    SystemExit
+        With status 2 when the arguments don't parse, and 1 when the species
+        is unknown or anything failed to install; what did install is still
+        reported first.
+    """
     from .install import InstallError, install_species
 
     parser = ArgumentParser(
