@@ -22,6 +22,7 @@ from typing import Mapping, Optional
 from urllib.parse import quote
 
 from . import _structure
+from .cache import content_digest, get_data_dir
 from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
 from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
@@ -1560,7 +1561,6 @@ class Proteome:
 
         if not cache:
             return make()
-        from .datasets import _digest
         from .version import __version__
 
         extra_selection = (dict(evidence=None if rule is None else rule.to_dict(),
@@ -1571,7 +1571,7 @@ class Proteome:
                    reference=reference.to_dict(), annotation=_annotation_files(genome, include_proteins=reference_cds),
                    annotated=reference_cds, isoforms=isoforms if reference_cds else None,
                    extra_orfs=extra_selection,
-                   viral=[_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
+                   viral=[content_digest(_json(dict(asdict(virus), host_taxon_ids=sorted(virus.host_taxon_ids))))
                           for virus in viral],
                    derived=[asdict(item) for item in derived])
         path = _cached_snapshot(key, make, cache_root)
@@ -2331,10 +2331,9 @@ def _cached_snapshot(key, make, cache_root):
     import tempfile
     import time
 
-    from .datasets import _datacache, _digest, get_data_dir
+    import datacache
 
-    datacache = _datacache()
-    store = get_data_dir(cache_root) / "proteomes" / _digest(key)
+    store = get_data_dir(cache_root) / "proteomes" / content_digest(key)
     inspected = datacache.inspect_bundle(store)
     if inspected.status == "available":
         return Path(inspected.files[_SNAPSHOT].path)

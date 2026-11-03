@@ -1,12 +1,13 @@
 """Explicit, checksummed dataset downloads using OpenVax DataCache conventions."""
 
-import hashlib
 import json
 from dataclasses import replace
 from importlib.resources import files
-from pathlib import Path
+
+import datacache
 
 from . import artifact_archives
+from .cache import content_digest, get_data_dir, installed_path
 from .dataset import QuantitativeDataset
 from .downloads import install_hint
 from .errors import NotInstalledError
@@ -14,42 +15,9 @@ from .measurements import DatasetManifest
 from .reference import species_taxon
 
 
-def _datacache():
-    import datacache
-
-    return datacache
-
-
-def get_data_dir(override=None):
-    """Resolve ORFDATA_CACHE, OPENVAX_DATA_CACHE, or the platform OpenVax cache.
-
-    ORFdata owns only the orfdata/ child; lookup does not create directories.
-    """
-    return Path(_datacache().get_cache_root(
-        "openvax", "ORFDATA_CACHE", "OPENVAX_DATA_CACHE", override=override)) / "orfdata"
-
-
-def _digest(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-
-
 def _build_store(manifest, cache_root):
     return (get_data_dir(cache_root) / "imports" / manifest.dataset_id /
-            manifest.version / _digest(manifest.to_dict()))
-
-
-def _installed_path(registry, name, version, hint, **options):
-    """A DataCache registry's local path, or a NotInstalledError saying ``hint`` when nothing is installed.
-
-    ``hint`` may be a function, called only then.
-
-    DataCache raises FileNotFoundError only for a missing bundle; damaged files
-    raise its own validation error, which passes through.
-    """
-    try:
-        return registry.local_path(name, version, **options)
-    except FileNotFoundError as error:
-        raise NotInstalledError(hint() if callable(hint) else hint) from error
+            manifest.version / content_digest(manifest.to_dict()))
 
 
 class DatasetRegistry:
@@ -171,7 +139,7 @@ class DatasetRegistry:
         hint = (f"The {name} {version} search reference {asset} is not installed; download it with "
                 + install_hint(self, f"download_reference({name!r}, {version!r}, asset_id={asset!r})",
                                f"{name}:{asset}", "reference", version))
-        path = _installed_path(reference_registry(spec, self._cache_root), spec.dataset_id, version, hint)
+        path = installed_path(reference_registry(spec, self._cache_root), spec.dataset_id, version, hint)
         return SearchReference(path, spec)
 
     def published(self, name, version=None):
@@ -214,14 +182,14 @@ class DatasetRegistry:
 
             def store_path(name, version):
                 release = self._definitions[name]["versions"][version]
-                return get_data_dir(self._cache_root) / "datasets" / name / version / _digest(release)
+                return get_data_dir(self._cache_root) / "datasets" / name / version / content_digest(release)
 
-            self._registry = _datacache().VersionedDatasetRegistry(definitions, store_path=store_path)
+            self._registry = datacache.VersionedDatasetRegistry(definitions, store_path=store_path)
         return self._registry
 
     def _archive_store(self, name, version):
         release = self._definitions[name]["versions"][version]
-        return get_data_dir(self._cache_root) / "datasets" / name / version / _digest(release)
+        return get_data_dir(self._cache_root) / "datasets" / name / version / content_digest(release)
 
     def inspect(self, name, version=None, *, verify_files=True):
         """Inspect local bytes offline; never download or repair a bad cache.
@@ -290,11 +258,11 @@ class DatasetRegistry:
             if inspected.status == "missing":
                 raise NotInstalledError(self._not_installed(name, version))
             if inspected.status != "available":
-                raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
+                raise datacache.FileValidationError(inspected.path, inspected.status) from inspected.error
             path = inspected.files["dataset.sqlite"].path
         else:
-            path = _installed_path(self._data_registry(), name, version, self._not_installed(name, version),
-                                   asset="dataset.sqlite", verify_files=verify_files)
+            path = installed_path(self._data_registry(), name, version, self._not_installed(name, version),
+                                  asset="dataset.sqlite", verify_files=verify_files)
         dataset = QuantitativeDataset(path)
         if dataset.manifest.to_dict() != self.info(name, version).to_dict():
             raise ValueError("Installed dataset manifest disagrees with registered release")
@@ -317,7 +285,7 @@ class DatasetRegistry:
         if inspected.status == "missing":
             raise self._not_built(name, version)
         if inspected.status != "available":
-            raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
+            raise datacache.FileValidationError(inspected.path, inspected.status) from inspected.error
         dataset = QuantitativeDataset(inspected.files["dataset.sqlite"].path)
         if dataset.manifest.to_dict() != self.info(name, version).to_dict():
             raise ValueError("Built dataset manifest disagrees with the registered release")
@@ -325,8 +293,8 @@ class DatasetRegistry:
 
 
 def _inspect_build(manifest, cache_root, *, verify_files=True):
-    inspected = _datacache().inspect_materialization(_build_store(manifest, cache_root),
-                                                    verify_files=verify_files)
+    inspected = datacache.inspect_materialization(_build_store(manifest, cache_root),
+                                                 verify_files=verify_files)
     if inspected.status != "available":
         return inspected
     try:
@@ -373,7 +341,7 @@ def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, forc
                 raise ValueError("Built dataset manifest disagrees with registered release")
             return dataset
         if cached.status != "missing":
-            raise _datacache().FileValidationError(cached.path, cached.status) from cached.error
+            raise datacache.FileValidationError(cached.path, cached.status) from cached.error
     sources = {}
     for asset in manifest.sources:
         source = dict(sha256=asset.sha256, size=asset.size)
@@ -382,7 +350,7 @@ def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, forc
             # Explicit builds may acquire a distributed source component. Queries
             # and open/inspect paths never call this acquisition branch.
             path = artifact_archives.install_archive(
-                get_data_dir(cache_root) / "components" / _digest(asset.to_dict()),
+                get_data_dir(cache_root) / "components" / content_digest(asset.to_dict()),
                 asset.metadata["archive"], asset.asset_id, source, source_paths=supplied,
                 download_options=download_options)
             source["path"] = str(path)
@@ -400,7 +368,7 @@ def build_dataset(manifest, builder, *, cache_root=None, source_paths=None, forc
 
     identity = manifest.to_dict()
     destination = _build_store(manifest, cache_root)
-    paths = _datacache().materialize(
+    paths = datacache.materialize(
         destination, sources, transform=dict(version=manifest.schema, options=identity),
         outputs={"dataset.sqlite": {}}, builder=build, force=force,
         download_options=download_options)

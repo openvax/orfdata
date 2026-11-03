@@ -323,8 +323,8 @@ def test_setup_reuses_the_shared_target_annotation_once(monkeypatch, tmp_path):
     fetched = []
     monkeypatch.setattr(
         install,
-        "_fetch",
-        lambda url, sha256, size, staging, options: fetched.append(url) or "local",
+        "fetch_pinned_file",
+        lambda url, sha256, size, directory, download_options=None: fetched.append(url) or "local",
     )
     registry = CatalogRegistry()
     manifests = [

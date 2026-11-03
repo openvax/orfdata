@@ -24,6 +24,7 @@ from dataclasses import asdict, dataclass, replace
 from importlib.resources import files
 from pathlib import Path
 
+from .cache import content_digest, get_data_dir, pinned_registry
 from .errors import NotInstalledError
 
 
@@ -206,7 +207,7 @@ def chain_routes(species, source_build):
 
 def chain_downloaded(chain, *, cache_root=None):
     """Whether a pinned chain file is installed, without hashing or downloading it."""
-    return _chain_registry(chain, cache_root).inspect(chain.name, "1", verify_files=False).status != "missing"
+    return chain_registry(chain, cache_root).inspect(chain.name, "1", verify_files=False).status != "missing"
 
 
 def download_chains(*, species=None, accept_terms=False, force=False, cache_root=None, download_options=None):
@@ -249,13 +250,30 @@ def lift_to(catalog, target_build, *, cache_root=None):
     return catalog
 
 
-def _chain_registry(chain, cache_root):
-    from .datasets import _datacache, _digest, get_data_dir
+def chain_registry(chain, cache_root=None):
+    """Return the DataCache registry that installs a pinned chain file.
 
+    The release is named ``chain.name``, version ``"1"``, and its store is
+    ``chains/<name>/<digest of the file pin>`` in the cache, so a new pin never
+    reuses an old file. Nothing is downloaded until the registry is asked to;
+    usage terms are checked by :func:`download_chain`, not here.
+
+    Parameters
+    ----------
+    chain : PinnedChain
+        The chain file, as :func:`pinned_chains` lists it.
+    cache_root : str or os.PathLike, optional
+        A cache root instead of ``ORFDATA_CACHE``, ``OPENVAX_DATA_CACHE`` or the
+        default.
+
+    Returns
+    -------
+    datacache.VersionedDatasetRegistry
+        Holds the one file, named ``chain.filename``.
+    """
     assets = {chain.filename: dict(url=chain.url, sha256=chain.sha256, size=chain.size)}
-    return _datacache().VersionedDatasetRegistry(
-        {chain.name: dict(default_version="1", versions={"1": assets})},
-        store_path=lambda name, version: get_data_dir(cache_root) / "chains" / name / _digest(assets))
+    return pinned_registry(chain.name, "1", assets,
+                           get_data_dir(cache_root) / "chains" / chain.name / content_digest(assets))
 
 
 def download_chain(source_build, target_build, *, species=None, accept_terms=False, force=False,
@@ -271,7 +289,7 @@ def download_chain(source_build, target_build, *, species=None, accept_terms=Fal
     if chain.restricted and accept_terms is not True:
         raise ValueError(f"{chain.filename} comes from {chain.provider} with these terms: {chain.terms} "
                          f"({chain.terms_url}). Pass accept_terms=True (or --accept-terms) to download it.")
-    registry = _chain_registry(chain, cache_root)
+    registry = chain_registry(chain, cache_root)
     try:
         registry.download(chain.name, "1", force=force,
                           source_paths=None if source_path is None else {chain.filename: str(source_path)},
@@ -297,7 +315,7 @@ def _download_hint(chain, cache_root, *, force=False):
 def load_chain(source_build, target_build, *, species=None, cache_root=None):
     """The downloaded pinned chain file from ``source_build`` to ``target_build``, opened offline."""
     chain = _pinned(source_build, target_build, species)
-    registry = _chain_registry(chain, cache_root)
+    registry = chain_registry(chain, cache_root)
     status = registry.inspect(chain.name, "1", verify_files=False).status
     if status == "missing":
         raise NotInstalledError(

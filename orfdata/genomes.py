@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from importlib.resources import files
 from typing import Mapping, Optional
 
+from .cache import content_digest, get_data_dir, pinned_registry
 from .errors import NotInstalledError
 
 _ROLES = ("gtf", "transcripts", "proteins")
@@ -58,13 +59,30 @@ def _files(genome):
     return {role: genome.assets[role]["url"].rsplit("/", 1)[-1] for role in _ROLES}
 
 
-def _registry(genome, cache_root):
-    from .datasets import _datacache, _digest, get_data_dir
+def genome_registry(genome, cache_root=None):
+    """Return the DataCache registry that installs a pinned annotation's files.
 
+    The release is named ``genome.name``, version ``"1"``, and its store is
+    ``genomes/<name>/<digest of the file pins>`` in the cache, so a new pin
+    never reuses old files. Nothing is downloaded until the registry is asked to.
+
+    Parameters
+    ----------
+    genome : PinnedGenome
+        The annotation, as :func:`pinned_genomes` lists it.
+    cache_root : str or os.PathLike, optional
+        A cache root instead of ``ORFDATA_CACHE``, ``OPENVAX_DATA_CACHE`` or the
+        default.
+
+    Returns
+    -------
+    datacache.VersionedDatasetRegistry
+        Holds the GTF, transcript FASTA and protein FASTA under their published
+        file names.
+    """
     assets = {_files(genome)[role]: dict(genome.assets[role]) for role in _ROLES}
-    return _datacache().VersionedDatasetRegistry(
-        {genome.name: dict(default_version="1", versions={"1": assets})},
-        store_path=lambda name, version: get_data_dir(cache_root) / "genomes" / name / _digest(assets))
+    return pinned_registry(genome.name, "1", assets,
+                           get_data_dir(cache_root) / "genomes" / genome.name / content_digest(assets))
 
 
 def install_genome(name, *, force=False, source_paths=None, cache_root=None, download_options=None,
@@ -85,8 +103,8 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None, dow
         if unknown:
             raise ValueError(f"Unknown genome files {sorted(unknown)}; use {', '.join(_ROLES)}")
         paths = {_files(genome)[role]: str(path) for role, path in source_paths.items()}
-    _registry(genome, cache_root).download(genome.name, "1", force=force, source_paths=paths,
-                                         **(download_options or {}))
+    genome_registry(genome, cache_root).download(genome.name, "1", force=force, source_paths=paths,
+                                                 **(download_options or {}))
     opened = _with_genome_fasta(_open(genome, cache_root, rebuild=force), genome_fasta_path_or_url)
     if genome_fasta_path_or_url is not None:
         opened.download_genome_fasta(overwrite=force)
@@ -107,7 +125,7 @@ def load_genome(name, *, cache_root=None, genome_fasta_path_or_url=None):
     with PyEnsembl's explicit installation instructions.
     """
     genome = _pinned(name)
-    status = _registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
+    status = genome_registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
     root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
     if status == "missing":
         raise NotInstalledError(f"The {name} annotation is not installed; install it once with "
@@ -130,9 +148,8 @@ def _open(genome, cache_root, *, rebuild=False):
     from pathlib import Path
 
     from ._pinned_genome import PinnedEnsemblGenome
-    from .datasets import _digest, get_data_dir
 
-    registry = _registry(genome, cache_root)
+    registry = genome_registry(genome, cache_root)
     # Absolute paths, so the genome works from any directory and when unpickled elsewhere.
     try:
         paths = {role: str(Path(registry.local_path(genome.name, "1", asset=f)).absolute())
@@ -141,7 +158,7 @@ def _open(genome, cache_root, *, rebuild=False):
         raise ValueError(f"The installed {genome.name} annotation is damaged ({error}); install it again with "
                          f"{_install_command(genome.name, cache_root, True)}") from error
     # The index belongs to these exact files, so a new pin never reuses an old one.
-    index = (get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl" / _digest(dict(genome.assets))).absolute()
+    index = (get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl" / content_digest(dict(genome.assets))).absolute()
     opened = PinnedEnsemblGenome(genome.reference_name, genome.annotation_name, genome.annotation_version,
                                  gtf_path_or_url=paths["gtf"], transcript_fasta_paths_or_urls=[paths["transcripts"]],
                                  protein_fasta_paths_or_urls=[paths["proteins"]], cache_directory_path=str(index),

@@ -46,7 +46,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .net import DOWNLOAD_TIMEOUT
+from .cache import DOWNLOAD_TIMEOUT, get_data_dir
 from .viral_registry import (
     GDC_VIRUSES,
     INVENTORY_COLUMNS,
@@ -225,11 +225,11 @@ def download_viral_inventory(*, collection=None, cache_root=None, force=False, t
     download and cache reuse. ``viral_panel_coverage()`` works offline without
     this download.
     """
-    from .datasets import _datacache, get_data_dir
+    import datacache
 
     chosen = _collection_for(collection=collection)
     cache = get_data_dir(cache_root) / "viral" / "inventories" / chosen.panel
-    return Path(_datacache().fetch_file(
+    return Path(datacache.fetch_file(
         chosen.panel_url, filename=chosen.panel_filename, cache_root=cache,
         expected_sha256=chosen.panel_sha256, expected_size=chosen.panel_size,
         max_bytes=chosen.panel_size, raw=True, record_provenance=True,

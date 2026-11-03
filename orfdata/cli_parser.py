@@ -9,8 +9,8 @@ installed.
 import argparse
 import sys
 
+from .cache import DOWNLOAD_TIMEOUT
 from .errors import NotInstalledError
-from .net import DOWNLOAD_TIMEOUT
 
 FAILED, USAGE, NOT_INSTALLED = 1, 2, 3
 

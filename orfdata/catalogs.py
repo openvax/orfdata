@@ -5,9 +5,11 @@ import json
 from dataclasses import replace
 from importlib.resources import files
 
+import datacache
+
+from .cache import content_digest, get_data_dir, installed_path
 from .catalog import ORFCatalog, load_catalog
 from .catalog_manifest import CatalogManifest
-from .datasets import _datacache, _digest, _installed_path, get_data_dir
 from .downloads import install_hint
 from .errors import NotInstalledError
 from .reference import species_taxon
@@ -17,7 +19,7 @@ _ASSET = "catalog.json.gz"
 
 def _build_store(manifest, cache_root):
     return (get_data_dir(cache_root) / "catalog-imports" / manifest.catalog_id /
-            manifest.version / _digest(manifest.to_dict()))
+            manifest.version / content_digest(manifest.to_dict()))
 
 
 def _open(path, manifest):
@@ -176,9 +178,9 @@ class CatalogRegistry:
 
             def store_path(name, version):
                 release = self._definitions[name]["versions"][version]
-                return get_data_dir(self._cache_root) / "catalogs" / name / version / _digest(release)
+                return get_data_dir(self._cache_root) / "catalogs" / name / version / content_digest(release)
 
-            self._registry = _datacache().VersionedDatasetRegistry(definitions, store_path=store_path)
+            self._registry = datacache.VersionedDatasetRegistry(definitions, store_path=store_path)
         return self._registry
 
     def inspect(self, name, version=None, *, verify_files=True):
@@ -209,8 +211,8 @@ class CatalogRegistry:
                         f"'orfdata catalogs query {name} --built', or download the artifact with {download}")
             return f"The {name} {version} ORF catalogue is not installed; download it with {download}"
 
-        return _open(_installed_path(self._data_registry(), name, version, hint, asset=_ASSET,
-                                     verify_files=verify_files), manifest)
+        return _open(installed_path(self._data_registry(), name, version, hint, asset=_ASSET,
+                                    verify_files=verify_files), manifest)
 
     def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
         """Explicitly materialize an allowlisted catalogue source adapter."""
@@ -221,8 +223,8 @@ class CatalogRegistry:
     def inspect_build(self, name, version=None, *, verify_files=True):
         """Inspect build receipts offline; their hashes are not released-artifact pins."""
         manifest = self.info(name, version)
-        inspected = _datacache().inspect_materialization(_build_store(manifest, self._cache_root),
-                                                        verify_files=verify_files)
+        inspected = datacache.inspect_materialization(_build_store(manifest, self._cache_root),
+                                                     verify_files=verify_files)
         if inspected.status != "available":
             return inspected
         try:
@@ -250,7 +252,7 @@ class CatalogRegistry:
                 + install_hint(self, f"build({name!r}, {version!r})", name, "catalog", version,
                                build=self.published(name, version)))
         if inspected.status != "available":
-            raise _datacache().FileValidationError(inspected.path, inspected.status) from inspected.error
+            raise datacache.FileValidationError(inspected.path, inspected.status) from inspected.error
         return _open(inspected.files[_ASSET].path, self.info(name, version))
 
 
@@ -279,7 +281,7 @@ def build_catalog(manifest, builder, *, cache_root=None, source_paths=None, forc
         builder(inputs, outputs[_ASSET])
         _open(outputs[_ASSET], manifest)
 
-    paths = _datacache().materialize(
+    paths = datacache.materialize(
         _build_store(manifest, cache_root), sources,
         transform=dict(version=manifest.schema, options=manifest.to_dict()),
         outputs={_ASSET: {}}, builder=build, force=force, download_options=download_options)

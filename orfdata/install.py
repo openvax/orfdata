@@ -2,7 +2,7 @@
 
 from shlex import join
 
-from .net import DOWNLOAD_TIMEOUT
+from .cache import DOWNLOAD_TIMEOUT, fetch_pinned_file
 
 
 class InstallError(ValueError):
@@ -45,7 +45,7 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     from .catalog import _catalog_choices, _installed, _plan, _selected, _species
     from .catalogs import CatalogRegistry
     from .downloads import default_collections, needs_replacement, refuse_unreadable
-    from .liftover import _chain_registry, download_chain, pinned_chains
+    from .liftover import chain_registry, download_chain, pinned_chains
 
     species = _species(species)
     collections = _selected_collections(default_collections(species), collections, species)
@@ -109,7 +109,7 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
                                             f"(--accept-terms): {chain.terms}")
             continue
         try:
-            state = _chain_registry(chain, root).inspect(chain.name, "1", verify_files=False).status
+            state = chain_registry(chain, root).inspect(chain.name, "1", verify_files=False).status
             if state == "available" and not force:
                 result["chains"][chain.name] = "already downloaded"
                 continue
@@ -196,21 +196,7 @@ def _shared_sources(manifests, staging, options):
     for (url, sha256, size), count in sorted(uses.items()):
         if count > 1:
             try:
-                shared[sha256] = _fetch(url, sha256, size, staging, options)
+                shared[sha256] = fetch_pinned_file(url, sha256, size, staging, download_options=options)
             except Exception:
                 continue
     return shared
-
-
-def _fetch(url, sha256, size, staging, options):
-    """One pinned source file, downloaded and checked into ``staging``."""
-    from pathlib import Path
-
-    from .datasets import _datacache
-
-    name = url.rsplit("/", 1)[-1]
-    registry = _datacache().VersionedDatasetRegistry(
-        {"source": dict(default_version="1", versions={"1": {name: dict(url=url, sha256=sha256, size=size)}})},
-        store_path=lambda dataset, version: Path(staging) / sha256)
-    registry.download("source", "1", **options)
-    return str(registry.local_path("source", "1", asset=name))

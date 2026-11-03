@@ -3,9 +3,9 @@
 from dataclasses import replace
 from pathlib import Path
 
+from .cache import DOWNLOAD_TIMEOUT
 from .downloads import _fetch_command, list_data, needs_replacement, refuse_unreadable
 from .errors import NotInstalledError
-from .net import DOWNLOAD_TIMEOUT
 
 
 def _registry(kind, cache_root):
