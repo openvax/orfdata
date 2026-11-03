@@ -1,3 +1,12 @@
+# 0.48.5
+
+- Test the viral binder on real source records: six GenBank records and the
+  PaVE HPV16 document, run through the same download and install path as a
+  collection. They pin the defects the synthetic suite missed (E6/E6*
+  sanitizing to one token, the genus rule, HBV's origin wrap, HTLV-1 slippage,
+  HPV63's mismatched start, ambiguous bases, EBV's splice across the terminal
+  repeat). No library change.
+
 # 0.48.4
 
 - One table, `orfdata.cli.COMMAND_TABLE`, now lists each top-level command in
