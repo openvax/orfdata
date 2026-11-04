@@ -1,3 +1,11 @@
+# 0.48.7
+
+- Ship `tests/data/viral_records/` in the source distribution. `MANIFEST.in`
+  listed `tests/data/viral` but not the newer `viral_records` directory, so the
+  sdist left out its seven `.gz` fixtures, and the CI step that tests the
+  extracted sdist failed on `main` with 2 failures and 9 errors (#197). From the
+  extracted sdist the suite now passes: 1350 passed, 18 skipped.
+
 # 0.48.6
 
 - Add the `records` data kind. `gdc-viruses-records` is the 227 GenBank and
