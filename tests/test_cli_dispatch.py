@@ -22,14 +22,15 @@ def recorded(monkeypatch):
     return calls
 
 
-def test_every_command_but_help_loads_a_function():
+def test_every_command_but_help_loads_a_function_and_builds_its_parser():
     for name, command in COMMAND_TABLE.items():
         if name == "help":
-            assert command.function is None
+            assert command.function is None and command.parser is None
             with pytest.raises(ValueError):
                 command.load()
         else:
             assert callable(command.load()), name
+            assert command.parser(prog=f"orfdata {name}").prog == f"orfdata {name}"
     assert set(COMMAND_ALIASES.values()) <= set(COMMAND_TABLE)
 
 

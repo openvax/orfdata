@@ -1,3 +1,33 @@
+# 0.49.0
+
+- Tab completion for the `orfdata` command, through argcomplete, which is now a
+  dependency: commands, subcommands, options and the values an option lists, for
+  aliases too. Turn it on with `activate-global-python-argcomplete`, or
+  `eval "$(register-python-argcomplete orfdata)"` (#195).
+- A Tab press takes about 56 ms instead of about 490 ms, and `import orfdata`
+  about 4 ms. `orfdata/__init__.py` imports each public name's submodule the
+  first time the name is used (PEP 562), so importing the package no longer
+  loads pandas, NumPy, PyArrow or DataCache. Every name in `__all__` still
+  imports as before (`from orfdata import Proteome`, `orfdata.Proteome`), as do
+  submodules (`orfdata.liftover`, `from orfdata import build`), and
+  `orfdata.viral_subsets` is still the function. What differs: right after
+  `import orfdata`, `sys.modules` and `dir(orfdata)` no longer list every
+  submodule.
+- Each command's parser is built in the new `orfdata.command_parsers`, which
+  imports nothing heavy. The command modules, such as `orfdata.download_cli`,
+  parse with it; they still import pandas and the data modules, but only when
+  their command runs. Help, options, errors and exit statuses are unchanged.
+  The private parser helpers of `orfdata.cli`, `download_cli` and `viral_cli`
+  moved there as public, documented functions (`add_query_arguments`,
+  `add_rule_arguments`, `evidence_name`, `catalog_names`, `add_discovery`,
+  `add_force_timeout`, `add_viral_selection`).
+- `orfdata.cli.Command` has a `parser` field, and `orfdata.cli.completion_parser`
+  and `completion_words` build what argcomplete reads. `orfdata.cli.run` and
+  `query` take `catalog_loader=None` for `load_catalog`, which they still use
+  by default.
+- `orfdata.cache` and `orfdata.viral_subsets` import DataCache, PyYAML and the
+  GDC inventory where they are used.
+
 # 0.48.7
 
 - Ship `tests/data/viral_records/` in the source distribution. `MANIFEST.in`

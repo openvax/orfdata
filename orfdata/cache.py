@@ -17,9 +17,10 @@ import hashlib
 import json
 from pathlib import Path
 
-import datacache
-
 from .errors import NotInstalledError
+
+# DataCache is imported in the functions that use it, so reading DOWNLOAD_TIMEOUT, as every command's
+# parser does, doesn't load it.
 
 # Seconds any ORFdata download may stall before it is retried, then fails; the CLI's --timeout default too.
 DOWNLOAD_TIMEOUT = 60
@@ -40,6 +41,8 @@ def get_data_dir(override=None):
     pathlib.Path
         The ``orfdata`` directory of the selected cache root.
     """
+    import datacache
+
     return Path(datacache.get_cache_root(
         "openvax", "ORFDATA_CACHE", "OPENVAX_DATA_CACHE", override=override)) / "orfdata"
 
@@ -90,6 +93,8 @@ def pinned_registry(name, version, assets, store):
         Its ``download``, ``inspect`` and ``local_path`` take ``name`` and
         ``version``.
     """
+    import datacache
+
     store = Path(store)
     return datacache.VersionedDatasetRegistry(
         {name: dict(default_version=version, versions={version: assets})},

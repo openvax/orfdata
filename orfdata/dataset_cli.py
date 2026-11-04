@@ -6,14 +6,8 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_record_stream, print_result
-from .cli_parser import (
-    ArgumentParser,
-    UsageError,
-    add_json,
-    add_limit,
-    add_timeout,
-    share_cache_root,
-)
+from .cli_parser import UsageError
+from .command_parsers import datasets_parser
 from .datasets import DatasetRegistry
 from .reference import ScopedTarget
 
@@ -70,95 +64,7 @@ def _check_query(registry, args, parser):
 
 
 def run(argv=None, prog=None):
-    parser = ArgumentParser(description=__doc__, prog=prog,
-                            epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
-                                   "Queries preserve native units and reference identities.")
-    parser.add_argument("--registry", help="Local registry JSON (otherwise use packaged releases)")
-    commands = parser.add_subparsers(dest="command", required=True)
-    listing = commands.add_parser("list", help="List published releases and assay coverage")
-    listing.add_argument("--species")
-    listing.add_argument("--taxon-id", type=int)
-    listing.add_argument("--assay")
-    add_json(listing)
-    add_limit(listing)
-    for command, description in {
-        "info": "Describe a dataset's sources, references, and assay coverage",
-        "download": "Download and verify a published dataset",
-        "build": "Build a dataset from pinned source files",
-        "inspect": "Check the local dataset without downloading",
-        "query": "Preview or export measurements in their native units",
-        "pairs": "Find measurements with an explicit supported pairing basis",
-        "references": "List the dataset's native protein search references",
-        "download-reference": "Download a pinned native protein search FASTA",
-        "inspect-reference": "Check an installed search FASTA without downloading",
-        "query-reference": "Check an exact accession in an installed search reference",
-    }.items():
-        subparser = commands.add_parser(command, help=description, description=description)
-        subparser.add_argument("name", help="Dataset name from 'orfdata datasets list'")
-        subparser.add_argument("--version", help="Exact dataset release (default: registered version)")
-        if command in ("query", "pairs"):
-            output = subparser.add_mutually_exclusive_group()
-            output.add_argument("--format", choices=("table", "json", "jsonl"), default="table",
-                                help="Output format (default table; exports contain every matching record)")
-            output.add_argument("--json", dest="format", action="store_const", const="json",
-                                help="Write a complete machine-readable JSON array")
-        else:
-            add_json(subparser)
-        if command in ("query", "pairs", "references"):
-            add_limit(subparser)
-        if command in ("inspect", "query", "pairs"):
-            subparser.add_argument("--built", action="store_true",
-                                   help="Use a local source build explicitly, instead of a published artifact")
-        if command in ("download", "download-reference"):
-            subparser.add_argument("--force", action="store_true")
-            add_timeout(subparser)
-            subparser.add_argument("--quiet", action="store_true")
-            subparser.add_argument("--source-path", help="Use a local pinned file (compressed when declared)")
-        if command in ("download-reference", "inspect-reference", "query-reference"):
-            subparser.add_argument("--reference", help="Exact native reference context key")
-            subparser.add_argument("--asset", help="Declared source asset ID")
-        if command == "query-reference":
-            subparser.add_argument("--target", required=True, help="Exact native accession")
-            subparser.add_argument("--kind", default="protein")
-            subparser.add_argument("--namespace", help="Default: the declared source namespace")
-        if command == "build":
-            subparser.add_argument("--force", action="store_true")
-            add_timeout(subparser)
-            subparser.add_argument("--quiet", action="store_true")
-            subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
-                                   help="Use a local pinned source; repeat for each input asset")
-        if command == "query":
-            subparser.add_argument("--reference", help="Exact ref:SHA256 context key")
-            subparser.add_argument("--sample")
-            subparser.add_argument("--assay-id")
-            subparser.add_argument("--quantity")
-            subparser.add_argument("--status")
-            subparser.add_argument("--unit", help="Exact native unit, e.g. iBAQ, rIBAQ, TPM or counts")
-            subparser.add_argument("--scale", choices=("linear", "log"))
-            subparser.add_argument("--log-base", type=float, help="Exact native logarithm base; no transformation")
-            subparser.add_argument("--target")
-            subparser.add_argument("--kind")
-            subparser.add_argument("--namespace")
-            subparser.add_argument("--mapped", action="store_true",
-                                   help="Return source observations with explicit reference mappings")
-            subparser.add_argument("--mapping-status", action="append",
-                                   help="Mapping status to include; default unique")
-            subparser.add_argument("--require-sequence", action="store_true",
-                                   help="Require recorded exact sequence validation for mapped queries")
-        if command == "pairs":
-            subparser.add_argument("--basis", action="append", required=True,
-                                   help="Allowed pairing basis; repeat for multiple bases")
-            subparser.add_argument("--temporal", action="append",
-                                   help="Allowed temporal relation; default concurrent")
-            subparser.add_argument("--reference")
-            subparser.add_argument("--pair-id", action="append")
-            subparser.add_argument("--relation-id", action="append")
-            for side in ("left", "right"):
-                for field in ("target", "kind", "namespace", "reference", "quantity", "status", "unit"):
-                    subparser.add_argument(f"--{side}-{field}")
-                subparser.add_argument(f"--{side}-scale", choices=("linear", "log"))
-                subparser.add_argument(f"--{side}-log-base", type=float)
-    share_cache_root(parser)
+    parser = datasets_parser(prog)
     args = parser.parse_args(argv)
     try:
         definitions = None

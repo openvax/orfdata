@@ -83,6 +83,10 @@ orfdata datasets query ingolia-yeast-rna-ribo --limit 5
 `download` and `downloads` are aliases for `data`. See the
 [command-line guide](https://openvax.github.io/orfdata/cli/) for every command.
 
+Tab completion: run `activate-global-python-argcomplete` once, for every command
+that supports argcomplete, or put `eval "$(register-python-argcomplete orfdata)"`
+in your shell's startup file.
+
 ## Documentation
 
 The [documentation](https://openvax.github.io/orfdata/) covers, in reading
