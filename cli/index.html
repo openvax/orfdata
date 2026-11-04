@@ -1564,6 +1564,13 @@ lives outside the default cache, and <code>--verify</code> when you want to hash
 <p><code>orfdata help COMMAND</code> and <code>orfdata COMMAND --help</code> are equivalent. Bare command
 groups such as <code>orfdata datasets</code> show their subcommands. <code>download</code> and
 <code>downloads</code> are aliases for <code>data</code>.</p>
+<p>The Tab key completes commands, subcommands, options and the values an option
+lists, such as <code>orfdata data list --kind</code>. Turn it on once with
+<code>activate-global-python-argcomplete</code>, for every command that supports
+argcomplete, or for <code>orfdata</code> alone with
+<code>eval "$(register-python-argcomplete orfdata)"</code> in your shell's startup file.
+Both come with <a href="https://github.com/kislyuk/argcomplete">argcomplete</a>, which
+ORFdata installs.</p>
 <table>
 <thead>
 <tr>

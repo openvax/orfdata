@@ -1487,6 +1487,11 @@ draw on OpenVax's OncoRef inventory summaries and MHCtools' shared table formatt
 <ul>
 <li><code>orfdata</code>, <code>orfdata help</code>, and <code>orfdata --help</code> show the command index.</li>
 <li><code>orfdata help COMMAND</code> and <code>orfdata COMMAND --help</code> show command help.</li>
+<li>The Tab key completes commands, subcommands and options through argcomplete.
+  Every press runs <code>orfdata</code> up to argcomplete, so <code>orfdata.cli</code> and
+  <code>orfdata.command_parsers</code>, which builds each command's parser, import neither
+  pandas, DataCache nor the modules that run commands; those load when a command
+  runs. <code>tests/test_tab_completion.py</code> checks both.</li>
 <li>Human summaries and tables are the default. <code>--json</code> selects a complete JSON
   document. Export commands also offer explicit formats such as FASTA or JSONL.</li>
 <li>Human tables preview 25 rows; <code>--limit 0</code> shows all rows. Machine exports are
