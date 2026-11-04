@@ -24,8 +24,8 @@ and downloads the assembly chains and the GDC viral collection
 implicitly; use the explicit commands under `orfdata data` or the
 corresponding PyEnsembl command when data is missing.
 
-The base install includes PyEnsembl, the spreadsheet source readers, PyArrow
-exports and Biotite alignment support. The `canine-extraction` extra
+The base install includes PyEnsembl, the spreadsheet source readers and PyArrow
+exports. The `canine-extraction` extra
 (`pip install 'orfdata[canine-extraction]'`) adds APSW, needed only to extract
 the original canine vendor database; released dataset queries and rebuilds
 from normalized sources do not need it.

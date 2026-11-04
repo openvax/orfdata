@@ -30,8 +30,9 @@ modules (`standards.py`, `remotezip.py`) in its own directory.
   macOS arm64 build used here is `sage-v0.14.7-aarch64-apple-darwin.tar.gz` (SHA-256
   `6dc2270f311c6f3405bd7baff7ee1d478422ffc19574504af9c5dc5562fa2ac4`). Its binary reports
   version 0.14.6.
-- **Python 3.11+** with `orfdata` and inflate64. The normal ORFdata installation
-  includes pandas, PyArrow, NumPy, Biotite and PyEnsembl. The PXD052932
+- **Python 3.11+** with `orfdata`, Biotite (`biotite>=1.6,<3`, also in
+  ORFdata's `dev` extra) and inflate64. The normal ORFdata installation includes
+  pandas, PyArrow, NumPy and PyEnsembl, but not Biotite. The PXD052932
   archives compress with Deflate64, which Python's `zipfile` can't decompress, so
   `fetch_member.py` uses inflate64. Biotite 2 requires Python 3.12 or later;
   Python 3.11 installs compatible Biotite 1.6. Reference downloads remain explicit.

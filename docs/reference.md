@@ -366,7 +366,7 @@ yeast files are not imported yet.
 From a development checkout with the PyEnsembl dependency installed:
 
 ```sh
-python -m pip install -e '.[dev]'
+./develop.sh   # python -m pip install -e '.[dev,docs]'
 python -m orfdata.build --source-dir /path/to/sources --prepare-sources \
     --all-orfs --output orfdata/data/orf-evidence
 ./lint.sh

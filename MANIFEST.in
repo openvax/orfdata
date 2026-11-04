@@ -1,4 +1,4 @@
-include lint.sh test.sh deploy.sh docs.sh mkdocs.yml
+include develop.sh lint.sh test.sh deploy.sh docs.sh mkdocs.yml
 recursive-include tools *.py *.json *.md
 recursive-include tests/data/viral *.gz
 recursive-include tests/data/viral_records *.gz
