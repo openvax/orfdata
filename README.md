@@ -113,7 +113,7 @@ species and sources.
 ## Development
 
 ```sh
-python -m pip install -e '.[dev,docs]'
+./develop.sh # python -m pip install -e '.[dev,docs]'
 ./lint.sh    # ruff
 ./test.sh    # pytest
 ./docs.sh    # mkdocs build --strict

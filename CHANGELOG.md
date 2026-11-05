@@ -1,3 +1,15 @@
+# 0.49.1
+
+- Biotite is no longer installed with ORFdata: no module in the package imports
+  it. Only the experimental dog ncORF search in `scripts/experimental` (which
+  isn't installed) and its tests use it, so it moves to the `dev` extra, and
+  that search's README says to install it (#194).
+- Python 3.11–3.14 classifiers in the package metadata.
+- `./develop.sh` installs a development checkout (`pip install -e '.[dev,docs]'`),
+  as in the other OpenVax libraries. The `dev` extra's comment now names both
+  of Biopython's uses: the test oracle for the dog search's alignments (#131)
+  and translation in `tools/verify_riborf_native.py`.
+
 # 0.49.0
 
 - Tab completion for the `orfdata` command, through argcomplete, which is now a
