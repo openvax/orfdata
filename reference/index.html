@@ -1989,7 +1989,7 @@ coordinates and protein; see <a href="../catalogs/#mouse">Mouse</a>. OpenProt's 
 yeast files are not imported yet.</p>
 <h2 id="rebuild-and-verify">Rebuild and verify<a class="headerlink" href="#rebuild-and-verify" title="Permanent link">&para;</a></h2>
 <p>From a development checkout with the PyEnsembl dependency installed:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s1">'.[dev]'</span>
+<div class="highlight"><pre><span></span><code>./develop.sh<span class="w">   </span><span class="c1"># python -m pip install -e '.[dev,docs]'</span>
 python<span class="w"> </span>-m<span class="w"> </span>orfdata.build<span class="w"> </span>--source-dir<span class="w"> </span>/path/to/sources<span class="w"> </span>--prepare-sources<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--all-orfs<span class="w"> </span>--output<span class="w"> </span>orfdata/data/orf-evidence
 ./lint.sh
