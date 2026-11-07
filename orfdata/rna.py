@@ -188,7 +188,9 @@ class RNAFeature:
         """Whether the element overlaps a 1-based inclusive genomic interval on this contig."""
         from .model import _contig
 
-        return _contig(contig) == _contig(self.rna.contig) and any(
+        reference = getattr(self.rna, "reference", None)  # a SourceRNA's; else a transcript's genome
+        build = reference.genome_build if reference is not None else self.rna.genome.reference_name
+        return _contig(contig, build) == _contig(self.rna.contig, build) and any(
             a <= end and b >= start for a, b in self.genomic_blocks)
 
     def to_dict(self):

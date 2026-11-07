@@ -721,7 +721,7 @@ class ExtraORFs:
             context = orf.initiation_context
             if context is not None:
                 positions.extend(context.genomic_positions)
-            spans.setdefault(_contig(orf.transcript.contig), []).append((min(positions), max(positions), orf))
+            spans.setdefault(_contig(orf.transcript.contig, self.reference.genome_build), []).append((min(positions), max(positions), orf))
         index = {}
         for contig, items in spans.items():
             items.sort(key=lambda item: (item[0], item[1]))
@@ -771,7 +771,7 @@ class ExtraORFs:
             raise ValueError(f"Expected genome build {self.reference.genome_build}, got {genome_build}")
         if type(start) is not int or type(end) is not int or start < 1 or end < start:
             raise ValueError("start and end must be positive integers with end >= start")
-        starts, widest, items = self._index.get(_contig(contig), ((), 0, ()))
+        starts, widest, items = self._index.get(_contig(contig, genome_build), ((), 0, ()))
         found = []
         for _, _, orf in items[bisect_left(starts, start - widest) : bisect_right(starts, end)]:
             context = orf.initiation_context if include_initiation_context else None

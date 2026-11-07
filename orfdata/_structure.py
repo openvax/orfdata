@@ -134,11 +134,11 @@ def transcripts_containing(genome, spans):
     bins = {}
     for transcript_id, contig, strand, start, end in _rows(
             genome.db, "SELECT transcript_id, seqname, strand, start, end FROM transcript"):
-        key = (_contig(contig), strand)
+        key = (_contig(contig, genome.reference_name), strand)
         for b in range(start // width, end // width + 1):
             bins.setdefault((key, b), []).append((start, end, transcript_id))
     found = {}
     for name, (contig, strand, start, end) in spans.items():
-        candidates = bins.get(((_contig(contig), strand), start // width), ())
+        candidates = bins.get(((_contig(contig, genome.reference_name), strand), start // width), ())
         found[name] = sorted({t for a, b, t in candidates if a <= start and b >= end})
     return found

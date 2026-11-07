@@ -20,7 +20,7 @@ def _sha(value):
     return hashlib.sha256(value.encode("ascii")).hexdigest()
 
 
-def _annotations(path):
+def _annotations(path, build):
     """Keep full transcript versions and every distinct annotated locus."""
     groups = {}
     with gzip.open(path, "rt") as stream:
@@ -35,7 +35,7 @@ def _annotations(path):
             version = attributes.get("transcript_version")
             if version and "." not in name:
                 name += "." + version
-            key = name, _contig(fields[0]), fields[6], attributes["gene_id"]
+            key = name, _contig(fields[0], build), fields[6], attributes["gene_id"]
             entry = groups.setdefault(
                 key,
                 dict(
@@ -82,7 +82,7 @@ def _fasta(paths):
     return found
 
 
-def _bed(row):
+def _bed(row, build):
     if len(row) != 12:
         raise ValueError("Native mouse ORF must provide all twelve BED fields")
     first, last, count = int(row[1]), int(row[2]), int(row[9])
@@ -101,7 +101,7 @@ def _bed(row):
         or (int(row[6]), int(row[7])) != (first, last)
     ):
         raise ValueError("Native BED span, thick span or block order disagree")
-    return _contig(str(row[0])), row[5], blocks
+    return _contig(str(row[0]), build), row[5], blocks
 
 
 def _coding(sequence, start, end, start_codon):
@@ -149,9 +149,9 @@ def reconstruct(inputs, manifest):
         or source_reference.source_sha256 != assets["source_gtf"].sha256
     ):
         raise ValueError("Native reference identity disagrees with its RNA/annotation pins")
-    source_annotations = _annotations(inputs["source_gtf"])
+    source_annotations = _annotations(inputs["source_gtf"], source_reference.genome_build)
     source_sequences = _fasta([inputs["source_rna"]])
-    target_annotations = _annotations(inputs["gtf"])
+    target_annotations = _annotations(inputs["gtf"], target_reference.genome_build)
     target_sequences = _fasta([inputs["cdna"], inputs["ncrna"]])
     by_sequence = defaultdict(list)
     by_stable_id = defaultdict(list)
@@ -191,12 +191,12 @@ def reconstruct(inputs, manifest):
                     "Native transcript length disagrees with RNA, annotation or source row"
                 )
             blocks = _blocks(entry, start, end - 1)
-            if _bed(row) != (entry["contig"], entry["strand"], blocks):
+            if _bed(row, source_reference.genome_build) != (entry["contig"], entry["strand"], blocks):
                 raise ValueError(
                     "Native RNA offsets and BED blocks disagree with the source annotation"
                 )
             labels = transcript_label.split(":")
-            if len(labels) != 3 or (_contig(labels[1]), labels[2]) != (
+            if len(labels) != 3 or (_contig(labels[1], source_reference.genome_build), labels[2]) != (
                 entry["contig"],
                 entry["strand"],
             ):
