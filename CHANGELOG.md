@@ -1,3 +1,20 @@
+# 0.50.0
+
+- Under GRCh37, `chrM` (and `M`) is no longer compared as `MT` (#200). hg19's
+  chrM is NC_001807 (16,571 bp), not the rCRS (16,569 bp) that Ensembl names
+  MT, and its positions are offset from it (hg19 chrM:12995 is rCRS
+  MT:12994). Catalogue queries and merges, ORF binding, the proteome and
+  structure indexes, RNA feature overlap and chain files now keep the two
+  apart, so a GRCh37 `chrM` record is no longer bound to Ensembl MT
+  transcripts or merged with an MT record. Other builds' `chrM` is still `MT`.
+  - Ensembl's GRCh37 chain files repeat the rCRS chain as `chrM` with its
+    length, 16,569 bp; that copy is still read as `MT`.
+  - No bundled catalogue is GRCh37, so released data is unchanged. A
+    GRCh37 catalogue from GENCODE, which calls the rCRS `chrM`, should name it
+    `MT`.
+  - Matches varcode 11.8.0, which stopped renaming hg19's `chrM` to `MT`
+    (openvax/varcode#707).
+
 # 0.49.1
 
 - Biotite is no longer installed with ORFdata: no module in the package imports

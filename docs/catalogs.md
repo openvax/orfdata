@@ -530,6 +530,10 @@ print(len(grch37.records), len(grch37.metadata["liftover"]["unmapped"]), grch37.
   when a block aligns to several places, their `contigs`): 15 have no
   alignment and 2 cross an alignment gap. UCSC's names for unplaced scaffolds,
   such as `chr1_GL456210v1_random`, are read as Ensembl's (`GL456210.1`).
+  `chrM` is read as `MT` except in GRCh37, where hg19's chrM (NC_001807,
+  16,571 bp) is not the rCRS that Ensembl names MT and is offset from it. A
+  GRCh37 chain's `chrM` of the rCRS length (16,569 bp), as in Ensembl's files,
+  is the rCRS; any other GRCh37 `chrM` lifts only through its own chains.
 - **Real data.** Lifting the 7,247 back to GRCh38 with
   `GRCh37_to_GRCh38.chain.gz` recovers the original coordinates of the 7,246
   that lift back. On Ensembl 75, 6,857 of the lifted ORFs place on a

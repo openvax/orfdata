@@ -216,12 +216,29 @@ def _layout_offset(layout, strand, blocks):
     return offset
 
 
-def _contig(value):
-    """Compare contig names as PyEnsembl normalizes them, e.g. Mito as MITO."""
+# hg19's chrM is NC_001807 (16,571 bp). The rCRS (NC_012920), which Ensembl
+# names MT and GENCODE's GRCh37 and hg38 name chrM, is 16,569 bp.
+_RCRS_LENGTH = 16569
+
+
+def _is_grch37(build):
+    return build is not None and str(build).lower().split(".p")[0] in ("grch37", "hg19", "b37", "ncbi37")
+
+
+def _contig(value, build, length=None):
+    """Compare contig names as PyEnsembl normalizes them, e.g. Mito as MITO.
+
+    ``M`` and ``chrM`` are the mitochondrion ``MT``, except in ``build`` GRCh37:
+    there hg19's chrM is not the rCRS that Ensembl names MT, and its positions
+    are offset from it (hg19 chrM:12995 is rCRS MT:12994). It stays ``chrM``
+    unless ``length``, when known, is the rCRS's.
+    """
     value = str(value).removeprefix("chr")
     if value.isalpha():
         value = value.upper()
-    return "MT" if value == "M" else value
+    if value != "M":
+        return value
+    return "chrM" if _is_grch37(build) and length != _RCRS_LENGTH else "MT"
 
 
 def _species(value):
@@ -289,7 +306,8 @@ class TranscriptORF:
                 raise ValueError("ORF transcript identity mismatch")
             if match == "other_version":  # The source pins another version of this transcript.
                 raise ValueError("ORF transcript version mismatch")
-        if _contig(transcript.contig) != _contig(model.contig) or transcript.strand != model.strand:
+        if (_contig(transcript.contig, model.genome_build) != _contig(model.contig, model.genome_build)
+                or transcript.strand != model.strand):
             raise ValueError("ORF transcript locus mismatch")
         code = genetic_code(model.translation_table)
         layout = _layout or _exon_layout(transcript)
@@ -342,7 +360,8 @@ class TranscriptORF:
         if len(host.sequence) != layout[2]:
             raise ValueError("Transcript sequence length mismatch")
         start = path_offset(host, blocks, layout=layout) if host.strand == transcript.strand and \
-            _contig(host.contig) == _contig(transcript.contig) else None
+            _contig(host.contig, resolved_context.genome_build) == _contig(
+                transcript.contig, resolved_context.genome_build) else None
         if start is None:
             raise ValueError(f"Annotated CDS of {transcript.id} is not one contiguous part of {host.id}")
         length = sum(b - a + 1 for a, b in blocks)

@@ -98,8 +98,11 @@ class ChainFile:
                 if fields[4] != "+":
                     raise ValueError(f"{self.liftover.chain} has a chain whose source strand is {fields[4]}; "
                                      "chain files align the source's forward strand")
-                header = (_contig(_chain_contig(fields[2])),
-                          _contig(_chain_contig(renamed.get(fields[7], fields[7]))), fields[9], int(fields[8]))
+                # Ensembl's GRCh37 files call the rCRS chrM, as UCSC's hg19 does
+                # its own chrM; the length tells them apart.
+                header = (_contig(_chain_contig(fields[2]), source_build, int(fields[3])),
+                          _contig(_chain_contig(renamed.get(fields[7], fields[7])), target_build, int(fields[8])),
+                          fields[9], int(fields[8]))
                 t, q = int(fields[5]), int(fields[10])
                 continue
             size = int(fields[0])
@@ -128,7 +131,7 @@ class ChainFile:
         """Every placement of a whole 1-based inclusive interval, and whether a block covers only part of it."""
         from .model import _contig
 
-        source = _contig(contig)
+        source = _contig(contig, self.liftover.source_build)
         starts, widest, items = self._index.get(source, ((), 0, ()))
         low, high = start - 1, end
         hits, partial = [], False

@@ -702,7 +702,7 @@ class ORFCatalog:
             _positive_integer(end, "end")
             if end < start:
                 raise ValueError("end must be >= start")
-            contig = _contig(contig)
+            contig = _contig(contig, genome_build)
         if genome_build is not None and genome_build != self.genome_build:
             raise ValueError(f"Expected genome build {self.genome_build}, got {genome_build}")
         rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
@@ -718,7 +718,7 @@ class ORFCatalog:
             and (
                 not locus
                 or (
-                    _contig(r.contig) == contig
+                    _contig(r.contig, r.genome_build) == contig
                     and (
                         any(a <= end and b >= start for a, b in r.coding_blocks)
                         or (
@@ -748,7 +748,7 @@ def _merge_key(record):
             start = None
     except ValueError:  # An unsupported code keeps its declaration as given.
         pass
-    return (_contig(record.contig), record.strand, record.coding_blocks, record.protein_sequence,
+    return (_contig(record.contig, record.genome_build), record.strand, record.coding_blocks, record.protein_sequence,
             record.translation_table, start, record.genome_build, record.taxon_id)
 
 
