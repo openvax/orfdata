@@ -1,3 +1,27 @@
+# 0.51.0
+
+- Publish the names T2T-CHM13v2.0 goes by, so varcode and ORFdata accept the
+  same ones (#204). `orfdata.reference_names()` (`orfdata genomes names`)
+  lists each name with the pinned genome it opens and its file's
+  mitochondrion: `hs1`, `GCA_009914755.4`, `GCF_009914755.1`, the T2T
+  Consortium's `chm13v2.0`, `_maskedY`, `_noY` and `_maskedY_rCRS` (also
+  spelled `_maskedY.rCRS`) analysis sets, and T2T-CHM13v1.1. The `_rCRS` set's
+  chrM is the rCRS (`NC_012920.1`), not CHM13's own (`CP068254.1`), which
+  begins at what the rCRS numbers 577; RefSeq's assembly has no
+  mitochondrion. T2T-CHM13v1.0 and the v0.7 and v0.9 drafts are listed with
+  no genome and say why: 23 of v1.0's 24 sequence lengths differ.
+- `orfdata.contig_aliases(name)` (`orfdata genomes contigs NAME`) gives each
+  of the assembly's 25 sequences under its annotation, UCSC, GenBank and
+  RefSeq names, with its length, from NCBI's assembly report, leaving out the
+  sequences that name's files lack or carry as another molecule.
+- `load_genome`, `install_genome` and `orfdata genomes install` accept any of
+  these names, so `load_genome("hs1")` opens `t2t-chm13`. Not being installed
+  still raises `NotInstalledError`, which names `orfdata genomes install
+  t2t-chm13` whichever name was given. A catalogue hint no longer reads bare
+  `chm13`, which names every version, as T2T-CHM13v2.0.
+- The pinned files and their cache path are unchanged, so an existing
+  installation is reused.
+
 # 0.50.0
 
 - Under GRCh37, `chrM` (and `M`) is no longer compared as `MT` (#200). hg19's

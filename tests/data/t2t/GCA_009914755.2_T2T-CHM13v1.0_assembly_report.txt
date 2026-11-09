@@ -1,0 +1,53 @@
+# Assembly name:  T2T-CHM13v1.0
+# Organism name:  Homo sapiens (human)
+# Isolate:  CHM13
+# Sex:  female
+# Taxid:          9606
+# BioSample:      SAMN03255769
+# BioProject:     PRJNA559484
+# Submitter:      T2T Consortium
+# Date:           2021-01-26
+# Assembly type:  haploid
+# Release type:   major
+# Assembly level: Chromosome
+# Genome representation: full
+# Assembly method: T2T assembly pipeline (see manuscript for details) v. 09/04/2020
+# Expected final version: No
+# Genome coverage: 30.0x
+# Sequencing technology: PacBio Sequel II HiFi; Oxford Nanopore MinION; Illumina NovaSeq
+# GenBank assembly accession: GCA_009914755.2
+#
+## Assembly-Unit names:
+## Primary Assembly
+## non-nuclear
+#
+# Ordered by chromosome/plasmid; the chromosomes/plasmids are followed by
+# unlocalized scaffolds.
+# Unplaced scaffolds are listed at the end.
+# RefSeq is equal or derived from GenBank object.
+#
+# Sequence-Name	Sequence-Role	Assigned-Molecule	Assigned-Molecule-Location/Type	GenBank-Accn	Relationship	RefSeq-Accn	Assembly-Unit	Sequence-Length	UCSC-style-name
+1	assembled-molecule	1	Chromosome	CP068277.1	<>	na	Primary Assembly	248387497	na
+2	assembled-molecule	2	Chromosome	CP068276.1	<>	na	Primary Assembly	242696747	na
+3	assembled-molecule	3	Chromosome	CP068275.1	<>	na	Primary Assembly	201106605	na
+4	assembled-molecule	4	Chromosome	CP068274.1	<>	na	Primary Assembly	193575430	na
+5	assembled-molecule	5	Chromosome	CP068273.1	<>	na	Primary Assembly	182045437	na
+6	assembled-molecule	6	Chromosome	CP068272.1	<>	na	Primary Assembly	172126870	na
+7	assembled-molecule	7	Chromosome	CP068271.1	<>	na	Primary Assembly	160567423	na
+8	assembled-molecule	8	Chromosome	CP068270.1	<>	na	Primary Assembly	146259322	na
+9	assembled-molecule	9	Chromosome	CP068269.1	<>	na	Primary Assembly	150617274	na
+10	assembled-molecule	10	Chromosome	CP068268.1	<>	na	Primary Assembly	134758122	na
+11	assembled-molecule	11	Chromosome	CP068267.1	<>	na	Primary Assembly	135127772	na
+12	assembled-molecule	12	Chromosome	CP068266.1	<>	na	Primary Assembly	133324781	na
+13	assembled-molecule	13	Chromosome	CP068265.1	<>	na	Primary Assembly	114240146	na
+14	assembled-molecule	14	Chromosome	CP068264.1	<>	na	Primary Assembly	101219177	na
+15	assembled-molecule	15	Chromosome	CP068263.1	<>	na	Primary Assembly	100338308	na
+16	assembled-molecule	16	Chromosome	CP068262.1	<>	na	Primary Assembly	96330493	na
+17	assembled-molecule	17	Chromosome	CP068261.1	<>	na	Primary Assembly	84277185	na
+18	assembled-molecule	18	Chromosome	CP068260.1	<>	na	Primary Assembly	80542536	na
+19	assembled-molecule	19	Chromosome	CP068259.1	<>	na	Primary Assembly	61707359	na
+20	assembled-molecule	20	Chromosome	CP068258.1	<>	na	Primary Assembly	66210247	na
+21	assembled-molecule	21	Chromosome	CP068257.1	<>	na	Primary Assembly	45827691	na
+22	assembled-molecule	22	Chromosome	CP068256.1	<>	na	Primary Assembly	51353906	na
+X	assembled-molecule	X	Chromosome	CP068255.1	<>	na	Primary Assembly	154259625	na
+MT	assembled-molecule	MT	Mitochondrion	CP068254.1	<>	na	non-nuclear	16569	chrM

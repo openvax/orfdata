@@ -18,3 +18,4 @@ recursive-include tests/data/ensembl *.gz *.json *.md
 recursive-include tests/data/kaabinejadian *.zip *.tsv
 recursive-include tests/data/peptideatlas *.zip *.gz
 recursive-include tests/data/mammary_stroma *.gz *.txt *.xml
+recursive-include tests/data/t2t *.txt

@@ -44,7 +44,7 @@ ORFdata installs.
 | `proteome` | Export a reference proteome as FASTA | Use `--species` and `--release`, or `--genome` |
 | `viral` | Inspect viral reference coverage and installed layers | `coverage`, `contexts`, `subsets`, `summary`, `completeness`, `inventory download` |
 | `setup` | Install a species' default catalogues, chains and collections | Requires `--species` |
-| `genomes` | Manage pinned annotations | `list`, `install` |
+| `genomes` | Manage pinned annotations and the names their assemblies go by | `list`, `names`, `contigs`, `install` |
 | `chains` | Manage assembly mapping files | `list`, `download` |
 | `lift` | Write an ORF catalogue on another assembly | Requires `--to` and `--output` |
 

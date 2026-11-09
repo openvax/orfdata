@@ -1174,17 +1174,22 @@ def _installed_at(choice):
     return None if written is None else (str(path), written.st_size, written.st_mtime_ns)
 
 
-# Names other tools use for assemblies orfdata knows by Ensembl's name.
-_ASSEMBLY_ALIASES = {"hg18": "NCBI36", "hg19": "GRCh37", "hg38": "GRCh38", "hs1": "T2T-CHM13v2.0",
-                     "chm13": "T2T-CHM13v2.0", "chm13v2.0": "T2T-CHM13v2.0", "mm9": "NCBIM37", "mm10": "GRCm38",
+# Names other tools use for assemblies orfdata knows by Ensembl's name. Names of the pinned
+# genomes' assemblies, such as hs1, come from orfdata.genomes.reference_names().
+_ASSEMBLY_ALIASES = {"hg18": "NCBI36", "hg19": "GRCh37", "hg38": "GRCh38", "mm9": "NCBIM37", "mm10": "GRCm38",
                      "mm39": "GRCm39"}
 
 
 def _assembly_hint(species, genome_build, choices):
     """What an unknown assembly name probably means: another name for a known one, or another species'."""
+    from .genomes import _find
     from .liftover import pinned_chains
 
-    name = _ASSEMBLY_ALIASES.get(genome_build.lower(), re.sub(r"\.p[0-9]+$", "", genome_build))
+    found = _find(genome_build)
+    if found is not None and found[0] is None:
+        return f" {genome_build} has no pinned genome. {found[2]}"
+    name = (found[0].reference_name if found is not None
+            else _ASSEMBLY_ALIASES.get(genome_build.lower(), re.sub(r"\.p[0-9]+$", "", genome_build)))
     if name != genome_build:
         return (f" orfdata names that assembly {name}, as Ensembl does; give a custom genome the reference "
                 f"name {name!r}.")

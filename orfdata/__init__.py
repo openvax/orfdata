@@ -41,7 +41,14 @@ if TYPE_CHECKING:  # What type checkers and IDEs read; at run time, __getattr__ 
     from .errors import NotInstalledError
     from .evidence import MS, EvidenceRule, RiboSeq
     from .evidence_summary import EvidenceSummary
-    from .genomes import PinnedGenome, install_genome, load_genome, pinned_genomes
+    from .genomes import (
+        PinnedGenome,
+        contig_aliases,
+        install_genome,
+        load_genome,
+        pinned_genomes,
+        reference_names,
+    )
     from .gtf import orf_gtf_lines
     from .initiation_context import (
         KOZAK_PREFERENCES,
@@ -147,7 +154,8 @@ EXPORTED_FROM = {name: module for module, names in {
     "errors": ("NotInstalledError",),
     "evidence": ("MS", "EvidenceRule", "RiboSeq"),
     "evidence_summary": ("EvidenceSummary",),
-    "genomes": ("PinnedGenome", "install_genome", "load_genome", "pinned_genomes"),
+    "genomes": ("PinnedGenome", "install_genome", "load_genome", "pinned_genomes", "reference_names",
+                "contig_aliases"),
     "gtf": ("orf_gtf_lines",),
     "initiation_context": ("KOZAK_PREFERENCES", "InitiationContext", "annotate_initiation_context"),
     "install": ("install_species",),
@@ -338,6 +346,8 @@ __all__ = [
     "pinned_genomes",
     "install_genome",
     "load_genome",
+    "reference_names",
+    "contig_aliases",
     "ChainFile",
     "Liftover",
     "lift_catalog",

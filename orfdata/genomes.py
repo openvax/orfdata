@@ -33,6 +33,17 @@ class PinnedGenome:
     terms: str
     terms_url: str
     assembly_accession: Optional[str] = None
+    #: Other names for the assembly's sequences, e.g. ``hs1``: each gives the
+    #: accession of the file's mitochondrion and, under ``without``, the
+    #: contigs its files lack or carry as a different molecule.
+    names: Mapping = field(default_factory=dict, hash=False)
+    #: Names of other versions of the assembly, each with why it isn't this one.
+    other_versions: Mapping = field(default_factory=dict, hash=False)
+    #: The assembly's sequences: the annotation's name for each, its UCSC,
+    #: GenBank and RefSeq names, and its length.
+    contigs: tuple = field(default=(), hash=False)
+    #: Where :attr:`contigs` came from, and its SHA-256.
+    contigs_source: Mapping = field(default_factory=dict, hash=False)
 
 
 def _pins():
@@ -43,15 +54,125 @@ def pinned_genomes(*, species=None):
     """The pinned annotations, without downloading any."""
     from .model import _species
 
-    found = tuple(PinnedGenome(name, **entry) for name, entry in sorted(_pins().items()))
+    found = tuple(PinnedGenome(name, **dict(entry, contigs=tuple(entry.get("contigs", ()))))
+                  for name, entry in sorted(_pins().items()))
     return found if species is None else tuple(g for g in found if g.species == _species(species))
 
 
+def reference_names():
+    """Every name the pinned genomes answer to, and which genome each one opens.
+
+    A name is matched exactly, ignoring case: finding one inside a file path
+    is the caller's job. A pinned genome answers to its own name, its
+    ``reference_name``, its assembly accession and the names in its ``names``
+    (for T2T-CHM13v2.0: ``hs1``, ``GCF_009914755.1``, the T2T Consortium's
+    ``chm13v2.0*`` analysis sets and T2T-CHM13v1.1). Names of other versions
+    of an assembly, such as ``T2T-CHM13v1.0``, are listed with no genome.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per name, with columns:
+
+        - ``name``: the name, as its source spells it.
+        - ``genome``: the pinned genome it opens, e.g. ``"t2t-chm13"``, or
+          None for another version of the assembly.
+        - ``mitochondrion``: the accession of the mitochondrion in files with
+          this name, or None when they have none. For T2T-CHM13v2.0 it is
+          CHM13's own (``CP068254.1``), except in the ``_rCRS`` analysis set,
+          whose chrM is the rCRS (``NC_012920.1``). Both are 16,569 bp, but
+          CP068254.1 begins at what the rCRS numbers 577.
+        - ``note``: what the name is or, with no genome, why it isn't one.
+    """
+    import pandas as pd
+
+    rows = []
+    for genome in pinned_genomes():
+        mitochondrion = next((c["genbank"] for c in genome.contigs if c["name"] == "MT"), None)
+        own = {genome.name: "orfdata's name", genome.reference_name: "The annotation's reference_name"}
+        if genome.assembly_accession:
+            own[genome.assembly_accession] = "The assembly's accession"
+        for name, note in own.items():
+            if name not in genome.names:
+                rows.append(dict(name=name, genome=genome.name, mitochondrion=mitochondrion, note=note))
+        rows += [dict(name=name, genome=genome.name, mitochondrion=entry["mitochondrion"], note=entry["note"])
+                 for name, entry in genome.names.items()]
+        rows += [dict(name=name, genome=None, mitochondrion=None, note=reason)
+                 for name, reason in genome.other_versions.items()]
+    return pd.DataFrame(rows, columns=["name", "genome", "mitochondrion", "note"], dtype=object)
+
+
+def _find(name):
+    """``(genome, its names entry, None)`` for a name a pinned genome answers to, ``(None, None, why not)``
+    for another version of an assembly, and None for a name orfdata doesn't know."""
+    if not isinstance(name, str):
+        raise TypeError(f"A genome name is a string, not {type(name).__name__}")
+    key = name.strip().lower()
+    for genome in pinned_genomes():
+        for other, reason in genome.other_versions.items():
+            if other.lower() == key:
+                return None, None, reason
+        for alias, entry in genome.names.items():
+            if alias.lower() == key:
+                return genome, entry, None
+        if key in {genome.name.lower(), genome.reference_name.lower(), (genome.assembly_accession or "").lower()}:
+            return genome, {}, None
+    return None
+
+
+def _lookup(name):
+    """The pinned genome ``name`` opens, and its ``names`` entry if it has one."""
+    found = _find(name)
+    if found is None:
+        pinned = ", ".join(g.name for g in pinned_genomes()) or "none"
+        raise ValueError(f"No pinned genome {name!r}; pinned: {pinned}. 'orfdata genomes names' lists every "
+                         "name each one answers to")
+    genome, entry, reason = found
+    if genome is None:
+        raise ValueError(f"{name} has no pinned genome. {reason}")
+    return genome, entry
+
+
 def _pinned(name):
-    found = {g.name: g for g in pinned_genomes()}
-    if name not in found:
-        raise ValueError(f"No pinned genome {name!r}; pinned: {', '.join(found) or 'none'}")
-    return found[name]
+    return _lookup(name)[0]
+
+
+def contig_aliases(name):
+    """The sequences in files named ``name``, under each of their names, with their lengths.
+
+    Parameters
+    ----------
+    name : str
+        Any name :func:`reference_names` gives a genome, e.g. ``"t2t-chm13"``,
+        ``"hs1"`` or ``"chm13v2.0_maskedY_rCRS"``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per sequence, with columns ``name`` (the annotation's name,
+        e.g. ``"1"``), ``ucsc`` (``"chr1"``), ``genbank`` (``"CP068277.2"``),
+        ``refseq`` (``"NC_060925.1"``, or None) and ``length``. Sequences the
+        name's files lack, or carry as a different molecule, are left out: no
+        ``Y`` for ``chm13v2.0_noY``, and no ``MT`` for the ``_rCRS`` analysis
+        set, whose ``chrM`` is the rCRS rather than CHM13's mitochondrion, or
+        for ``GCF_009914755.1``, which has none. ``frame.attrs`` holds the
+        genome's name and the source of the table.
+
+    Raises
+    ------
+    ValueError
+        For a name of another version of the assembly, such as
+        ``T2T-CHM13v1.0``, with why its coordinates differ.
+    """
+    import pandas as pd
+
+    genome, entry = _lookup(name)
+    without = set(entry.get("without", ()))
+    frame = pd.DataFrame([c for c in genome.contigs if c["name"] not in without],
+                         columns=["name", "ucsc", "genbank", "refseq", "length"], dtype=object)
+    frame = frame.astype({"length": "int64"})
+    frame.attrs.update(genome=genome.name, source=dict(genome.contigs_source))
+    return frame
 
 
 def _files(genome):
@@ -89,8 +210,10 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None, dow
                    genome_fasta_path_or_url=None):
     """Download a pinned annotation, check each file's size and SHA-256, and index it for PyEnsembl.
 
-    ``source_paths`` maps ``"gtf"``, ``"transcripts"`` or ``"proteins"`` to
-    local copies to install instead of downloading, checked the same way.
+    ``name`` is any name :func:`reference_names` gives a genome, such as
+    ``"t2t-chm13"`` or ``"hs1"``. ``source_paths`` maps ``"gtf"``,
+    ``"transcripts"`` or ``"proteins"`` to local copies to install instead of
+    downloading, checked the same way.
     ``genome_fasta_path_or_url`` optionally installs chromosome DNA through
     PyEnsembl. This caller-selected source is separate from the checksum-pinned
     annotation assets. Omitting it preserves the annotation-only installation.
@@ -120,19 +243,32 @@ def _install_command(name, cache_root, force=False):
 def load_genome(name, *, cache_root=None, genome_fasta_path_or_url=None):
     """Open an installed annotation offline, optionally with native chromosome DNA.
 
-    Pass the same ``genome_fasta_path_or_url`` used for installation. Loading
-    never downloads or opens DNA; a missing installation fails on DNA access
-    with PyEnsembl's explicit installation instructions.
+    ``name`` is any name :func:`reference_names` gives a genome: ``"hs1"`` and
+    ``"chm13v2.0_maskedY_rCRS"`` both open ``"t2t-chm13"``. Pass the same
+    ``genome_fasta_path_or_url`` used for installation. Loading never
+    downloads or opens DNA; a missing installation fails on DNA access with
+    PyEnsembl's explicit installation instructions.
+
+    Raises
+    ------
+    NotInstalledError
+        When the annotation isn't installed, naming the command that installs it.
+    ValueError
+        For an unknown name, a name of another version of the assembly, or a
+        damaged installation.
     """
     genome = _pinned(name)
-    status = genome_registry(genome, cache_root).inspect(genome.name, "1", verify_files=False).status
+    pinned = genome.name
+    status = genome_registry(genome, cache_root).inspect(pinned, "1", verify_files=False).status
     root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
+    named = "" if name == pinned else f" (for {name})"
     if status == "missing":
-        raise NotInstalledError(f"The {name} annotation is not installed; install it once with "
-                                f"install_genome({name!r}{root}) or {_install_command(name, cache_root)}")
+        raise NotInstalledError(f"The {pinned} annotation{named} is not installed; install it once with "
+                                f"install_genome({pinned!r}{root}) or {_install_command(pinned, cache_root)}")
     if status != "available":
-        raise ValueError(f"The installed {name} annotation is {status}; install it again with "
-                         f"install_genome({name!r}, force=True{root}) or {_install_command(name, cache_root, True)}")
+        raise ValueError(f"The installed {pinned} annotation is {status}; install it again with "
+                         f"install_genome({pinned!r}, force=True{root}) or "
+                         f"{_install_command(pinned, cache_root, True)}")
     return _with_genome_fasta(_open(genome, cache_root), genome_fasta_path_or_url)
 
 

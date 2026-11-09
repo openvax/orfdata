@@ -459,7 +459,44 @@ start codon itself differs); the exclusion reason names that transcript. The
 other 58 are on no CHM13 transcript. The genome keeps its species and assembly
 accession when pickled, for multiprocessing and Varcode. Your own CHM13 genome
 works too if its `reference_name` is `T2T-CHM13v2.0` and it has a `species`
-(or you pass `context=`); `hs1` or `chm13` get an error saying so.
+(or you pass `context=`); `hs1` gets an error saying so.
+
+#### Names, contigs and mitochondria
+
+The same sequences go by many names, and `orfdata genomes names` lists them,
+from `orfdata.reference_names()`. `load_genome`, `install_genome` and the
+`genomes` commands accept any of them, so `load_genome("hs1")` opens
+`t2t-chm13`. A name is matched exactly, ignoring case; varcode finds these
+names inside FASTA paths and VCF `##reference` lines.
+
+| Name | Files | Mitochondrion |
+|---|---|---|
+| `T2T-CHM13v2.0`, `GCA_009914755.4` | NCBI GenBank FASTA; Ensembl's DNA is this assembly | CHM13's own, `CP068254.1` |
+| `GCF_009914755.1` | NCBI RefSeq FASTA | none |
+| `hs1` | UCSC | `CP068254.1` |
+| `chm13v2.0`, `chm13v2.0_maskedY`, `chm13v2.0_noY` | T2T Consortium analysis sets; `_noY` has no chrY | `CP068254.1` |
+| `chm13v2.0_maskedY_rCRS`, `chm13v2.0_maskedY.rCRS` | The analysis set the T2T README recommends for short-read variant calling | the rCRS, `NC_012920.1` |
+| `T2T-CHM13v1.1`, `GCA_009914755.3`, `chm13.draft_v1.1` | v2.0 without chrY | `CP068254.1` |
+
+Both mitochondria are 16,569 bp, but `CP068254.1` begins at what the rCRS
+numbers 577, so the same position is 576 to 577 bp apart in the two; header
+lengths can't tell them apart, and only the name can. The rCRS is GRCh38's
+`MT`. Ensembl's rapid-release annotation has no mitochondrial genes.
+
+Names of other versions are listed with no genome and say why:
+T2T-CHM13v1.0 (`GCA_009914755.2`, `chm13.draft_v1.0`) differs in 23 of its 24
+sequence lengths, because v1.1 filled its rDNA gaps and re-polished its
+telomeres, and the v0.7 and v0.9 drafts differ throughout. Bare `chm13` names
+every version, so it selects none.
+
+`orfdata genomes contigs hs1` (or `orfdata.contig_aliases("hs1")`) gives each
+sequence's annotation name (`1`), UCSC name (`chr1`), GenBank and RefSeq
+accessions (`CP068277.2`, `NC_060925.1`) and length, from NCBI's assembly
+report. It lists only the sequences that name's files share with the pin: no
+`Y` for `chm13v2.0_noY`, and no `MT` for the `_rCRS` set, whose `chrM` is a
+different molecule, or for `GCF_009914755.1`, which has none. chr1 is
+248,387,328 bp here and 248,956,422 bp in GRCh38, so `##contig` lengths tell
+the two assemblies apart.
 
 ## Lifting a catalogue by hand
 

@@ -162,3 +162,150 @@ def test_genome_cli_passes_explicit_dna_source(tmp_path, monkeypatch, capsys):
     run(argv + ["--json"])
     assert '"reference_name": "GRCm39"' in capsys.readouterr().out
     assert load_genome("mouse-slice", genome_fasta_path_or_url=dna).sequence("MT", 1, 3) == "ATA"
+
+
+# T2T-CHM13v2.0's names, contigs and mitochondria (#204). Checked 2026-11-09 against NCBI's assembly reports
+# (tests/data/t2t), UCSC's hs1.chromAlias.txt and the marbl/CHM13 READMEs.
+T2T = Path(__file__).parent / "data/t2t"
+OWN, RCRS = "CP068254.1", "NC_012920.1"
+T2T_NAMES = {
+    "t2t-chm13": OWN, "T2T-CHM13v2.0": OWN, "GCA_009914755.4": OWN, "GCF_009914755.1": None, "hs1": OWN,
+    "chm13v2.0": OWN, "chm13v2.0_maskedY": OWN, "chm13v2.0_noY": OWN,
+    "chm13v2.0_maskedY_rCRS": RCRS, "chm13v2.0_maskedY.rCRS": RCRS,
+    "T2T-CHM13v1.1": OWN, "GCA_009914755.3": OWN, "chm13.draft_v1.1": OWN,
+}
+OLDER_T2T = ("T2T-CHM13v1.0", "GCA_009914755.2", "chm13.draft_v1.0", "chm13.draft_v0.9", "T2T-CHM13v0.7",
+             "GCA_009914755.1", "chm13.draft_v0.7")
+
+
+def assembly_report(path):
+    return [line.rstrip("\n").split("\t") for line in path.read_text().splitlines() if not line.startswith("#")]
+
+
+def test_every_t2t_name_opens_the_pin_with_its_own_mitochondrion():
+    from orfdata import reference_names
+    from orfdata.genomes import _pinned
+
+    names = reference_names()
+    assert list(names.columns) == ["name", "genome", "mitochondrion", "note"]
+    found = {row.name: (row.genome, row.mitochondrion) for row in names.itertuples()}
+    assert {name: found[name] for name in T2T_NAMES} == {name: ("t2t-chm13", mt) for name, mt in T2T_NAMES.items()}
+    assert {name: found[name] for name in OLDER_T2T} == {name: (None, None) for name in OLDER_T2T}
+    assert len(names) == len(T2T_NAMES) + len(OLDER_T2T) and names["name"].is_unique
+    for name in T2T_NAMES:
+        assert _pinned(name).name == _pinned(name.upper()).name == "t2t-chm13"
+    # Bare "chm13" names every version, so it selects none.
+    with pytest.raises(ValueError, match="No pinned genome 'chm13'.*orfdata genomes names"):
+        _pinned("chm13")
+
+
+def test_older_t2t_versions_say_why_their_coordinates_differ():
+    from orfdata import contig_aliases, reference_names
+    from orfdata.genomes import _pinned
+
+    v10 = {row[0]: int(row[8]) for row in assembly_report(T2T / "GCA_009914755.2_T2T-CHM13v1.0_assembly_report.txt")}
+    v20 = {row[0]: int(row[8]) for row in assembly_report(T2T / "GCA_009914755.4_T2T-CHM13v2.0_assembly_report.txt")}
+    assert (v10["1"], v20["1"]) == (248387497, 248387328)
+    assert sum(v10[name] != v20[name] for name in v10) == 23 and len(v10) == 24
+    notes = reference_names().set_index("name")["note"]
+    for name in OLDER_T2T:
+        for call in (_pinned, contig_aliases, load_genome):
+            with pytest.raises(ValueError, match=f"{name} has no pinned genome. ") as error:
+                call(name)
+            assert str(error.value).endswith(notes[name])
+    assert "248,387,497" in notes["T2T-CHM13v1.0"] and "draft" in notes["chm13.draft_v0.9"]
+
+
+def test_t2t_contigs_match_ncbis_assembly_report_and_ucscs_aliases():
+    from orfdata import contig_aliases
+
+    report = T2T / "GCA_009914755.4_T2T-CHM13v2.0_assembly_report.txt"
+    frame = contig_aliases("t2t-chm13")
+    assert frame.attrs["source"]["sha256"] == hashlib.sha256(report.read_bytes()).hexdigest()
+    assert frame.attrs["source"]["url"].endswith(report.name) and frame.attrs["genome"] == "t2t-chm13"
+    expected = [(row[0], row[9], row[4], None if row[6] == "na" else row[6], int(row[8]))
+                for row in assembly_report(report)]
+    assert len(expected) == 25
+    assert list(frame.itertuples(index=False, name=None)) == expected
+    ucsc = {row[0]: tuple(row[1:4]) for row in (line.split("\t") for line in
+                                                (T2T / "hs1.chromAlias.txt").read_text().splitlines()[1:])}
+    assert {row.ucsc: (row.genbank, row.refseq or "", row.name) for row in frame.itertuples()} == ucsc
+    # The chromosome a GRCh38 file would be caught by, and the mitochondrion header lengths can't tell apart.
+    lengths = dict(zip(frame["ucsc"], frame["length"]))
+    assert lengths["chr1"] == 248387328 and lengths["chrM"] == 16569
+
+
+def test_each_t2t_name_lists_only_the_contigs_its_files_share_with_the_pin():
+    from orfdata import contig_aliases
+
+    everything = set(contig_aliases("t2t-chm13")["name"])
+    for name in T2T_NAMES:
+        contigs = set(contig_aliases(name)["name"])
+        missing = everything - contigs
+        if name in ("chm13v2.0_noY", "T2T-CHM13v1.1", "GCA_009914755.3", "chm13.draft_v1.1"):
+            assert missing == {"Y"}, name
+        elif T2T_NAMES[name] != OWN:
+            # The _rCRS set's chrM is the rCRS, a different molecule; RefSeq's assembly has no mitochondrion.
+            assert missing == {"MT"}, name
+        else:
+            assert not missing, name
+    rcrs = contig_aliases("chm13v2.0_maskedY_rCRS")
+    assert "chrM" not in set(rcrs["ucsc"]) and set(rcrs["ucsc"]) >= {"chr1", "chrX", "chrY"}
+
+
+def test_a_t2t_name_that_is_not_installed_names_the_pins_install_command(tmp_path):
+    from orfdata import NotInstalledError
+
+    with pytest.raises(NotInstalledError) as error:
+        load_genome("chm13v2.0_maskedY_rCRS", cache_root=tmp_path)
+    assert str(error.value).startswith("The t2t-chm13 annotation (for chm13v2.0_maskedY_rCRS) is not installed")
+    assert f"'orfdata genomes --cache-root {tmp_path} install t2t-chm13'" in str(error.value)
+    assert isinstance(error.value, FileNotFoundError) and isinstance(error.value, ValueError)
+
+
+def test_an_installed_genome_opens_under_each_of_its_names(tmp_path, monkeypatch):
+    from orfdata import contig_aliases, genomes, reference_names
+
+    paths, pins = slice_pins(tmp_path)
+    pins["mouse-slice"].update(
+        names={"mm39-slice": dict(mitochondrion="AY172335.1", note="A test name")},
+        other_versions={"mm10-slice": "A different assembly."},
+        contigs=[dict(name="MT", ucsc="chrM", genbank="AY172335.1", refseq="NC_005089.1", length=16299)])
+    monkeypatch.setattr(genomes, "_pins", lambda: pins)
+    install_genome("mm39-slice", source_paths=paths)
+    for name in ("mouse-slice", "GRCm39", "MM39-SLICE"):
+        assert load_genome(name).transcript_by_id("ENSMUST00000109601").sequence
+    assert list(reference_names()["name"]) == ["mouse-slice", "GRCm39", "mm39-slice", "mm10-slice"]
+    assert contig_aliases("mm39-slice")["ucsc"].tolist() == ["chrM"]
+    with pytest.raises(ValueError, match="mm10-slice has no pinned genome. A different assembly."):
+        load_genome("mm10-slice")
+
+
+def test_catalogue_hints_use_the_pinned_names():
+    from orfdata import load_catalog
+
+    with pytest.raises(ValueError, match="orfdata names that assembly T2T-CHM13v2.0"):
+        load_catalog(species="human", genome_build="hs1")
+    with pytest.raises(ValueError, match="chm13.draft_v1.0 has no pinned genome. T2T-CHM13v1.0's coordinates"):
+        load_catalog(species="human", genome_build="chm13.draft_v1.0")
+    with pytest.raises(ValueError) as error:
+        load_catalog(species="human", genome_build="chm13")
+    assert "T2T-CHM13v2.0, as Ensembl does" not in str(error.value)
+
+
+def test_genome_names_and_contigs_commands(capsys):
+    run(["genomes", "names"])
+    output = capsys.readouterr().out
+    assert "chm13v2.0_maskedY_rCRS  t2t-chm13  NC_012920.1" in output and "T2T-CHM13v1.0 " in output
+    run(["genomes", "names", "--json"])
+    import json
+
+    rows = {row["name"]: row for row in json.loads(capsys.readouterr().out)}
+    assert rows["GCF_009914755.1"]["mitochondrion"] is None and rows["hs1"]["genome"] == "t2t-chm13"
+    run(["genomes", "contigs", "hs1", "--json"])
+    contigs = json.loads(capsys.readouterr().out)
+    assert len(contigs) == 25 and contigs[0] == dict(name="1", ucsc="chr1", genbank="CP068277.2",
+                                                     refseq="NC_060925.1", length=248387328)
+    with pytest.raises(SystemExit):
+        run(["genomes", "contigs", "T2T-CHM13v1.0"])
+    assert "has no pinned genome" in capsys.readouterr().err
