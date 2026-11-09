@@ -1,5 +1,7 @@
-"""List and install the pinned annotations PyEnsembl's EnsemblRelease doesn't cover, such as T2T-CHM13."""
+"""List and install the pinned annotations PyEnsembl's EnsemblRelease doesn't cover, such as T2T-CHM13, and the names
+their assemblies go by."""
 
+import json
 import sys
 from contextlib import redirect_stdout
 from dataclasses import asdict
@@ -7,7 +9,7 @@ from dataclasses import asdict
 from .cli_output import print_result
 from .cli_parser import UsageError
 from .command_parsers import genomes_parser
-from .genomes import install_genome, pinned_genomes
+from .genomes import contig_aliases, install_genome, pinned_genomes, reference_names
 
 
 def run(argv=None, prog=None):
@@ -16,6 +18,9 @@ def run(argv=None, prog=None):
     try:
         if args.command == "list":
             output = [asdict(g) for g in pinned_genomes(species=args.species)]
+        elif args.command in ("names", "contigs"):
+            frame = reference_names() if args.command == "names" else contig_aliases(args.name)
+            output = json.loads(frame.to_json(orient="records"))
         else:
             paths = {}
             for item in args.source_path:
@@ -32,7 +37,10 @@ def run(argv=None, prog=None):
                           transcripts=len(genome.transcript_ids()))
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.fail(error)
-    print_result(output, json_output=args.json, columns=("name", "species", "reference_name", "annotation_version"),
-                 limit=getattr(args, "limit", 25))
+    columns = {"names": ("name", "genome", "mitochondrion", "note"),
+               "contigs": ("name", "ucsc", "genbank", "refseq", "length")}.get(
+        args.command, ("name", "species", "reference_name", "annotation_version"))
+    print_result(output, json_output=args.json, columns=columns, limit=getattr(args, "limit", 25))
     if not args.json and args.command == "list":
-        print("\nDetails: orfdata data info NAME\nInstall: orfdata genomes install NAME")
+        print("\nDetails: orfdata data info NAME\nInstall: orfdata genomes install NAME\n"
+              "Other names, such as hs1: orfdata genomes names")

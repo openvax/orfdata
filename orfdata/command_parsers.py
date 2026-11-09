@@ -676,17 +676,28 @@ def genomes_parser(prog=None):
     Returns
     -------
     ArgumentParser
-        Its subcommands are ``list`` and ``install``.
+        Its subcommands are ``list``, ``names``, ``contigs`` and ``install``.
     """
     parser = ArgumentParser(description="List and install the pinned annotations PyEnsembl's EnsemblRelease "
-                                        "doesn't cover, such as T2T-CHM13.", prog=prog)
+                                        "doesn't cover, such as T2T-CHM13, and the names their assemblies go by.",
+                            prog=prog)
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Show pinned annotations, without downloading")
     listing.add_argument("--species", help="Only this species' annotations, e.g. human")
     add_json(listing)
     add_limit(listing)
+    names = commands.add_parser("names", help="Show every name the pinned annotations answer to, such as hs1, "
+                                              "and each name's mitochondrion")
+    add_json(names)
+    add_limit(names)
+    contigs = commands.add_parser("contigs", help="Show a pinned assembly's sequences under each of their names, "
+                                                  "with lengths")
+    contigs.add_argument("name", help="Any name 'orfdata genomes names' lists with a genome, e.g. hs1")
+    add_json(contigs)
+    add_limit(contigs)
     install = commands.add_parser("install", help="Download, check and index a pinned annotation")
-    install.add_argument("name", help="Annotation name, as 'orfdata genomes list' shows it, e.g. t2t-chm13")
+    install.add_argument("name", help="Annotation name, as 'orfdata genomes list' shows it, e.g. t2t-chm13; "
+                                      "any name 'orfdata genomes names' lists with a genome works too")
     install.add_argument("--force", action="store_true", help="Download again even when present")
     install.add_argument("--genome-fasta", help="Explicit chromosome FASTA path or URL to install through PyEnsembl")
     install.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH",
