@@ -92,6 +92,18 @@
       "GCA_009914755.1": "T2T-CHM13v0.7 is a draft whose sequences and coordinates differ from T2T-CHM13v2.0's.",
       "chm13.draft_v0.7": "T2T-CHM13v0.7 is a draft whose sequences and coordinates differ from T2T-CHM13v2.0's."
     },
+    "mitochondria": {
+      "NC_012920.1": {
+        "title": "Ensembl GRCh38 release 115's annotation of MT, the rCRS, which the chm13v2.0_maskedY_rCRS analysis set carries as chrM",
+        "contig": {"name": "NC_012920.1", "ucsc": "chrM", "genbank": "J01415.2", "refseq": "NC_012920.1", "length": 16569},
+        "assets": {
+          "gtf": {"resource": "data/genomes/rcrs-ensembl115.gtf.gz", "sha256": "dbb6412eaab495abd71a9473b247ee76ca3437e87929017f6d367136c5d81804", "size": 2662},
+          "transcripts": {"resource": "data/genomes/rcrs-ensembl115.cdna.fa.gz", "sha256": "77c5616d394494ba5227fb19fd3138870f49b015d25cd8cddba44ac47f9b7c8e", "size": 6850},
+          "proteins": {"resource": "data/genomes/rcrs-ensembl115.pep.fa.gz", "sha256": "2f1ec7fbafe3e9d8224550a51e537eed9df92ace643afcb9572f131c0db0a27f", "size": 3152}
+        },
+        "builder": "tools/build_rcrs_mitochondrion.py"
+      }
+    },
     "contigs": [
       {"name": "1", "ucsc": "chr1", "genbank": "CP068277.2", "refseq": "NC_060925.1", "length": 248387328},
       {"name": "2", "ucsc": "chr2", "genbank": "CP068276.2", "refseq": "NC_060926.1", "length": 242696752},

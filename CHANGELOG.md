@@ -1,3 +1,30 @@
+# 0.52.0
+
+- `t2t-chm13` annotates the rCRS mitochondrion (openvax/varcode#722). The
+  T2T Consortium's `chm13v2.0_maskedY_rCRS` analysis set, which its README
+  recommends for short-read variant calling, carries the rCRS (NC_012920.1) as
+  chrM rather than CHM13's own mitochondrion, and Ensembl's rapid-release
+  annotation has no mitochondrial genes. The rCRS is GRCh38's MT, so the
+  genome now includes Ensembl GRCh38 release 115's 37 MT genes (13 protein
+  coding) on a contig named `NC_012920.1`, so they can't be read as CHM13's own
+  `MT`, which begins at what the rCRS numbers 577.
+  - The three files (about 12 KB) are packaged in ORFdata, pinned by SHA-256 in
+    `genomes.json` under the pin's new `mitochondria` entry, and rebuilt by
+    `tools/build_rcrs_mitochondrion.py`. It checks Ensembl's MT DNA against
+    NC_012920.1, every transcript's exons against its cDNA, and every CDS's
+    table 2 translation against its protein. The tests repeat those checks
+    against NCBI's NC_012920.1, offline.
+  - `contig_aliases("chm13v2.0_maskedY_rCRS")` maps `chrM` to `NC_012920.1`.
+    Files with CHM13's own mitochondrion keep `chrM` as `MT`, which stays
+    unannotated.
+  - PyEnsembl is told that `NC_012920.1` is mitochondrial, so its transcripts
+    translate with table 2. `Proteome.build` of the genome gains the 13 MT
+    proteins.
+  - Installed files are reused, but the PyEnsembl index is rebuilt once, on
+    the next load, from the downloaded GTF with the MT records appended (about
+    1.1 GB). The previous index under `genomes/t2t-chm13/pyensembl/` can be
+    deleted.
+
 # 0.51.0
 
 - Publish the names T2T-CHM13v2.0 goes by, so varcode and ORFdata accept the
