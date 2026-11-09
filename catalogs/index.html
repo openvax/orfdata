@@ -2253,7 +2253,7 @@ orfdata<span class="w"> </span>proteome<span class="w"> </span>--genome<span cla
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">Proteome</span><span class="p">,</span> <span class="n">load_genome</span>
 
 <span class="n">genome</span> <span class="o">=</span> <span class="n">load_genome</span><span class="p">(</span><span class="s2">"t2t-chm13"</span><span class="p">)</span>          <span class="c1"># A PyEnsembl Genome named T2T-CHM13v2.0, offline</span>
-<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>  <span class="c1"># 104,957 reference proteins + 2,039 MS-supported ORFs</span>
+<span class="n">proteome</span> <span class="o">=</span> <span class="n">Proteome</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">genome</span><span class="p">,</span> <span class="n">nc_orf_sources</span><span class="o">=</span><span class="s2">"ms"</span><span class="p">)</span>  <span class="c1"># 104,970 reference proteins (13 mitochondrial) + 2,039 MS-supported ORFs</span>
 </code></pre></div>
 <p>The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
 6,767 place on CHM13 transcripts with their exact coding path and protein.
@@ -2314,8 +2314,17 @@ names inside FASTA paths and VCF <code>##reference</code> lines.</p>
 </table>
 <p>Both mitochondria are 16,569 bp, but <code>CP068254.1</code> begins at what the rCRS
 numbers 577, so the same position is 576 to 577 bp apart in the two; header
-lengths can't tell them apart, and only the name can. The rCRS is GRCh38's
-<code>MT</code>. Ensembl's rapid-release annotation has no mitochondrial genes.</p>
+lengths can't tell them apart, and only the name can.</p>
+<p>Ensembl's rapid-release annotation has no mitochondrial genes. The rCRS is
+GRCh38's <code>MT</code>, so <code>t2t-chm13</code> also carries Ensembl GRCh38 release 115's
+annotation of it (37 genes, 13 of them protein coding), on a contig named
+<code>NC_012920.1</code> so that it can never be read as CHM13's own <code>MT</code>. The three
+files, about 12 KB, are packaged in ORFdata and rebuilt by
+<code>tools/build_rcrs_mitochondrion.py</code>. It checks that Ensembl's MT DNA is
+NC_012920.1, that every transcript's exons spell its cDNA, and that every CDS
+translates to its protein with the vertebrate mitochondrial code. CHM13's own
+mitochondrion has no annotation in its coordinates among the sources ORFdata
+pins, so <code>MT</code> stays unannotated.</p>
 <p>Names of other versions are listed with no genome and say why:
 T2T-CHM13v1.0 (<code>GCA_009914755.2</code>, <code>chm13.draft_v1.0</code>) differs in 23 of its 24
 sequence lengths, because v1.1 filled its rDNA gaps and re-polished its
@@ -2325,8 +2334,8 @@ every version, so it selects none.</p>
 sequence's annotation name (<code>1</code>), UCSC name (<code>chr1</code>), GenBank and RefSeq
 accessions (<code>CP068277.2</code>, <code>NC_060925.1</code>) and length, from NCBI's assembly
 report. It lists only the sequences that name's files share with the pin: no
-<code>Y</code> for <code>chm13v2.0_noY</code>, and no <code>MT</code> for the <code>_rCRS</code> set, whose <code>chrM</code> is a
-different molecule, or for <code>GCF_009914755.1</code>, which has none. chr1 is
+<code>Y</code> for <code>chm13v2.0_noY</code>, and no <code>MT</code> for <code>GCF_009914755.1</code>, which has none.
+For the <code>_rCRS</code> set, <code>chrM</code> is <code>NC_012920.1</code>, the rCRS, rather than <code>MT</code>. chr1 is
 248,387,328 bp here and 248,956,422 bp in GRCh38, so <code>##contig</code> lengths tell
 the two assemblies apart.</p>
 <h2 id="lifting-a-catalogue-by-hand">Lifting a catalogue by hand<a class="headerlink" href="#lifting-a-catalogue-by-hand" title="Permanent link">&para;</a></h2>
