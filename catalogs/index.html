@@ -733,6 +733,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="T2T-CHM13">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#names-contigs-and-mitochondria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Names, contigs and mitochondria
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1660,6 +1677,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="T2T-CHM13">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#names-contigs-and-mitochondria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Names, contigs and mitochondria
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -2230,7 +2264,71 @@ start codon itself differs); the exclusion reason names that transcript. The
 other 58 are on no CHM13 transcript. The genome keeps its species and assembly
 accession when pickled, for multiprocessing and Varcode. Your own CHM13 genome
 works too if its <code>reference_name</code> is <code>T2T-CHM13v2.0</code> and it has a <code>species</code>
-(or you pass <code>context=</code>); <code>hs1</code> or <code>chm13</code> get an error saying so.</p>
+(or you pass <code>context=</code>); <code>hs1</code> gets an error saying so.</p>
+<h4 id="names-contigs-and-mitochondria">Names, contigs and mitochondria<a class="headerlink" href="#names-contigs-and-mitochondria" title="Permanent link">&para;</a></h4>
+<p>The same sequences go by many names, and <code>orfdata genomes names</code> lists them,
+from <code>orfdata.reference_names()</code>. <code>load_genome</code>, <code>install_genome</code> and the
+<code>genomes</code> commands accept any of them, so <code>load_genome("hs1")</code> opens
+<code>t2t-chm13</code>. A name is matched exactly, ignoring case; varcode finds these
+names inside FASTA paths and VCF <code>##reference</code> lines.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Files</th>
+<th>Mitochondrion</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>T2T-CHM13v2.0</code>, <code>GCA_009914755.4</code></td>
+<td>NCBI GenBank FASTA; Ensembl's DNA is this assembly</td>
+<td>CHM13's own, <code>CP068254.1</code></td>
+</tr>
+<tr>
+<td><code>GCF_009914755.1</code></td>
+<td>NCBI RefSeq FASTA</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>hs1</code></td>
+<td>UCSC</td>
+<td><code>CP068254.1</code></td>
+</tr>
+<tr>
+<td><code>chm13v2.0</code>, <code>chm13v2.0_maskedY</code>, <code>chm13v2.0_noY</code></td>
+<td>T2T Consortium analysis sets; <code>_noY</code> has no chrY</td>
+<td><code>CP068254.1</code></td>
+</tr>
+<tr>
+<td><code>chm13v2.0_maskedY_rCRS</code>, <code>chm13v2.0_maskedY.rCRS</code></td>
+<td>The analysis set the T2T README recommends for short-read variant calling</td>
+<td>the rCRS, <code>NC_012920.1</code></td>
+</tr>
+<tr>
+<td><code>T2T-CHM13v1.1</code>, <code>GCA_009914755.3</code>, <code>chm13.draft_v1.1</code></td>
+<td>v2.0 without chrY</td>
+<td><code>CP068254.1</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both mitochondria are 16,569 bp, but <code>CP068254.1</code> begins at what the rCRS
+numbers 577, so the same position is 576 to 577 bp apart in the two; header
+lengths can't tell them apart, and only the name can. The rCRS is GRCh38's
+<code>MT</code>. Ensembl's rapid-release annotation has no mitochondrial genes.</p>
+<p>Names of other versions are listed with no genome and say why:
+T2T-CHM13v1.0 (<code>GCA_009914755.2</code>, <code>chm13.draft_v1.0</code>) differs in 23 of its 24
+sequence lengths, because v1.1 filled its rDNA gaps and re-polished its
+telomeres, and the v0.7 and v0.9 drafts differ throughout. Bare <code>chm13</code> names
+every version, so it selects none.</p>
+<p><code>orfdata genomes contigs hs1</code> (or <code>orfdata.contig_aliases("hs1")</code>) gives each
+sequence's annotation name (<code>1</code>), UCSC name (<code>chr1</code>), GenBank and RefSeq
+accessions (<code>CP068277.2</code>, <code>NC_060925.1</code>) and length, from NCBI's assembly
+report. It lists only the sequences that name's files share with the pin: no
+<code>Y</code> for <code>chm13v2.0_noY</code>, and no <code>MT</code> for the <code>_rCRS</code> set, whose <code>chrM</code> is a
+different molecule, or for <code>GCF_009914755.1</code>, which has none. chr1 is
+248,387,328 bp here and 248,956,422 bp in GRCh38, so <code>##contig</code> lengths tell
+the two assemblies apart.</p>
 <h2 id="lifting-a-catalogue-by-hand">Lifting a catalogue by hand<a class="headerlink" href="#lifting-a-catalogue-by-hand" title="Permanent link">&para;</a></h2>
 <p><code>orfdata lift</code> writes a lifted catalogue to a file, for any route the pinned
 chains cover or with your own chain file:</p>
