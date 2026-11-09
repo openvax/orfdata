@@ -44,6 +44,11 @@ class PinnedGenome:
     contigs: tuple = field(default=(), hash=False)
     #: Where :attr:`contigs` came from, and its SHA-256.
     contigs_source: Mapping = field(default_factory=dict, hash=False)
+    #: Mitochondria some of the assembly's files carry instead of its own, by
+    #: accession, each with its annotation packaged in ORFdata. The genome
+    #: includes their genes, on a contig named by the accession so that they
+    #: can't be mistaken for the assembly's own mitochondrion.
+    mitochondria: Mapping = field(default_factory=dict, hash=False)
 
 
 def _pins():
@@ -155,8 +160,11 @@ def contig_aliases(name):
         name's files lack, or carry as a different molecule, are left out: no
         ``Y`` for ``chm13v2.0_noY``, and no ``MT`` for the ``_rCRS`` analysis
         set, whose ``chrM`` is the rCRS rather than CHM13's mitochondrion, or
-        for ``GCF_009914755.1``, which has none. ``frame.attrs`` holds the
-        genome's name and the source of the table.
+        for ``GCF_009914755.1``, which has none. A mitochondrion in
+        :attr:`PinnedGenome.mitochondria` is listed instead, under the
+        annotation's name for it: the ``_rCRS`` set's ``chrM`` is
+        ``NC_012920.1``. ``frame.attrs`` holds the genome's name and the
+        source of the table.
 
     Raises
     ------
@@ -168,8 +176,10 @@ def contig_aliases(name):
 
     genome, entry = _lookup(name)
     without = set(entry.get("without", ()))
-    frame = pd.DataFrame([c for c in genome.contigs if c["name"] not in without],
-                         columns=["name", "ucsc", "genbank", "refseq", "length"], dtype=object)
+    rows = [c for c in genome.contigs if c["name"] not in without]
+    if entry.get("mitochondrion") in genome.mitochondria:
+        rows.append(genome.mitochondria[entry["mitochondrion"]]["contig"])
+    frame = pd.DataFrame(rows, columns=["name", "ucsc", "genbank", "refseq", "length"], dtype=object)
     frame = frame.astype({"length": "int64"})
     frame.attrs.update(genome=genome.name, source=dict(genome.contigs_source))
     return frame
@@ -294,19 +304,70 @@ def _open(genome, cache_root, *, rebuild=False):
         raise ValueError(f"The installed {genome.name} annotation is damaged ({error}); install it again with "
                          f"{_install_command(genome.name, cache_root, True)}") from error
     # The index belongs to these exact files, so a new pin never reuses an old one.
-    index = (get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl" / content_digest(dict(genome.assets))).absolute()
-    opened = PinnedEnsemblGenome(genome.reference_name, genome.annotation_name, genome.annotation_version,
-                                 gtf_path_or_url=paths["gtf"], transcript_fasta_paths_or_urls=[paths["transcripts"]],
-                                 protein_fasta_paths_or_urls=[paths["proteins"]], cache_directory_path=str(index),
-                                 species=genome.species, assembly_accession=genome.assembly_accession,
-                                 pinned_name=genome.name)
+    pinned = dict(genome.assets)
+    if genome.mitochondria:
+        pinned["mitochondria"] = {accession: dict(m["assets"]) for accession, m in genome.mitochondria.items()}
+    index = (get_data_dir(cache_root) / "genomes" / genome.name / "pyensembl" / content_digest(pinned)).absolute()
     if rebuild:  # A forced install rebuilds the index from scratch, even a damaged one.
         import shutil
 
         shutil.rmtree(index, ignore_errors=True)
+    gtf, transcripts, proteins = paths["gtf"], [paths["transcripts"]], [paths["proteins"]]
+    metadata = None
+    if genome.mitochondria:
+        gtf, extra = _with_mitochondria(genome, paths["gtf"], index)
+        transcripts += extra["transcripts"]
+        proteins += extra["proteins"]
+        # PyEnsembl recognizes MT and chrM by name; an accession needs saying.
+        metadata = dict(contig_compartments={m["contig"]["name"]: "mitochondrial"
+                                             for m in genome.mitochondria.values()})
+    opened = PinnedEnsemblGenome(genome.reference_name, genome.annotation_name, genome.annotation_version,
+                                 gtf_path_or_url=gtf, transcript_fasta_paths_or_urls=transcripts,
+                                 protein_fasta_paths_or_urls=proteins, cache_directory_path=str(index),
+                                 species=genome.species, assembly_accession=genome.assembly_accession,
+                                 pinned_name=genome.name, reference_metadata=metadata)
     try:
         opened.index()  # Local files only; done once.
     except (sqlite3.Error, EOFError, pickle.UnpicklingError) as error:
         raise ValueError(f"The {genome.name} index is damaged ({error or type(error).__name__}); rebuild it with "
                          f"{_install_command(genome.name, cache_root, True)}") from error
     return opened
+
+
+def _with_mitochondria(genome, gtf, index):
+    """Write the genome's GTF with its packaged mitochondria appended, and their FASTAs, into ``index``.
+
+    The files are copied out of the package so the genome still opens, and
+    unpickles, after ORFdata is upgraded. Each is read only when its bytes are
+    the pinned ones. The GTF is the Ensembl file's gzip stream followed by each
+    mitochondrion's, which gzip readers read as one file.
+    """
+    import os
+
+    from .reference_table import packaged_bytes
+
+    index.mkdir(parents=True, exist_ok=True)
+    extra = {"transcripts": [], "proteins": []}
+    layers = []
+    for m in genome.mitochondria.values():
+        for role, asset in m["assets"].items():
+            raw = packaged_bytes(asset["resource"], asset["sha256"])
+            if role == "gtf":
+                layers.append(raw)
+                continue
+            path = index / asset["resource"].rsplit("/", 1)[-1]
+            if not path.exists() or path.stat().st_size != len(raw):
+                path.write_bytes(raw)
+            extra[role].append(str(path))
+    name = gtf.rsplit("/", 1)[-1].removesuffix(".gtf.gz")
+    merged = index / f"{name}+{'+'.join(genome.mitochondria)}.gtf.gz"
+    size = os.path.getsize(gtf) + sum(len(raw) for raw in layers)
+    if not merged.exists() or merged.stat().st_size != size:
+        partial = merged.with_name(merged.name + ".partial")
+        with open(gtf, "rb") as source, open(partial, "wb") as target:
+            while chunk := source.read(1 << 20):
+                target.write(chunk)
+            for raw in layers:
+                target.write(raw)
+        os.replace(partial, merged)
+    return str(merged), extra

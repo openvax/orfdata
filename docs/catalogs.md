@@ -447,7 +447,7 @@ orfdata proteome --genome t2t-chm13 --nc-orf-sources ms --output chm13.fasta
 from orfdata import Proteome, load_genome
 
 genome = load_genome("t2t-chm13")          # A PyEnsembl Genome named T2T-CHM13v2.0, offline
-proteome = Proteome.build(genome, nc_orf_sources="ms")  # 104,957 reference proteins + 2,039 MS-supported ORFs
+proteome = Proteome.build(genome, nc_orf_sources="ms")  # 104,970 reference proteins (13 mitochondrial) + 2,039 MS-supported ORFs
 ```
 
 The bundled GRCh38 catalogue lifts automatically: 7,208 of 7,264 ORFs lift, and
@@ -480,8 +480,18 @@ names inside FASTA paths and VCF `##reference` lines.
 
 Both mitochondria are 16,569 bp, but `CP068254.1` begins at what the rCRS
 numbers 577, so the same position is 576 to 577 bp apart in the two; header
-lengths can't tell them apart, and only the name can. The rCRS is GRCh38's
-`MT`. Ensembl's rapid-release annotation has no mitochondrial genes.
+lengths can't tell them apart, and only the name can.
+
+Ensembl's rapid-release annotation has no mitochondrial genes. The rCRS is
+GRCh38's `MT`, so `t2t-chm13` also carries Ensembl GRCh38 release 115's
+annotation of it (37 genes, 13 of them protein coding), on a contig named
+`NC_012920.1` so that it can never be read as CHM13's own `MT`. The three
+files, about 12 KB, are packaged in ORFdata and rebuilt by
+`tools/build_rcrs_mitochondrion.py`. It checks that Ensembl's MT DNA is
+NC_012920.1, that every transcript's exons spell its cDNA, and that every CDS
+translates to its protein with the vertebrate mitochondrial code. CHM13's own
+mitochondrion has no annotation in its coordinates among the sources ORFdata
+pins, so `MT` stays unannotated.
 
 Names of other versions are listed with no genome and say why:
 T2T-CHM13v1.0 (`GCA_009914755.2`, `chm13.draft_v1.0`) differs in 23 of its 24
@@ -493,8 +503,8 @@ every version, so it selects none.
 sequence's annotation name (`1`), UCSC name (`chr1`), GenBank and RefSeq
 accessions (`CP068277.2`, `NC_060925.1`) and length, from NCBI's assembly
 report. It lists only the sequences that name's files share with the pin: no
-`Y` for `chm13v2.0_noY`, and no `MT` for the `_rCRS` set, whose `chrM` is a
-different molecule, or for `GCF_009914755.1`, which has none. chr1 is
+`Y` for `chm13v2.0_noY`, and no `MT` for `GCF_009914755.1`, which has none.
+For the `_rCRS` set, `chrM` is `NC_012920.1`, the rCRS, rather than `MT`. chr1 is
 248,387,328 bp here and 248,956,422 bp in GRCh38, so `##contig` lengths tell
 the two assemblies apart.
 

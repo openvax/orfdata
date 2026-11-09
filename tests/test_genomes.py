@@ -249,8 +249,9 @@ def test_each_t2t_name_lists_only_the_contigs_its_files_share_with_the_pin():
             assert missing == {"MT"}, name
         else:
             assert not missing, name
-    rcrs = contig_aliases("chm13v2.0_maskedY_rCRS")
-    assert "chrM" not in set(rcrs["ucsc"]) and set(rcrs["ucsc"]) >= {"chr1", "chrX", "chrY"}
+    # The _rCRS set's chrM is the rCRS, which the genome annotates as NC_012920.1, never as MT.
+    rcrs = contig_aliases("chm13v2.0_maskedY_rCRS").set_index("ucsc")["name"]
+    assert rcrs["chrM"] == "NC_012920.1" and set(rcrs.index) >= {"chr1", "chrX", "chrY"}
 
 
 def test_a_t2t_name_that_is_not_installed_names_the_pins_install_command(tmp_path):
@@ -309,3 +310,120 @@ def test_genome_names_and_contigs_commands(capsys):
     with pytest.raises(SystemExit):
         run(["genomes", "contigs", "T2T-CHM13v1.0"])
     assert "has no pinned genome" in capsys.readouterr().err
+
+
+# The rCRS mitochondrion t2t-chm13 carries as NC_012920.1 (openvax/varcode#722).
+RCRS = "NC_012920.1"
+
+
+def rcrs_sequence():
+    text = (T2T / "NC_012920.1.fasta").read_text()
+    return "".join(line.strip() for line in text.splitlines() if not line.startswith(">")).upper()
+
+
+def packaged_rcrs():
+    """The packaged GTF rows, transcripts and proteins, read only when they are the pinned bytes."""
+    from orfdata.reference_table import packaged_bytes
+
+    t2t, = pinned_genomes(species="human")
+    assets = t2t.mitochondria[RCRS]["assets"]
+    texts = {role: gzip.decompress(packaged_bytes(a["resource"], a["sha256"])).decode() for role, a in assets.items()}
+
+    def fasta(text, key=lambda header: header.split()[0]):
+        records = {}
+        for block in text.split(">")[1:]:
+            header, *lines = block.splitlines()
+            records[key(header).split(".")[0]] = "".join(lines)
+        return records
+
+    rows = [line.split("\t") for line in texts["gtf"].splitlines() if not line.startswith("#")]
+    # Proteins by the transcript their header names.
+    return rows, fasta(texts["transcripts"]), fasta(texts["proteins"], lambda h: h.split("transcript:")[1].split()[0])
+
+
+def test_the_packaged_rcrs_annotation_spells_ncbis_rcrs():
+    import re
+
+    from orfdata.sequence import genetic_code
+    from orfdata.viral_annotation import extract, translate
+
+    dna = rcrs_sequence()
+    assert len(dna) == 16569 and dna.startswith("GATCACAGGTCTATCACCC")
+    rows, transcripts, proteins = packaged_rcrs()
+    assert {row[0] for row in rows} == {RCRS}
+    exons, cds = {}, {}
+    for row in rows:
+        transcript = re.search(r'transcript_id "([^"]+)"', row[8])
+        if row[2] == "exon":
+            exons.setdefault(transcript[1], []).append((int(row[3]), int(row[4]), row[6]))
+        elif row[2] == "CDS":
+            cds.setdefault(transcript[1], []).append((int(row[3]), int(row[4]), row[6]))
+    genes = {re.search(r'gene_name "([^"]+)"', row[8])[1] for row in rows if row[2] == "gene"}
+    assert len(genes) == 37 and {"MT-ND1", "MT-CO1", "MT-ATP6", "MT-CYB", "MT-TF", "MT-RNR2"} <= genes
+    assert set(exons) == set(transcripts) and len(cds) == len(proteins) == 13
+    for transcript, spans in exons.items():
+        assert extract(dna, sorted(spans, reverse=spans[0][2] == "-")) == transcripts[transcript], transcript
+    starts = genetic_code(2).start_codons
+    for transcript, spans in cds.items():
+        coding = extract(dna, sorted(spans, reverse=spans[0][2] == "-"))
+        protein = translate(coding, table=2)
+        assert ("M" + protein[1:] if coding[:3] in starts else protein) == proteins[transcript], transcript
+        # The vertebrate mitochondrial code matters: TGA is tryptophan, not a stop.
+        assert translate(coding, table=1) != protein
+
+
+def test_the_rcrs_files_contig_table_names_their_chrm_by_its_accession():
+    from orfdata import contig_aliases
+
+    for name in ("chm13v2.0_maskedY_rCRS", "chm13v2.0_maskedY.rCRS"):
+        frame = contig_aliases(name)
+        row = frame[frame["ucsc"] == "chrM"].iloc[0].to_dict()
+        assert row == dict(name=RCRS, ucsc="chrM", genbank="J01415.2", refseq=RCRS, length=16569)
+        assert "MT" not in set(frame["name"]) and len(frame) == 25
+    # Files with CHM13's own mitochondrion keep MT, CP068254.1; none lists the rCRS.
+    for name in ("t2t-chm13", "hs1", "chm13v2.0", "GCF_009914755.1"):
+        assert RCRS not in set(contig_aliases(name)["name"]), name
+    assert contig_aliases("hs1").set_index("ucsc").loc["chrM", "name"] == "MT"
+
+
+def test_a_genome_with_a_packaged_mitochondrion_annotates_it_on_its_own_contig(tmp_path, monkeypatch):
+    import pickle
+
+    from orfdata import genomes
+
+    paths, pins = slice_pins(tmp_path)
+    t2t, = pinned_genomes(species="human")
+    pins["mouse-slice"]["mitochondria"] = {RCRS: dict(t2t.mitochondria[RCRS])}
+    monkeypatch.setattr(genomes, "_pins", lambda: pins)
+    root = tmp_path / "root"
+    installed = install_genome("mouse-slice", source_paths=paths, cache_root=root)
+    for genome in (installed, load_genome("mouse-slice", cache_root=root),
+                   pickle.loads(pickle.dumps(installed))):
+        assert RCRS in genome.contigs() and "17" in genome.contigs()
+        assert genome.transcript_by_id("ENSMUST00000109601").sequence  # The slice is still there.
+        nd1, = genome.transcripts_at_locus(RCRS, 3307, 3307)
+        assert (nd1.gene_name, nd1.biotype, nd1.strand) == ("MT-ND1", "protein_coding", "+")
+        assert nd1.translation_table == 2 and nd1.protein_sequence.startswith("MPMANLLLLIVPILIAMAFLMLTERKILGYMQLRKGPNVVGPYGLLQPFADAMKLFTKEP")
+        assert genome.genes_by_name("MT-TF")[0].start == 577
+    # The packaged files are copied beside the index, so the genome doesn't depend on where ORFdata is installed.
+    assert {p.name for p in root.rglob("rcrs-ensembl115.*")} == {"rcrs-ensembl115.cdna.fa.gz",
+                                                                 "rcrs-ensembl115.pep.fa.gz"}
+    merged, = root.rglob(f"*+{RCRS}.gtf.gz")
+    assert merged.stat().st_size == paths["gtf"].stat().st_size + t2t.mitochondria[RCRS]["assets"]["gtf"]["size"]
+    # A forced install rebuilds the index and the merged GTF.
+    assert install_genome("mouse-slice", source_paths=paths, cache_root=root, force=True).genes_by_name("MT-CO1")
+
+
+def test_adding_a_mitochondrion_reindexes_without_downloading_again(tmp_path, monkeypatch):
+    from orfdata import genomes
+
+    t2t, = pinned_genomes(species="human")
+    paths, pins = slice_pins(tmp_path)
+    monkeypatch.setattr(genomes, "_pins", lambda: pins)
+    root = tmp_path / "root"
+    install_genome("mouse-slice", source_paths=paths, cache_root=root)
+    assert not load_genome("mouse-slice", cache_root=root).transcripts_at_locus(RCRS, 3307, 3307)
+    pins["mouse-slice"]["mitochondria"] = {RCRS: dict(t2t.mitochondria[RCRS])}
+    # The downloaded files' store is unchanged, so loading builds the new index from them, offline.
+    opened = load_genome("mouse-slice", cache_root=root)
+    assert opened.transcripts_at_locus(RCRS, 3307, 3307)[0].gene_name == "MT-ND1"
