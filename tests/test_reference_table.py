@@ -90,5 +90,5 @@ def test_a_read_table_has_exactly_the_columns_it_declares():
                        numeric=table.numeric)
     assert tuple(frame.columns) == table.columns
     assert str(frame["index"].dtype) == "Int64"
-    assert all(str(frame[column].dtype) == "str"
+    assert all(pd.api.types.is_string_dtype(frame[column])
                for column in table.columns if column not in table.numeric)
