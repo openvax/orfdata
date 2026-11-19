@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from .catalog import load_catalog
-from .cli_output import print_result
+from .cli_output import print_run_summary
 from .cli_parser import UsageError
 from .command_parsers import proteome_parser
 from .proteome import Proteome
@@ -26,6 +26,11 @@ def run(argv=None, prog=None, *, genome_loader=None):
             raise UsageError("Pass --genome or --species and --release, not both")
         if args.genome is None and (args.species is None or args.release is None):
             raise UsageError("Pass --species and --release, or --genome")
+        if args.json and args.output is None:
+            raise UsageError("--json writes the summary to standard output, where the FASTA goes without --output: "
+                             "add --output FILE, or use --summary FILE to keep the FASTA on standard output")
+        if args.summary is not None and args.summary in (args.output, args.snapshot):
+            raise UsageError("--summary names the same file as --output or --snapshot")
         names = [name.strip() for value in args.nc_orf_sources or ()
                  for name in ([value] if Path(value).is_file() else value.split(","))]
         if not all(names):
@@ -60,7 +65,9 @@ def run(argv=None, prog=None, *, genome_loader=None):
                                 for e in proteome.excluded]
     if annotation is not None:
         summary["annotation"] = annotation
-    if not args.json:
-        summary = dict(output=args.output or "stdout (FASTA)", **summary)
-    print_result(summary, json_output=args.json, stream=sys.stderr)
+    try:
+        print_run_summary(summary, json_output=args.json, path=args.summary,
+                          human=dict(output=args.output or "stdout (FASTA)", **summary))
+    except OSError as error:
+        parser.fail(error)
 

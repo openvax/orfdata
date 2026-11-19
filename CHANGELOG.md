@@ -1,3 +1,17 @@
+# 0.53.0
+
+- `proteome --json` and `lift --json` write the complete JSON summary to
+  standard output, as `--json` does in every other command, instead of standard
+  error (#165). `orfdata lift ... --json | jq` now receives it.
+  - `proteome --json` requires `--output`, because the FASTA would otherwise
+    share standard output; without it the command exits 2 and says what to add.
+  - Both commands gain `--summary FILE`, which writes the same JSON document to
+    a file and leaves the streams alone, so it works while FASTA is piped.
+  - The human summary still goes to standard error.
+  - Migration: scripts that read the JSON summary from standard error
+    (`2> summary.json`) should pass `--summary summary.json` or read standard
+    output. See "Migrating scripts from 0.52 or earlier" in the CLI guide.
+
 # 0.52.0
 
 - `t2t-chm13` annotates the rCRS mitochondrion (openvax/varcode#722). The

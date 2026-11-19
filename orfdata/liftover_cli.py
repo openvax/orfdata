@@ -7,7 +7,7 @@ from dataclasses import asdict
 
 from .catalog import load_catalog
 from .catalogs import CatalogRegistry
-from .cli_output import print_result
+from .cli_output import print_result, print_run_summary
 from .cli_parser import UsageError
 from .command_parsers import chains_parser, lift_parser
 from .liftover import (
@@ -27,6 +27,8 @@ def lift(argv=None, prog=None):
     try:
         if args.catalog and (args.species or args.genome_build):
             raise UsageError("Pass --catalog or --species/--genome-build, not both")
+        if args.summary is not None and args.summary == args.output:
+            raise UsageError("--summary and --output name the same file")
         registry = CatalogRegistry(cache_root=args.cache_root) if args.cache_root else None
         catalog = (load_catalog(args.catalog) if args.catalog
                    else load_catalog(species=args.species, genome_build=args.genome_build, registry=registry))
@@ -48,7 +50,10 @@ def lift(argv=None, prog=None):
                    chains=[dict(chain=h["chain"], sha256=h["sha256"], lifted=h["lifted"]) for h in hops],
                    records=len(catalog.records), lifted_records=len(lifted.records), unmapped=len(unmapped),
                    unmapped_reasons=dict(Counter(u["reason"] for u in unmapped)), output=args.output)
-    print_result(summary, json_output=args.json, stream=sys.stderr)
+    try:
+        print_run_summary(summary, json_output=args.json, path=args.summary)
+    except OSError as error:
+        parser.fail(error)
 
 
 def require_terms(source_build, target_build, species, accept_terms):

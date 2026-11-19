@@ -529,7 +529,8 @@ orfdata lift --species human --to GRCh37 --output orfs-grch37.json.gz
 ```
 
 `orfdata lift` writes the lifted catalogue and prints a summary to standard
-error. `--catalog FILE` lifts a local catalogue instead, and `--chain FILE` uses
+error; `--json` prints the complete summary as JSON on standard output instead,
+and `--summary FILE` writes that JSON to a file. `--catalog FILE` lifts a local catalogue instead, and `--chain FILE` uses
 your own chain file instead of a downloaded pin. Pass the result back with
 `--nc-orf-sources` for `orfdata proteome`; JSON and TSV exports include
 each record's original and the chain. In Python:
