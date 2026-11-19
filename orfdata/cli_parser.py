@@ -143,3 +143,14 @@ def nonnegative(value):
 def add_limit(parser):
     parser.add_argument("--limit", type=nonnegative, default=25, metavar="N",
                         help="Human preview rows (default 25; 0 shows all); exports are always complete")
+
+
+def parse_source_paths(items, *, metavar="NAME=PATH"):
+    """Parse repeated ``NAME=PATH`` overrides into a dict, or ``None`` when none were given."""
+    paths = {}
+    for item in items:
+        key, separator, path = item.partition("=")
+        if not separator or not key or not path or key in paths:
+            raise UsageError(f"Source overrides require unique {metavar} entries")
+        paths[key] = path
+    return paths or None

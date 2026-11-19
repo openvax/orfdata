@@ -4,19 +4,9 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_json, print_table
-from .cli_parser import UsageError
+from .cli_parser import UsageError, parse_source_paths
 from .command_parsers import data_parser
 from .downloads import list_data
-
-
-def _source_paths(items, label):
-    paths = {}
-    for item in items:
-        key, separator, path = item.partition("=")
-        if not separator or not key or not path or key in paths:
-            raise UsageError(f"{label} require unique NAME=PATH entries")
-        paths[key] = path
-    return paths or None
 
 
 def _preview(rows, limit):
@@ -120,7 +110,7 @@ def run(argv=None, prog="orfdata download"):
                     info = data_info(name, **options)
                     if info["restricted"] and not args.accept_terms:
                         raise UsageError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
-                paths = _source_paths(args.source_path, "Source overrides")
+                paths = parse_source_paths(args.source_path)
                 if len(names) > 1:  # Find every name, terms and permissions problem before downloading anything.
                     for name in names:
                         check_fetch(name, **options, force=args.force, accept_terms=args.accept_terms)
@@ -169,7 +159,7 @@ def run(argv=None, prog="orfdata download"):
                 from .catalogs import CatalogRegistry
 
                 registry = CatalogRegistry(cache_root=args.cache_root)
-                paths = _source_paths(args.source_path, "Source overrides")
+                paths = parse_source_paths(args.source_path)
                 reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
                 if registry.published(args.name, args.version):
                     registry.download(args.name, args.version, force=args.force, source_paths=paths,
@@ -189,7 +179,7 @@ def run(argv=None, prog="orfdata download"):
                 from .datasets import DatasetRegistry
 
                 registry = DatasetRegistry(cache_root=args.cache_root)
-                paths = _source_paths(args.source_path, "Source overrides")
+                paths = parse_source_paths(args.source_path)
                 options = {"timeout": args.timeout, "show_progress": not args.quiet}
                 reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
                 if registry.published(args.name, args.version):
@@ -221,7 +211,7 @@ def run(argv=None, prog="orfdata download"):
             elif args.command == "genome":
                 from .genomes import install_genome
 
-                paths = _source_paths(args.source_path, "Source overrides")
+                paths = parse_source_paths(args.source_path)
                 installed = install_genome(args.name, force=args.force, source_paths=paths,
                                            cache_root=args.cache_root,
                                            download_options=dict(timeout=args.timeout))

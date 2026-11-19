@@ -6,7 +6,7 @@ import sys
 from contextlib import redirect_stdout
 
 from .cli_output import manifest_summary, print_fields, print_record_stream, print_result
-from .cli_parser import UsageError
+from .cli_parser import UsageError, parse_source_paths
 from .command_parsers import datasets_parser
 from .datasets import DatasetRegistry
 from .reference import ScopedTarget
@@ -120,12 +120,7 @@ def run(argv=None, prog=None):
                 result = registry.download(args.name, args.version, force=args.force,
                                            source_paths=sources, **_download_options(args))
         elif args.command == "build":
-            sources = {}
-            for value in args.source_path:
-                asset, separator, path = value.partition("=")
-                if not separator or not asset or not path or asset in sources:
-                    parser.error("Source overrides require unique ASSET=PATH entries")
-                sources[asset] = path
+            sources = parse_source_paths(args.source_path, metavar="ASSET=PATH")
             with redirect_stdout(sys.stderr):
                 dataset = registry.build(args.name, args.version, force=args.force,
                                          source_paths=sources, download_options=_download_options(args))

@@ -9,7 +9,8 @@ from collections import defaultdict
 from dataclasses import replace
 from pathlib import Path
 
-from .proteome import Occurrence, ProteinSequence, _sha256
+from .cache import content_digest
+from .proteome import Occurrence, ProteinSequence
 from .reference import ReferenceContext
 
 _ACCESSION = re.compile(r"[A-Z]{2}_[0-9]+\.[1-9][0-9]*")
@@ -101,7 +102,7 @@ def refseq_proteome(cls, protein_fasta, feature_table, *, reference, expected_sh
     missing = set(proteins) - set(occurrences)
     if missing:
         raise ValueError("RefSeq FASTA proteins lack feature-table mappings: " + ", ".join(sorted(missing)[:5]))
-    source_hash, sequence_hash = _sha256(expected_sha256), _sha256(sorted(proteins.items()))
+    source_hash, sequence_hash = content_digest(expected_sha256), content_digest(sorted(proteins.items()))
     if (reference.source_sha256 not in (None, source_hash)
             or reference.sequence_sha256 not in (None, sequence_hash)):
         raise ValueError("RefSeq source/sequence checksums disagree with reference")

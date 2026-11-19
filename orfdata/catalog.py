@@ -22,13 +22,17 @@ from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS as EVIDENCE_METHODS  # Re-exported for existing imports.
 from .evidence import MS_METHODS, evidence_rule, stored_method
 from .evidence_summary import EvidenceSummary, unique_summaries
-from .initiation_context import KOZAK_PREFERENCES, InitiationContext
+from .initiation_context import (
+    InitiationContext,
+    annotate_initiation_snv,
+    map_initiation_position,
+)
 from .liftover import Liftover
 from .measurements import _plain
 from .model import ORFModel, TranscriptORF, _contig, _id_forms, _species, _transcript_match
 from .reference import ReferenceContext, ScopedTarget
 from .reference_mapping import ReferenceMapping
-from .sequence import genetic_code, reverse_complement_dna
+from .sequence import genetic_code
 
 
 def _positive_integer(value, name):
@@ -282,36 +286,7 @@ class ORFRecord:
         context, start and coding-body roles remain separate; +4 has both
         initiation-context and coding consequences.
         """
-        _positive_integer(position, "position")
-        if genome_build != self.genome_build:
-            raise ValueError(f"Expected genome build {self.genome_build}, got {genome_build}")
-        context = self.initiation_context
-        if context is None or position not in context.genomic_positions:
-            return None
-        index = context.genomic_positions.index(position)
-        relative = context.relative_positions[index]
-        sequence = context.upstream + context.start_codon + context.downstream
-        coding = self.map_genomic_position(position, genome_build=genome_build)
-        roles = ["initiation_context"]
-        if relative in KOZAK_PREFERENCES:
-            roles.append("kozak_preference_position")
-        if coding is not None:
-            roles.append(coding["role"])
-        return {
-            "orf_id": self.orf_id,
-            "genome_build": self.genome_build,
-            "contig": self.contig,
-            "position": position,
-            "context_position": relative,
-            "roles": roles,
-            "transcript_base": sequence[index],
-            "genomic_ref": sequence[index]
-            if self.strand == "+"
-            else reverse_complement_dna(sequence[index]),
-            "coding_annotation": coding,
-            "initiation_assessment": context.assessment,
-            "mutant_translation_evidence": "not_assessed",
-        }
+        return map_initiation_position(self, position, genome_build=genome_build)
 
     def annotate_initiation_snv(self, position, ref, alt, *, genome_build):
         """Compare REF-validated reference/alternate initiation contexts.
@@ -322,69 +297,7 @@ class ORFRecord:
         Directional preference changes are sequence priors, not measured
         initiation changes or proof of a translated mutant protein.
         """
-        if ref not in ("A", "C", "G", "T") or alt not in ("A", "C", "G", "T") or ref == alt:
-            raise ValueError("Provide distinct single-base forward-genomic REF and ALT")
-        annotation = self.map_initiation_position(position, genome_build=genome_build)
-        if annotation is None:
-            raise ValueError("Initiation context is unavailable or does not cover position")
-        if ref != annotation["genomic_ref"]:
-            raise ValueError(
-                "REF mismatch: expected {}, got {}".format(annotation["genomic_ref"], ref)
-            )
-        context = self.initiation_context
-        index = context.genomic_positions.index(position)
-        transcript_alt = alt if self.strand == "+" else reverse_complement_dna(alt)
-        sequence = context.upstream + context.start_codon + context.downstream
-        altered = sequence[:index] + transcript_alt + sequence[index + 1 :]
-        start = len(context.upstream)
-        mutant = replace(
-            context,
-            upstream=altered[:start],
-            start_codon=altered[start : start + 3],
-            downstream=altered[start + 3 :],
-        )
-        changes = []
-        relative = annotation["context_position"]
-        if 1 <= relative <= 3:
-            changes.append(
-                "ATG_lost"
-                if context.start_codon == "ATG"
-                else "ATG_gained"
-                if mutant.start_codon == "ATG"
-                else "start_codon_changed"
-            )
-        if relative in KOZAK_PREFERENCES:
-            preferred = KOZAK_PREFERENCES[relative]
-            before, after = sequence[index] in preferred, transcript_alt in preferred
-            changes.append(
-                "kozak_preference_gained"
-                if not before and after
-                else "kozak_preference_lost"
-                if before and not after
-                else "kozak_preference_unchanged"
-            )
-        codons = None
-        if relative > 0 and self.translation_table is not None:
-            offset = start + (relative - 1) // 3 * 3
-            before, after = sequence[offset : offset + 3], altered[offset : offset + 3]
-            if len(before) == 3 and all(b in "ACGT" for b in before + after):
-                table = genetic_code(self.translation_table).codons
-                codons = {
-                    "reference_codon": before,
-                    "alternate_codon": after,
-                    "reference_codon_translation": table[before],
-                    "alternate_codon_translation": table[after],
-                    "interpretation": "codon_translation_if_frame_retained; initiation_not_demonstrated",
-                }
-        return dict(
-            **annotation,
-            variant={"ref": ref, "alt": alt, "transcript_alt": transcript_alt},
-            sequence_changes=changes,
-            reference_context=context.to_dict(),
-            alternate_context=mutant.to_dict(),
-            codon_consequence=codons,
-            translation_change="not_measured",
-        )
+        return annotate_initiation_snv(self, position, ref, alt, genome_build=genome_build)
 
     def has_evidence(self, method, *, require_unique=False, require_reviewed=False, require_resolved=False):
         return self.evidence.has_evidence(

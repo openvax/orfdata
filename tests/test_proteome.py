@@ -35,8 +35,8 @@ from orfdata import (
     merge_catalogs,
     viral_reference,
 )
+from orfdata.cache import content_digest
 from orfdata.cli import run
-from orfdata.proteome import _sha256
 
 LNCRNA = "CCCATGAAACCCGGGTAAATGAAATAA"  # Start codon spans the exon junction.
 CODING = "ATGAAACCCTAA"
@@ -613,7 +613,7 @@ def test_snapshot_round_trips_offline_and_rejects_corruption(genome, catalog, tm
     # Hash-consistent but non-canonical content does not load with a mismatched identity.
     snapshot = json.loads(gzip.decompress(path.read_bytes()))
     snapshot["content"]["entries"][0]["evidence"] = "ab"
-    snapshot["identity"] = _sha256(snapshot["content"])
+    snapshot["identity"] = content_digest(snapshot["content"])
     corrupt.write_text(json.dumps(snapshot))
     with pytest.raises(ValueError, match="does not round-trip"):
         Proteome.load(corrupt)
@@ -637,7 +637,7 @@ def test_snapshot_rejects_wrong_species_and_reference_declarations(genome, catal
 
     def load(content):
         path = tmp_path / "edited.json"
-        path.write_text(json.dumps(dict(schema="orfdata.proteome.v1", identity=_sha256(content), content=content)))
+        path.write_text(json.dumps(dict(schema="orfdata.proteome.v1", identity=content_digest(content), content=content)))
         return Proteome.load(path)
 
     human = json.loads(json.dumps(content))

@@ -8,7 +8,8 @@ from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 
-from .proteome import Occurrence, ProteinSequence, _sha256
+from .cache import content_digest
+from .proteome import Occurrence, ProteinSequence
 from .reference import ReferenceContext
 
 
@@ -177,8 +178,8 @@ def ensembl_proteome(cls, protein_fasta, gtf, rna_fasta, ncrna_fasta, *, referen
     for tid, row in rna.items():
         if tid not in transcripts or {t.gene for t in transcripts[tid]} != {row[0]}:
             raise ValueError(f"Ensembl RNA/GTF gene identity conflict: {tid}")
-    source_hash = _sha256(expected_sha256)
-    sequence_hash = _sha256(sorted((pid, row[4]) for pid, row in proteins.items()))
+    source_hash = content_digest(expected_sha256)
+    sequence_hash = content_digest(sorted((pid, row[4]) for pid, row in proteins.items()))
     if (reference.source_sha256 not in (None, source_hash)
             or reference.sequence_sha256 not in (None, sequence_hash)):
         raise ValueError("Ensembl source/sequence checksums disagree with reference")

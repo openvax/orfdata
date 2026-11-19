@@ -8,6 +8,7 @@ from dataclasses import replace
 
 from ..catalog import ORFCatalog, ORFEvidence, ORFRecord, _placement_position
 from ..evidence_summary import EvidenceSummary
+from ..fasta import iter_fasta
 from ..model import ORFModel, _contig
 from ..reference import ScopedTarget
 from ..reference_mapping import ReferenceMapping
@@ -62,23 +63,11 @@ def _fasta(paths):
     """Full versioned IDs; identical duplicates coalesce, conflicting ones fail."""
     found = {}
     for path in paths:
-        name, parts = None, []
-
-        def save():
-            if name is not None:
-                sequence = "".join(parts).upper()
-                if name in found and found[name] != sequence:
-                    raise ValueError("Conflicting FASTA records for transcript " + name)
-                found[name] = sequence
-
-        with gzip.open(path, "rt") as stream:
-            for line in stream:
-                if line.startswith(">"):
-                    save()
-                    name, parts = line[1:].split()[0].split("|")[0], []
-                elif name is not None:
-                    parts.append(line.strip())
-        save()
+        for header, sequence in iter_fasta(path, upper=True, gzipped=True):
+            name = header.split("|")[0]
+            if name in found and found[name] != sequence:
+                raise ValueError("Conflicting FASTA records for transcript " + name)
+            found[name] = sequence
     return found
 
 

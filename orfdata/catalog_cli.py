@@ -10,7 +10,7 @@ from .catalog import catalog_status
 from .catalogs import CatalogRegistry
 from .cli import _query
 from .cli_output import manifest_summary, print_result
-from .cli_parser import UsageError
+from .cli_parser import parse_source_paths
 from .command_parsers import catalogs_parser
 
 
@@ -43,19 +43,14 @@ def run(argv=None, prog=None):
             if inspection.error is not None:
                 output["error"] = str(inspection.error)
         elif args.command in ("download", "build"):
-            paths = {}
-            for item in args.source_path:
-                asset, separator, path = item.partition("=")
-                if not separator or not asset or not path or asset in paths:
-                    raise UsageError("Source overrides require unique ASSET=PATH entries")
-                paths[asset] = path
+            paths = parse_source_paths(args.source_path, metavar="ASSET=PATH")
             options = dict(timeout=args.timeout)
             with redirect_stdout(sys.stderr):
                 if args.command == "build":
-                    registry.build(args.name, args.version, force=args.force, source_paths=paths or None,
+                    registry.build(args.name, args.version, force=args.force, source_paths=paths,
                                    download_options=options)
                 else:
-                    registry.download(args.name, args.version, force=args.force, source_paths=paths or None, **options)
+                    registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
             inspect = registry.inspect_build if args.command == "build" else registry.inspect
             result = inspect(args.name, args.version)
             output = dict(status=result.status, path=str(result.path))

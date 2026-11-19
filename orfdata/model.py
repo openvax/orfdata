@@ -5,7 +5,11 @@ import json
 from dataclasses import asdict, dataclass, replace
 from typing import Optional
 
-from .initiation_context import annotate_initiation_context
+from .initiation_context import (
+    annotate_initiation_context,
+    annotate_initiation_snv,
+    map_initiation_position,
+)
 from .reference import ReferenceContext, canonical_species, species_taxon
 from .sequence import CODONS, genetic_code, read_orf
 
@@ -667,15 +671,11 @@ class TranscriptORF:
 
     def map_initiation_position(self, position, *, genome_build):
         """Map this placement's initiation context, when its start is known."""
-        from .catalog import ORFRecord
-
-        return ORFRecord.map_initiation_position(self, position, genome_build=genome_build)
+        return map_initiation_position(self, position, genome_build=genome_build)
 
     def annotate_initiation_snv(self, position, ref, alt, *, genome_build):
         """Compare this placement's context without inferring a missing genetic code."""
-        from .catalog import ORFRecord
-
-        return ORFRecord.annotate_initiation_snv(self, position, ref, alt, genome_build=genome_build)
+        return annotate_initiation_snv(self, position, ref, alt, genome_build=genome_build)
 
     @property
     def subcodon_introns(self):

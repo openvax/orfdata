@@ -23,6 +23,7 @@ from collections import Counter
 
 from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
+from ..fasta import read_fasta
 from ..model import ORFModel
 from ..reference import ScopedTarget
 from ..sequence import genetic_code
@@ -31,19 +32,6 @@ LIBRARIES = ("Ribo-seq libraries in which at least two of PRICE, RiboCode and Ri
              "(Table S3 num_libraries); the libraries are listed in Table S1, not per ORF.")
 CALLERS = "ORF callers, of PRICE, RiboCode and Ribo-TISH, that called the ORF (Table S3 num_methods)."
 _ATTRIBUTE = re.compile(r'(\S+) "([^"]*)"')
-
-
-def _fasta(path):
-    sequences, name = {}, None
-    with open(path) as handle:
-        for line in handle:
-            line = line.strip()
-            if line.startswith(">"):
-                name = line[1:].split()[0]
-                sequences[name] = []
-            elif name is not None:
-                sequences[name].append(line)
-    return {k: "".join(v) for k, v in sequences.items()}
 
 
 def _table(path, sheet, species):
@@ -102,7 +90,7 @@ def import_orfs(inputs, output, manifest):
     reference = manifest.references[0]
     table = next(s for s in manifest.sources if s.asset_id == "table")
     rows = _table(inputs["table"], processing["sheet"], processing["species_label"])
-    proteins = _fasta(inputs["proteins"])
+    proteins = read_fasta(inputs["proteins"])
     spans = {}
     with open(inputs["bed"]) as handle:
         for line in handle:

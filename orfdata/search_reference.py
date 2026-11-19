@@ -9,7 +9,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Optional
 
-from .cache import content_digest, get_data_dir, pinned_registry
+from .cache import content_digest, file_sha256, get_data_dir, pinned_registry
 from .measurements import SourceAsset, _identifier, _Record
 from .reference import ReferenceContext, ScopedTarget
 
@@ -129,13 +129,7 @@ class SearchReference:
             raise TypeError("SearchReference requires a declared SearchReferenceSpec")
         object.__setattr__(self, "path", Path(path).resolve())
         object.__setattr__(self, "spec", spec)
-        digest = hashlib.sha256()
-        size = 0
-        with self.path.open("rb") as handle:
-            for block in iter(lambda: handle.read(1048576), b""):
-                size += len(block)
-                digest.update(block)
-        if size != spec.source.size or digest.hexdigest() != spec.source.sha256:
+        if self.path.stat().st_size != spec.source.size or file_sha256(self.path) != spec.source.sha256:
             raise ValueError("Search FASTA size/SHA-256 disagrees with pinned source")
         object.__setattr__(self, "_entries", MappingProxyType(self._read()))
 

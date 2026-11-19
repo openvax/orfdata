@@ -9,7 +9,6 @@ orfdata builds this dataset from the original file and never redistributes it.
 """
 
 import csv
-import gzip
 import hashlib
 import io
 import re
@@ -17,6 +16,7 @@ import zipfile
 from collections import Counter, defaultdict
 
 from ..dataset import QuantitativeDataset
+from ..fasta import read_fasta
 from ..measurements import Assay, Measurement, Sample, TargetMapping
 from ..reference import ScopedTarget
 from ..reference_mapping import ReferenceMapping
@@ -71,21 +71,6 @@ def _rows(archive, table):
             if len(row) != len(header):
                 raise ValueError(f"Malformed PeptideAtlas {table} row")
             yield dict(zip(header, row))
-
-
-def _fasta(path):
-    found, name, sequence = {}, None, []
-    with gzip.open(path, "rt") as handle:
-        for line in handle:
-            if line.startswith(">"):
-                if name is not None:
-                    found[name] = "".join(sequence)
-                name, sequence = line[1:].split()[0], []
-            else:
-                sequence.append(line.strip())
-    if name is not None:
-        found[name] = "".join(sequence)
-    return found
 
 
 def _sha(sequence):
@@ -255,7 +240,7 @@ def import_build(inputs, output, manifest):
                               empirical_proteotypic_score=_float(row["empirical_proteotypic_score"])),
                 provenance=dict(source_asset="atlas_build.tsv.zip"))
 
-    ensembl_proteins = _fasta(inputs["ensembl.pep.fa.gz"])
+    ensembl_proteins = read_fasta(inputs["ensembl.pep.fa.gz"], gzipped=True)
     by_sequence = defaultdict(list)
     for name, sequence in ensembl_proteins.items():
         by_sequence[sequence].append(name)

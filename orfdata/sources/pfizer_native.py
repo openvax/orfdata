@@ -17,6 +17,7 @@ from collections import Counter
 from contextlib import closing
 from pathlib import Path
 
+from ..cache import file_sha256
 from ..dataset import QuantitativeDataset, _json
 from ..search_reference import SearchReference, SearchReferenceSpec
 from .pfizer import SAMPLE_COLUMNS, VALUE_COLUMNS, _rows, _value, protein_sample_id
@@ -31,11 +32,6 @@ METADATA_BYTES = 16 * 1024 * 1024
 BUILD_MODULES = ("pfizer_native.py", "pfizer_dataset.py", "pfizer_attribution.py", "pfizer_evidence.py", "pfizer_queries.py",
                  "pfizer_vendor.py", "pfizer_lineage.py", "pfizer.py", "../dataset.py", "../numeric_vector.py",
                  "../search_reference.py")
-
-
-def file_sha256(path):
-    with open(path, "rb") as handle:
-        return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
 def selection_sha256(plan):

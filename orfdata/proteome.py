@@ -22,7 +22,7 @@ from typing import Mapping, Optional
 from urllib.parse import quote
 
 from . import _structure
-from .cache import content_digest, get_data_dir
+from .cache import content_digest, file_sha256, get_data_dir
 from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
 from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
@@ -1386,9 +1386,9 @@ class Proteome:
                 positions[entry.accession] = len(entries)
                 entries.append(entry)
             layers = list(result.layers)
-            layer_keys = {_sha256(dict(layer)) for layer in layers}
+            layer_keys = {content_digest(dict(layer)) for layer in layers}
             for layer in other.layers:
-                key = _sha256(dict(layer))
+                key = content_digest(dict(layer))
                 if key not in layer_keys:
                     layers.append(layer)
                     layer_keys.add(key)
@@ -1840,14 +1840,14 @@ class Proteome:
         """SHA-256 of the canonical content: sequences, occurrences, layers and exclusions."""
         identity = self.__dict__.get("_identity")
         if identity is None:
-            identity = _sha256(self._content())
+            identity = content_digest(self._content())
             self.__dict__["_identity"] = identity
         return identity
 
     def save(self, path):
         """Write a gzipped JSON snapshot that :meth:`load` reads offline."""
         content = self._content()
-        snapshot = dict(schema=SNAPSHOT_SCHEMA, identity=_sha256(content), content=content)
+        snapshot = dict(schema=SNAPSHOT_SCHEMA, identity=content_digest(content), content=content)
         # No timestamp in the gzip header, so identical proteomes give identical files.
         with open(path, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0,
                                                     compresslevel=6) as handle:
@@ -1869,7 +1869,7 @@ class Proteome:
                           "orfdata.proteome.v3", "orfdata.proteome.v4", SNAPSHOT_SCHEMA):
             raise ValueError(f"Unsupported proteome snapshot schema: {schema!r}")
         content = snapshot["content"]
-        if _sha256(content) != snapshot.get("identity"):
+        if content_digest(content) != snapshot.get("identity"):
             raise ValueError("Proteome snapshot content does not match its identity")
         reference = None if content["reference"] is None else ReferenceContext(**content["reference"])
         graph = content.get("producer_graph", {})
@@ -1933,7 +1933,7 @@ class Proteome:
                        links=(ProducerLink(**link) for link in links))
         # A snapshot from the cache was written by save() and checksummed by DataCache; any other
         # file must also re-serialize to its identity, so non-canonical content is rejected.
-        canonical_identity = _sha256(proteome._content())
+        canonical_identity = content_digest(proteome._content())
         if (schema == SNAPSHOT_SCHEMA and not _verified
                 and canonical_identity != snapshot["identity"]):
             raise ValueError("Proteome snapshot does not round-trip to its identity")
@@ -1952,7 +1952,7 @@ class Proteome:
             if deduplicate and len(group) > 1:
                 members = sorted(entry.accession for entry in group)
                 token = (f"records={len(group)}|aa={len(group[0].sequence)}|"
-                         f"key={_sha256(members)[:16]}")
+                         f"key={content_digest(members)[:16]}")
             else:
                 token = group[0].fasta_token()
             if token in index:
@@ -2352,7 +2352,7 @@ def _cached_snapshot(key, make, cache_root):
         proteome.__dict__["_identity"] = proteome.save(files[_SNAPSHOT])
         files["recipe.json"].write_text(json.dumps(dict(key, identity=proteome.identity), indent=1, sort_keys=True))
         assets = {name: dict(path=str(file), size=file.stat().st_size,
-                             sha256=hashlib.sha256(file.read_bytes()).hexdigest()) for name, file in files.items()}
+                             sha256=file_sha256(file)) for name, file in files.items()}
         try:
             paths = datacache.install_bundle(store, assets, force=inspected.status == "invalid",
                                              download_options=dict(show_progress=False))
@@ -2383,11 +2383,7 @@ def _annotation_files(genome, *, include_proteins=True):
         if "://" in source or not path.is_file():
             found.append([source])
             continue
-        digest = hashlib.sha256()
-        with open(path, "rb") as handle:
-            for chunk in iter(lambda: handle.read(1 << 20), b""):
-                digest.update(chunk)
-        found.append([path.name, path.stat().st_size, digest.hexdigest()])
+        found.append([path.name, path.stat().st_size, file_sha256(path)])
     return found
 
 
@@ -2396,16 +2392,11 @@ def _json(value):
     return json.loads(json.dumps(value))
 
 
-def _sha256(content):
-    text = json.dumps(content, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(text.encode("ascii")).hexdigest()
-
-
 def _catalog_identity(catalog):
     identity = getattr(catalog, "_orfdata_identity", None)
     if identity is None:
         identity = dict(source=catalog.source, records=len(catalog.records),
-                        sha256=_sha256(catalog.to_dict()))
+                        sha256=content_digest(catalog.to_dict()))
         catalog._orfdata_identity = identity
     return identity
 
