@@ -1497,7 +1497,9 @@ draw on OpenVax's OncoRef inventory summaries and MHCtools' shared table formatt
 <li>Human tables preview 25 rows; <code>--limit 0</code> shows all rows. Machine exports are
   complete regardless of the preview limit. Wrapping is only for human output.</li>
 <li>Results go to stdout; progress and errors go to stderr. Proteome FASTA stays on
-  stdout and its build summary stays on stderr, as does the lift summary.</li>
+  stdout and its human build summary stays on stderr, as does the lift summary.
+  Their <code>--json</code> summary goes to stdout like any other (<code>proteome</code> then requires
+  <code>--output</code>), and <code>--summary FILE</code> writes it to a file.</li>
 <li>Discovery and help never acquire resources. Downloads and builds require an
   explicit acquisition command and continue to enforce source terms and pins.</li>
 <li>Errors identify the problem and return a status a script can branch on: 1 when

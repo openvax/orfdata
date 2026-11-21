@@ -1275,6 +1275,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#migrating-scripts-from-052-or-earlier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating scripts from 0.52 or earlier
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#migrating-scripts-from-042-or-043" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1512,6 +1523,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#migrating-scripts-from-052-or-earlier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating scripts from 0.52 or earlier
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#migrating-scripts-from-042-or-043" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1706,9 +1728,25 @@ a nonzero status, or for 3 before installing what is missing.</p>
 <h2 id="output-streams">Output streams<a class="headerlink" href="#output-streams" title="Permanent link">&para;</a></h2>
 <p>Results and exports go to stdout. Progress and errors go to stderr. <code>data path</code>
 and <code>viral inventory download</code> print a plain path by default. <code>proteome</code> writes
-FASTA to stdout unless <code>--output</code> is supplied; its summary goes to stderr.
-<code>lift</code> writes its catalogue to <code>--output</code> and also summarizes on stderr. For
-these two commands, <code>--json</code> selects the summary format on stderr.</p>
+FASTA to stdout unless <code>--output</code> is supplied, and <code>lift</code> writes its catalogue
+to <code>--output</code>; each also prints a human summary on stderr. For the complete
+summary as JSON:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>lift<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--to<span class="w"> </span>GRCh37<span class="w"> </span>--output<span class="w"> </span>orfs.json.gz<span class="w"> </span>--json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.unmapped
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--output<span class="w"> </span>human.fa<span class="w"> </span>--json<span class="w"> </span>&gt;<span class="w"> </span>summary.json
+orfdata<span class="w"> </span>proteome<span class="w"> </span>--species<span class="w"> </span>human<span class="w"> </span>--release<span class="w"> </span><span class="m">115</span><span class="w"> </span>--summary<span class="w"> </span>summary.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>gzip<span class="w"> </span>&gt;<span class="w"> </span>human.fa.gz
+</code></pre></div>
+<p><code>--json</code> writes the summary to stdout, as it does in every other command, and
+replaces the human summary. <code>proteome --json</code> requires <code>--output</code>, since the
+FASTA would otherwise share stdout; it exits 2 without it. <code>--summary FILE</code>
+writes the same JSON document to a file and leaves both streams as they are, so
+it also works while the FASTA is piped.</p>
+<h2 id="migrating-scripts-from-052-or-earlier">Migrating scripts from 0.52 or earlier<a class="headerlink" href="#migrating-scripts-from-052-or-earlier" title="Permanent link">&para;</a></h2>
+<p>Up to 0.52, <code>proteome --json</code> and <code>lift --json</code> wrote the JSON summary to
+stderr. Scripts that read it from there (<code>2&gt; summary.json</code>) should use
+<code>--summary summary.json</code>, or read stdout: <code>lift ... --json &gt; summary.json</code>,
+and <code>proteome ... --output FILE --json &gt; summary.json</code>. <code>proteome --json</code>
+without <code>--output</code> is now a command-line mistake (exit 2) rather than FASTA on
+stdout and JSON on stderr.</p>
 <h2 id="migrating-scripts-from-042-or-043">Migrating scripts from 0.42 or 0.43<a class="headerlink" href="#migrating-scripts-from-042-or-043" title="Permanent link">&para;</a></h2>
 <p>Bare <code>orfdata</code> now shows help. Use <code>orfdata query --json</code> for the previous
 unfiltered JSON catalogue export. Existing root query flags (for example,

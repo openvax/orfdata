@@ -2353,7 +2353,8 @@ chains cover or with your own chain file:</p>
   },
 </code></pre></div>
 <p><code>orfdata lift</code> writes the lifted catalogue and prints a summary to standard
-error. <code>--catalog FILE</code> lifts a local catalogue instead, and <code>--chain FILE</code> uses
+error; <code>--json</code> prints the complete summary as JSON on standard output instead,
+and <code>--summary FILE</code> writes that JSON to a file. <code>--catalog FILE</code> lifts a local catalogue instead, and <code>--chain FILE</code> uses
 your own chain file instead of a downloaded pin. Pass the result back with
 <code>--nc-orf-sources</code> for <code>orfdata proteome</code>; JSON and TSV exports include
 each record's original and the chain. In Python:</p>
