@@ -105,7 +105,12 @@ def test_the_proteome_cli_takes_a_pinned_genome_or_a_release(capsys):
 def test_nonstandard_assembly_keeps_species_genetic_codes_and_saved_overrides():
     import pickle
 
-    from orfdata._pinned_genome import PinnedEnsemblGenome
+    from orfdata import PinnedEnsemblGenome
+    from orfdata._pinned_genome import PinnedEnsemblGenome as LegacyPinnedEnsemblGenome
+    from orfdata.genomes import PinnedEnsemblGenome as GenomesPinnedEnsemblGenome
+
+    assert PinnedEnsemblGenome is GenomesPinnedEnsemblGenome is LegacyPinnedEnsemblGenome
+    assert PinnedEnsemblGenome.__module__ == "orfdata._pinned_genome"
 
     genome = PinnedEnsemblGenome("T2T-CHM13v2.0", "ensembl-rapid", "2022_07",
                                 species="human", assembly_accession="GCA_009914755.4")
