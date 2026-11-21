@@ -1052,9 +1052,10 @@ def test_cli_writes_fasta_and_reports_layers(genome, catalog, tmp_path, capsys, 
     captured = capsys.readouterr()
     assert error.value.code == 2 and not captured.out
     assert "add --output FILE, or use --summary FILE" in captured.err
-    with pytest.raises(SystemExit) as error:
-        run(command + ["--output", str(output), "--summary", str(output)])
-    assert error.value.code == 2 and "--summary names the same file" in capsys.readouterr().err
+    for same_summary in (str(output), f"{output.parent}/./{output.name}"):
+        with pytest.raises(SystemExit) as error:
+            run(command + ["--output", str(output), "--summary", same_summary])
+        assert error.value.code == 2 and "--summary names the same file" in capsys.readouterr().err
     run(command + ["--nc-orf-sources", str(path), "--no-reference-cds", "--min-protein-length", "3"] + summary_args)
     captured = capsys.readouterr()
     selected = json.loads((tmp_path / "summary.json").read_text())

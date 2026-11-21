@@ -297,10 +297,11 @@ def test_cli_lifts_with_a_chain_file_or_a_downloaded_pin(chain, pinned, tmp_path
     captured = capsys.readouterr()  # --summary keeps the human summary on stderr and stdout empty.
     assert not captured.out and "lifted records: 4" in captured.err
     assert json.loads((tmp_path / "summary.json").read_text()) == dict(summary, output=str(by_pin))
-    with pytest.raises(SystemExit) as error:
-        run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin),
-             "--summary", str(by_pin)])
-    assert error.value.code == 2 and "name the same file" in capsys.readouterr().err
+    for same_summary in (str(by_pin), f"{by_pin.parent}/./{by_pin.name}"):
+        with pytest.raises(SystemExit) as error:
+            run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin),
+                 "--summary", same_summary])
+        assert error.value.code == 2 and "name the same file" in capsys.readouterr().err
     for options, message in ((["--species", "mouse"], "not both"),
                              (["--to", "GRCm40"], "No pinned chain files lift mus_musculus GRCm38 to GRCm40")):
         argv = ["lift", "--catalog", str(source), "--to", "GRCm39", "--output", str(by_pin)]

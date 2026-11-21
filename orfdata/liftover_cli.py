@@ -4,6 +4,7 @@ import sys
 from collections import Counter
 from contextlib import redirect_stdout
 from dataclasses import asdict
+from pathlib import Path
 
 from .catalog import load_catalog
 from .catalogs import CatalogRegistry
@@ -27,7 +28,7 @@ def lift(argv=None, prog=None):
     try:
         if args.catalog and (args.species or args.genome_build):
             raise UsageError("Pass --catalog or --species/--genome-build, not both")
-        if args.summary is not None and args.summary == args.output:
+        if args.summary is not None and Path(args.summary).resolve() == Path(args.output).resolve():
             raise UsageError("--summary and --output name the same file")
         registry = CatalogRegistry(cache_root=args.cache_root) if args.cache_root else None
         catalog = (load_catalog(args.catalog) if args.catalog

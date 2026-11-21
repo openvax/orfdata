@@ -29,7 +29,10 @@ def run(argv=None, prog=None, *, genome_loader=None):
         if args.json and args.output is None:
             raise UsageError("--json writes the summary to standard output, where the FASTA goes without --output: "
                              "add --output FILE, or use --summary FILE to keep the FASTA on standard output")
-        if args.summary is not None and args.summary in (args.output, args.snapshot):
+        if args.summary is not None and any(
+            other is not None and Path(args.summary).resolve() == Path(other).resolve()
+            for other in (args.output, args.snapshot)
+        ):
             raise UsageError("--summary names the same file as --output or --snapshot")
         names = [name.strip() for value in args.nc_orf_sources or ()
                  for name in ([value] if Path(value).is_file() else value.split(","))]
