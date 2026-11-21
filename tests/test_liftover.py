@@ -281,7 +281,9 @@ def test_cli_lifts_with_a_chain_file_or_a_downloaded_pin(chain, pinned, tmp_path
     old.save(source)
     by_file, by_pin = tmp_path / "file.json.gz", tmp_path / "pin.json.gz"
     run(["lift", "--catalog", str(source), "--to", "GRCm39", "--chain", str(chain.path), "--output", str(by_file), "--json"])
-    summary = json.loads(capsys.readouterr().err)
+    captured = capsys.readouterr()
+    summary = json.loads(captured.out)  # Complete JSON on stdout, as --json is everywhere (#165).
+    assert not captured.err
     assert (summary["records"], summary["lifted_records"], summary["unmapped"]) == (4, 4, 0)
     assert summary["lifted"] == "orfdata-catalog:fixture-v1@GRCm39"
     assert load_catalog(by_file).records == lift_catalog(old, chain).records
@@ -289,8 +291,17 @@ def test_cli_lifts_with_a_chain_file_or_a_downloaded_pin(chain, pinned, tmp_path
     run(["chains", "--cache-root", cache, "download", "GRCm38", "GRCm39", "--source-path", str(chain.path),
          "--accept-terms", "--json"])
     assert json.loads(capsys.readouterr().out)["path"].endswith(chain.path.name)
-    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin), "--json"])
+    run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin),
+         "--summary", str(tmp_path / "summary.json")])
     assert by_pin.read_bytes() == by_file.read_bytes()
+    captured = capsys.readouterr()  # --summary keeps the human summary on stderr and stdout empty.
+    assert not captured.out and "lifted records: 4" in captured.err
+    assert json.loads((tmp_path / "summary.json").read_text()) == dict(summary, output=str(by_pin))
+    for same_summary in (str(by_pin), f"{by_pin.parent}/./{by_pin.name}"):
+        with pytest.raises(SystemExit) as error:
+            run(["lift", "--catalog", str(source), "--to", "GRCm39", "--cache-root", cache, "--output", str(by_pin),
+                 "--summary", same_summary])
+        assert error.value.code == 2 and "name the same file" in capsys.readouterr().err
     for options, message in ((["--species", "mouse"], "not both"),
                              (["--to", "GRCm40"], "No pinned chain files lift mus_musculus GRCm38 to GRCm40")):
         argv = ["lift", "--catalog", str(source), "--to", "GRCm39", "--output", str(by_pin)]
@@ -502,13 +513,13 @@ def test_routes_take_the_fewest_hops_and_lift_through_each(chain, tmp_path, monk
     source = tmp_path / "old.json"
     old.save(source)
     run(["lift", "--catalog", str(source), "--to", "GRCm40", "--output", str(tmp_path / "far.json"), "--json"])
-    summary = json.loads(capsys.readouterr().err)
+    summary = json.loads(capsys.readouterr().out)
     assert [c["chain"] for c in summary["chains"]] == [chain.path.name, identity.name]
     assert summary["lifted_records"] == 4 and load_catalog(tmp_path / "far.json").records == far.records
     # Lifting a lifted file reports only this command's hops.
     lift_catalog(old, chain).save(tmp_path / "mid.json")
     run(["lift", "--catalog", str(tmp_path / "mid.json"), "--to", "GRCm40", "--output", str(tmp_path / "far2.json"), "--json"])
-    assert [c["chain"] for c in json.loads(capsys.readouterr().err)["chains"]] == [identity.name]
+    assert [c["chain"] for c in json.loads(capsys.readouterr().out)["chains"]] == [identity.name]
 
 
 def test_download_all_skips_restricted_chains_without_consent(pinned, capsys):

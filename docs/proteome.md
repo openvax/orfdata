@@ -857,8 +857,9 @@ option for several specific viruses.
 The FASTA goes to `--output` or
 standard output; `--snapshot FILE` also saves a snapshot, and `--cache`
 reuses or keeps the build in the cache; `--cache-root DIR` chooses the cache,
-for catalogues as well as builds. A human summary goes to standard error; add
-`--json` for the complete JSON summary of layers, identity and excluded ORFs.
+for catalogues as well as builds. A human summary goes to standard error. For the
+complete JSON summary of layers, identity and excluded ORFs, add `--summary FILE`,
+or `--json` with `--output` to get it on standard output.
 
 ## Not yet included
 

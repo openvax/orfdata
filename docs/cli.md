@@ -118,9 +118,30 @@ a nonzero status, or for 3 before installing what is missing.
 
 Results and exports go to stdout. Progress and errors go to stderr. `data path`
 and `viral inventory download` print a plain path by default. `proteome` writes
-FASTA to stdout unless `--output` is supplied; its summary goes to stderr.
-`lift` writes its catalogue to `--output` and also summarizes on stderr. For
-these two commands, `--json` selects the summary format on stderr.
+FASTA to stdout unless `--output` is supplied, and `lift` writes its catalogue
+to `--output`; each also prints a human summary on stderr. For the complete
+summary as JSON:
+
+```sh
+orfdata lift --species human --to GRCh37 --output orfs.json.gz --json | jq .unmapped
+orfdata proteome --species human --release 115 --output human.fa --json > summary.json
+orfdata proteome --species human --release 115 --summary summary.json | gzip > human.fa.gz
+```
+
+`--json` writes the summary to stdout, as it does in every other command, and
+replaces the human summary. `proteome --json` requires `--output`, since the
+FASTA would otherwise share stdout; it exits 2 without it. `--summary FILE`
+writes the same JSON document to a file and leaves both streams as they are, so
+it also works while the FASTA is piped.
+
+## Migrating scripts from 0.52 or earlier
+
+Up to 0.52, `proteome --json` and `lift --json` wrote the JSON summary to
+stderr. Scripts that read it from there (`2> summary.json`) should use
+`--summary summary.json`, or read stdout: `lift ... --json > summary.json`,
+and `proteome ... --output FILE --json > summary.json`. `proteome --json`
+without `--output` is now a command-line mistake (exit 2) rather than FASTA on
+stdout and JSON on stderr.
 
 ## Migrating scripts from 0.42 or 0.43
 

@@ -21,6 +21,48 @@ def print_json(payload, stream=None):
     stream.write("\n")
 
 
+def write_json(payload, path):
+    """Write one machine-readable JSON document to a file.
+
+    Parameters
+    ----------
+    payload : dict or list
+        The document; values JSON has no type for are written as strings.
+    path : str or Path
+        The file to create or replace.
+    """
+    with open(path, "w", encoding="utf-8") as stream:
+        print_json(payload, stream=stream)
+
+
+def print_run_summary(summary, *, json_output=False, path=None, human=None):
+    """Report the summary of a command whose result is a file or a stream of records.
+
+    ``proteome`` and ``lift`` write a FASTA or a catalogue, so their summary is
+    a second output. The complete summary goes to ``path`` when one is given,
+    and to standard output as JSON when ``json_output`` is set, as ``--json``
+    does in every other command. Otherwise a human summary goes to standard
+    error, which leaves standard output to the records.
+
+    Parameters
+    ----------
+    summary : dict
+        The complete summary.
+    json_output : bool
+        Write the summary as one JSON document to standard output.
+    path : str or Path, optional
+        Also write the summary there as JSON.
+    human : dict, optional
+        What the human summary shows instead of ``summary``.
+    """
+    if path is not None:
+        write_json(summary, path)
+    if json_output:
+        print_json(summary)
+    else:
+        print_fields(summary if human is None else human, stream=sys.stderr)
+
+
 def _width():
     return max(40, min(120, shutil.get_terminal_size(fallback=(100, 24)).columns))
 
