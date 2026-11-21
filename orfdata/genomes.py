@@ -10,10 +10,13 @@ genome offline, with its species set so ``Proteome.build`` and
 import json
 from dataclasses import dataclass, field
 from importlib.resources import files
-from typing import Mapping, Optional
+from typing import TYPE_CHECKING, Mapping, Optional
 
 from .cache import content_digest, get_data_dir, pinned_registry
 from .errors import NotInstalledError
+
+if TYPE_CHECKING:
+    from ._pinned_genome import PinnedEnsemblGenome as PinnedEnsemblGenome
 
 _ROLES = ("gtf", "transcripts", "proteins")
 
@@ -371,3 +374,13 @@ def _with_mitochondria(genome, gtf, index):
                 target.write(raw)
         os.replace(partial, merged)
     return str(merged), extra
+
+
+def __getattr__(name):
+    """Lazily expose PyEnsembl-backed genome classes without importing PyEnsembl on module load."""
+    if name == "PinnedEnsemblGenome":
+        from ._pinned_genome import PinnedEnsemblGenome
+
+        globals()["PinnedEnsemblGenome"] = PinnedEnsemblGenome
+        return PinnedEnsemblGenome
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

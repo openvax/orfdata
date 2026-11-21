@@ -42,6 +42,7 @@ if TYPE_CHECKING:  # What type checkers and IDEs read; at run time, __getattr__ 
     from .evidence import MS, EvidenceRule, RiboSeq
     from .evidence_summary import EvidenceSummary
     from .genomes import (
+        PinnedEnsemblGenome,
         PinnedGenome,
         contig_aliases,
         install_genome,
@@ -154,8 +155,8 @@ EXPORTED_FROM = {name: module for module, names in {
     "errors": ("NotInstalledError",),
     "evidence": ("MS", "EvidenceRule", "RiboSeq"),
     "evidence_summary": ("EvidenceSummary",),
-    "genomes": ("PinnedGenome", "install_genome", "load_genome", "pinned_genomes", "reference_names",
-                "contig_aliases"),
+    "genomes": ("PinnedEnsemblGenome", "PinnedGenome", "install_genome", "load_genome", "pinned_genomes",
+                "reference_names", "contig_aliases"),
     "gtf": ("orf_gtf_lines",),
     "initiation_context": ("KOZAK_PREFERENCES", "InitiationContext", "annotate_initiation_context"),
     "install": ("install_species",),
@@ -342,6 +343,7 @@ __all__ = [
     "CatalogStatus",
     "merge_catalogs",
     "install_species",
+    "PinnedEnsemblGenome",
     "PinnedGenome",
     "pinned_genomes",
     "install_genome",
