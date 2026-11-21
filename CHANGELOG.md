@@ -1,4 +1,4 @@
-# 0.53.0
+# 0.54.0
 
 - `proteome --json` and `lift --json` write the complete JSON summary to
   standard output, as `--json` does in every other command, instead of standard
