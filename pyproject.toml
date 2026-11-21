@@ -43,7 +43,7 @@ canine-extraction = ["apsw>=3.54,<4"]
 # tools/verify_riborf_native.py.
 dev = [
     "pytest", "ruff", "build", "twine", "gb-io>=0.4,<0.5", "apsw>=3.54,<4",
-    "biotite>=1.6,<3", "biopython>=1.88,<2",
+    "biopython>=1.88,<2",
 ]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10"]
 
