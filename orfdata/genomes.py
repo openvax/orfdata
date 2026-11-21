@@ -296,7 +296,7 @@ def _open(genome, cache_root, *, rebuild=False):
     import sqlite3
     from pathlib import Path
 
-    from ._pinned_genome import PinnedEnsemblGenome
+    from pyensembl import Genome
 
     registry = genome_registry(genome, cache_root)
     # Absolute paths, so the genome works from any directory and when unpickled elsewhere.
@@ -324,11 +324,11 @@ def _open(genome, cache_root, *, rebuild=False):
         # PyEnsembl recognizes MT and chrM by name; an accession needs saying.
         metadata = dict(contig_compartments={m["contig"]["name"]: "mitochondrial"
                                              for m in genome.mitochondria.values()})
-    opened = PinnedEnsemblGenome(genome.reference_name, genome.annotation_name, genome.annotation_version,
-                                 gtf_path_or_url=gtf, transcript_fasta_paths_or_urls=transcripts,
-                                 protein_fasta_paths_or_urls=proteins, cache_directory_path=str(index),
-                                 species=genome.species, assembly_accession=genome.assembly_accession,
-                                 pinned_name=genome.name, reference_metadata=metadata)
+    opened = Genome(genome.reference_name, genome.annotation_name, genome.annotation_version,
+                    gtf_path_or_url=gtf, transcript_fasta_paths_or_urls=transcripts,
+                    protein_fasta_paths_or_urls=proteins, cache_directory_path=str(index),
+                    species=genome.species, assembly_accession=genome.assembly_accession,
+                    reference_metadata=metadata)
     try:
         opened.index()  # Local files only; done once.
     except (sqlite3.Error, EOFError, pickle.UnpicklingError) as error:

@@ -2426,8 +2426,17 @@ def _require_installed(genome):
     status = None if inspect is None else inspect()["annotation"]
     if status not in (None, "indexed"):
         install = "pyensembl install"
-        if getattr(genome, "pinned_name", None) is not None:
-            install = f"orfdata genomes install {genome.pinned_name} --force"
+        pinned_name = getattr(genome, "pinned_name", None)
+        if pinned_name is None and getattr(genome, "release", None) is None:
+            from .genomes import _find
+
+            for key in (getattr(genome, "assembly_accession", None), getattr(genome, "reference_name", None)):
+                found = _find(key) if isinstance(key, str) else None
+                if found is not None and found[0] is not None:
+                    pinned_name = found[0].name
+                    break
+        if pinned_name is not None:
+            install = f"orfdata genomes install {pinned_name} --force"
         elif getattr(genome, "release", None) is not None and getattr(genome, "species", None) is not None:
             install += f" --release {genome.release} --species {genome.species.latin_name}"
         # Absent, partly downloaded or unindexed annotation is installed by the command; damage is a failure.

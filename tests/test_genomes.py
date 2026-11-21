@@ -43,18 +43,25 @@ def test_a_pinned_annotation_installs_from_local_copies_and_opens_offline(tmp_pa
         load_genome("mouse-slice")
     with pytest.raises(ValueError, match="mismatch"):
         install_genome("mouse-slice", source_paths=dict(paths, gtf=paths["transcripts"]))
+    from pyensembl import Genome
+
     installed = install_genome("mouse-slice", source_paths=paths)
+    assert type(installed) is Genome
     assert (installed.reference_name, installed.species.latin_name) == ("GRCm39", "mus_musculus")
     opened = load_genome("mouse-slice")
+    assert type(opened) is Genome
     assert opened.transcript_by_id("ENSMUST00000109601").sequence.startswith(
         installed.transcript_by_id("ENSMUST00000109601").sequence[:20])
     with pytest.raises(ValueError, match="No pinned genome 'mouse-sliced'"):
         load_genome("mouse-sliced")
-    # The genome keeps its species and assembly accession through pickling, as multiprocessing and Varcode need.
+    # The genome keeps its species and assembly accession through pickling and JSON, as multiprocessing and Varcode need.
     import pickle
 
     copied = pickle.loads(pickle.dumps(opened))
+    assert type(copied) is Genome
     assert copied.species.latin_name == "mus_musculus" and copied.reference_name == "GRCm39"
+    restored = Genome.from_json(opened.to_json())
+    assert restored == opened and restored.species.latin_name == "mus_musculus"
 
 
 def test_a_damaged_index_or_file_says_how_to_reinstall(tmp_path, monkeypatch):
