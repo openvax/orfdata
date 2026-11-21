@@ -189,7 +189,7 @@ def audit_cases(tmp_path, monkeypatch, paired, chain, pinned, genome, viral_pane
         (("chains", "download"), chain_args),
         (("lift",), ["--catalog", str(old_path), "--to", "GRCm39", "--chain", str(chain.path),
                       "--output", str(tmp_path / "lifted.json")]),
-        (("proteome",), ["--species", "mouse", "--release", "106"]),
+        (("proteome",), ["--species", "mouse", "--release", "106", "--output", str(tmp_path / "proteome.fa")]),
         (("setup",), ["--species", "mouse", "--catalogs", name, "--collections", "none", "--accept-terms"]),
         (("data", "list"), []),
         (("data", "status"), []),
@@ -220,7 +220,8 @@ def test_every_command_executes_with_human_and_json_output(audit_cases, monkeypa
             argv = [*path, *options, *(["--json"] if machine else [])]
             invoke(argv)
             captured = capsys.readouterr()
-            output = captured.err if path in (("lift",), ("proteome",)) else captured.out
+            # lift and proteome write a file; their human summary is on stderr, their JSON on stdout.
+            output = captured.err if path in (("lift",), ("proteome",)) and not machine else captured.out
             transcript.append("$ orfdata " + " ".join(argv) + "\n" + captured.out + captured.err)
             save_transcript("commands.txt", transcript, tmp_path)
             assert output.strip(), argv
@@ -237,10 +238,10 @@ def test_every_command_executes_with_human_and_json_output(audit_cases, monkeypa
                     assert "TPM" in output and "iBAQ" in output and "measured" in output
                 if path == ("datasets", "pairs"):
                     assert "same_material" in output and "concurrent" in output and "canonical_translation" in output
+            if path in (("proteome",), ("lift",)):
+                assert not (captured.err if machine else captured.out), argv
             if path == ("proteome",):
-                assert captured.out.startswith(">") and "{" not in captured.out
-            elif path == ("lift",):
-                assert not captured.out
+                assert (tmp_path / "proteome.fa").read_text().startswith(">")
 
 
 @pytest.mark.parametrize("argv", [

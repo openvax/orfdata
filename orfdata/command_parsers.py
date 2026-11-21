@@ -572,7 +572,10 @@ def proteome_parser(prog=None):
     parser.add_argument("--annotation", metavar="DIRECTORY",
                         help="Also write the ncORF models there as annotation.gtf with matching "
                              "transcripts.fasta and proteins.fasta, for PyEnsembl-based tools")
-    parser.add_argument("--json", action="store_true", help="Write the complete build summary as JSON to stderr")
+    parser.add_argument("--summary", metavar="FILE", help="Also write the complete build summary there as JSON")
+    parser.add_argument("--json", action="store_true",
+                        help="Write the complete build summary as JSON to standard output; requires --output, "
+                             "which keeps the FASTA out of it")
     return parser
 
 
@@ -737,7 +740,9 @@ def lift_parser(prog=None):
                                  "ORFDATA_CACHE, OPENVAX_DATA_CACHE or the default")
     parser.add_argument("--output", required=True, metavar="FILE",
                         help="Write the lifted catalogue here; gzipped when it ends in .gz")
-    parser.add_argument("--json", action="store_true", help="Write the complete build summary as JSON to stderr")
+    parser.add_argument("--summary", metavar="FILE", help="Also write the complete lift summary there as JSON")
+    parser.add_argument("--json", action="store_true",
+                        help="Write the complete lift summary as JSON to standard output")
     return parser
 
 
