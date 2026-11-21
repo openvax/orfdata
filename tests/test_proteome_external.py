@@ -15,7 +15,7 @@ from orfdata import (
     Proteome,
     ReferenceContext,
 )
-from orfdata.proteome import _sha256
+from orfdata.cache import content_digest
 
 
 @pytest.fixture
@@ -250,7 +250,7 @@ def test_v4_exporter_specific_snapshot_is_normalized(reference, tmp_path):
     saved_record["exporter"] = "vaxrank"
     saved_link = content["producer_graph"]["links"][0]
     saved_link.update(source=old_record_key, target=old_accession, target_kind="entry")
-    snapshot.update(schema="orfdata.proteome.v4", identity=_sha256(content))
+    snapshot.update(schema="orfdata.proteome.v4", identity=content_digest(content))
     path.write_bytes(gzip.compress(json.dumps(snapshot).encode(), mtime=0))
 
     loaded = Proteome.load(path)

@@ -8,7 +8,6 @@ The installed catalogue and query API need neither, and never access the network
 import argparse
 import csv
 import gzip
-import hashlib
 import io
 import json
 import re
@@ -20,6 +19,7 @@ import zipfile
 from collections import defaultdict
 from pathlib import Path
 
+from orfdata.cache import file_sha256
 from orfdata.catalog import load_catalog, load_uorf_catalog
 from orfdata.initiation_context import InitiationContext
 from orfdata.sequence import translate_reference
@@ -65,16 +65,8 @@ SHOTGUN_STUDIES = {
 }
 
 
-def digest(path):
-    value = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            value.update(block)
-    return value.hexdigest()
-
-
 def verify(path):
-    if digest(path) != PINS[path.name]:
+    if file_sha256(path) != PINS[path.name]:
         raise ValueError(f"Source checksum mismatch: {path}")
 
 
@@ -594,7 +586,7 @@ def build(source_dir, destination, *, all_orfs=False):
     manifest = {
         "schema": "orfdata.manifest.v1" if all_orfs else "isovar.uorf_manifest.v1",
         "dataset_version": metadata["dataset_version"],
-        "catalog_sha256": digest(target),
+        "catalog_sha256": file_sha256(target),
         "statistics": stats,
         "source_sha256": {k: v for k, v in PINS.items() if all_orfs or k not in NCRNA_INPUTS},
         "excluded_assignments": excluded,

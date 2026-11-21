@@ -32,7 +32,7 @@ from os import PathLike
 from pathlib import Path
 from uuid import uuid4
 
-from .cache import DOWNLOAD_TIMEOUT, get_data_dir
+from .cache import DOWNLOAD_TIMEOUT, file_sha256, get_data_dir
 from .errors import NotInstalledError
 from .fasta import write_fasta
 from .record_sources import REQUEST_INTERVAL
@@ -189,14 +189,6 @@ def _selection(species, collection):
     return canonical_species(chosen.target_species), chosen
 
 
-def _sha256(path):
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
 def _primary_ledger(collection, inventory):
     """What the primary source publishes for each inventory row, in inventory order.
 
@@ -224,7 +216,7 @@ def _write_checksums(path):
         for file_path in sorted((item for item in path.rglob("*") if item.is_file()
                                  and item.name != _CHECKSUMS),
                                 key=lambda item: item.relative_to(path).as_posix()):
-            stream.write(f"{_sha256(file_path)}  {file_path.relative_to(path).as_posix()}\n")
+            stream.write(f"{file_sha256(file_path)}  {file_path.relative_to(path).as_posix()}\n")
 
 
 def _quote_empty_final_tsv_fields(path):
@@ -337,7 +329,7 @@ def _verify_checksums(path):
     if (len(sums) != len(expected_files) or any(len(parts) != 2 for parts in sums)
             or {relative for _, relative in sums} != expected_files):
         raise ValueError(f"Invalid viral reference checksum manifest: {sums_path}")
-    if any(_sha256(path / relative) != digest for digest, relative in sums):
+    if any(file_sha256(path / relative) != digest for digest, relative in sums):
         raise ValueError(f"Viral reference checksum mismatch: {path}")
 
 

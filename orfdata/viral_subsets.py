@@ -1,12 +1,12 @@
-"""Read declarative viral-reference subsets from package YAML."""
+"""Read declarative viral-reference subsets from package JSON."""
 
 from functools import lru_cache
 
-# What reading the subsets needs (package resources, PyYAML and the GDC inventory, which uses pandas) is
+# What reading the subsets needs (package resources and the GDC inventory, which uses pandas) is
 # imported where they are read, so importing this module stays cheap: ``orfdata`` imports it eagerly to
 # keep ``orfdata.viral_subsets`` the function.
 
-_RESOURCE = "data/viral/subsets.yaml"
+_RESOURCE = "data/viral/subsets.json"
 _SCHEMA = "orfdata.viral_subsets.v1"
 
 
@@ -34,13 +34,12 @@ def _check_abbreviations(name, abbreviations, known):
 
 @lru_cache(maxsize=1)
 def _registry():
+    import json
     from importlib.resources import files
-
-    import yaml
 
     from .viral_coverage import viral_panel_coverage
 
-    data = yaml.safe_load(files("orfdata").joinpath(_RESOURCE).read_text(encoding="utf-8"))
+    data = json.loads(files("orfdata").joinpath(_RESOURCE).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("schema") != _SCHEMA:
         raise ValueError("Unsupported viral subset metadata")
     if not isinstance(data.get("subsets"), dict) or not isinstance(data.get("aliases"), dict):

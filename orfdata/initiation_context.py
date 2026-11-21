@@ -1,7 +1,9 @@
 """Loose, positional initiation priors, separate from translation observations."""
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Optional
+
+from .sequence import genetic_code, reverse_complement_dna
 
 # A of ATG is +1; there is no position zero. The outer GCC is optional.
 KOZAK_PREFERENCES = {
@@ -175,4 +177,106 @@ def annotate_initiation_context(sequence, start, *, five_prime_complete=None):
         sequence[start + 3 : start + 9],
         start_offset=start,
         five_prime_complete=five_prime_complete,
+    )
+
+
+def map_initiation_position(orf, position, *, genome_build):
+    """Map a 1-based genomic base into ``orf``'s spliced initiation context."""
+    if type(position) is not int or position < 1:
+        raise ValueError("position must be a positive integer")
+    if genome_build != orf.genome_build:
+        raise ValueError(f"Expected genome build {orf.genome_build}, got {genome_build}")
+    context = orf.initiation_context
+    if context is None or position not in context.genomic_positions:
+        return None
+    index = context.genomic_positions.index(position)
+    relative = context.relative_positions[index]
+    sequence = context.upstream + context.start_codon + context.downstream
+    coding = orf.map_genomic_position(position, genome_build=genome_build)
+    roles = ["initiation_context"]
+    if relative in KOZAK_PREFERENCES:
+        roles.append("kozak_preference_position")
+    if coding is not None:
+        roles.append(coding["role"])
+    return {
+        "orf_id": orf.orf_id,
+        "genome_build": orf.genome_build,
+        "contig": orf.contig,
+        "position": position,
+        "context_position": relative,
+        "roles": roles,
+        "transcript_base": sequence[index],
+        "genomic_ref": sequence[index]
+        if orf.strand == "+"
+        else reverse_complement_dna(sequence[index]),
+        "coding_annotation": coding,
+        "initiation_assessment": context.assessment,
+        "mutant_translation_evidence": "not_assessed",
+    }
+
+
+def annotate_initiation_snv(orf, position, ref, alt, *, genome_build):
+    """Compare REF-validated reference and alternate initiation contexts on ``orf``."""
+    if ref not in ("A", "C", "G", "T") or alt not in ("A", "C", "G", "T") or ref == alt:
+        raise ValueError("Provide distinct single-base forward-genomic REF and ALT")
+    annotation = map_initiation_position(orf, position, genome_build=genome_build)
+    if annotation is None:
+        raise ValueError("Initiation context is unavailable or does not cover position")
+    if ref != annotation["genomic_ref"]:
+        raise ValueError(
+            "REF mismatch: expected {}, got {}".format(annotation["genomic_ref"], ref)
+        )
+    context = orf.initiation_context
+    index = context.genomic_positions.index(position)
+    transcript_alt = alt if orf.strand == "+" else reverse_complement_dna(alt)
+    sequence = context.upstream + context.start_codon + context.downstream
+    altered = sequence[:index] + transcript_alt + sequence[index + 1 :]
+    start = len(context.upstream)
+    mutant = replace(
+        context,
+        upstream=altered[:start],
+        start_codon=altered[start : start + 3],
+        downstream=altered[start + 3 :],
+    )
+    changes = []
+    relative = annotation["context_position"]
+    if 1 <= relative <= 3:
+        changes.append(
+            "ATG_lost"
+            if context.start_codon == "ATG"
+            else "ATG_gained"
+            if mutant.start_codon == "ATG"
+            else "start_codon_changed"
+        )
+    if relative in KOZAK_PREFERENCES:
+        preferred = KOZAK_PREFERENCES[relative]
+        before, after = sequence[index] in preferred, transcript_alt in preferred
+        changes.append(
+            "kozak_preference_gained"
+            if not before and after
+            else "kozak_preference_lost"
+            if before and not after
+            else "kozak_preference_unchanged"
+        )
+    codons = None
+    if relative > 0 and orf.translation_table is not None:
+        offset = start + (relative - 1) // 3 * 3
+        before, after = sequence[offset : offset + 3], altered[offset : offset + 3]
+        if len(before) == 3 and all(b in "ACGT" for b in before + after):
+            table = genetic_code(orf.translation_table).codons
+            codons = {
+                "reference_codon": before,
+                "alternate_codon": after,
+                "reference_codon_translation": table[before],
+                "alternate_codon_translation": table[after],
+                "interpretation": "codon_translation_if_frame_retained; initiation_not_demonstrated",
+            }
+    return dict(
+        **annotation,
+        variant={"ref": ref, "alt": alt, "transcript_alt": transcript_alt},
+        sequence_changes=changes,
+        reference_context=context.to_dict(),
+        alternate_context=mutant.to_dict(),
+        codon_consequence=codons,
+        translation_change="not_measured",
     )

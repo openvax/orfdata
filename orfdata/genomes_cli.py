@@ -7,7 +7,7 @@ from contextlib import redirect_stdout
 from dataclasses import asdict
 
 from .cli_output import print_result
-from .cli_parser import UsageError
+from .cli_parser import parse_source_paths
 from .command_parsers import genomes_parser
 from .genomes import contig_aliases, install_genome, pinned_genomes, reference_names
 
@@ -22,14 +22,9 @@ def run(argv=None, prog=None):
             frame = reference_names() if args.command == "names" else contig_aliases(args.name)
             output = json.loads(frame.to_json(orient="records"))
         else:
-            paths = {}
-            for item in args.source_path:
-                role, separator, path = item.partition("=")
-                if not separator or not role or not path or role in paths:
-                    raise UsageError("Source overrides require unique ROLE=PATH entries")
-                paths[role] = path
+            paths = parse_source_paths(args.source_path, metavar="ROLE=PATH")
             with redirect_stdout(sys.stderr):
-                genome = install_genome(args.name, force=args.force, source_paths=paths or None,
+                genome = install_genome(args.name, force=args.force, source_paths=paths,
                                         cache_root=args.cache_root, genome_fasta_path_or_url=args.genome_fasta,
                                         download_options=dict(timeout=args.timeout))
             output = dict(name=args.name, reference_name=genome.reference_name,

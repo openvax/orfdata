@@ -136,8 +136,12 @@ def read_orf(sequence, start, *, code, start_codon=None, recoded=None, circular=
     return "".join(coding), "".join(residues), stopped
 
 
+_DNA_COMPLEMENT = str.maketrans("ACGTRYKMBVDHNacgtrykmbvdhn", "TGCAYRMKVBHDNtgcayrmkvbhdn")
+
+
 def reverse_complement_dna(sequence):
-    return sequence.translate(str.maketrans("ACGT", "TGCA"))[::-1]
+    """Return the reverse complement of a DNA string, IUPAC ambiguity codes included."""
+    return sequence.translate(_DNA_COMPLEMENT)[::-1]
 
 
 def translate_reference(sequence):

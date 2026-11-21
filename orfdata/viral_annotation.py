@@ -18,8 +18,8 @@ from itertools import product
 from . import genbank
 from .gtf import gene_line, transcript_blocks, transcript_lines
 from .sequence import genetic_code
+from .sequence import reverse_complement_dna as reverse_complement
 
-COMPLEMENT = str.maketrans("ACGTRYKMBVDHNacgtrykmbvdhn", "TGCAYRMKVBHDNtgcayrmkvbhdn")
 # What each IUPAC nucleotide code stands for, so an ambiguous codon can be read.
 IUPAC = {"A": "A", "C": "C", "G": "G", "T": "T", "U": "T", "R": "AG", "Y": "CT",
          "S": "CG", "W": "AT", "K": "GT", "M": "AC", "B": "CGT", "D": "AGT",
@@ -54,11 +54,6 @@ class GenBankRecord:
 def safe_token(value):
     """Make one FASTA header or GTF attribute field safe and single-token."""
     return re.sub(r"[^A-Za-z0-9._:+-]+", "_", value.strip()).strip("_") or "unknown"
-
-
-def reverse_complement(sequence):
-    """The reverse complement of a nucleotide string, ambiguity codes included."""
-    return sequence.translate(COMPLEMENT)[::-1]
 
 
 def split_genbank(payload):

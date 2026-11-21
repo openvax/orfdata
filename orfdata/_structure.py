@@ -10,6 +10,8 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Optional
 
+from .model import _contig, _merge
+
 
 @dataclass(frozen=True)
 class Structure:
@@ -48,16 +50,6 @@ def _column(db, table, column, default="NULL"):
         return column if db.column_exists(table, column) else default
     except sqlite3.OperationalError:
         return default
-
-
-def _merge(ranges):
-    merged = []
-    for a, b in sorted(ranges):
-        if merged and a <= merged[-1][1] + 1:
-            merged[-1][1] = max(merged[-1][1], b)
-        else:
-            merged.append([a, b])
-    return tuple(tuple(x) for x in merged)
 
 
 def _build(transcripts, exons, cds, starts, stops):
@@ -128,8 +120,6 @@ def transcripts_containing(genome, spans):
     Contig names are compared as PyEnsembl normalizes them. Raises
     ``AttributeError`` when the genome has no SQLite index to read.
     """
-    from .model import _contig
-
     width = 1 << 16
     bins = {}
     for transcript_id, contig, strand, start, end in _rows(

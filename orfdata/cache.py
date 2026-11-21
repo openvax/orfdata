@@ -69,6 +69,12 @@ def content_digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def file_sha256(path):
+    """Return the SHA-256 of the file at ``path``, as 64 lowercase hexadecimal digits."""
+    with open(path, "rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
 def pinned_registry(name, version, assets, store):
     """Return a DataCache registry of one pinned release, installed in ``store``.
 

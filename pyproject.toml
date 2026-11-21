@@ -24,7 +24,6 @@ dependencies = [
     "argcomplete>=3",
     "datacache>=1.29.3,<2",
     "pandas>=3,<4",
-    "pyyaml>=6,<7",
     "pyensembl>=2.32.3",
     "openpyxl>=3.1,<4",
     "pyarrow>=14",

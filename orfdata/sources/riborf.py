@@ -44,7 +44,7 @@ from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
 from ..model import ORFModel
 from ..reference import ScopedTarget
-from ..sequence import genetic_code
+from ..sequence import genetic_code, reverse_complement_dna
 from .ncorf_mammals import _blocks, _transcripts
 
 PRESENCE = ("In the source's genome-wide set of RibORF 2.0-identified translated ORFs (Supplementary Data 3), "
@@ -220,7 +220,7 @@ def import_genome_orfs(inputs, output, manifest):
             head, tail = (int(x) for x in str(row[10]).rstrip(",").split(","))
             blocks = ((first, first + head - 1), (last - tail + 1, last))
             gap = sequence[blocks[0][1] : blocks[1][0] - 1]
-            gap = _reverse_complement(gap) if strand == "-" else gap
+            gap = reverse_complement_dna(gap) if strand == "-" else gap
             if len(gap) < 2 or gap[:2] not in ("GT", "GC") or gap[-2:] != "AG":
                 skip(f"The source's two blocks are joined across {len(gap)} nt that aren't an intron "
                      "(a programmed frameshift?)")
@@ -230,7 +230,7 @@ def import_genome_orfs(inputs, output, manifest):
             continue
         coding = "".join(sequence[a - 1 : b] for a, b in blocks)
         if strand == "-":
-            coding = _reverse_complement(coding)
+            coding = reverse_complement_dna(coding)
         if set(coding) - set("ACGT"):
             skip("The genome's sequence has ambiguous bases in the ORF")
             continue
@@ -289,10 +289,6 @@ def _genome(path, contigs):
             elif name is not None:
                 found[name].append(line.strip().upper())
     return {k: "".join(v) for k, v in found.items()}
-
-
-def _reverse_complement(sequence):
-    return sequence[::-1].translate(str.maketrans("ACGTN", "TGCAN"))
 
 
 def _write(models, unresolved, counts, output, manifest):
