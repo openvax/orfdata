@@ -276,6 +276,12 @@ def load_genome(name, *, cache_root=None, genome_fasta_path_or_url=None):
     root = "" if cache_root is None else f", cache_root={str(cache_root)!r}"
     named = "" if name == pinned else f" (for {name})"
     if status == "missing":
+        if cache_root is None:
+            from_pyensembl = _load_from_pyensembl(
+                pinned, genome_fasta_path_or_url=genome_fasta_path_or_url
+            )
+            if from_pyensembl is not None:
+                return from_pyensembl
         raise NotInstalledError(f"The {pinned} annotation{named} is not installed; install it once with "
                                 f"install_genome({pinned!r}{root}) or {_install_command(pinned, cache_root)}")
     if status != "available":
@@ -283,6 +289,18 @@ def load_genome(name, *, cache_root=None, genome_fasta_path_or_url=None):
                          f"install_genome({pinned!r}, force=True{root}) or "
                          f"{_install_command(pinned, cache_root, True)}")
     return _with_genome_fasta(_open(genome, cache_root), genome_fasta_path_or_url)
+
+
+def _load_from_pyensembl(pinned, *, genome_fasta_path_or_url=None):
+    """Return an installed native PyEnsembl PinnedGenome when available offline, else None."""
+    from pyensembl import PinnedGenome
+    from pyensembl.pinned_genomes import lookup_pinned_alias
+
+    alias = lookup_pinned_alias(pinned)
+    if alias is None or alias.assembly is None:
+        return None
+    candidate = PinnedGenome(alias.assembly, genome_fasta_path_or_url=genome_fasta_path_or_url)
+    return candidate if candidate.installed() else None
 
 
 def _with_genome_fasta(genome, source):

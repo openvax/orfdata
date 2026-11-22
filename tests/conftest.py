@@ -27,6 +27,7 @@ VIRAL_CONTEXT = "cancer-transcriptome-screening"
 def private_cache(tmp_path_factory, monkeypatch):
     """Tests never see, or write to, the user's own downloads and builds."""
     monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path_factory.mktemp("orfdata-cache")))
+    monkeypatch.setenv("PYENSEMBL_CACHE_DIR", str(tmp_path_factory.mktemp("pyensembl-cache")))
 
 
 @pytest.fixture
