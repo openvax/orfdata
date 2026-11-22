@@ -11,7 +11,7 @@ from .initiation_context import (
     map_initiation_position,
 )
 from .reference import ReferenceContext, canonical_species, species_taxon
-from .sequence import CODONS, genetic_code, read_orf
+from .sequence import genetic_code, read_orf
 
 _INFER_BOUNDARY = object()
 
@@ -376,11 +376,24 @@ class TranscriptORF:
                 raise ValueError(f"Annotated CDS of {transcript.id} differs in sequence on {host.id}")
         else:
             own = start
+        # Resolve any explicit source transl_table declaration separately from
+        # the reference/compartment effective code so undeclared annotations do
+        # not silently fall back to nuclear table 1 on mitochondrial contigs.
+        source_table = getattr(transcript, "source_translation_table", None)
+        if source_table is not None:
+            genetic_code(source_table)
+        effective_table = (
+            source_table
+            if source_table is not None
+            else getattr(transcript, "translation_table", None)
+        )
+        effective_code = None if effective_table is None else genetic_code(effective_table)
         # Ensembl marks only ATG/CTG/TTG starts with start_codon rows; a CDS beginning
         # after its RNA's first base has an annotated start whatever the codon.
         start_complete = bool(transcript.contains_start_codon or own > 0)
         stop_complete = bool(transcript.contains_stop_codon or (
-            start_complete and length % 3 == 0 and CODONS.get(coding[-3:]) == "*"))
+            start_complete and length % 3 == 0 and effective_code is not None
+            and effective_code.codons.get(coding[-3:]) == "*"))
         # Without a marked start or stop, the CDS is the same ORF on another RNA only if
         # that RNA continues the same way beyond it; otherwise translation reads on.
         if on is not None and _versioned(on) != _versioned(transcript) and (
@@ -398,7 +411,8 @@ class TranscriptORF:
                  annotation_id=transcript.protein_id + ("" if version is None else f".{version}"),
                  source_transcript_id=_versioned(transcript), equivalent_ids=(), _blocks=blocks,
                  _source_gene=(transcript.gene_id, transcript.gene_name),
-                 _protein=transcript.protein_sequence, _source=source)
+                 _protein=transcript.protein_sequence, _source=source,
+                 _table=source_table, _effective_table=effective_table)
         return orf
 
     @classmethod
@@ -561,17 +575,21 @@ class TranscriptORF:
     def decoded_stop_codons(self):
         """``(codon_index, codon, residue)`` for internal stop codons the protein reads through.
 
-        Stops are judged by the ORF's code, or the standard code for an annotated
-        CDS, which declares none: selenocysteine ``U``, readthrough residues and
-        mitochondrial TGA tryptophan all appear here. A fragment read with
+        Stops are judged by :attr:`effective_genetic_code` (the ORF's declared
+        code when present, otherwise the annotated transcript's resolved
+        reference/compartment code). Selenocysteine ``U`` and readthrough
+        residues appear here; mitochondrial ``TGA`` tryptophan does not when the
+        mitochondrial genetic code is resolved. A fragment read with
         ``at(..., start_complete=False)`` is checked from its first codon. Empty
-        when the reading frame is unknown.
+        when the reading frame or effective genetic code is unknown.
         """
         origin = self._origin
         if origin is None:
             return ()
-        code = self.genetic_code
-        codons = code.codons if code is not None else CODONS
+        code = self.effective_genetic_code
+        if code is None:
+            return ()
+        codons = code.codons
         protein, coding = self.protein_sequence, self.coding_sequence
         first = 1 if self.start_complete else 0  # A complete start codon reads as methionine.
         return tuple((i, coding[origin + 3 * i : origin + 3 * i + 3], protein[i])
@@ -616,6 +634,23 @@ class TranscriptORF:
     def translation_table(self):
         """Declared NCBI table ID, or None when the source did not declare one."""
         return self.__dict__.get("_table") if self.model is None else self.model.translation_table
+
+    @property
+    def effective_translation_table(self):
+        """Effective NCBI table ID for decoding this ORF, or None when unresolved.
+
+        Returns :attr:`translation_table` when declared by the source model or
+        annotation. For an annotated CDS without a source declaration, falls
+        back to the transcript's resolved reference/compartment table (for
+        example NCBI table 2 on vertebrate mitochondria) without silently
+        substituting nuclear table 1 when unresolved.
+        """
+        declared = self.translation_table
+        if declared is not None:
+            return declared
+        if "_effective_table" in self.__dict__:
+            return self._effective_table
+        return getattr(self.transcript, "translation_table", None)
 
     @property
     def contig(self):
@@ -756,12 +791,24 @@ class TranscriptORF:
     def genetic_code(self):
         """The ORF's declared NCBI code; modified products must keep using it.
 
-        None for an annotated CDS: the annotation does not declare its code.
+        None for an annotated CDS when the annotation did not declare a
+        ``transl_table``; see :attr:`effective_genetic_code` for the resolved
+        decoding table.
         """
         if self.record is None:
             table = self.__dict__.get("_table")
             return None if table is None else genetic_code(table)
         return genetic_code(self.model.translation_table)
+
+    @property
+    def effective_genetic_code(self):
+        """Effective :class:`GeneticCode` for decoding this ORF, or None if unresolved.
+
+        Uses :attr:`effective_translation_table` and fails closed on unsupported
+        NCBI table IDs rather than falling back to nuclear table 1.
+        """
+        table = self.effective_translation_table
+        return None if table is None else genetic_code(table)
 
     @property
     def orf_id(self):

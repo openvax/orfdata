@@ -259,11 +259,12 @@ def annotate_initiation_snv(orf, position, ref, alt, *, genome_build):
             else "kozak_preference_unchanged"
         )
     codons = None
-    if relative > 0 and orf.translation_table is not None:
+    effective_table = getattr(orf, "effective_translation_table", orf.translation_table)
+    if relative > 0 and effective_table is not None:
         offset = start + (relative - 1) // 3 * 3
         before, after = sequence[offset : offset + 3], altered[offset : offset + 3]
         if len(before) == 3 and all(b in "ACGT" for b in before + after):
-            table = genetic_code(orf.translation_table).codons
+            table = genetic_code(effective_table).codons
             codons = {
                 "reference_codon": before,
                 "alternate_codon": after,
