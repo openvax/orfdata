@@ -439,3 +439,41 @@ def test_adding_a_mitochondrion_reindexes_without_downloading_again(tmp_path, mo
     # The downloaded files' store is unchanged, so loading builds the new index from them, offline.
     opened = load_genome("mouse-slice", cache_root=root)
     assert opened.transcripts_at_locus(RCRS, 3307, 3307)[0].gene_name == "MT-ND1"
+
+
+def test_t2t_catalog_matches_pyensembl_pinned_assembly():
+    import pyensembl
+
+    t2t, = pinned_genomes(species="human")
+    pe = pyensembl.resolve_pinned_assembly("t2t-chm13")
+    assert (t2t.name, t2t.species, t2t.reference_name, t2t.annotation_name,
+            t2t.annotation_version, t2t.assembly_accession) == (
+        pe.name, pe.species, pe.reference_name, pe.annotation_name,
+        pe.annotation_version, pe.assembly_accession)
+    assert dict(t2t.assets) == dict(pe.assets)
+    assert set(t2t.names) == set(pe.names)
+    assert set(t2t.other_versions) == set(pe.other_versions)
+    assert [(c["name"], c["ucsc"], c["genbank"], c["refseq"], c["length"]) for c in t2t.contigs] == [
+        (c.name, c.ucsc, c.genbank, c.refseq, c.length) for c in pe.contigs
+    ]
+    assert t2t.mitochondria[RCRS]["assets"]["gtf"]["sha256"] == pe.mitochondria[RCRS]["assets"]["gtf"]["sha256"]
+
+
+def test_load_genome_reuses_native_pyensembl_pinned_install(monkeypatch):
+    import pyensembl
+
+    class _FakePinnedGenome:
+        def __init__(self, name, genome_fasta_path_or_url=None):
+            self.name = name
+            self.genome_fasta_path_or_url = genome_fasta_path_or_url
+
+        def installed(self):
+            return True
+
+    monkeypatch.setattr(pyensembl, "PinnedGenome", _FakePinnedGenome)
+    opened = load_genome("hs1")
+    assert isinstance(opened, _FakePinnedGenome)
+    assert opened.name == "t2t-chm13"
+    # An explicit cache_root still enforces ORFdata's cache rather than silently using PyEnsembl's.
+    with pytest.raises(FileNotFoundError):
+        load_genome("hs1", cache_root="/nonexistent/orfdata-cache")
