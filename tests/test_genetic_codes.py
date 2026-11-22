@@ -186,3 +186,102 @@ def test_native_openprot_import_accepts_only_a_declared_supported_code(native, t
         with pytest.raises(ValueError, match=error):
             import_orfs(inputs, output, replace(manifest, processing=dict(
                 manifest.processing, translation_tables=declarations)))
+
+
+def test_annotated_mitochondrial_orf_distinguishes_declared_and_effective_code(tmp_path, monkeypatch):
+    """Annotated mitochondrial CDSs keep null source declaration while decoding with table 2 (#203)."""
+    from test_genomes import RCRS, slice_pins
+
+    from orfdata import TranscriptORF, genomes, install_genome, pinned_genomes
+
+    paths, pins = slice_pins(tmp_path)
+    t2t, = pinned_genomes(species="human")
+    pins["mouse-slice"]["mitochondria"] = {RCRS: dict(t2t.mitochondria[RCRS])}
+    monkeypatch.setattr(genomes, "_pins", lambda: pins)
+    installed = install_genome("mouse-slice", source_paths=paths, cache_root=tmp_path / "root")
+
+    nd1, = installed.transcripts_at_locus(RCRS, 3307, 3307)
+    assert nd1.source_translation_table is None
+    assert nd1.translation_table == 2
+
+    orf = TranscriptORF.from_annotation(nd1)
+    assert orf.translation_table is None
+    assert orf.genetic_code is None
+    assert orf.effective_translation_table == 2
+    assert orf.effective_genetic_code == genetic_code(2)
+    # MT-ND1 contains internal TGA tryptophan codons; under table 2 they are not recoded stops.
+    assert "TGA" in orf.coding_sequence
+    assert orf.decoded_stop_codons == ()
+
+    snapshot = json.loads(json.dumps(orf.to_dict()))
+    assert snapshot["translation_table"] is None
+    assert snapshot["decoded_stop_codons"] == []
+    restored = TranscriptORF.from_dict(snapshot, nd1)
+    assert restored.translation_table is None
+    assert restored.effective_translation_table == 2
+    assert restored.effective_genetic_code == genetic_code(2)
+    assert restored.decoded_stop_codons == ()
+
+
+def test_annotated_cds_respects_explicit_transl_table_and_fails_closed_on_unsupported(tmp_path):
+    """Explicit GTF transl_table populates translation_table; unsupported codes fail closed."""
+    from pyensembl import Genome
+
+    from orfdata import TranscriptORF
+
+    def build_genome(root, *, contig, coding_seq, protein_seq, extra_attrs="", species="homo_sapiens"):
+        root.mkdir(parents=True, exist_ok=True)
+        gtf = root / "ann.gtf"
+        cdna = root / "cdna.fa"
+        pep = root / "pep.fa"
+        n = len(coding_seq)
+        attrs = f'gene_id "G1"; gene_name "G1"; transcript_id "T1"; protein_id "P1";{extra_attrs}'
+        gtf.write_text(
+            f'{contig}\tsynth\tgene\t1\t{n}\t.\t+\t.\tgene_id "G1"; gene_name "G1";\n'
+            f'{contig}\tsynth\ttranscript\t1\t{n}\t.\t+\t.\t{attrs}\n'
+            f'{contig}\tsynth\texon\t1\t{n}\t.\t+\t.\t{attrs} exon_id "E1"; exon_number "1";\n'
+            f'{contig}\tsynth\tCDS\t1\t{n}\t.\t+\t0\t{attrs}\n'
+            f'{contig}\tsynth\tstart_codon\t1\t3\t.\t+\t0\t{attrs}\n'
+        )
+        cdna.write_text(f">T1\n{coding_seq}\n")
+        pep.write_text(f">P1\n{protein_seq}\n")
+        g = Genome(
+            reference_name="GRCh38", annotation_name="synth", annotation_version="1",
+            gtf_path_or_url=str(gtf), transcript_fasta_paths_or_urls=str(cdna),
+            protein_fasta_paths_or_urls=str(pep), cache_directory_path=str(root / "cache"),
+            species=species,
+        )
+        g.index()
+        return g
+
+    # Vertebrate mitochondrial CDS ending in AGA (stop in table 2, R in table 1) with internal TGA (W).
+    mito_declared = build_genome(
+        tmp_path / "mito_declared", contig="MT", coding_seq="ATGTGAAAAAGA", protein_seq="MWK",
+        extra_attrs=' transl_table "2";',
+    )
+    try:
+        t = mito_declared.transcript_by_id("T1")
+        orf = TranscriptORF.from_annotation(t)
+        assert orf.translation_table == 2
+        assert orf.genetic_code == genetic_code(2)
+        assert orf.effective_translation_table == 2
+        assert orf.stop_complete is True
+        assert orf.stop_codon == "AGA"
+        assert orf.decoded_stop_codons == ()
+        # Initiation context codon consequence uses effective table 2 (TGA -> W, not *).
+        snv = orf.annotate_initiation_snv(5, "G", "A", genome_build="GRCh38")
+        assert snv["codon_consequence"]["reference_codon"] == "TGA"
+        assert snv["codon_consequence"]["reference_codon_translation"] == "W"
+    finally:
+        mito_declared.close()
+
+    # Unsupported declared transl_table fails closed rather than falling back to nuclear table 1.
+    unsupported = build_genome(
+        tmp_path / "unsupported", contig="1", coding_seq="ATGAAATAA", protein_seq="MK",
+        extra_attrs=' transl_table "4";',
+    )
+    try:
+        with pytest.raises(ValueError, match="Unsupported ORF translation table 4"):
+            TranscriptORF.from_annotation(unsupported.transcript_by_id("T1"))
+    finally:
+        unsupported.close()
