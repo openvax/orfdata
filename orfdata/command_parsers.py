@@ -32,14 +32,14 @@ def data_parser(prog="orfdata download"):
     -------
     ArgumentParser
         Its subcommands are ``list``, ``status``, ``info``, ``path``,
-        ``fetch``, ``viral``, ``catalog``, ``dataset``, ``reference``,
-        ``genome`` and ``chains``.
+        ``fetch``, ``dirs``, ``prune``, ``viral``, ``catalog``, ``dataset``,
+        ``reference``, ``genome`` and ``chains``.
     """
     parser = ArgumentParser(prog=prog, description="Discover and acquire ORFdata resources through one command.",
                             epilog="Start here:\n  orfdata data list --species dog\n"
-                                   "  orfdata data status\n  orfdata data info NAME\n"
-                                   "  orfdata data fetch NAME\n\n"
-                                   "List, status, info, and path never download data.")
+                                   "  orfdata data status\n  orfdata data dirs\n"
+                                   "  orfdata data info NAME\n  orfdata data fetch NAME\n\n"
+                                   "List, status, dirs, info, and path never download data.")
     commands = parser.add_subparsers(dest="command", required=True)
 
     listing = commands.add_parser("list", help="List every bundled, downloadable or buildable resource")
@@ -63,6 +63,16 @@ def data_parser(prog="orfdata download"):
             add_resume(command)
         else:
             command.add_argument("--verify", action="store_true", help="Hash and validate installed files")
+
+    dirs = commands.add_parser(
+        "dirs", help="Show where ORFdata's cache lives, why it resolved there, and disk usage")
+    add_json(dirs, help="Write machine-readable JSON")
+
+    prune = commands.add_parser(
+        "prune", help="Remove stale bundle generations from ORFdata's cache (dry-run by default)")
+    prune.add_argument("--keep", type=int, default=1, help="Generations to keep per store (default: 1)")
+    prune.add_argument("--yes", action="store_true", help="Actually delete stale generations (default is dry-run)")
+    add_json(prune, help="Write machine-readable JSON")
 
     viral = commands.add_parser(
         "viral", help="Download the current human-targeted viral collection and paired FASTAs")
@@ -140,7 +150,7 @@ def data_parser(prog="orfdata download"):
 
 
 def add_force_timeout(parser):
-    """Add ``--force``, which replaces or repairs an installation, and ``--timeout``.
+    """Add ``--force``, ``--offline``, and ``--timeout``.
 
     Parameters
     ----------
@@ -148,6 +158,8 @@ def add_force_timeout(parser):
         The parser of a command that installs something.
     """
     parser.add_argument("--force", action="store_true", help="Replace or repair an existing installation")
+    parser.add_argument("--offline", action="store_true",
+                        help="Forbid remote downloads (equivalent to OPENVAX_OFFLINE=1)")
     add_timeout(parser)
 
 

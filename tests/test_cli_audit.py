@@ -193,6 +193,8 @@ def audit_cases(tmp_path, monkeypatch, paired, chain, pinned, genome, viral_pane
         (("setup",), ["--species", "mouse", "--catalogs", name, "--collections", "none", "--accept-terms"]),
         (("data", "list"), []),
         (("data", "status"), []),
+        (("data", "dirs"), []),
+        (("data", "prune"), []),
         (("data", "info"), [name]),
         (("data", "path"), [name]),
         (("data", "fetch"), [name, "--accept-terms", "--source-path", f"catalog.json.gz={artifact}"]),
