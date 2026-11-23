@@ -1,3 +1,15 @@
+# 0.56.0
+
+- Harmonize `orfdata data` with `datacache>=1.34.0` (#217):
+  - Add `orfdata data dirs [--json]` to show where ORFdata's cache lives, why
+    it resolved there (`origin`/`detail`), offline status, and per-area disk
+    usage without creating directories or touching the network.
+  - Add `orfdata data prune [--keep N] [--yes] [--json]` to reclaim stale
+    `datacache` bundle generations (dry-run by default; pass `--yes` to delete).
+  - Add `--offline` to `orfdata data fetch` (and other install subcommands) to
+    forbid remote downloads via `DATACACHE_OFFLINE=1` while still serving
+    local caches.
+
 # 0.54.0
 
 - `proteome --json` and `lift --json` write the complete JSON summary to

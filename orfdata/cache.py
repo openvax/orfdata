@@ -15,6 +15,7 @@ timeout.
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from .errors import NotInstalledError
@@ -24,6 +25,33 @@ from .errors import NotInstalledError
 
 # Seconds any ORFdata download may stall before it is retried, then fails; the CLI's --timeout default too.
 DOWNLOAD_TIMEOUT = 60
+
+
+def resolve_cache_location(override=None):
+    """Resolve ORFdata's cache directory and why it was chosen, without creating it.
+
+    Parameters
+    ----------
+    override : str or os.PathLike, optional
+        A cache root to use instead of ``ORFDATA_CACHE``, ``OPENVAX_DATA_CACHE``
+        or the platform's OpenVax cache; what ``cache_root=`` and
+        ``--cache-root`` pass.
+
+    Returns
+    -------
+    datacache.CacheLocation
+        The resolved ``path`` (ending in ``orfdata``), ``origin``, and ``detail``.
+    """
+    import datacache
+
+    if override is not None:
+        root = Path(os.path.expanduser(os.fspath(override))) / "orfdata"
+        return datacache.CacheLocation(str(root), "override", "explicit override")
+    return datacache.resolve_cache_dir(
+        "orfdata",
+        "ORFDATA_CACHE",
+        append_package_to_env=True,
+    )
 
 
 def get_data_dir(override=None):
@@ -41,10 +69,7 @@ def get_data_dir(override=None):
     pathlib.Path
         The ``orfdata`` directory of the selected cache root.
     """
-    import datacache
-
-    return Path(datacache.get_cache_root(
-        "openvax", "ORFDATA_CACHE", "OPENVAX_DATA_CACHE", override=override)) / "orfdata"
+    return Path(resolve_cache_location(override=override).path)
 
 
 def content_digest(value):
