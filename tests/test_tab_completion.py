@@ -19,8 +19,8 @@ import orfdata
 from orfdata.cli import COMMAND_ALIASES, COMMAND_TABLE, completion_parser, completion_words
 
 # What a Tab press must not import: the scientific stack, DataCache, and ORFdata's data and command modules.
-HEAVY = ("pandas", "numpy", "pyarrow", "datacache", "pyensembl", "biotite", "ahocorasick", "openpyxl", "yaml",
-         "orfdata.catalog", "orfdata.catalogs", "orfdata.datasets", "orfdata.proteome", "orfdata.viral",
+HEAVY = ("pandas", "numpy", "pyarrow", "datacache", "pyensembl", "varcode", "biotite", "ahocorasick", "openpyxl",
+         "yaml", "orfdata.catalog", "orfdata.catalogs", "orfdata.datasets", "orfdata.proteome", "orfdata.viral",
          "orfdata.viral_panel", "orfdata.viral_coverage", "orfdata.liftover", "orfdata.genomes",
          "orfdata.cli_output", "orfdata.download_cli", "orfdata.catalog_cli", "orfdata.dataset_cli",
          "orfdata.genomes_cli", "orfdata.liftover_cli", "orfdata.proteome_cli", "orfdata.viral_cli")
@@ -66,6 +66,8 @@ def long_options(parser):
 @pytest.mark.parametrize("code", [
     "import orfdata",
     "import orfdata.cli",
+    "import orfdata.cli_help",
+    "import orfdata.command_parsers",
     # What a Tab press does at most: build the guide with one command's parser under it.
     "from orfdata.cli import COMMAND_TABLE, completion_parser\n"
     "for name in COMMAND_TABLE:\n"
@@ -84,13 +86,15 @@ def test_the_entry_module_is_marked_for_global_completion():
     ("orfdata ", set(COMMAND_TABLE) | {"--version", "--help"}),
     ("orfdata --", {"--version", "--help"}),
     ("orfdata help ", set(COMMAND_TABLE) - {"help"}),
-    ("orfdata data ", {"list", "status", "info", "path", "fetch", "viral", "catalog", "dataset", "reference",
-                       "genome", "chains"}),
+    ("orfdata data ", {"list", "status", "info", "path", "fetch", "dirs", "prune", "viral", "catalog",
+                       "dataset", "reference", "genome", "chains"}),
     ("orfdata data list --kind ", {"viral", "catalog", "dataset", "reference", "genome", "chain", "records"}),
     ("orfdata downloads fetch --acc", {"--accept-terms"}),
     ("orfdata viral ", {"coverage", "contexts", "subsets", "summary", "completeness", "inventory"}),
     ("orfdata viral inventory ", {"download"}),
     ("orfdata query --ev", {"--evidence"}),
+    ("orfdata query --evidence ", {"ms", "ribosome", "riboseq", "proteomics", "immunopeptidomics",
+                                   "ms_unclassified", "all"}),
     ("orfdata catalogs query NAME --form", {"--format"}),
     ("orfdata datasets pairs NAME --left-s", {"--left-scale", "--left-status"}),
     ("orfdata proteome --isoforms ", {"all", "longest"}),

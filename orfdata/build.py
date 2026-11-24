@@ -5,7 +5,6 @@ Only building needs openpyxl; preparing the author's Rdata also needs Rscript.
 The installed catalogue and query API need neither, and never access the network.
 """
 
-import argparse
 import csv
 import gzip
 import json
@@ -666,7 +665,9 @@ def build(source_dir, destination, *, all_orfs=False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    from .cli_help import HelpArgumentParser
+
+    parser = HelpArgumentParser(description=__doc__)
     parser.add_argument("--source-dir", type=Path, required=True)
     parser.add_argument("--all-orfs", action="store_true", help="Include all source ORF classes")
     parser.add_argument(

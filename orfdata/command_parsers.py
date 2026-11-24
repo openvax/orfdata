@@ -248,9 +248,11 @@ def add_query_arguments(parser, *, catalog_path=True, species=True):
     parser.add_argument("--gene", help="Exact source gene symbol or identifier")
     parser.add_argument("--transcript", help="Exact source transcript ID, including its version when supplied")
     parser.add_argument("--orf-id", help="Exact catalogue ORF identifier")
-    parser.add_argument("--evidence", type=evidence_name(), metavar="NAME",
-                        help="Evidence an ORF needs: ms, ribosome (or riboseq), proteomics, immunopeptidomics, "
-                             "ms_unclassified, or all (the default)")
+    evidence_action = parser.add_argument(
+        "--evidence", type=evidence_name(), metavar="NAME",
+        help="Evidence an ORF needs: ms, ribosome (or riboseq), proteomics, immunopeptidomics, "
+             "ms_unclassified, or all (the default)")
+    evidence_action.completer = evidence_completer
     add_rule_arguments(parser)
     parser.add_argument("--biotype", help="Source ORF class, as each source labels it: uORF, lncRNA, intORF, dORF "
                                           "(GENCODE, human); uORF, uoORF, iORF, dORF, doORF, lncORF (mouse Ribo-seq; "
@@ -277,6 +279,11 @@ def add_query_arguments(parser, *, catalog_path=True, species=True):
     output.add_argument("--json", dest="format", action="store_const", const="json",
                         help="Write complete machine-readable JSON")
     add_limit(parser)
+
+
+def evidence_completer(**_kwargs):
+    """Return the public evidence preset names for shell tab completion."""
+    return EVIDENCE_METHODS + tuple(SYNONYMS) + ("all",)
 
 
 def evidence_name(*extra):
