@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .measurements import Measurement, _identifier, _metadata, _Record
+from .measurements import Measurement, Record, freeze_metadata, require_identifier
 from .reference import ReferenceContext, ScopedTarget
 
 
@@ -16,7 +16,7 @@ def _target(data):
 
 
 @dataclass(frozen=True)
-class ReferenceMapping(_Record):
+class ReferenceMapping(Record):
     """All candidate assignments for a native target in another reference.
 
     Unique identifier resolution does not imply sequence validation. A shared
@@ -38,7 +38,7 @@ class ReferenceMapping(_Record):
 
     def __post_init__(self):
         for name in ("mapping_id", "dataset_id", "dataset_version", "method"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         if not isinstance(self.source, ScopedTarget) or not isinstance(self.target_reference, ReferenceContext):
             raise TypeError("Reference mappings require explicit source and destination contexts")
         if self.source.reference.taxon_id != self.target_reference.taxon_id:
@@ -57,13 +57,13 @@ class ReferenceMapping(_Record):
                 or (self.status == "unmapped" and targets)):
             raise ValueError("Reference mapping status disagrees with candidate count")
         if self.reason is not None:
-            _identifier(self.reason, "mapping reason")
+            require_identifier(self.reason, "mapping reason")
         if self.status in ("unmapped", "unresolved") and not self.reason:
             raise ValueError("Unmapped/unresolved assignments require a reason")
         if not self.validation:
             raise ValueError("Mapping validation and its limits must be explicit")
         object.__setattr__(self, "targets", targets)
-        _metadata(self, "validation", "provenance")
+        freeze_metadata(self, "validation", "provenance")
         for target in targets:
             kinds = self.source.kind, target.kind
             allowed = (kinds[0] == kinds[1] or kinds in (("protein", "orf"), ("orf", "protein"))
@@ -108,7 +108,7 @@ class ReferenceMapping(_Record):
 
 
 @dataclass(frozen=True)
-class MappedMeasurement(_Record):
+class MappedMeasurement(Record):
     """An original observation plus a requested target and its explicit mapping.
 
     There is deliberately no replacement value/target: inspect ``measurement``

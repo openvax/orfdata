@@ -73,7 +73,7 @@ class ChainFile:
     """
 
     def __init__(self, path, *, source_build, target_build, name=None, contig_names=None):
-        from .model import _contig
+        from .model import normalize_contig
 
         if source_build == target_build:
             raise ValueError(f"A chain maps between two assemblies, not from {source_build} to itself")
@@ -100,8 +100,8 @@ class ChainFile:
                                      "chain files align the source's forward strand")
                 # Ensembl's GRCh37 files call the rCRS chrM, as UCSC's hg19 does
                 # its own chrM; the length tells them apart.
-                header = (_contig(_chain_contig(fields[2]), source_build, int(fields[3])),
-                          _contig(_chain_contig(renamed.get(fields[7], fields[7])), target_build, int(fields[8])),
+                header = (normalize_contig(_chain_contig(fields[2]), source_build, int(fields[3])),
+                          normalize_contig(_chain_contig(renamed.get(fields[7], fields[7])), target_build, int(fields[8])),
                           fields[9], int(fields[8]))
                 t, q = int(fields[5]), int(fields[10])
                 continue
@@ -129,9 +129,9 @@ class ChainFile:
 
     def locate(self, contig, start, end):
         """Every placement of a whole 1-based inclusive interval, and whether a block covers only part of it."""
-        from .model import _contig
+        from .model import normalize_contig
 
-        source = _contig(contig, self.liftover.source_build)
+        source = normalize_contig(contig, self.liftover.source_build)
         starts, widest, items = self._index.get(source, ((), 0, ()))
         low, high = start - 1, end
         hits, partial = [], False
@@ -173,10 +173,10 @@ def _pins():
 
 def pinned_chains(*, species=None):
     """The pinned chain files, without downloading any."""
-    from .catalog import _species
+    from .reference import canonical_species
 
     found = tuple(PinnedChain(name, **entry) for name, entry in sorted(_pins().items()))
-    return found if species is None else tuple(c for c in found if c.species == _species(species))
+    return found if species is None else tuple(c for c in found if c.species == canonical_species(species))
 
 
 def _pinned(source_build, target_build, species):
@@ -239,9 +239,9 @@ def download_chains(*, species=None, accept_terms=False, force=False, cache_root
 
 def lift_to(catalog, target_build, *, cache_root=None):
     """``catalog`` lifted to ``target_build`` through downloaded pinned chains, in as many hops as needed."""
-    from .model import _species
+    from .reference import canonical_species
 
-    species = _species(catalog.species)
+    species = canonical_species(catalog.species)
     route = chain_routes(species, catalog.genome_build).get(target_build)
     if route is None:
         raise ValueError(f"No pinned chain files lift {species} {catalog.genome_build} to {target_build}; "
@@ -340,13 +340,13 @@ def lift_catalog(catalog, chain):
     followed by ``@`` and the target assembly.
     """
     from .catalog import ORFCatalog
-    from .model import _species
+    from .reference import canonical_species
 
     if catalog.genome_build != chain.liftover.source_build:
         raise ValueError(f"The chain maps from {chain.liftover.source_build}, not {catalog.genome_build}")
-    if getattr(chain, "species", None) not in (None, _species(catalog.species)):
+    if getattr(chain, "species", None) not in (None, canonical_species(catalog.species)):
         raise ValueError(f"{chain.liftover.chain} is a {chain.species} chain; the catalogue is "
-                         f"{_species(catalog.species)}")
+                         f"{canonical_species(catalog.species)}")
     lifted, unmapped = [], []
     for record in catalog.records:
         try:

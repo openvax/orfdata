@@ -19,9 +19,9 @@ from .measurements import (
     MeasurementReference,
     Sample,
     TargetMapping,
-    _identifier,
-    _number,
-    _plain,
+    require_finite_number,
+    require_identifier,
+    to_plain_data,
 )
 from .pairing import (
     PAIRING_BASES,
@@ -137,7 +137,7 @@ def _measurement_record(observation):
         value = getattr(observation, field.name)
         default = _V4_DEFAULTS.get(field.name, MISSING)
         if default is MISSING or value != default:
-            result[field.name] = _plain(value)
+            result[field.name] = to_plain_data(value)
     return result
 
 
@@ -152,11 +152,11 @@ def _mapping_record(mapping):
 
 def _validate_native_selectors(unit=None, scale=None, log_base=None):
     if unit is not None:
-        _identifier(unit, "measurement unit selector")
+        require_identifier(unit, "measurement unit selector")
     if scale is not None and scale not in ("linear", "log"):
         raise ValueError("Measurement scale selector must be linear or log")
     if log_base is not None:
-        _number(log_base, "logarithm base selector")
+        require_finite_number(log_base, "logarithm base selector")
         if log_base <= 0 or log_base == 1:
             raise ValueError("Logarithm base selector must be positive and not one")
         if scale == "linear":
@@ -441,7 +441,7 @@ class QuantitativeDataset:
         scope = self._scope(reference)
         for name, value in (("source identifier", source_identifier), ("source namespace", source_namespace)):
             if value is not None:
-                _identifier(value, name)
+                require_identifier(value, name)
         if target is not None:
             if not isinstance(target, ScopedTarget):
                 raise TypeError("target must be a ScopedTarget")
@@ -543,7 +543,7 @@ class QuantitativeDataset:
             raise TypeError("Relationship ID selections must be sequences, not a single string")
         ids = tuple(ids)
         for value in ids:
-            _identifier(value, "relationship ID selector")
+            require_identifier(value, "relationship ID selector")
         if ids and reference is None and len(self._references) > 1:
             raise ValueError("Relationship ID queries across species require a reference")
         return ids

@@ -7,11 +7,11 @@ from typing import Optional
 from .measurements import (
     Measurement,
     MeasurementReference,
+    Record,
     SourceAsset,
-    _identifier,
-    _metadata,
-    _number,
-    _Record,
+    freeze_metadata,
+    require_finite_number,
+    require_identifier,
 )
 from .reference import ReferenceContext, ScopedTarget
 
@@ -32,7 +32,7 @@ def _target(data):
 
 def _release(record):
     for name in ("dataset_id", "dataset_version"):
-        _identifier(getattr(record, name), name)
+        require_identifier(getattr(record, name), name)
 
 
 def _check_one_to_one(seen, source_key, target_key, one_to_one):
@@ -46,7 +46,7 @@ def _check_one_to_one(seen, source_key, target_key, one_to_one):
 
 
 @dataclass(frozen=True)
-class AssayPair(_Record):
+class AssayPair(Record):
     """A source-backed assay pairing, including an explicitly missing mate.
 
     The pairing basis and temporal relationship are independent. A shared tissue
@@ -76,7 +76,7 @@ class AssayPair(_Record):
         return cls(**values)
 
     def __post_init__(self):
-        _identifier(self.pair_id, "pair_id")
+        require_identifier(self.pair_id, "pair_id")
         _release(self)
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("Pair requires a ReferenceContext")
@@ -88,7 +88,7 @@ class AssayPair(_Record):
             raise ValueError("Assay pairs cannot cross species; use orthology comparisons")
         for identifier in (self.left_assay_id, self.right_assay_id):
             if identifier is not None:
-                _identifier(identifier, "assay ID")
+                require_identifier(identifier, "assay ID")
         if self.left_assay_id is None and self.right_assay_id is None:
             raise ValueError("A pairing requires at least one declared assay")
         if self.left_assay_id == self.right_assay_id and self.reference.key == self.right_reference.key:
@@ -100,17 +100,17 @@ class AssayPair(_Record):
         if not self.evidence:
             raise ValueError("Pairing requires source evidence")
         if self.interval is not None:
-            _number(self.interval, "interval")
-            _identifier(self.interval_unit, "interval_unit")
+            require_finite_number(self.interval, "interval")
+            require_identifier(self.interval_unit, "interval_unit")
             if self.temporal_relation == "concurrent" and self.interval != 0:
                 raise ValueError("Concurrent assays cannot have a nonzero interval")
         elif self.interval_unit is not None:
             raise ValueError("Interval units require a value")
-        _metadata(self, "evidence")
+        freeze_metadata(self, "evidence")
 
 
 @dataclass(frozen=True)
-class TargetRelation(_Record):
+class TargetRelation(Record):
     """Explain why two exact targets can be compared without changing either ID."""
 
     relation_id: str
@@ -123,7 +123,7 @@ class TargetRelation(_Record):
     evidence: Mapping
 
     def __post_init__(self):
-        _identifier(self.relation_id, "relation_id")
+        require_identifier(self.relation_id, "relation_id")
         _release(self)
         if not isinstance(self.left, ScopedTarget) or not isinstance(self.right, ScopedTarget):
             raise TypeError("Target relations require ScopedTargets")
@@ -152,7 +152,7 @@ class TargetRelation(_Record):
             raise ValueError("Gene/group context links parent RNA to a source protein group")
         if self.relation == "gene_protein_group_context" and self.cardinality == "one_to_one":
             raise ValueError("Gene/group context cannot claim unique protein attribution")
-        _metadata(self, "evidence")
+        freeze_metadata(self, "evidence")
 
     @classmethod
     def from_dict(cls, data):
@@ -162,7 +162,7 @@ class TargetRelation(_Record):
 
 
 @dataclass(frozen=True)
-class MatchedMeasurements(_Record):
+class MatchedMeasurements(Record):
     """One declared relationship with all original values and explicit missingness.
 
     Tuples avoid multiplying technical/quantity records into pseudo-replicates.
@@ -231,7 +231,7 @@ class MatchedMeasurements(_Record):
         uncertainty propagation. Undefined ratios are not_measured with a reason.
         RNA/region context and ambiguous group membership cannot produce ORF ratios.
         """
-        _identifier(method, "ratio method")
+        require_identifier(method, "ratio method")
         if not isinstance(normalization, Mapping) or not normalization:
             raise ValueError("Ratio normalization and assumptions must be explicit")
         if self.relation.relation not in ("same_target", "canonical_translation"):
@@ -276,7 +276,7 @@ class MatchedMeasurements(_Record):
 
 
 @dataclass(frozen=True)
-class OrthologyMapping(_Record):
+class OrthologyMapping(Record):
     """Pinned cross-species mapping; it never transfers measurements or evidence."""
 
     mapping_id: str
@@ -289,8 +289,8 @@ class OrthologyMapping(_Record):
     evidence: Mapping
 
     def __post_init__(self):
-        _identifier(self.mapping_id, "mapping_id")
-        _identifier(self.source_release, "source_release")
+        require_identifier(self.mapping_id, "mapping_id")
+        require_identifier(self.source_release, "source_release")
         if not isinstance(self.left, ScopedTarget) or not isinstance(self.right, ScopedTarget):
             raise TypeError("Orthology requires ScopedTargets")
         if self.left.reference.taxon_id == self.right.reference.taxon_id:
@@ -306,7 +306,7 @@ class OrthologyMapping(_Record):
         if self.left.kind == "orf" and not all(self.evidence.get(key) for key in
                                               ("sequence", "frame", "position")):
             raise ValueError("ORF orthology requires its own sequence, frame and position evidence")
-        _metadata(self, "confidence", "evidence")
+        freeze_metadata(self, "confidence", "evidence")
 
     @classmethod
     def from_dict(cls, data):
@@ -317,7 +317,7 @@ class OrthologyMapping(_Record):
 
 
 @dataclass(frozen=True)
-class OrthologyComparison(_Record):
+class OrthologyComparison(Record):
     mapping: OrthologyMapping
     left: tuple
     right: tuple

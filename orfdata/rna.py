@@ -119,15 +119,15 @@ class SourceRNA:
         consecutive in an annotated transcript. Its genomic exons follow from
         the transcript's, and the transcript is recorded as related.
         """
-        from .model import _exon_layout, _layout_blocks, _versioned
+        from .model import exon_layout, layout_blocks, versioned_id
 
         if not 0 <= start < end <= len(transcript.sequence):
             raise ValueError("The slice must lie within the transcript sequence")
         reference = ReferenceContext.from_genome(transcript.genome, context=context)
-        blocks = _layout_blocks(_exon_layout(transcript), transcript.strand, range(start, end), ordered=True)
+        blocks = layout_blocks(exon_layout(transcript), transcript.strand, range(start, end), ordered=True)
         return cls(id, str(transcript.sequence)[start:end], reference, source, topology, transcript.contig,
                    transcript.strand, blocks, transcript.gene_id, transcript.gene_name or None, biotype,
-                   (_versioned(transcript),))
+                   (versioned_id(transcript),))
 
 
 @dataclass(frozen=True)
@@ -179,18 +179,18 @@ class RNAFeature:
     @property
     def genomic_blocks(self):
         """1-based inclusive genomic blocks of the element, ascending; empty if unmapped."""
-        from .model import _layout_blocks, _rna_layout
+        from .model import layout_blocks, rna_layout
 
-        layout = _rna_layout(self.rna)
-        return _layout_blocks(layout, self.rna.strand, range(self.start, self.end)) if layout[0] else ()
+        layout = rna_layout(self.rna)
+        return layout_blocks(layout, self.rna.strand, range(self.start, self.end)) if layout[0] else ()
 
     def overlaps(self, contig, start, end):
         """Whether the element overlaps a 1-based inclusive genomic interval on this contig."""
-        from .model import _contig
+        from .model import normalize_contig
 
         reference = getattr(self.rna, "reference", None)  # a SourceRNA's; else a transcript's genome
         build = reference.genome_build if reference is not None else self.rna.genome.reference_name
-        return _contig(contig, build) == _contig(self.rna.contig, build) and any(
+        return normalize_contig(contig, build) == normalize_contig(self.rna.contig, build) and any(
             a <= end and b >= start for a, b in self.genomic_blocks)
 
     def to_dict(self):
@@ -248,11 +248,11 @@ class ProteinProduct:
 
     def genomic_blocks(self, orf):
         """1-based inclusive genomic blocks of this product's codons, ascending."""
-        from .model import _layout_blocks, _rna_layout
+        from .model import layout_blocks, rna_layout
 
         start, end = self.coding_slice(orf)
-        layout = _rna_layout(orf.transcript)
-        return _layout_blocks(layout, orf.transcript.strand, range(start, end)) if layout[0] else ()
+        layout = rna_layout(orf.transcript)
+        return layout_blocks(layout, orf.transcript.strand, range(start, end)) if layout[0] else ()
 
 
 @lru_cache(maxsize=1)

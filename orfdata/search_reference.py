@@ -10,12 +10,12 @@ from types import MappingProxyType
 from typing import Optional
 
 from .cache import content_digest, file_sha256, get_data_dir, pinned_registry
-from .measurements import SourceAsset, _identifier, _Record
+from .measurements import Record, SourceAsset, require_identifier
 from .reference import ReferenceContext, ScopedTarget
 
 
 @dataclass(frozen=True)
-class SearchReferenceSpec(_Record):
+class SearchReferenceSpec(Record):
     """A source adapter's explicit declaration of a native protein search set."""
 
     dataset_id: str
@@ -28,7 +28,7 @@ class SearchReferenceSpec(_Record):
 
     def __post_init__(self):
         for name in ("dataset_id", "dataset_version", "namespace"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         if not isinstance(self.reference, ReferenceContext) or not isinstance(self.source, SourceAsset):
             raise TypeError("Search references require a context and pinned SourceAsset")
         if self.reference.sequence_sha256 != self.source.sha256:
@@ -47,7 +47,7 @@ class SearchReferenceSpec(_Record):
 
 
 @dataclass(frozen=True)
-class SearchSequence(_Record):
+class SearchSequence(Record):
     """One original entry; source annotation does not establish protein detection."""
 
     target: ScopedTarget
@@ -66,7 +66,7 @@ class SearchSequence(_Record):
         if not isinstance(self.target, ScopedTarget) or self.target.kind != "protein":
             raise TypeError("Search sequence requires a native protein target")
         for name in ("header", "fasta_id", "sequence"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         alphabet = "[A-Z*]+" if self.database == "ensembl" else "[A-Z]+"
         if not re.fullmatch(alphabet, self.sequence):
             raise ValueError("Invalid search sequence characters")
@@ -79,13 +79,13 @@ class SearchSequence(_Record):
         if self.database not in ("sp", "tr", "ensembl") or type(self.source_line) is not int or self.source_line < 1:
             raise ValueError("Invalid search sequence source metadata")
         if self.gene_label is not None:
-            _identifier(self.gene_label, "gene_label")
+            require_identifier(self.gene_label, "gene_label")
         if any(value is not None and type(value) is not bool for value in (self.decoy, self.control)):
             raise TypeError("Decoy/control roles must be explicit booleans or unknown")
 
 
 @dataclass(frozen=True)
-class SearchMembership(_Record):
+class SearchMembership(Record):
     """A scoped search-space result, never an abundance or detectability claim."""
 
     target: ScopedTarget
@@ -96,7 +96,7 @@ class SearchMembership(_Record):
     def __post_init__(self):
         if not isinstance(self.target, ScopedTarget):
             raise TypeError("Search membership requires a scoped target")
-        _identifier(self.reason, "membership reason")
+        require_identifier(self.reason, "membership reason")
         if self.status not in ("present", "not_in_search", "unknown"):
             raise ValueError("Unknown search membership status")
         if self.status == "present":
@@ -150,7 +150,7 @@ class SearchReference:
 
     def get(self, identifier):
         """Look up an exact accession within this source's declared namespace."""
-        _identifier(identifier, "search sequence identifier")
+        require_identifier(identifier, "search sequence identifier")
         return self._entries.get(identifier)
 
     def membership(self, target):

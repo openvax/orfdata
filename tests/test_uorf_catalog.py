@@ -299,6 +299,7 @@ def test_source_preparation_preserves_an_existing_Rdata_file(tmp_path, monkeypat
     # A user's existing unpacked source is not the builder's scratch file.
     existing = tmp_path / "filtered_peptides.Rdata"
     existing.write_bytes(b"keep this existing source")
+    pins = dict(builder.PINS)
     for name in (
         "ncorf_list.xlsx",
         "peptide_sample_msrun_counts.tar.bz2",
@@ -306,19 +307,167 @@ def test_source_preparation_preserves_an_existing_Rdata_file(tmp_path, monkeypat
         "media-4_with_dot_products.csv",
         *builder.ENSEMBL_INPUTS,
     ):
-        (tmp_path / name).write_bytes(b"cached")
-    with tarfile.open(tmp_path / "filtered_peptides.tar.bz2", "w:bz2") as archive:
+        path = tmp_path / name
+        path.write_bytes(b"cached")
+        pins[name] = hashlib.sha256(b"cached").hexdigest()
+    tar_path = tmp_path / "filtered_peptides.tar.bz2"
+    with tarfile.open(tar_path, "w:bz2") as archive:
         member = tarfile.TarInfo("filtered_peptides.Rdata")
         member.size = 5
         archive.addfile(member, io.BytesIO(b"input"))
-    monkeypatch.setattr(builder, "verify", lambda path: None)
+    pins["filtered_peptides.tar.bz2"] = hashlib.sha256(tar_path.read_bytes()).hexdigest()
+    exported = b"exported mappings\n"
+    pins["author-hla-mappings.tsv"] = hashlib.sha256(exported).hexdigest()
+    monkeypatch.setattr(builder, "PINS", pins)
 
     def run_R(args, **kwargs):
         scratch = Path(args[-2])
         assert scratch != existing and scratch.read_bytes() == b"input"
-        Path(args[-1]).write_text("exported mappings\n")
+        Path(args[-1]).write_bytes(exported)
 
     monkeypatch.setattr(builder.subprocess, "run", run_R)
     builder.prepare_sources(tmp_path)
     assert existing.read_bytes() == b"keep this existing source"
+    assert (tmp_path / "author-hla-mappings.tsv").read_bytes() == exported
     assert not list(tmp_path.glob("uorf-rdata-*"))
+    assert not list(tmp_path.glob(".author-hla-mappings.tsv-*"))
+
+
+def test_interrupted_prepare_sources_leaves_no_truncated_files_and_retries_cleanly(tmp_path, monkeypatch):
+    """Interrupted downloads and derived writes leave no file at the final path; retry needs no cleanup."""
+    import re
+    import zipfile
+
+    import requests
+
+    def tar_bz2_bytes(member_name, payload):
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:bz2") as archive:
+            info = tarfile.TarInfo(member_name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+        return buf.getvalue()
+
+    mappings_bytes = b"peptide\torf_name\tpeptide_accession\tprotein\tn_pep\nMPEPTIDE\torf1\tp1\tMPEPTIDE\t1\n"
+    counts_tsv = b"MPEPTIDE\ts1\t3\tPXD0001\ttag\trun1\n"
+    counts_json = (
+        json.dumps(
+            {"MPEPTIDE": {"datasets": ["PXD0001"], "run_count": 1, "spectrum_count": 3}},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode()
+    benchmark_bytes = b"pmid,Rating..1.5.,USI,curator,peptide,HLA,orf\n"
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(builder.BENCHMARK_MEMBER, benchmark_bytes)
+    zip_bytes = zip_buf.getvalue()
+
+    payloads = {
+        "ensembl101.gtf.gz": gzip.compress(b"#!genome-build GRCh38\n", mtime=0),
+        "ensembl101.cdna.fa.gz": gzip.compress(b">ENST1.1\nATG\n", mtime=0),
+        "ncorf_list.xlsx": b"fake-xlsx-content-for-checksum-pin",
+        "filtered_peptides.tar.bz2": tar_bz2_bytes("filtered_peptides.Rdata", b"rdata-bytes"),
+        "peptide_sample_msrun_counts.tar.bz2": tar_bz2_bytes(
+            "dir/peptide_sample_msrun_counts.tsv", counts_tsv
+        ),
+        "author-hla-mappings.tsv": mappings_bytes,
+        "author-hla-counts.json": counts_json,
+        "media-4_with_dot_products.csv": benchmark_bytes,
+    }
+    pins = {name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()}
+    monkeypatch.setattr(builder, "PINS", pins)
+
+    url_map = {
+        **{url: payloads[name] for name, url in builder.ENSEMBL_INPUTS.items()},
+        **{
+            builder.AUTHOR + name: payloads[name]
+            for name in (
+                "ncorf_list.xlsx",
+                "filtered_peptides.tar.bz2",
+                "peptide_sample_msrun_counts.tar.bz2",
+            )
+        },
+        builder.BENCHMARK_URL: zip_bytes,
+    }
+
+    fail_state = {
+        "truncate_url": builder.AUTHOR + "ncorf_list.xlsx",
+        "fail_rscript": True,
+        "fail_zip": True,
+    }
+
+    class FakeRaw(io.BytesIO):
+        def __init__(self, data, *, cut_at=None):
+            super().__init__(data)
+            self._cut_at = cut_at
+
+        def read(self, amt=-1, decode_content=False):
+            if self._cut_at is not None and self.tell() >= self._cut_at:
+                raise requests.ConnectionError("simulated mid-transfer interruption")
+            if self._cut_at is not None and (amt < 0 or self.tell() + amt > self._cut_at):
+                amt = self._cut_at - self.tell()
+            return super().read(amt)
+
+    def fake_send(self, request, **kwargs):
+        url = request.url
+        body = url_map[url]
+        response = requests.Response()
+        response.url = url
+        range_header = request.headers.get("Range")
+        if range_header:
+            if fail_state["fail_zip"] and url == builder.BENCHMARK_URL:
+                raise requests.ConnectionError("simulated remote zip interruption")
+            match = re.fullmatch(r"bytes=(\d+)-(\d+)", range_header)
+            start, end = int(match.group(1)), int(match.group(2))
+            chunk = body[start : end + 1]
+            response.status_code = 206
+            response.headers["Content-Range"] = f"bytes {start}-{start + len(chunk) - 1}/{len(body)}"
+            response.headers["Content-Length"] = str(len(chunk))
+            response.headers["ETag"] = '"benchmark-zip-v1"'
+            response.raw = FakeRaw(chunk)
+        else:
+            response.status_code = 200
+            response.headers["Content-Length"] = str(len(body))
+            cut_at = len(body) // 2 if url == fail_state["truncate_url"] else None
+            response.raw = FakeRaw(body, cut_at=cut_at)
+        return response
+
+    monkeypatch.setattr(requests.sessions.Session, "send", fake_send)
+
+    def fake_rscript(args, **kwargs):
+        out_path = Path(args[-1])
+        if fail_state["fail_rscript"]:
+            out_path.write_bytes(mappings_bytes[:10])
+            raise RuntimeError("simulated Rscript interruption")
+        out_path.write_bytes(mappings_bytes)
+
+    monkeypatch.setattr(builder.subprocess, "run", fake_rscript)
+
+    # 1. Interrupted download must not leave a truncated file under ncorf_list.xlsx.
+    with pytest.raises(Exception):
+        builder.prepare_sources(tmp_path)
+    assert not (tmp_path / "ncorf_list.xlsx").exists()
+
+    # 2. Retry downloads cleanly, then Rscript fails partway through writing mappings.
+    fail_state["truncate_url"] = None
+    with pytest.raises(RuntimeError, match="simulated Rscript interruption"):
+        builder.prepare_sources(tmp_path)
+    assert (tmp_path / "ncorf_list.xlsx").read_bytes() == payloads["ncorf_list.xlsx"]
+    assert not (tmp_path / "author-hla-mappings.tsv").exists()
+
+    # 3. Retry completes mappings and counts, then remote ZIP fails partway through.
+    fail_state["fail_rscript"] = False
+    with pytest.raises(requests.ConnectionError, match="simulated remote zip interruption"):
+        builder.prepare_sources(tmp_path)
+    assert (tmp_path / "author-hla-mappings.tsv").read_bytes() == mappings_bytes
+    assert (tmp_path / "author-hla-counts.json").read_bytes() == counts_json
+    assert not (tmp_path / "media-4_with_dot_products.csv").exists()
+
+    # 4. Final retry completes with no manual cleanup and every file verified.
+    fail_state["fail_zip"] = False
+    builder.prepare_sources(tmp_path)
+    for name, expected in payloads.items():
+        assert (tmp_path / name).read_bytes() == expected
+    assert not list(tmp_path.glob(".*"))

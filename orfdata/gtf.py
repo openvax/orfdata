@@ -10,13 +10,18 @@ Both producers use it: viral CDS features from source GenBank records, and
 noncanonical ORFs from an :class:`~orfdata.ORFCatalog`.
 """
 
+import gzip
+import io
+import os
 import re
+from collections import defaultdict
+from contextlib import contextmanager
 
 GTF_SOURCE = "orfdata"
 _CODING = "protein_coding"
 
 
-_PAIR = re.compile(r'(\w+) "([^"]*)"')
+_PAIR = re.compile(r'([^\s;"]+)\s+(?:"([^"]*)"|([^;\s"]+))')
 
 
 def _safe(value):
@@ -35,9 +40,172 @@ def attributes(pairs):
                     if value not in (None, ""))
 
 
-def parse_attributes(column):
-    """The ``{key: value}`` pairs of one attribute column, as :func:`attributes` writes them."""
-    return dict(_PAIR.findall(column))
+def parse_attribute_pairs(column):
+    """Parse one GTF attribute column into ``(key, value)`` pairs in file order.
+
+    This is the inverse of :func:`attributes`: quoted values may contain spaces
+    or semicolons, trailing semicolons are optional, and repeated keys (such as
+    Ensembl ``tag`` attributes) are preserved in order.
+
+    Parameters
+    ----------
+    column : str
+        Ninth tab-separated GTF column.
+
+    Returns
+    -------
+    tuple of (str, str)
+        Attribute ``(key, value)`` pairs in the order they appear in ``column``.
+    """
+    return tuple(
+        (match.group(1), match.group(2) if match.group(2) is not None else match.group(3))
+        for match in _PAIR.finditer(column)
+    )
+
+
+def parse_attributes(column, *, strict=False, repeated_keys=()):
+    """Parse one GTF attribute column into a ``{key: value}`` dictionary.
+
+    Parameters
+    ----------
+    column : str
+        Ninth tab-separated GTF column.
+    strict : bool, optional
+        If ``True``, raise :class:`ValueError` when the same key appears more
+        than once with different values (except keys listed in
+        ``repeated_keys``). Defaults to ``False``.
+    repeated_keys : iterable of str, optional
+        Keys permitted to repeat with distinct values when ``strict=True``
+        (for example ``("tag",)`` in Ensembl GTFs).
+
+    Returns
+    -------
+    dict of str to str
+        Mapping of attribute names to values.
+
+    Raises
+    ------
+    ValueError
+        If ``strict=True`` and a non-repeated key appears with conflicting
+        values.
+    """
+    if not strict:
+        return dict(parse_attribute_pairs(column))
+    allowed = set(repeated_keys)
+    parsed = {}
+    for key, value in parse_attribute_pairs(column):
+        if key not in allowed and key in parsed and parsed[key] != value:
+            raise ValueError(f"Conflicting GTF attribute: {key}")
+        parsed[key] = value
+    return parsed
+
+
+@contextmanager
+def open_gtf(source):
+    """Open a plain or gzipped GTF file as UTF-8 text, or yield an already-open text stream.
+
+    Compression is detected from the gzip magic bytes (``\\x1f\\x8b``) rather
+    than the filename suffix, so cached files without a ``.gz`` extension are
+    handled identically.
+
+    Parameters
+    ----------
+    source : str, os.PathLike, or io.TextIOBase
+        Path to a plain or gzipped GTF file, or an already-open text stream.
+
+    Yields
+    ------
+    io.TextIOBase
+        Readable UTF-8 text stream over the GTF lines.
+    """
+    if isinstance(source, (str, os.PathLike)):
+        with open(source, "rb") as raw, io.BufferedReader(raw) as buffered:
+            decoded = gzip.GzipFile(fileobj=buffered) if buffered.peek(2).startswith(b"\x1f\x8b") else buffered
+            with io.TextIOWrapper(decoded, encoding="utf-8") as text:
+                yield text
+    else:
+        yield source
+
+
+def read_gtf_rows(source, *, features=None, headers=None, strict_attributes=False,
+                  repeated_attribute_keys=(), source_name=None):
+    """Stream validated rows from a plain or gzipped GTF file or open text stream.
+
+    Blank lines and ``#`` comments are skipped. When ``headers`` is provided,
+    ``#!key value`` metadata lines are recorded into it and conflicting values
+    for the same header key raise :class:`ValueError`. Every non-comment row is
+    validated to have nine tab-separated fields before feature filtering so
+    malformed rows are never silently skipped.
+
+    Parameters
+    ----------
+    source : str, os.PathLike, or io.TextIOBase
+        Path to a plain or gzipped GTF file, or an open text stream.
+    features : iterable of str, optional
+        Feature types (column 3) to yield, such as ``{"exon"}`` or
+        ``{"transcript", "CDS"}``. When ``None``, every feature row is yielded.
+    headers : dict, optional
+        Mutable mapping populated in place with ``#!key value`` header entries
+        encountered while streaming.
+    strict_attributes : bool, optional
+        Passed to :func:`parse_attributes`. Defaults to ``False``.
+    repeated_attribute_keys : iterable of str, optional
+        Passed as ``repeated_keys`` to :func:`parse_attributes`.
+    source_name : str or os.PathLike, optional
+        Display label used in error messages; defaults to ``source`` when a
+        path is given or ``getattr(source, "name", "<stream>")`` for a stream.
+
+    Yields
+    ------
+    tuple of (str, str, int, int, str, dict)
+        ``(seqname, feature, start, end, strand, attributes)`` with 1-based
+        inclusive integer coordinates.
+
+    Raises
+    ------
+    ValueError
+        On any row without nine tab-separated fields, missing sequence name,
+        invalid coordinates, conflicting ``#!`` header, or conflicting strict
+        attribute.
+    """
+    feature_set = None if features is None else set(features)
+    label = (
+        os.fspath(source_name)
+        if source_name is not None
+        else (os.fspath(source) if isinstance(source, (str, os.PathLike)) else getattr(source, "name", "<stream>"))
+    )
+    with open_gtf(source) as stream:
+        for number, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            if line.startswith("#"):
+                if headers is not None and line.startswith("#!"):
+                    key, _, value = line[2:].strip().partition(" ")
+                    value = value.strip()
+                    if key in headers and headers[key] != value:
+                        raise ValueError(f"Conflicting GTF header {key!r}: {label}:{number}")
+                    headers[key] = value
+                continue
+            fields = line.rstrip("\r\n").split("\t")
+            if len(fields) != 9:
+                raise ValueError(f"GTF row without nine tab-separated fields: {label}:{number}")
+            if feature_set is not None and fields[2] not in feature_set:
+                continue
+            seqname = fields[0]
+            if not seqname:
+                raise ValueError(f"GTF row without a sequence name: {label}:{number}")
+            try:
+                start, end = int(fields[3]), int(fields[4])
+            except ValueError:
+                raise ValueError(f"GTF row without integer coordinates: {label}:{number}") from None
+            if start < 1 or end < start:
+                raise ValueError(f"GTF row with invalid coordinates ({start}..{end}): {label}:{number}")
+            attrs = parse_attributes(
+                fields[8],
+                strict=strict_attributes,
+                repeated_keys=repeated_attribute_keys,
+            )
+            yield seqname, fields[2], start, end, fields[6], attrs
 
 
 def transcript_blocks(exons, offset, length):
@@ -148,26 +316,28 @@ def read_exons(path):
     Blocks are ``(start, end)``, 1-based and inclusive, in transcript order as
     ``exon_number`` gives it (which is not coordinate order for a minus-strand
     transcript or one joined across a circular origin). This reads back what
-    :func:`transcript_lines` writes.
+    :func:`transcript_lines` writes, from plain or gzipped GTF files.
+
+    Parameters
+    ----------
+    path : str, os.PathLike, or io.TextIOBase
+        Plain or gzipped GTF file path, or an open text stream.
+
+    Returns
+    -------
+    dict of str to (tuple of (int, int), str)
+        Mapping from ``transcript_id`` to ``(exon_blocks, strand)``.
     """
     rows = {}
-    with open(path) as stream:
-        for number, line in enumerate(stream, 1):
-            if not line.strip() or line.startswith("#"):
-                continue
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) != 9:
-                raise ValueError(f"GTF row without nine tab-separated fields: {path}:{number}")
-            if fields[2] != "exon":
-                continue
-            attributes = parse_attributes(fields[8])
-            try:
-                row = (int(attributes["exon_number"]), int(fields[3]), int(fields[4]), fields[6])
-                name = attributes["transcript_id"]
-            except (KeyError, ValueError):
-                raise ValueError(f"GTF exon without a readable transcript_id, exon_number "
-                                 f"and coordinates: {path}:{number}") from None
-            rows.setdefault(name, []).append(row)
+    for _, _, start, end, strand, attrs in read_gtf_rows(path, features={"exon"}):
+        try:
+            row = (int(attrs["exon_number"]), start, end, strand)
+            name = attrs["transcript_id"]
+        except (KeyError, ValueError):
+            raise ValueError(
+                f"GTF exon without a readable transcript_id, exon_number and coordinates: {path}"
+            ) from None
+        rows.setdefault(name, []).append(row)
     exons = {}
     for name, blocks in rows.items():
         numbers = [block[0] for block in blocks]
@@ -175,3 +345,147 @@ def read_exons(path):
             raise ValueError(f"GTF transcript {name} repeats an exon number or mixes strands: {path}")
         exons[name] = (tuple((start, end) for _, start, end, _ in sorted(blocks)), blocks[0][3])
     return exons
+
+
+def read_transcript_exons(source, *, transcript_ids=None):
+    """Group GTF ``exon`` rows by transcript ID with exons in 5'-to-3' transcript order.
+
+    Parameters
+    ----------
+    source : str, os.PathLike, or io.TextIOBase
+        Plain or gzipped GTF path, or an open text stream.
+    transcript_ids : iterable of str, optional
+        If provided, retain only exons whose ``transcript_id`` attribute is in
+        this set.
+
+    Returns
+    -------
+    dict of str to dict
+        Mapping ``transcript_id -> {"contig", "strand", "version", "gene_id",
+        "gene_name", "exons"}`` where ``exons`` is a tuple of 1-based inclusive
+        ``(start, end)`` pairs ordered ascending for ``"+"`` and descending for
+        ``"-"``.
+    """
+    wanted = None if transcript_ids is None else set(transcript_ids)
+    found = {}
+    for seqname, _, start, end, strand, attrs in read_gtf_rows(source, features={"exon"}):
+        transcript = attrs.get("transcript_id")
+        if transcript is None or (wanted is not None and transcript not in wanted):
+            continue
+        entry = found.setdefault(
+            transcript,
+            dict(
+                contig=seqname,
+                strand=strand,
+                version=attrs.get("transcript_version"),
+                gene_id=attrs["gene_id"],
+                gene_name=attrs.get("gene_name", ""),
+                exons=[],
+            ),
+        )
+        entry["exons"].append((start, end))
+    for entry in found.values():
+        entry["exons"] = tuple(sorted(entry["exons"], reverse=entry["strand"] == "-"))
+    return found
+
+
+def read_transcript_loci(source, *, genome_build=None, transcript_ids=None):
+    """Group GTF ``exon`` rows into distinct versioned transcript loci, rejecting overlapping exons.
+
+    Unlike :func:`read_transcript_exons`, this preserves full versioned
+    transcript identifiers (appending ``transcript_version`` when present and
+    not already part of ``transcript_id``) and keeps multiple annotated loci
+    for the same versioned transcript separate (for example pseudoautosomal
+    copies).
+
+    Parameters
+    ----------
+    source : str, os.PathLike, or io.TextIOBase
+        Plain or gzipped GTF path, or an open text stream.
+    genome_build : str, optional
+        When supplied, contig names are normalized with
+        :func:`orfdata.model.normalize_contig`.
+    transcript_ids : iterable of str, optional
+        If provided, retain only loci whose versioned transcript ID is in this
+        set.
+
+    Returns
+    -------
+    dict of str to list of dict
+        Mapping ``versioned_transcript_id -> [locus, ...]`` where each locus
+        has keys ``"transcript"``, ``"contig"``, ``"strand"``, ``"gene_id"``,
+        ``"gene_name"``, and ``"exons"`` (tuple in 5'-to-3' transcript order).
+
+    Raises
+    ------
+    ValueError
+        If a locus contains overlapping exons or any row in ``source`` is
+        malformed.
+    """
+    from .model import normalize_contig
+
+    wanted = None if transcript_ids is None else set(transcript_ids)
+    groups = {}
+    for seqname, _, start, end, strand, attrs in read_gtf_rows(source, features={"exon"}):
+        name = attrs["transcript_id"]
+        version = attrs.get("transcript_version")
+        if version and "." not in name:
+            name += "." + version
+        if wanted is not None and name not in wanted:
+            continue
+        contig = normalize_contig(seqname, genome_build) if genome_build is not None else seqname
+        key = name, contig, strand, attrs["gene_id"]
+        entry = groups.setdefault(
+            key,
+            dict(
+                transcript=name,
+                contig=contig,
+                strand=strand,
+                gene_id=key[3],
+                gene_name=attrs.get("gene_name", ""),
+                exons=set(),
+            ),
+        )
+        entry["exons"].add((start, end))
+    found = defaultdict(list)
+    for entry in groups.values():
+        entry["exons"] = tuple(sorted(entry["exons"], reverse=entry["strand"] == "-"))
+        ascending = sorted(entry["exons"])
+        if any(b >= c for (_, b), (c, _) in zip(ascending, ascending[1:])):
+            raise ValueError("Overlapping/contradictory reference exons: " + entry["transcript"])
+        found[entry["transcript"]].append(entry)
+    return found
+
+
+def transcript_interval_blocks(exons, strand, start, end):
+    """Map a 1-based inclusive transcript interval ``start..end`` to ascending genomic blocks.
+
+    Parameters
+    ----------
+    exons : sequence of (int, int)
+        1-based inclusive genomic ``(start, end)`` exon intervals in 5'-to-3'
+        transcript order.
+    strand : str
+        Transcript strand (``"+"`` or ``"-"``).
+    start : int
+        1-based inclusive start coordinate in spliced transcript space.
+    end : int
+        1-based inclusive end coordinate in spliced transcript space.
+
+    Returns
+    -------
+    tuple of (int, int) or None
+        Ascending 1-based inclusive genomic blocks covering ``start..end``, or
+        ``None`` if ``end`` extends beyond the spliced exon length.
+    """
+    blocks, offset = [], 0
+    for a, b in exons:
+        length = b - a + 1
+        lo, hi = max(start, offset + 1), min(end, offset + length)
+        if lo <= hi:
+            if strand == "+":
+                blocks.append((a + lo - offset - 1, a + hi - offset - 1))
+            else:
+                blocks.append((b - (hi - offset - 1), b - (lo - offset - 1)))
+        offset += length
+    return tuple(sorted(blocks)) if offset >= end else None

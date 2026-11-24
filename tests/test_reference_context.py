@@ -10,7 +10,6 @@ from pyensembl import EnsemblRelease, Genome
 from pyensembl.species import find_species_by_name
 
 from orfdata import ORFModel, ORFRecord, ReferenceContext, ScopedTarget, load_catalog
-from orfdata.model import _species
 from orfdata.reference import canonical_species, species_name_for_taxon, species_taxon
 
 SPECIES = (
@@ -108,7 +107,7 @@ def test_reference_taxon_can_be_a_strain_with_an_explicit_species_ancestor():
 
 def test_dog_alias_regression_and_no_breed_assembly_collapse():
     expected = context()
-    assert _species(find_species_by_name("canis_lupus_familiaris")) == _species("canis_lupus_familiaris")
+    assert canonical_species(find_species_by_name("canis_lupus_familiaris")) == canonical_species("canis_lupus_familiaris")
     keys = {replace(expected, species=name).key
             for name in ("dog", "canis_familiaris", "Canis lupus familiaris")}
     assert keys == {expected.key}

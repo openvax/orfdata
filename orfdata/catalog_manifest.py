@@ -4,12 +4,12 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from .measurements import SourceAsset, _identifier, _metadata, _Record
+from .measurements import Record, SourceAsset, freeze_metadata, require_identifier
 from .reference import ReferenceContext
 
 
 @dataclass(frozen=True)
-class CatalogManifest(_Record):
+class CatalogManifest(Record):
     """One species/assembly catalogue release, independent of abundance data."""
 
     catalog_id: str
@@ -39,7 +39,7 @@ class CatalogManifest(_Record):
 
     def __post_init__(self):
         for name in ("catalog_id", "version", "title"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         for name in ("catalog_id", "version"):
             if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", getattr(self, name)):
                 raise ValueError(f"{name} must be a portable catalogue/path identifier")
@@ -75,8 +75,8 @@ class CatalogManifest(_Record):
         if len({s.asset_id for s in self.sources}) != len(self.sources):
             raise ValueError("Duplicate catalogue source assets")
         for citation in self.citations:
-            _identifier(citation, "citation")
-        _metadata(self, "coverage", "processing")
+            require_identifier(citation, "citation")
+        freeze_metadata(self, "coverage", "processing")
         count = self.coverage.get("records")
         if type(count) is not int or count < 0:
             raise ValueError("Catalogue coverage must declare a nonnegative records count")

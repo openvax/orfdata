@@ -105,8 +105,23 @@ def transcript_positions(transcript):
     )
 
 
-def _exon_layout(transcript):
-    """Exon (start, end) pairs in transcript order, their spliced offsets and the RNA length."""
+def exon_layout(transcript):
+    """Return exon intervals in transcript order, their spliced offsets, and total RNA length.
+
+    Parameters
+    ----------
+    transcript : object
+        Transcript providing ``exons`` (each with 1-based inclusive ``start``
+        and ``end``) and ``strand`` (``"+"`` or ``"-"``).
+
+    Returns
+    -------
+    tuple of (list of tuple, list of int, int)
+        ``(exons, offsets, total_length)`` where ``exons`` are ``(start, end)``
+        pairs in 5'-to-3' transcript order, ``offsets`` are the 0-based spliced
+        start offset of each exon, and ``total_length`` is the spliced RNA
+        length in bases.
+    """
     exons = sorted(((e.start, e.end) for e in transcript.exons), reverse=transcript.strand == "-")
     offsets, total = [], 0
     for start, end in exons:
@@ -115,32 +130,73 @@ def _exon_layout(transcript):
     return exons, offsets, total
 
 
-def _same_assembly(a, b):
-    """Whether two reference contexts share species, strain and assembly, whatever their annotation."""
+def same_assembly(a, b):
+    """Return whether two reference contexts share species, strain, and assembly.
+
+    Annotation release and name may differ; when both contexts provide an
+    ``assembly_accession`` they must match.
+
+    Parameters
+    ----------
+    a : ReferenceContext
+        First reference context.
+    b : ReferenceContext
+        Second reference context.
+
+    Returns
+    -------
+    bool
+        ``True`` if both contexts refer to the same genome assembly.
+    """
     fields = ("taxon_id", "genome_build", "strain", "strain_taxon_id")
     if any(getattr(a, f) != getattr(b, f) for f in fields):
         return False
     return None in (a.assembly_accession, b.assembly_accession) or a.assembly_accession == b.assembly_accession
 
 
-def _transcript_match(identifier, transcript):
-    """How a source's transcript ID names a transcript.
+def match_transcript_id(identifier, transcript):
+    """Classify how a source transcript identifier matches ``transcript``.
 
-    ``"id"`` for its ID, ``"versioned"`` for its ID with its version,
-    ``"other_version"`` for its ID with another numeric version, else None. IDs
-    that contain dots, such as C. elegans ``Y74C9A.3.1``, are compared whole.
+    Identifiers that contain non-version dots (such as *C. elegans*
+    ``Y74C9A.3.1``) are compared whole first.
+
+    Parameters
+    ----------
+    identifier : str
+        Source transcript identifier, with or without a numeric version suffix.
+    transcript : object
+        Transcript object with ``id`` and optional ``versioned_id``.
+
+    Returns
+    -------
+    str or None
+        ``"id"`` for an exact match to ``transcript.id``, ``"versioned"`` for
+        a match to :func:`versioned_id`, ``"other_version"`` when the base ID
+        matches with a different numeric version, or ``None`` otherwise.
     """
     identifier, own = str(identifier), str(transcript.id)
     if identifier == own:
         return "id"
     base, _, version = identifier.rpartition(".")
     if base == own and version.isdigit():
-        return "versioned" if identifier == _versioned(transcript) else "other_version"
+        return "versioned" if identifier == versioned_id(transcript) else "other_version"
     return None
 
 
-def _id_forms(identifier):
-    """The transcript IDs a source's ID could be: itself, or without a numeric version."""
+def transcript_id_forms(identifier):
+    """Return candidate lookup forms for a transcript identifier.
+
+    Parameters
+    ----------
+    identifier : str
+        Transcript identifier, with or without a numeric ``.version`` suffix.
+
+    Returns
+    -------
+    tuple of str
+        ``(identifier, base)`` when ``identifier`` ends with a numeric version
+        suffix, otherwise ``(identifier,)``.
+    """
     base, _, version = str(identifier).rpartition(".")
     return (str(identifier), base) if base and version.isdigit() else (str(identifier),)
 
@@ -154,14 +210,46 @@ def _layout_position(layout, strand, offset):
     raise ValueError(f"Offset {offset} is outside the transcript")
 
 
-def _rna_layout(rna):
-    """Exons in RNA order with offsets and length, for a PyEnsembl transcript or a ``SourceRNA``."""
+def rna_layout(rna):
+    """Return the exon layout for a PyEnsembl transcript or :class:`~orfdata.SourceRNA`.
+
+    Parameters
+    ----------
+    rna : object
+        Transcript or :class:`~orfdata.SourceRNA`. Uses ``rna.layout`` when
+        present, otherwise computes :func:`exon_layout`.
+
+    Returns
+    -------
+    tuple of (list of tuple, list of int, int)
+        ``(exons, offsets, total_length)`` in RNA order.
+    """
     layout = getattr(rna, "layout", None)
-    return layout if layout is not None else _exon_layout(rna)
+    return layout if layout is not None else exon_layout(rna)
 
 
-def _layout_blocks(layout, strand, offsets, *, ordered=False):
-    """Genomic blocks of the bases at these RNA offsets: ascending, or in RNA order."""
+def layout_blocks(layout, strand, offsets, *, ordered=False):
+    """Convert 0-based spliced RNA offsets into 1-based inclusive genomic blocks.
+
+    Parameters
+    ----------
+    layout : tuple of (list of tuple, list of int, int)
+        Exon layout ``(exons, starts, total_length)`` as returned by
+        :func:`exon_layout` or :func:`rna_layout`.
+    strand : str
+        Transcript strand (``"+"`` or ``"-"``).
+    offsets : iterable of int
+        0-based spliced RNA offsets to map onto genomic coordinates.
+    ordered : bool, optional
+        If ``True``, keep blocks in the order induced by ``offsets`` without
+        merging; otherwise return sorted, merged ascending blocks. Defaults to
+        ``False``.
+
+    Returns
+    -------
+    tuple of (int, int)
+        1-based inclusive genomic intervals.
+    """
     exons, starts, _ = layout
     runs = []
     for offset in offsets:
@@ -174,7 +262,7 @@ def _layout_blocks(layout, strand, offsets, *, ordered=False):
         else:
             runs.append([position, position])
     blocks = tuple((min(a, b), max(a, b)) for a, b in runs)
-    return blocks if ordered else _merge(blocks)
+    return blocks if ordered else merge_genomic_ranges(blocks)
 
 
 def path_offset(transcript, blocks, *, layout=None):
@@ -186,10 +274,28 @@ def path_offset(transcript, blocks, *, layout=None):
     each internal junction of the path must be an exon junction of the
     transcript. The coding sequence is then ``sequence[offset:offset + length]``.
     """
-    return _layout_offset(layout or _exon_layout(transcript), transcript.strand, blocks)
+    return layout_offset(layout or exon_layout(transcript), transcript.strand, blocks)
 
 
-def _layout_offset(layout, strand, blocks):
+def layout_offset(layout, strand, blocks):
+    """Locate a spliced genomic block path inside an exon layout.
+
+    Parameters
+    ----------
+    layout : tuple of (list of tuple, list of int, int)
+        Exon layout ``(exons, offsets, total_length)`` in transcript order.
+    strand : str
+        Transcript strand (``"+"`` or ``"-"``).
+    blocks : sequence of (int, int)
+        1-based inclusive genomic intervals in ascending coordinate order.
+
+    Returns
+    -------
+    int or None
+        0-based spliced start offset of ``blocks`` in the transcript, or
+        ``None`` if ``blocks`` does not follow consecutive spliced positions
+        through the exon junctions in ``layout``.
+    """
     exons, offsets, _ = layout
     forward = strand == "+"
     path = tuple(blocks) if forward else tuple(reversed(blocks))
@@ -229,13 +335,29 @@ def _is_grch37(build):
     return build is not None and str(build).lower().split(".p")[0] in ("grch37", "hg19", "b37", "ncbi37")
 
 
-def _contig(value, build, length=None):
-    """Compare contig names as PyEnsembl normalizes them, e.g. Mito as MITO.
+def normalize_contig(value, build, length=None):
+    """Normalize a contig name for comparison, matching PyEnsembl conventions.
 
-    ``M`` and ``chrM`` are the mitochondrion ``MT``, except in ``build`` GRCh37:
-    there hg19's chrM is not the rCRS that Ensembl names MT, and its positions
-    are offset from it (hg19 chrM:12995 is rCRS MT:12994). It stays ``chrM``
-    unless ``length``, when known, is the rCRS's.
+    Strips a leading ``chr`` prefix and upper-cases alphabetic names (for
+    example ``Mito`` to ``MITO``). ``M`` and ``chrM`` normalize to ``MT``,
+    except in GRCh37/hg19 where UCSC ``chrM`` (NC_001807, 16,571 bp) differs
+    from Ensembl's rCRS ``MT`` (16,569 bp) and stays ``chrM`` unless ``length``
+    matches the rCRS.
+
+    Parameters
+    ----------
+    value : str
+        Contig or chromosome name.
+    build : str or None
+        Genome assembly name (for example ``"GRCh38"`` or ``"GRCh37"``).
+    length : int, optional
+        Contig length in base pairs when known, used to distinguish GRCh37
+        rCRS mitochondria (16,569 bp) from hg19 ``chrM``.
+
+    Returns
+    -------
+    str
+        Normalized contig comparison key.
     """
     value = str(value).removeprefix("chr")
     if value.isalpha():
@@ -243,10 +365,6 @@ def _contig(value, build, length=None):
     if value != "M":
         return value
     return "chrM" if _is_grch37(build) and length != _RCRS_LENGTH else "MT"
-
-
-def _species(value):
-    return canonical_species(value)
 
 
 @dataclass(frozen=True, init=False)
@@ -294,27 +412,27 @@ class TranscriptORF:
         if genome.reference_name != model.genome_build:
             raise ValueError("ORF transcript assembly mismatch")
         species = getattr(genome, "species", None)
-        if species is not None and _species(species) != _species(model.species):
+        if species is not None and canonical_species(species) != canonical_species(model.species):
             raise ValueError("ORF transcript species mismatch")
         resolved_context = ReferenceContext.from_genome(genome, context=context)
         if resolved_context.taxon_id != model.taxon_id:
             raise ValueError("ORF transcript taxon mismatch")
         pinned = model.reference_context
         if pinned is not None and pinned.key != resolved_context.key and not (
-                any_transcript and _same_assembly(pinned, resolved_context)):
+                any_transcript and same_assembly(pinned, resolved_context)):
             # Placement by exact coding path and protein may cross annotation releases; binding may not.
             raise ValueError("ORF transcript reference context mismatch (annotation, strain or assembly)")
         if not any_transcript:
-            match = _transcript_match(model.transcript_id, transcript)
+            match = match_transcript_id(model.transcript_id, transcript)
             if match is None:
                 raise ValueError("ORF transcript identity mismatch")
             if match == "other_version":  # The source pins another version of this transcript.
                 raise ValueError("ORF transcript version mismatch")
-        if (_contig(transcript.contig, model.genome_build) != _contig(model.contig, model.genome_build)
+        if (normalize_contig(transcript.contig, model.genome_build) != normalize_contig(model.contig, model.genome_build)
                 or transcript.strand != model.strand):
             raise ValueError("ORF transcript locus mismatch")
         code = genetic_code(model.translation_table)
-        layout = _layout or _exon_layout(transcript)
+        layout = _layout or exon_layout(transcript)
         if transcript.sequence is None:
             raise ValueError("ORF transcript sequence unavailable")
         if len(transcript.sequence) != layout[2]:
@@ -355,16 +473,16 @@ class TranscriptORF:
         resolved_context = ReferenceContext.from_genome(host.genome, context=context)
         if on is not None:
             ReferenceContext.from_genome(transcript.genome, context=resolved_context)
-        blocks = _merge(transcript.coding_sequence_position_ranges)
+        blocks = merge_genomic_ranges(transcript.coding_sequence_position_ranges)
         if not blocks:
             raise ValueError(f"Transcript {transcript.id} has no annotated CDS")
         if host.sequence is None:
             raise ValueError("Transcript sequence unavailable")
-        layout = _exon_layout(host)
+        layout = exon_layout(host)
         if len(host.sequence) != layout[2]:
             raise ValueError("Transcript sequence length mismatch")
         start = path_offset(host, blocks, layout=layout) if host.strand == transcript.strand and \
-            _contig(host.contig, resolved_context.genome_build) == _contig(
+            normalize_contig(host.contig, resolved_context.genome_build) == normalize_contig(
                 transcript.contig, resolved_context.genome_build) else None
         if start is None:
             raise ValueError(f"Annotated CDS of {transcript.id} is not one contiguous part of {host.id}")
@@ -396,7 +514,7 @@ class TranscriptORF:
             and effective_code.codons.get(coding[-3:]) == "*"))
         # Without a marked start or stop, the CDS is the same ORF on another RNA only if
         # that RNA continues the same way beyond it; otherwise translation reads on.
-        if on is not None and _versioned(on) != _versioned(transcript) and (
+        if on is not None and versioned_id(on) != versioned_id(transcript) and (
                 (not start_complete and str(host.sequence[:start]) != str(transcript.sequence[:own]))
                 or (not stop_complete and str(host.sequence[start + length :])
                     != str(transcript.sequence[own + length :]))):
@@ -409,7 +527,7 @@ class TranscriptORF:
                  context=resolved_context, kind="annotated", start_complete=start_complete,
                  stop_complete=stop_complete, _layout=layout,
                  annotation_id=transcript.protein_id + ("" if version is None else f".{version}"),
-                 source_transcript_id=_versioned(transcript), equivalent_ids=(), _blocks=blocks,
+                 source_transcript_id=versioned_id(transcript), equivalent_ids=(), _blocks=blocks,
                  _source_gene=(transcript.gene_id, transcript.gene_name),
                  _protein=transcript.protein_sequence, _source=source,
                  _table=source_table, _effective_table=effective_table)
@@ -484,12 +602,12 @@ class TranscriptORF:
         if protein is not None and translated != protein:
             raise ValueError(f"{orf_id} does not translate to the source protein from offset {start}")
         offsets = [(start + i) % size for i in range(len(coding))]
-        layout = _rna_layout(rna)
+        layout = rna_layout(rna)
         orf = object.__new__(cls)
         orf._set(record=None, transcript=rna, start=start, end=offsets[-1] + 1, coding_sequence=coding,
                  context=reference, kind="extra_orf", start_complete=start_complete, stop_complete=stopped,
-                 annotation_id=orf_id, source_transcript_id=_versioned(rna), equivalent_ids=(),
-                 _blocks=_layout_blocks(layout, rna.strand, offsets) if layout[0] else (),
+                 annotation_id=orf_id, source_transcript_id=versioned_id(rna), equivalent_ids=(),
+                 _blocks=layout_blocks(layout, rna.strand, offsets) if layout[0] else (),
                  _source_gene=(rna.gene_id, rna.gene_name), _protein=translated, _orf_type=orf_type,
                  _evidence=evidence if evidence is not None else ORFEvidence(), _source=source,
                  _table=translation_table, _phase=phase)
@@ -513,7 +631,7 @@ class TranscriptORF:
         """Forward-genomic position of every base of the transcript, in RNA order."""
         positions = self.__dict__.get("_positions")
         if positions is None:
-            layout = _rna_layout(self.transcript)
+            layout = rna_layout(self.transcript)
             positions = tuple(
                 p for (a, b) in layout[0]
                 for p in (range(a, b + 1) if self.transcript.strand == "+" else range(b, a - 1, -1)))
@@ -537,12 +655,12 @@ class TranscriptORF:
                 low = max(0, self.start - 9)
                 window = str(self.transcript.sequence[low : self.start + 9])
                 context = annotate_initiation_context(window, self.start - low)
-                layout = self.__dict__.get("_layout") or _rna_layout(self.transcript)
+                layout = self.__dict__.get("_layout") or rna_layout(self.transcript)
                 positions = tuple(_layout_position(layout, self.transcript.strand, offset)
                                   for offset in range(low, low + len(context.upstream + context.start_codon
                                                                      + context.downstream))) if layout[0] else ()
                 context = replace(context, genomic_positions=positions, start_offset=self.start,
-                                  source_transcript_id=_versioned(self.transcript))
+                                  source_transcript_id=versioned_id(self.transcript))
             object.__setattr__(self, "_initiation", context)
         return self._initiation
 
@@ -722,8 +840,8 @@ class TranscriptORF:
         """
         forward, found, before = self.transcript.strand == "+", [], 0
         if self.wraps_junction:  # Each side of a circular junction is read separately.
-            layout = _rna_layout(self.transcript)
-            segments = [_layout_blocks(layout, self.transcript.strand, range(a, b), ordered=True)
+            layout = rna_layout(self.transcript)
+            segments = [layout_blocks(layout, self.transcript.strand, range(a, b), ordered=True)
                         for a, b in self.segments]
         else:
             segments = [self.coding_blocks if forward else self.coding_blocks[::-1]]
@@ -836,8 +954,8 @@ class TranscriptORF:
         """
         records = (self.record.members or (self.record,)) if self.record is not None else ()
         if not records:
-            return _transcript_match(self.source_transcript_id, self.transcript) in ("id", "versioned")
-        return any(_transcript_match(r.transcript_id, self.transcript) in (
+            return match_transcript_id(self.source_transcript_id, self.transcript) in ("id", "versioned")
+        return any(match_transcript_id(r.transcript_id, self.transcript) in (
             ("id", "versioned", "other_version") if getattr(r, "liftover", None) is not None else ("id", "versioned"))
             for r in records)
 
@@ -901,7 +1019,7 @@ class TranscriptORF:
                 version=getattr(transcript, "version", None),
                 release=getattr(genome, "release", None),
                 genome_build=self.context.genome_build,
-                species=_species(species) if species else None,
+                species=canonical_species(species) if species else None,
                 biotype=getattr(transcript, "biotype", None),
                 topology=getattr(transcript, "topology", "linear"),
             ),
@@ -989,12 +1107,12 @@ class TranscriptORF:
                           _source=value["source"], _source_gene=(value["source_gene_id"], value["source_gene_name"]),
                           _orf_type=value["orf_type"], _table=value["translation_table"],
                           _coding_origin=origin, _evidence=ORFEvidence.from_dict(value["evidence"]),
-                          _blocks=tuple(tuple(b) for b in value["coding_blocks"]), _layout=_rna_layout(transcript))
+                          _blocks=tuple(tuple(b) for b in value["coding_blocks"]), _layout=rna_layout(transcript))
             coding = "".join(restored.transcript_sequence[a:b] for a, b in restored.segments)
             if coding != restored.coding_sequence:
                 raise ValueError("Transcript ORF snapshot coding sequence differs from its RNA")
             offsets = [i for a, b in restored.segments for i in range(a, b)]
-            blocks = (_layout_blocks(restored._layout, transcript.strand, offsets)
+            blocks = (layout_blocks(restored._layout, transcript.strand, offsets)
                       if restored._layout[0] else ())
             if blocks != restored.coding_blocks:
                 raise ValueError("Transcript ORF snapshot coding path differs from its RNA")
@@ -1044,8 +1162,19 @@ def _relation(start, end, cds_start, cds_end, frame):
     return "internal" if end <= cds_end else "downstream_overlapping"
 
 
-def _merge(ranges):
-    """Sorted, merged 1-based inclusive genomic ranges."""
+def merge_genomic_ranges(ranges):
+    """Sort and merge adjacent or overlapping 1-based inclusive genomic ranges.
+
+    Parameters
+    ----------
+    ranges : iterable of (int, int)
+        1-based inclusive ``(start, end)`` genomic intervals.
+
+    Returns
+    -------
+    tuple of (int, int)
+        Sorted, non-overlapping, non-adjacent merged intervals.
+    """
     merged = []
     for a, b in sorted(ranges):
         if merged and a <= merged[-1][1] + 1:
@@ -1055,7 +1184,20 @@ def _merge(ranges):
     return tuple(tuple(x) for x in merged)
 
 
-def _versioned(feature):
+def versioned_id(feature):
+    """Return ``feature.versioned_id`` when present, otherwise ``feature.id``.
+
+    Parameters
+    ----------
+    feature : object
+        Transcript or annotation feature exposing ``id`` and optionally
+        ``versioned_id``.
+
+    Returns
+    -------
+    str
+        Versioned identifier string when available, else the base identifier.
+    """
     return str(getattr(feature, "versioned_id", None) or feature.id)
 
 

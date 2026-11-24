@@ -26,7 +26,14 @@ from .cache import content_digest, file_sha256, get_data_dir
 from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
 from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
-from .model import TranscriptORF, _contig, _id_forms, _layout_offset, _same_assembly, _versioned
+from .model import (
+    TranscriptORF,
+    layout_offset,
+    normalize_contig,
+    same_assembly,
+    transcript_id_forms,
+    versioned_id,
+)
 from .reference import ReferenceContext
 from .viral import ViralProduct, ViralReference, viral_reference, viral_references
 
@@ -88,7 +95,7 @@ class Occurrence:
     @classmethod
     def from_orf(cls, orf):
         transcript = orf.transcript
-        return cls(_versioned(transcript), transcript.gene_id, transcript.gene_name or None,
+        return cls(versioned_id(transcript), transcript.gene_id, transcript.gene_name or None,
                    transcript.biotype, transcript.contig, transcript.strand, orf.start, orf.end,
                    tuple(tuple(b) for b in orf.coding_blocks), orf.on_source_transcript)
 
@@ -721,7 +728,7 @@ class ExtraORFs:
             context = orf.initiation_context
             if context is not None:
                 positions.extend(context.genomic_positions)
-            spans.setdefault(_contig(orf.transcript.contig, self.reference.genome_build), []).append((min(positions), max(positions), orf))
+            spans.setdefault(normalize_contig(orf.transcript.contig, self.reference.genome_build), []).append((min(positions), max(positions), orf))
         index = {}
         for contig, items in spans.items():
             items.sort(key=lambda item: (item[0], item[1]))
@@ -747,13 +754,13 @@ class ExtraORFs:
         """
         if isinstance(transcript, str):
             found = tuple(o for o in self.orfs
-                          if _same_id(transcript, o.transcript.id, _versioned(o.transcript)))
+                          if _same_id(transcript, o.transcript.id, versioned_id(o.transcript)))
         else:
             self._check_genome(transcript, "Transcript")
             found = tuple(o for o in self.orfs if o.transcript.id == transcript.id)
-            if any(_versioned(o.transcript) != _versioned(transcript) for o in found):
-                raise ValueError(f"Transcript {_versioned(transcript)} differs from this reference's "
-                                 f"{_versioned(found[0].transcript)}")
+            if any(versioned_id(o.transcript) != versioned_id(transcript) for o in found):
+                raise ValueError(f"Transcript {versioned_id(transcript)} differs from this reference's "
+                                 f"{versioned_id(found[0].transcript)}")
         if include_annotated:
             host = transcript if not isinstance(transcript, str) else (
                 found[0].transcript if found else self._transcript_by_id(transcript))
@@ -771,7 +778,7 @@ class ExtraORFs:
             raise ValueError(f"Expected genome build {self.reference.genome_build}, got {genome_build}")
         if type(start) is not int or type(end) is not int or start < 1 or end < start:
             raise ValueError("start and end must be positive integers with end >= start")
-        starts, widest, items = self._index.get(_contig(contig, genome_build), ((), 0, ()))
+        starts, widest, items = self._index.get(normalize_contig(contig, genome_build), ((), 0, ()))
         found = []
         for _, _, orf in items[bisect_left(starts, start - widest) : bisect_right(starts, end)]:
             context = orf.initiation_context if include_initiation_context else None
@@ -796,7 +803,7 @@ class ExtraORFs:
         elif source is not None:
             raise ValueError("Source-qualified lookup requires the source catalogue")
         return tuple(sorted((o for o in self.orfs if o.orf_id == orf_id),
-                            key=lambda o: (not o.on_source_transcript, _versioned(o.transcript))))
+                            key=lambda o: (not o.on_source_transcript, versioned_id(o.transcript))))
 
     def for_gene(self, gene, *, source=False):
         """ORFs on transcripts of one gene in this genome.
@@ -813,12 +820,12 @@ class ExtraORFs:
         if isinstance(gene, str):
             return tuple(o for o in self.orfs if gene and (
                 gene == o.transcript.gene_name
-                or _same_id(gene, o.transcript.gene_id, lambda o=o: _versioned(o.transcript.gene))))
+                or _same_id(gene, o.transcript.gene_id, lambda o=o: versioned_id(o.transcript.gene))))
         self._check_genome(gene, "Gene")
         found = tuple(o for o in self.orfs if o.transcript.gene_id == gene.id)
-        if any(_versioned(o.transcript.gene) != _versioned(gene) for o in found):
-            raise ValueError(f"Gene {_versioned(gene)} differs from this reference's "
-                             f"{_versioned(found[0].transcript.gene)}")
+        if any(versioned_id(o.transcript.gene) != versioned_id(gene) for o in found):
+            raise ValueError(f"Gene {versioned_id(gene)} differs from this reference's "
+                             f"{versioned_id(found[0].transcript.gene)}")
         return found
 
     def _transcript_by_id(self, transcript_id):
@@ -1443,7 +1450,7 @@ class Proteome:
             sequence = genome.protein_sequence(accession)
             if not sequence:
                 continue
-            offset = _layout_offset(structure.layout, structure.strand, structure.cds_blocks)
+            offset = layout_offset(structure.layout, structure.strand, structure.cds_blocks)
             length = sum(b - a + 1 for a, b in structure.cds_blocks)
             occurrence = Occurrence(
                 structure.versioned_id, structure.gene_id, structure.gene_name, structure.biotype,
@@ -1641,7 +1648,7 @@ class Proteome:
         annotated = {e.sequence for e in self.proteins if e.kind == "annotated"}
         added = []
         for orf_id, orfs in grouped.items():
-            orfs.sort(key=lambda o: (not o.on_source_transcript, _versioned(o.transcript)))
+            orfs.sort(key=lambda o: (not o.on_source_transcript, versioned_id(o.transcript)))
             first = orfs[0]
             added.append(ProteinSequence(
                 accession=orf_id, sequence=first.protein_sequence, kind="extra_orf",
@@ -2132,19 +2139,19 @@ def _species_catalog(reference, catalog, catalogs, cache_root):
 def _onto(catalogs, reference, cache_root=None):
     """Explicit catalogues for one genome: any on another assembly of its species lifted to it, then merged."""
     from .liftover import chain_downloaded, chain_routes, lift_to
-    from .model import _species
+    from .reference import canonical_species
 
     placed = []
     for catalog in (catalogs,) if isinstance(catalogs, ORFCatalog) else tuple(catalogs):
         if (catalog.genome_build != reference.genome_build and catalog.taxon_id == reference.taxon_id
-                and reference.genome_build in chain_routes(_species(catalog.species), catalog.genome_build)):
-            route = chain_routes(_species(catalog.species), catalog.genome_build)[reference.genome_build]
+                and reference.genome_build in chain_routes(canonical_species(catalog.species), catalog.genome_build)):
+            route = chain_routes(canonical_species(catalog.species), catalog.genome_build)[reference.genome_build]
             missing = [c.name for c in route if not chain_downloaded(c, cache_root=cache_root)]
             if missing:
                 from shlex import join
 
                 command = ["orfdata", "chains"] + ([] if cache_root is None else ["--cache-root", str(cache_root)])
-                command += ["download", "--species", _species(catalog.species)]
+                command += ["download", "--species", canonical_species(catalog.species)]
                 command += ["--accept-terms"] if any(c.restricted for c in route) else []
                 raise NotInstalledError(f"The {catalog.source} catalogue is on {catalog.genome_build}; lifting it to "
                                         f"{reference.genome_build} needs the chain files {', '.join(missing)}, "
@@ -2201,7 +2208,7 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             except ValueError:
                 containing[orf_id] = ()
     candidates = {r.orf_id: sorted(set(containing[r.orf_id]).union(
-        *(_id_forms(m.transcript_id) for m in r.members or (r,)))) for r in records}
+        *(transcript_id_forms(m.transcript_id) for m in r.members or (r,)))) for r in records}
     layouts = _layouts(genome, {i for ids in candidates.values() for i in ids})
     transcripts = {}
 
@@ -2217,11 +2224,11 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
     for record in records:
         model = record.model
         placed, reason, carrying = [], None, None
-        source_id = next((i for i in _id_forms(record.transcript_id) if i in layouts), None)
+        source_id = next((i for i in transcript_id_forms(record.transcript_id) if i in layouts), None)
         source = transcript_by_id(source_id) if source_id in layouts else None
         pinned = record.reference_context
         # A record from another release of this assembly is placed by path and protein, even on its own transcript.
-        elsewhere = pinned is not None and pinned.key != reference.key and _same_assembly(pinned, reference)
+        elsewhere = pinned is not None and pinned.key != reference.key and same_assembly(pinned, reference)
         if source is None:
             reason = "Transcript absent from this annotation"
         else:
@@ -2237,14 +2244,14 @@ def extra_orfs(genome, evidence=None, *, catalog=None, context=None, require_res
             # The source transcript is tried again by path when strict binding failed, e.g. across releases.
             if layout is None or any(o.transcript.id == transcript_id for o in placed):
                 continue
-            if _layout_offset(layout, model.strand, model.coding_blocks) is None:
+            if layout_offset(layout, model.strand, model.coding_blocks) is None:
                 continue
             transcript = transcript_by_id(transcript_id)
             try:
                 placed.append(TranscriptORF(record, transcript, context=reference, any_transcript=True,
                                             _layout=layout))
             except ValueError as error:  # Same path, different sequence or protein.
-                carrying = carrying or f"{_binding_reason(error)} on {_versioned(transcript)}, which has the coding path"
+                carrying = carrying or f"{_binding_reason(error)} on {versioned_id(transcript)}, which has the coding path"
         if reason is not None and any(o.on_source_transcript for o in placed):
             reason = None  # Another merged source's own transcript carries it.
         if not placed and carrying and reason == "Transcript absent from this annotation":
@@ -2313,14 +2320,14 @@ def _layouts(genome, transcript_ids):
 
 
 def _structure_from_transcript(transcript):
-    from .model import _exon_layout, _merge
+    from .model import exon_layout, merge_genomic_ranges
 
-    exons, offsets, length = _exon_layout(transcript)
+    exons, offsets, length = exon_layout(transcript)
     version = getattr(transcript.protein, "protein_version", None) if transcript.protein_id else None
     return _structure.Structure(
-        transcript.id, _versioned(transcript), transcript.gene_id, transcript.gene_name or None,
+        transcript.id, versioned_id(transcript), transcript.gene_id, transcript.gene_name or None,
         transcript.biotype, transcript.contig, transcript.strand, tuple(exons), tuple(offsets), length,
-        _merge(transcript.coding_sequence_position_ranges) if transcript.protein_id else (),
+        merge_genomic_ranges(transcript.coding_sequence_position_ranges) if transcript.protein_id else (),
         transcript.protein_id, version, transcript.contains_start_codon if transcript.protein_id else False,
         transcript.contains_stop_codon if transcript.protein_id else False)
 

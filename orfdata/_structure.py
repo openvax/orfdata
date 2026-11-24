@@ -10,7 +10,7 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Optional
 
-from .model import _contig, _merge
+from .model import merge_genomic_ranges, normalize_contig
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ def _build(transcripts, exons, cds, starts, stops):
         blocks = ()
         if coding:
             protein_id, protein_version = coding[0][2], coding[0][3]
-            blocks = _merge([(a, b) for a, b, _, _ in coding] + list(stops.get(transcript_id, ())))
+            blocks = merge_genomic_ranges([(a, b) for a, b, _, _ in coding] + list(stops.get(transcript_id, ())))
         yield Structure(
             transcript_id, f"{transcript_id}.{version}" if version not in (None, "") else transcript_id,
             gene_id, gene_name or None, biotype, contig, strand, ordered, tuple(offsets), total, blocks,
@@ -124,11 +124,11 @@ def transcripts_containing(genome, spans):
     bins = {}
     for transcript_id, contig, strand, start, end in _rows(
             genome.db, "SELECT transcript_id, seqname, strand, start, end FROM transcript"):
-        key = (_contig(contig, genome.reference_name), strand)
+        key = (normalize_contig(contig, genome.reference_name), strand)
         for b in range(start // width, end // width + 1):
             bins.setdefault((key, b), []).append((start, end, transcript_id))
     found = {}
     for name, (contig, strand, start, end) in spans.items():
-        candidates = bins.get(((_contig(contig, genome.reference_name), strand), start // width), ())
+        candidates = bins.get(((normalize_contig(contig, genome.reference_name), strand), start // width), ())
         found[name] = sorted({t for a, b, t in candidates if a <= start and b >= end})
     return found

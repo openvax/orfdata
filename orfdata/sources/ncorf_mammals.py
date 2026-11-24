@@ -18,12 +18,12 @@ Ribo-seq support for the ORF: they name no studies.
 import gzip
 import hashlib
 import json
-import re
 from collections import Counter
 
 from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
 from ..fasta import read_fasta
+from ..gtf import read_transcript_exons, transcript_interval_blocks
 from ..model import ORFModel
 from ..reference import ScopedTarget
 from ..sequence import genetic_code
@@ -31,7 +31,6 @@ from ..sequence import genetic_code
 LIBRARIES = ("Ribo-seq libraries in which at least two of PRICE, RiboCode and Ribo-TISH called the ORF "
              "(Table S3 num_libraries); the libraries are listed in Table S1, not per ORF.")
 CALLERS = "ORF callers, of PRICE, RiboCode and Ribo-TISH, that called the ORF (Table S3 num_methods)."
-_ATTRIBUTE = re.compile(r'(\S+) "([^"]*)"')
 
 
 def _table(path, sheet, species):
@@ -44,44 +43,6 @@ def _table(path, sheet, species):
         found = [dict(zip(header, row)) for row in rows if row and row[0] == species]
         workbook.close()
     return found
-
-
-def _transcripts(path, wanted):
-    """Exons in transcript order, with contig, strand, version and gene, for the wanted transcripts."""
-    found = {}
-    with gzip.open(path, "rt") as handle:
-        for line in handle:
-            if line.startswith("#"):
-                continue
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) < 9 or fields[2] != "exon":
-                continue
-            attributes = dict(_ATTRIBUTE.findall(fields[8]))
-            transcript = attributes.get("transcript_id")
-            if transcript not in wanted:
-                continue
-            entry = found.setdefault(transcript, dict(
-                contig=fields[0], strand=fields[6], version=attributes.get("transcript_version"),
-                gene_id=attributes["gene_id"], gene_name=attributes.get("gene_name", ""), exons=[]))
-            entry["exons"].append((int(fields[3]), int(fields[4])))
-    for entry in found.values():
-        entry["exons"].sort(reverse=entry["strand"] == "-")
-    return found
-
-
-def _blocks(entry, start, end):
-    """1-based inclusive genomic blocks, ascending, of transcript positions ``start``..``end``."""
-    blocks, offset = [], 0
-    for a, b in entry["exons"]:
-        length = b - a + 1
-        lo, hi = max(start, offset + 1), min(end, offset + length)
-        if lo <= hi:
-            if entry["strand"] == "+":
-                blocks.append((a + lo - offset - 1, a + hi - offset - 1))
-            else:
-                blocks.append((b - (hi - offset - 1), b - (lo - offset - 1)))
-        offset += length
-    return tuple(sorted(blocks)) if offset >= end else None
 
 
 def import_orfs(inputs, output, manifest):
@@ -97,7 +58,9 @@ def import_orfs(inputs, output, manifest):
             fields = line.rstrip("\n").split("\t")
             if len(fields) >= 6:
                 spans[fields[3]] = (fields[0], int(fields[1]) + 1, int(fields[2]), fields[5])
-    transcripts = _transcripts(inputs["gtf"], {r["representative_transcript"] for r in rows})
+    transcripts = read_transcript_exons(
+        inputs["gtf"], transcript_ids={r["representative_transcript"] for r in rows}
+    )
 
     records, unresolved = [], []
     for row in rows:
@@ -113,7 +76,9 @@ def import_orfs(inputs, output, manifest):
         if protein is None or orf_id not in spans:
             skip("ORF missing from the source's protein FASTA or BED")
             continue
-        blocks = _blocks(entry, int(row["transcript_start"]), int(row["transcript_end"]))
+        blocks = transcript_interval_blocks(
+            entry["exons"], entry["strand"], int(row["transcript_start"]), int(row["transcript_end"])
+        )
         strand = "+" if row["strand"] == "+" else "-"
         first, last = (int(row["genomic_start"]), int(row["genomic_end"]))
         if (blocks is None or entry["strand"] != strand or str(row["chromosome"]) != entry["contig"]

@@ -1,10 +1,10 @@
 """Healthy human tissue measurements with source target and calibration scope."""
 
-import gzip
 import math
 import re
 import zipfile
 
+from ..gtf import read_gtf_rows
 from ..reference import ScopedTarget
 from ..search_reference import SearchReference, SearchReferenceSpec
 
@@ -119,21 +119,12 @@ def _annotation(inputs, manifest):
             or reference.annotation_version != "83" or reference.source_sha256 != assets["annotation.gtf.gz"].sha256):
         raise ValueError("Healthy human tissue requires its declared Ensembl 83 reference")
     genes, transcripts, proteins, header = set(), {}, {}, {}
-    with gzip.open(inputs["annotation.gtf.gz"], "rt", encoding="utf-8") as handle:
-        for text in handle:
-            if text.startswith("#!"):
-                key, _, value = text[2:].rstrip().partition(" ")
-                header[key] = value
-            elif not text.startswith("#"):
-                columns = text.rstrip().split("\t")
-                if len(columns) != 9:
-                    raise ValueError("Malformed native Ensembl GTF record")
-                attrs = dict(re.findall(r'(\w+) "([^\"]*)";', columns[8]))
-                genes.add(attrs["gene_id"])
-                if "transcript_id" in attrs:
-                    transcripts[attrs["transcript_id"]] = attrs["gene_id"]
-                if "protein_id" in attrs:
-                    proteins[attrs["protein_id"]] = (attrs["transcript_id"], attrs["gene_id"])
+    for _, _, _, _, _, attrs in read_gtf_rows(inputs["annotation.gtf.gz"], headers=header):
+        genes.add(attrs["gene_id"])
+        if "transcript_id" in attrs:
+            transcripts[attrs["transcript_id"]] = attrs["gene_id"]
+        if "protein_id" in attrs:
+            proteins[attrs["protein_id"]] = (attrs["transcript_id"], attrs["gene_id"])
     accession = header.get("genome-build-accession", "").removeprefix("NCBI:")
     if (header.get("genome-version") != reference.genome_build or accession != reference.assembly_accession
             or header.get("genome-build") != manifest.processing["source_assembly_header"]):

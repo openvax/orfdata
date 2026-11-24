@@ -42,12 +42,13 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     """
     import tempfile
 
-    from .catalog import _catalog_choices, _installed, _plan, _selected, _species
+    from .catalog import _catalog_choices, _installed, _plan, _selected
     from .catalogs import CatalogRegistry
     from .downloads import default_collections, needs_replacement, refuse_unreadable
     from .liftover import chain_registry, download_chain, pinned_chains
+    from .reference import canonical_species
 
-    species = _species(species)
+    species = canonical_species(species)
     collections = _selected_collections(default_collections(species), collections, species)
     if registry is not None and cache_root is not None:
         raise ValueError("Pass a registry or a cache_root, not both; the registry has its own cache root")

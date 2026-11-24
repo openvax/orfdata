@@ -8,24 +8,24 @@ The installed catalogue and query API need neither, and never access the network
 import argparse
 import csv
 import gzip
-import io
 import json
-import re
+import os
 import subprocess
 import tarfile
 import tempfile
-import urllib.request
-import zipfile
 from collections import defaultdict
 from pathlib import Path
 
 from orfdata.cache import file_sha256
 from orfdata.catalog import load_catalog, load_uorf_catalog
+from orfdata.gtf import read_gtf_rows
 from orfdata.initiation_context import InitiationContext
 from orfdata.sequence import translate_reference
 
 COMMIT = "b65ae0c09a53e9efe083d806d617581e6139bdde"
 AUTHOR = "https://raw.githubusercontent.com/VanHeeschLab/deutsch_kok_et_al_2024/" + COMMIT + "/raw/"
+BENCHMARK_URL = "https://ndownloader.figshare.com/files/57979642"
+BENCHMARK_MEMBER = "input_files/media-4_with_dot_products.csv"
 PINS = {
     "ensembl101.ncrna.fa.gz": "6bbf091adb1214942b6f258aa830393b27ad7cc49f8ee2fe18260a7b46a0cc88",
     "ensembl101.gtf.gz": "6f63da87a7f2f7b5e6940f7e2bd9dd2e7aee37494430e6ac7274f7ef8dc214ba",
@@ -66,125 +66,208 @@ SHOTGUN_STUDIES = {
 
 
 def verify(path):
+    """Verify that ``path`` matches its pinned SHA-256 digest in :data:`PINS`.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        File whose basename is a key in :data:`PINS`.
+
+    Raises
+    ------
+    ValueError
+        If the file's SHA-256 digest does not match ``PINS[Path(path).name]``.
+    """
+    path = Path(path)
     if file_sha256(path) != PINS[path.name]:
         raise ValueError(f"Source checksum mismatch: {path}")
 
 
-class RemoteZip(io.RawIOBase):
-    """Read small ZIP members with HTTP ranges, never the 4.8 GB archive."""
+def fetch_build_input(url, target, expected_sha256, *, timeout=120, resume="auto"):
+    """Fetch one checksum-pinned build input into ``target`` through DataCache.
 
-    size = 4797315346
-    url = "https://ndownloader.figshare.com/files/57979642"
+    DataCache stages the download privately, verifies ``expected_sha256``, and
+    atomically renames the file into place so an interrupted transfer never
+    leaves a truncated file at ``target``.
 
-    def __init__(self):
-        self.position = 0
+    Parameters
+    ----------
+    url : str
+        Remote URL to download.
+    target : str or os.PathLike
+        Destination path for the verified file.
+    expected_sha256 : str
+        Expected lowercase SHA-256 hex digest of the raw file bytes.
+    timeout : float, optional
+        Per-attempt transfer timeout in seconds. Defaults to 120.
+    resume : bool or str, optional
+        DataCache ``resume`` setting. Defaults to ``"auto"``.
 
-    def seekable(self):
-        return True
+    Returns
+    -------
+    pathlib.Path
+        The verified ``target`` path.
+    """
+    import datacache
 
-    def tell(self):
-        return self.position
-
-    def seek(self, offset, whence=0):
-        self.position = (
-            offset if whence == 0 else self.position + offset if whence == 1 else self.size + offset
+    return Path(
+        datacache.fetch_file(
+            url,
+            destination=Path(target),
+            expected_sha256=expected_sha256,
+            raw=True,
+            timeout=timeout,
+            resume=resume,
         )
-        return self.position
+    )
 
-    def read(self, count=-1):
-        if count < 0:
-            count = self.size - self.position
-        if not 0 <= count <= 2_000_000:
-            raise ValueError("Refusing a large archive range")
-        if not count:
-            return b""
-        request = urllib.request.Request(
-            self.url, headers={"Range": f"bytes={self.position}-{self.position + count - 1}"}
+
+def write_verified_file(target, writer):
+    """Stage a derived build file in ``target.parent``, verify its SHA-256, and publish atomically.
+
+    Parameters
+    ----------
+    target : str or os.PathLike
+        Final destination path whose basename is pinned in :data:`PINS`.
+    writer : callable
+        Callable accepting a temporary :class:`pathlib.Path` (with the same
+        basename as ``target`` inside a sibling temporary directory) and
+        writing the candidate file contents there.
+
+    Returns
+    -------
+    pathlib.Path
+        The published ``target`` path.
+
+    Raises
+    ------
+    ValueError
+        If the written file fails :func:`verify`; the temporary directory and
+        staged file are removed without modifying ``target``.
+    """
+    target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{target.name}-", dir=target.parent) as scratch:
+        staged = Path(scratch) / target.name
+        writer(staged)
+        verify(staged)
+        os.replace(staged, target)
+    return target
+
+
+def fetch_benchmark_csv(target, *, url=BENCHMARK_URL, member=BENCHMARK_MEMBER, timeout=120):
+    """Extract one checksum-pinned CSV member from a remote ZIP via DataCache.
+
+    Uses :func:`datacache.install_zip_member` to fetch only the requested ZIP
+    member over HTTP byte ranges without downloading the full archive, then
+    publishes the verified payload atomically to ``target``.
+
+    Parameters
+    ----------
+    target : str or os.PathLike
+        Final destination path whose basename is pinned in :data:`PINS`.
+    url : str, optional
+        Remote ZIP archive URL. Defaults to :data:`BENCHMARK_URL`.
+    member : str, optional
+        Member path inside the ZIP archive. Defaults to :data:`BENCHMARK_MEMBER`.
+    timeout : float, optional
+        Per-request timeout in seconds. Defaults to 120.
+
+    Returns
+    -------
+    pathlib.Path
+        The published ``target`` path.
+    """
+    import datacache
+
+    target = Path(target)
+
+    def write_member(staged):
+        bundle_dir = staged.parent / "zip-member-bundle"
+        bundle = datacache.install_zip_member(
+            bundle_dir,
+            url,
+            member,
+            expected_sha256=PINS[target.name],
+            timeout=timeout,
         )
-        with urllib.request.urlopen(request, timeout=120) as response:
-            if response.status != 206:
-                raise ValueError("Source server does not support byte ranges")
-            data = response.read(count)
-        self.position += len(data)
-        return data
+        os.replace(bundle["payload"], staged)
+
+    return write_verified_file(target, write_member)
 
 
-def prepare_sources(directory, *, all_orfs=False):
-    """Download ~246 MB; extract small tables and stream the count archive."""
+def prepare_sources(directory, *, all_orfs=False, timeout=120):
+    """Download ~246 MB via DataCache; extract small tables and stream the count archive."""
+    directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     inputs = {**ENSEMBL_INPUTS, **NCRNA_INPUTS} if all_orfs else ENSEMBL_INPUTS
     for name, url in inputs.items():
-        target = directory / name
-        if not target.exists():
-            with urllib.request.urlopen(url, timeout=120) as response, target.open("wb") as out:
-                while block := response.read(1024 * 1024):
-                    out.write(block)
-        verify(target)
+        fetch_build_input(url, directory / name, PINS[name], timeout=timeout)
     for name in (
         "ncorf_list.xlsx",
         "filtered_peptides.tar.bz2",
         "peptide_sample_msrun_counts.tar.bz2",
     ):
-        target = directory / name
-        if not target.exists():
-            with (
-                urllib.request.urlopen(AUTHOR + name, timeout=120) as response,
-                target.open("wb") as out,
-            ):
-                while block := response.read(1024 * 1024):
-                    out.write(block)
-        verify(target)
+        fetch_build_input(AUTHOR + name, directory / name, PINS[name], timeout=timeout)
     mappings = directory / "author-hla-mappings.tsv"
     if not mappings.exists():
         # The source Rdata is ~825 MiB. Load in an isolated R environment,
         # export only the small HLA mapping table, then remove this scratch file.
-        with tempfile.TemporaryDirectory(prefix="uorf-rdata-", dir=directory) as scratch:
-            rdata = Path(scratch) / "filtered_peptides.Rdata"
-            with (
-                tarfile.open(directory / "filtered_peptides.tar.bz2", "r:bz2") as archive,
-                archive.extractfile("filtered_peptides.Rdata") as source,
-                rdata.open("wb") as out,
-            ):
-                while block := source.read(1024 * 1024):
-                    out.write(block)
-            script = (
-                "e<-new.env();load(commandArgs(TRUE)[1],envir=e);"
-                'write.table(e$pep_nonc_long,commandArgs(TRUE)[2],sep="\\t",'
-                'quote=FALSE,row.names=FALSE,na="")'
-            )
-            subprocess.run(["Rscript", "-e", script, str(rdata), str(mappings)], check=True)
-    verify(mappings)
+        def write_mappings(staged):
+            with tempfile.TemporaryDirectory(prefix="uorf-rdata-", dir=directory) as scratch:
+                rdata = Path(scratch) / "filtered_peptides.Rdata"
+                with (
+                    tarfile.open(directory / "filtered_peptides.tar.bz2", "r:bz2") as archive,
+                    archive.extractfile("filtered_peptides.Rdata") as source,
+                    rdata.open("wb") as out,
+                ):
+                    while block := source.read(1024 * 1024):
+                        out.write(block)
+                script = (
+                    "e<-new.env();load(commandArgs(TRUE)[1],envir=e);"
+                    'write.table(e$pep_nonc_long,commandArgs(TRUE)[2],sep="\\t",'
+                    'quote=FALSE,row.names=FALSE,na="")'
+                )
+                subprocess.run(["Rscript", "-e", script, str(rdata), str(staged)], check=True)
+
+        write_verified_file(mappings, write_mappings)
+    else:
+        verify(mappings)
     counts_path = directory / "author-hla-counts.json"
     if not counts_path.exists():
-        with mappings.open() as stream:
-            peptides = {r["peptide"] for r in csv.DictReader(stream, delimiter="\t")}
-        counts, datasets, runs = defaultdict(int), defaultdict(set), defaultdict(set)
-        with tarfile.open(directory / "peptide_sample_msrun_counts.tar.bz2", "r|bz2") as archive:
-            for member in archive:
-                if member.name.endswith("peptide_sample_msrun_counts.tsv"):
-                    for raw in archive.extractfile(member):
-                        peptide, sample, count, dataset, _tag, run = (
-                            raw.decode().rstrip("\n").split("\t")
-                        )
-                        if peptide in peptides:
-                            counts[peptide] += int(count)
-                            datasets[peptide].add(dataset)
-                            runs[peptide].add((sample, run))
-        result = {
-            p: {
-                "spectrum_count": counts[p],
-                "datasets": sorted(datasets[p]),
-                "run_count": len(runs[p]),
+        def write_counts(staged):
+            with mappings.open() as stream:
+                peptides = {r["peptide"] for r in csv.DictReader(stream, delimiter="\t")}
+            counts, datasets, runs = defaultdict(int), defaultdict(set), defaultdict(set)
+            with tarfile.open(directory / "peptide_sample_msrun_counts.tar.bz2", "r|bz2") as archive:
+                for member in archive:
+                    if member.name.endswith("peptide_sample_msrun_counts.tsv"):
+                        for raw in archive.extractfile(member):
+                            peptide, sample, count, dataset, _tag, run = (
+                                raw.decode().rstrip("\n").split("\t")
+                            )
+                            if peptide in peptides:
+                                counts[peptide] += int(count)
+                                datasets[peptide].add(dataset)
+                                runs[peptide].add((sample, run))
+            result = {
+                p: {
+                    "spectrum_count": counts[p],
+                    "datasets": sorted(datasets[p]),
+                    "run_count": len(runs[p]),
+                }
+                for p in sorted(counts)
             }
-            for p in sorted(counts)
-        }
-        counts_path.write_text(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
-    verify(counts_path)
+            staged.write_text(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
+
+        write_verified_file(counts_path, write_counts)
+    else:
+        verify(counts_path)
     benchmark = directory / "media-4_with_dot_products.csv"
     if not benchmark.exists():
-        with zipfile.ZipFile(RemoteZip()) as archive:
-            benchmark.write_bytes(archive.read("input_files/media-4_with_dot_products.csv"))
-    verify(benchmark)
+        fetch_benchmark_csv(benchmark, timeout=timeout)
+    else:
+        verify(benchmark)
 
 
 def split(value):
@@ -217,33 +300,27 @@ def peptide_record(model, peptide, **values):
 def load_transcript_reference(gtf, fasta, transcript_ids):
     """Stream just the requested transcript models from pinned GTF/cDNA."""
     references = {}
-    with gzip.open(gtf, "rt") as stream:
-        for line in stream:
-            if line.startswith("#"):
-                continue
-            fields = line.rstrip().split("\t")
-            if fields[2] != "exon":
-                continue
-            tid = re.search(r'transcript_id "([^"]+)"', fields[8]).group(1)
-            if tid not in transcript_ids:
-                continue
-            version = re.search(r'transcript_version "([^"]+)"', fields[8]).group(1)
-            reference = references.setdefault(
-                tid,
-                {
-                    "contig": fields[0],
-                    "strand": fields[6],
-                    "transcript_id": tid + "." + version,
-                    "exons": [],
-                },
-            )
-            if (reference["contig"], reference["strand"], reference["transcript_id"]) != (
-                fields[0],
-                fields[6],
-                tid + "." + version,
-            ):
-                raise ValueError("Conflicting reference transcript identity")
-            reference["exons"].append((int(fields[3]), int(fields[4])))
+    for seqname, _, start, end, strand, attrs in read_gtf_rows(gtf, features={"exon"}):
+        tid = attrs["transcript_id"]
+        if tid not in transcript_ids:
+            continue
+        version = attrs["transcript_version"]
+        reference = references.setdefault(
+            tid,
+            {
+                "contig": seqname,
+                "strand": strand,
+                "transcript_id": tid + "." + version,
+                "exons": [],
+            },
+        )
+        if (reference["contig"], reference["strand"], reference["transcript_id"]) != (
+            seqname,
+            strand,
+            tid + "." + version,
+        ):
+            raise ValueError("Conflicting reference transcript identity")
+        reference["exons"].append((start, end))
 
     def keep(header, sequence):
         tid = header.split(".")[0]
@@ -535,8 +612,8 @@ def build(source_dir, destination, *, all_orfs=False):
                 "citation": "Wacholder et al. 2026, Community benchmarking and evaluation of human unannotated microprotein detection by mass spectrometry based proteomics",
                 "doi": "10.1038/s41467-025-68002-x",
                 "dataset_doi": "10.6084/m9.figshare.30131869.v1",
-                "url": RemoteZip.url,
-                "member": "input_files/media-4_with_dot_products.csv",
+                "url": BENCHMARK_URL,
+                "member": BENCHMARK_MEMBER,
                 "sha256": PINS["media-4_with_dot_products.csv"],
                 "license": "CC-BY-4.0 (Figshare dataset)",
                 "mapping_scope": "Sequence-compatible Phase I models; source_orf only when a published ORF alias also matches; uniqueness unknown",

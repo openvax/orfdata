@@ -60,11 +60,11 @@ def _pins():
 
 def pinned_genomes(*, species=None):
     """The pinned annotations, without downloading any."""
-    from .model import _species
+    from .reference import canonical_species
 
     found = tuple(PinnedGenome(name, **dict(entry, contigs=tuple(entry.get("contigs", ()))))
                   for name, entry in sorted(_pins().items()))
-    return found if species is None else tuple(g for g in found if g.species == _species(species))
+    return found if species is None else tuple(g for g in found if g.species == canonical_species(species))
 
 
 def reference_names():
