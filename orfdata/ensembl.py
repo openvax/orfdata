@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, replace
 
 from .cache import content_digest
+from .fasta import iter_fasta_records
 from .gtf import read_gtf_rows
 from .proteome import Occurrence, ProteinSequence
 from .reference import ReferenceContext
@@ -100,54 +101,44 @@ def _annotation(path, expected, reference):
 
 def _fasta(paths, hashes, *, protein=False):
     records, duplicate_count = {}, 0
-
-    def retain(header, chunks):
-        nonlocal duplicate_count
-        if header is None:
-            return
-        parts = header.split()
-        identifier = parts[0]
-        kind = "P" if protein else "T"
-        if not re.fullmatch(r"ENS[A-Z]*" + kind + r"[0-9]+\.[1-9][0-9]*", identifier):
-            raise ValueError("Ensembl FASTA requires exact versioned accessions")
-        attributes = {}
-        for part in parts[1:]:
-            if ":" not in part:
-                continue
-            key, value = part.split(":", 1)
-            if key in {"gene", "transcript"} and key in attributes and attributes[key] != value:
-                raise ValueError("Conflicting Ensembl FASTA header identity")
-            attributes[key] = value
-        sequence = "".join(chunks)
-        if not sequence or not re.fullmatch(r"[A-Z*]+" if protein else r"[A-Z]+", sequence):
-            raise ValueError(f"Invalid Ensembl sequence: {identifier}")
-        gene, transcript = attributes.get("gene"), attributes.get("transcript")
-        if not gene or (protein and not transcript):
-            raise ValueError("Ensembl FASTA lacks gene/transcript header identities")
-        if not protein and transcript not in (None, identifier):
-            raise ValueError("Ensembl RNA header transcript disagrees with its accession")
-        row = (gene, transcript, len(sequence), hashlib.sha256(sequence.encode()).hexdigest(),
-               sequence if protein else None)
-        if identifier in records:
-            if records[identifier] != row:
-                raise ValueError(f"Conflicting Ensembl FASTA identity: {identifier}")
-            duplicate_count += 1
-        records[identifier] = row
+    kind = "P" if protein else "T"
+    pattern = r"[A-Z*]+" if protein else r"[A-Z]+"
 
     for path, expected in zip(paths, hashes):
         with _source(path, expected) as stream:
-            header, chunks = None, []
-            for line in stream:
-                if line.startswith(">"):
-                    retain(header, chunks)
-                    header, chunks = line[1:].strip(), []
-                    if not header:
-                        raise ValueError("Empty Ensembl FASTA header")
-                elif line.strip():
-                    if header is None:
-                        raise ValueError("Ensembl FASTA sequence precedes its header")
-                    chunks.append(line.strip())
-            retain(header, chunks)
+            for record in iter_fasta_records(stream, source_name=str(path)):
+                parts = record.header.split()
+                identifier = parts[0]
+                if not re.fullmatch(r"ENS[A-Z]*" + kind + r"[0-9]+\.[1-9][0-9]*", identifier):
+                    raise ValueError("Ensembl FASTA requires exact versioned accessions")
+                attributes = {}
+                for part in parts[1:]:
+                    if ":" not in part:
+                        continue
+                    key, value = part.split(":", 1)
+                    if key in {"gene", "transcript"} and key in attributes and attributes[key] != value:
+                        raise ValueError("Conflicting Ensembl FASTA header identity")
+                    attributes[key] = value
+                sequence = record.sequence
+                if not sequence or not re.fullmatch(pattern, sequence):
+                    raise ValueError(f"Invalid Ensembl sequence: {identifier}")
+                gene, transcript = attributes.get("gene"), attributes.get("transcript")
+                if not gene or (protein and not transcript):
+                    raise ValueError("Ensembl FASTA lacks gene/transcript header identities")
+                if not protein and transcript not in (None, identifier):
+                    raise ValueError("Ensembl RNA header transcript disagrees with its accession")
+                row = (
+                    gene,
+                    transcript,
+                    len(sequence),
+                    hashlib.sha256(sequence.encode()).hexdigest(),
+                    sequence if protein else None,
+                )
+                if identifier in records:
+                    if records[identifier] != row:
+                        raise ValueError(f"Conflicting Ensembl FASTA identity: {identifier}")
+                    duplicate_count += 1
+                records[identifier] = row
     return records, duplicate_count
 
 

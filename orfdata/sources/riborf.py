@@ -42,6 +42,7 @@ from collections import Counter
 
 from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
+from ..fasta import iter_fasta
 from ..gtf import read_transcript_exons, transcript_interval_blocks
 from ..model import ORFModel
 from ..reference import ScopedTarget
@@ -79,20 +80,14 @@ def read_riborf_rows(path, sheet):
 
 def _sequences(paths, wanted):
     """Wanted sequences from FASTA files, named by their ID with or without its version."""
-    found, name = {}, None
+    found = {}
     for path in paths:
-        with gzip.open(path, "rt") as handle:
-            for line in handle:
-                if line.startswith(">"):
-                    name = line[1:].split()[0]
-                    # Names with dots of their own, such as C. elegans 2L52.1a.1, are matched whole first.
-                    name = name if name in wanted else name.rsplit(".", 1)[0]
-                    name = name if name in wanted else None
-                    if name is not None:
-                        found[name] = []
-                elif name is not None:
-                    found[name].append(line.strip())
-    return {k: "".join(v) for k, v in found.items()}
+        for identifier, sequence in iter_fasta(path, gzipped=True):
+            # Names with dots of their own, such as C. elegans 2L52.1a.1, are matched whole first.
+            name = identifier if identifier in wanted else identifier.rsplit(".", 1)[0]
+            if name in wanted:
+                found[name] = sequence
+    return found
 
 
 def _versioned(stable, entry):
@@ -312,17 +307,11 @@ def _carries(entry, strand, blocks):
 
 def _genome(path, contigs):
     """The wanted contigs of a gzipped FASTA, named by their first word."""
-    found, name = {}, None
-    with gzip.open(path, "rt") as handle:
-        for line in handle:
-            if line.startswith(">"):
-                name = line[1:].split()[0]
-                name = name if name in contigs else None
-                if name is not None:
-                    found[name] = []
-            elif name is not None:
-                found[name].append(line.strip().upper())
-    return {k: "".join(v) for k, v in found.items()}
+    return {
+        name: sequence
+        for name, sequence in iter_fasta(path, upper=True, gzipped=True)
+        if name in contigs
+    }
 
 
 def _write(models, unresolved, counts, output, manifest):

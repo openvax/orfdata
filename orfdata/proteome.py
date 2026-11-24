@@ -10,6 +10,7 @@ reloaded offline.
 
 import gzip
 import hashlib
+import io
 import json
 import re
 from bisect import bisect_left, bisect_right
@@ -26,6 +27,7 @@ from .cache import content_digest, file_sha256, get_data_dir
 from .catalog import ORFCatalog, _positive_integer, load_catalog, merge_catalogs
 from .errors import NotInstalledError
 from .evidence import EVIDENCE_METHODS, SYNONYMS, EvidenceRule, evidence_rule
+from .fasta import iter_fasta
 from .model import (
     TranscriptORF,
     layout_offset,
@@ -923,15 +925,11 @@ class ProteinSet:
         """Read a protein FASTA; a terminal stop character is removed."""
         raw = Path(path).read_bytes()
         text = (gzip.decompress(raw) if raw.startswith(b"\x1f\x8b") else raw).decode("ascii")
-        proteins, accession, chunks = [], None, []
-        for line in text.splitlines() + [">"]:
-            if line.startswith(">"):
-                if accession is not None:
-                    proteins.append((accession, "".join(chunks).upper().removesuffix("*")))
-                accession, chunks = (line[1:].split() or [None])[0], []
-            elif line.strip():
-                chunks.append(line.strip())
-        return cls(name=name, proteins=tuple(proteins), source=source or Path(path).name,
+        proteins = tuple(
+            (accession, sequence.removesuffix("*"))
+            for accession, sequence in iter_fasta(io.StringIO(text), upper=True, source_name=str(path))
+        )
+        return cls(name=name, proteins=proteins, source=source or Path(path).name,
                    taxon_id=taxon_id, reference=reference,
                    source_sha256=hashlib.sha256(raw).hexdigest())
 

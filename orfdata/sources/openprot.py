@@ -29,6 +29,7 @@ from collections import Counter, defaultdict
 
 from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
+from ..fasta import iter_fasta_records
 from ..model import ORFModel
 from ..reference import ScopedTarget
 from ..sequence import genetic_code
@@ -47,19 +48,14 @@ def _member(path, name):
 
 def _fasta(text):
     """Sequences by every accession a header names: its own and its PA= aliases."""
-    entries = []
-    for line in text.splitlines():
-        if line.startswith(">"):
-            fields = line[1:].split()
-            names = [fields[0].split("|")[0]] + [a for f in fields if f.startswith("PA=") for a in f[3:].split(",")]
-            entries.append((names, []))
-        elif entries:
-            entries[-1][1].append(line.strip())
     proteins = {}
-    for names, lines in entries:
-        protein = "".join(lines)
+    for record in iter_fasta_records(io.StringIO(text)):
+        fields = record.header.split()
+        names = [fields[0].split("|")[0]] + [
+            alias for field in fields if field.startswith("PA=") for alias in field[3:].split(",")
+        ]
         for name in names:
-            if proteins.setdefault(name, protein) != protein:
+            if proteins.setdefault(name, record.sequence) != record.sequence:
                 raise ValueError(f"OpenProt FASTA gives {name} two sequences")
     return proteins
 

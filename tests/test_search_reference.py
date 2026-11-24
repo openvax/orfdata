@@ -172,8 +172,8 @@ def test_reported_and_unreported_native_search_entries(tmp_path):
 
 
 @pytest.mark.parametrize("text,error", (
-    ("MAK\n", "precedes"),
-    (">\nMAK\n", "Empty"),
+    ("MAK\n", "before the first header"),
+    (">\nMAK\n", "without an identifier"),
     (">sp|P1|TEST OX=4932\n", "empty"),
     (">sp|P1|TEST OX=4932\nMAK\n>tr|P1|TEST OX=4932\nMAK\n", "Duplicate"),
     (">sp|P1|TEST OX=4932\nM*K\n", "invalid"),

@@ -8,6 +8,7 @@ import re
 from collections import Counter
 
 from ..dataset import QuantitativeDataset
+from ..fasta import iter_fasta_records
 from ..measurements import Assay, Measurement, Sample, TargetMapping
 from ..pairing import AssayPair, TargetRelation
 from ..reference import ScopedTarget
@@ -67,22 +68,17 @@ def _workbook(path, expected_counts):
 
 
 def _standards(path):
-    sequences, identifier = {}, None
-    with open(path) as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            if line.startswith(">"):
-                identifier = line[1:].split("|")[0]
-                if identifier in sequences or not identifier:
-                    raise ValueError("Duplicate/empty QconCAT standard ID")
-                sequences[identifier] = ""
-            elif identifier is None or not re.fullmatch("[A-Za-z]+", line):
-                raise ValueError("Invalid QconCAT standard FASTA")
-            else:
-                sequences[identifier] += line.upper()
-    if not sequences or any(not sequence for sequence in sequences.values()):
+    sequences = {}
+    for record in iter_fasta_records(path, upper=True):
+        identifier = record.header.strip().split("|")[0]
+        if identifier in sequences or not identifier:
+            raise ValueError("Duplicate/empty QconCAT standard ID")
+        if not record.sequence:
+            raise ValueError("Empty QconCAT standard")
+        if not re.fullmatch("[A-Z]+", record.sequence):
+            raise ValueError("Invalid QconCAT standard FASTA")
+        sequences[identifier] = record.sequence
+    if not sequences:
         raise ValueError("Empty QconCAT standard")
     return sequences
 

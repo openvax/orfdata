@@ -1,6 +1,5 @@
 """Immutable native search sequences, separate from abundance and existence evidence."""
 
-import gzip
 import hashlib
 import re
 from collections.abc import Mapping
@@ -10,6 +9,7 @@ from types import MappingProxyType
 from typing import Optional
 
 from .cache import content_digest, file_sha256, get_data_dir, pinned_registry
+from .fasta import iter_fasta_records
 from .measurements import Record, SourceAsset, require_identifier
 from .reference import ReferenceContext, ScopedTarget
 
@@ -169,39 +169,27 @@ class SearchReference:
         return SearchMembership(target, "present", "Exact accession present in this pinned FASTA; detection is not established", sequence)
 
     def _read(self):
-        entries, header, pieces, source_line = {}, None, [], None
-
-        def save():
-            if header is None:
-                return
-            fasta_id = header.split()[0]
+        entries = {}
+        gzipped = self.spec.format == "ensembl-pep-fasta-gzip"
+        for record in iter_fasta_records(self.path, gzipped=gzipped):
+            header = record.header
+            fasta_id = record.identifier
             identifier, database, taxon, gene = self._header(header, fasta_id)
-            sequence = "".join(pieces)
+            sequence = record.sequence
             alphabet = "[A-Z*]+" if database == "ensembl" else "[A-Z]+"
             if identifier in entries or not sequence or not re.fullmatch(alphabet, sequence):
                 raise ValueError("Duplicate/empty/invalid native search sequence")
             entries[identifier] = SearchSequence(
-                ScopedTarget(self.reference, "protein", identifier, self.spec.namespace), header, fasta_id,
-                sequence, hashlib.sha256(sequence.encode("ascii")).hexdigest(), taxon,
-                gene, database, source_line,
+                ScopedTarget(self.reference, "protein", identifier, self.spec.namespace),
+                header,
+                fasta_id,
+                sequence,
+                hashlib.sha256(sequence.encode("ascii")).hexdigest(),
+                taxon,
+                gene,
+                database,
+                record.line_number,
             )
-
-        opener = gzip.open if self.spec.format == "ensembl-pep-fasta-gzip" else open
-        with opener(self.path, "rt", encoding="utf-8") as handle:
-            for line, text in enumerate(handle, 1):
-                text = text.rstrip("\r\n")
-                if not text.strip():
-                    continue
-                if text.startswith(">"):
-                    save()
-                    header, pieces, source_line = text[1:], [], line
-                    if not header.strip():
-                        raise ValueError("Empty search FASTA header")
-                elif header is None:
-                    raise ValueError("Search FASTA sequence precedes its header")
-                else:
-                    pieces.append(text.strip())
-        save()
         if not entries or (self.spec.expected_sequences is not None and len(entries) != self.spec.expected_sequences):
             raise ValueError("Search FASTA sequence count disagrees with declared coverage")
         return entries

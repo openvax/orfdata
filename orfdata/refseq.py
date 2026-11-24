@@ -10,6 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from .cache import content_digest
+from .fasta import iter_fasta
 from .proteome import Occurrence, ProteinSequence
 from .reference import ReferenceContext
 
@@ -26,23 +27,16 @@ def _source(path, expected):
 
 
 def _proteins(text):
-    result, accession, chunks = {}, None, []
-    for line in text.splitlines() + [">"]:
-        if line.startswith(">"):
-            if accession is not None:
-                sequence = "".join(chunks).removesuffix("*")
-                if not sequence or not re.fullmatch(r"[A-Z]+", sequence):
-                    raise ValueError(f"Invalid RefSeq protein sequence: {accession}")
-                if accession in result:
-                    raise ValueError(f"Duplicate RefSeq protein accession: {accession}")
-                result[accession] = sequence
-            accession, chunks = (line[1:].split() or [None])[0], []
-            if accession is not None and not _ACCESSION.fullmatch(accession):
-                raise ValueError("RefSeq proteins require versioned accessions")
-        elif line.strip():
-            if accession is None:
-                raise ValueError("RefSeq FASTA sequence precedes its header")
-            chunks.append(line.strip())
+    result = {}
+    for accession, raw_sequence in iter_fasta(io.StringIO(text)):
+        if not _ACCESSION.fullmatch(accession):
+            raise ValueError("RefSeq proteins require versioned accessions")
+        sequence = raw_sequence.removesuffix("*")
+        if not sequence or not re.fullmatch(r"[A-Z]+", sequence):
+            raise ValueError(f"Invalid RefSeq protein sequence: {accession}")
+        if accession in result:
+            raise ValueError(f"Duplicate RefSeq protein accession: {accession}")
+        result[accession] = sequence
     if not result:
         raise ValueError("RefSeq protein inventory is empty")
     return result

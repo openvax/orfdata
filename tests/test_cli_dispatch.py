@@ -3,7 +3,15 @@
 import pytest
 
 from orfdata import cli
-from orfdata.cli import COMMAND_ALIASES, COMMAND_TABLE, COMMANDS, Command, command_guide, run
+from orfdata.cli import (
+    COMMAND_ALIASES,
+    COMMAND_TABLE,
+    COMMANDS,
+    ROOT_QUERY_REMOVAL_VERSION,
+    Command,
+    command_guide,
+    run,
+)
 
 
 @pytest.fixture
@@ -54,14 +62,26 @@ def test_an_alias_runs_its_command_under_the_name_typed(alias, recorded):
     assert recorded == [(COMMAND_TABLE[COMMAND_ALIASES[alias]].function, ["list"], f"orfdata {alias}")]
 
 
-def test_query_alone_takes_the_catalogue_loader(monkeypatch):
+def test_query_alone_takes_the_catalogue_loader(monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(cli, "query", lambda argv, prog, *, catalog_loader: calls.append(
         (argv, prog, catalog_loader)))
     loader = object()
     run(["query", "--gene", "TP53"], catalog_loader=loader)
-    run(["--gene", "TP53"], prog="tool", catalog_loader=loader)
+    assert capsys.readouterr().err == ""
+    with pytest.warns(DeprecationWarning, match=ROOT_QUERY_REMOVAL_VERSION):
+        run(["--gene", "TP53"], prog="tool", catalog_loader=loader)
+    err = capsys.readouterr().err
+    assert "deprecated" in err and ROOT_QUERY_REMOVAL_VERSION in err and "tool query" in err
     assert calls == [(["--gene", "TP53"], "orfdata query", loader), (["--gene", "TP53"], "tool query", loader)]
+
+
+@pytest.mark.parametrize("group", ("catalogs", "datasets"))
+def test_registry_override_option_is_hidden_from_user_help(group, capsys):
+    with pytest.raises(SystemExit) as stopped:
+        run([group, "--help"])
+    assert stopped.value.code == 0
+    assert "--registry" not in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("argv", [["nonsense"], ["help", "help"], ["help", "nonsense"]])

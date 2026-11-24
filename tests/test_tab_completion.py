@@ -6,6 +6,7 @@ modules that run commands. Times aren't asserted, because they vary with the
 machine; these tests check what is imported instead.
 """
 
+import argparse
 import json
 import os
 import subprocess
@@ -52,8 +53,14 @@ def completions(line, tmp_path):
 
 
 def long_options(parser):
-    """Return the ``--`` options of ``parser`` itself, not of its subcommands."""
-    return {option for action in parser._actions for option in action.option_strings if option.startswith("--")}
+    """Return the visible ``--`` options of ``parser`` itself, not of its subcommands."""
+    return {
+        option
+        for action in parser._actions
+        if action.help is not argparse.SUPPRESS
+        for option in action.option_strings
+        if option.startswith("--")
+    }
 
 
 @pytest.mark.parametrize("code", [
@@ -97,7 +104,10 @@ def test_tab_offers_commands_options_and_choices(line, expected, tmp_path):
 def test_tab_offers_every_option_of_each_command(name, tmp_path):
     command = COMMAND_TABLE[COMMAND_ALIASES.get(name, name)]
     expected = long_options(command.parser(prog=f"orfdata {name}"))
-    assert expected and expected <= completions(f"orfdata {name} --", tmp_path)
+    offered = completions(f"orfdata {name} --", tmp_path)
+    assert expected and expected <= offered
+    if name in ("catalogs", "datasets"):
+        assert "--registry" not in offered
 
 
 def test_completion_words_are_those_before_the_cursor_after_the_program():

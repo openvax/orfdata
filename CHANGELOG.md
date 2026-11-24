@@ -1,3 +1,23 @@
+# 0.58.0
+
+- Consolidate shared version resolution, species/taxon filtering, published
+  `VersionedDatasetRegistry` construction, and build-receipt inspection from
+  `CatalogRegistry` and `DatasetRegistry` into `orfdata.registry`
+  (`ReleaseRegistry`, `resolve_species_taxon`, `build_store_path`,
+  `build_published_registry`, `inspect_build_receipt`) (#185).
+- Add `FastaRecord` and `iter_fasta_records` in `orfdata.fasta` supporting
+  paths, gzipped files, and text streams, and route all per-source FASTA
+  readers (`refseq`, `ensembl`, `proteome.ProteinSet.from_fasta`, `build`,
+  `search_reference`, and `sources/{copy,openprot,pfizer,riborf}`) through
+  `orfdata.fasta` so strict header and ordering checks live in one place
+  (#182).
+- Emit a `DeprecationWarning` and standard-error notice (scheduled for removal
+  in `1.0.0`) when invoking root-level options without the `query` subcommand,
+  and hide the test-only `--registry` option from `catalogs --help`,
+  `datasets --help`, and shell tab completion (#166).
+- Clean up stale Biotite/dog-search dependency comments in `pyproject.toml` so
+  packaging metadata accurately reflects the OpenVax stack baseline (#194).
+
 # 0.56.0
 
 - Harmonize `orfdata data` with `datacache>=1.34.0` (#217):

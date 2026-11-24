@@ -2,24 +2,19 @@
 
 import gzip
 import json
-from dataclasses import replace
-from importlib.resources import files
 
 import datacache
 
-from .cache import content_digest, get_data_dir, installed_path
+from .cache import installed_path
 from .catalog import ORFCatalog, load_catalog
 from .catalog_manifest import CatalogManifest
 from .downloads import install_hint
 from .errors import NotInstalledError
-from .reference import species_taxon
+from .registry import ReleaseRegistry, build_store_path
 
-_ASSET = "catalog.json.gz"
-
-
-def _build_store(manifest, cache_root):
-    return (get_data_dir(cache_root) / "catalog-imports" / manifest.catalog_id /
-            manifest.version / content_digest(manifest.to_dict()))
+CATALOG_ASSET = "catalog.json.gz"
+CATALOG_BUILD_AREA = "catalog-imports"
+_ASSET = CATALOG_ASSET
 
 
 def _open(path, manifest):
@@ -74,7 +69,7 @@ def _builder(manifest, *, for_build=False):
     raise ValueError("No packaged importer for this catalogue release")
 
 
-class CatalogRegistry:
+class CatalogRegistry(ReleaseRegistry):
     """Discover offline, explicitly acquire, then open the existing ORFCatalog.
 
     Each definition names a pinned default_version, manifests, distribution
@@ -84,115 +79,71 @@ class CatalogRegistry:
     may acquire data. Bundled load_catalog() remains independent.
     """
 
-    def __init__(self, definitions=None, *, cache_root=None):
-        self._packaged = definitions is None  # What 'orfdata data fetch' reads.
-        if definitions is None:
-            definitions = json.loads(files("orfdata").joinpath("data/catalogs.json").read_text())
-        self._definitions = json.loads(json.dumps(definitions, allow_nan=False))
-        self._cache_root = cache_root
-        self._manifests = {}
-        self._registry = None
-        for name, entry in self._definitions.items():
-            if entry["default_version"] not in entry["versions"]:
-                raise ValueError("A catalogue default must be a pinned version")
-            if type(entry.get("priority", 0)) is not int:
-                raise ValueError(f"The {name} catalogue's priority must be an integer, lower merging first")
-            if type(entry.get("optional", False)) is not bool:
-                raise ValueError(f"The {name} catalogue's optional flag must be true or false")
-            for version, release in entry["versions"].items():
-                manifest = CatalogManifest.from_dict(release["manifest"])
-                if (manifest.catalog_id, manifest.version) != (name, version):
-                    raise ValueError("Registry and manifest catalogue identities disagree")
-                if release["assets"]:
-                    if set(release["assets"]) != {_ASSET} or release["assets"][_ASSET].get("decompress", False):
-                        raise ValueError("A catalogue release requires raw catalog.json.gz bytes")
-                else:
-                    _builder(manifest)  # A release with nothing to download must be buildable.
-                distribution = release["distribution"]
-                if not isinstance(distribution.get("access_terms"), str) or not distribution["access_terms"].strip():
-                    raise ValueError("Catalogue artifact access terms are required")
-                if type(distribution.get("redistributable")) is not bool:
-                    raise ValueError("Catalogue artifact redistribution must be explicit")
-                self._manifests[name, version] = manifest
+    RESOURCE_KIND = "catalogue"
+    PACKAGED_PATH = "data/catalogs.json"
+    CACHE_AREA = "catalogs"
+    BUILD_AREA = CATALOG_BUILD_AREA
+    OUTPUT_ASSET = CATALOG_ASSET
+    MANIFEST_TYPE = CatalogManifest
+    MANIFEST_ID_ATTR = "catalog_id"
+    METADATA_KEYS = ("distribution", "assets")
+    DEFAULT_VERSION_ERROR = "A catalogue default must be a pinned version"
+    IDENTITY_ERROR = "Registry and manifest catalogue identities disagree"
+    ACCESS_TERMS_ERROR = "Catalogue artifact access terms are required"
+    REDISTRIBUTABLE_ERROR = "Catalogue artifact redistribution must be explicit"
+    UNKNOWN_NAME_HINT = "see 'orfdata catalogs list' or CatalogRegistry().list()"
+    BUILD_INVENTORY_ERROR = "Built catalogue source/output inventory disagrees"
+    BUILD_INTEGRITY_ERROR = "Built catalogue source integrity pins disagree"
+    BUILD_TRANSFORM_ERROR = "Built catalogue transform/manifest disagrees"
 
-    def _version(self, name, version):
-        if name not in self._definitions:
-            raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
-        version = self._definitions[name]["default_version"] if version is None else version
-        if (name, version) not in self._manifests:
-            raise ValueError(f"Unknown catalogue version {name!r} {version!r}")
-        return version
+    def validate_entry(self, name, entry):
+        """Validate catalogue-specific ``priority`` and ``optional`` flags."""
+        if type(entry.get("priority", 0)) is not int:
+            raise ValueError(f"The {name} catalogue's priority must be an integer, lower merging first")
+        if type(entry.get("optional", False)) is not bool:
+            raise ValueError(f"The {name} catalogue's optional flag must be true or false")
+
+    def validate_release(self, name, version, release, manifest):
+        """Validate raw ``catalog.json.gz`` asset pins or buildable source importer."""
+        if release["assets"]:
+            if set(release["assets"]) != {_ASSET} or release["assets"][_ASSET].get("decompress", False):
+                raise ValueError("A catalogue release requires raw catalog.json.gz bytes")
+        else:
+            _builder(manifest)  # A release with nothing to download must be buildable.
+
+    def unpublished_error(self, name, version):
+        """Return the build guidance error message for an unpublished catalogue release."""
+        return (
+            f"The {name} {version} ORF catalogue has no published artifact; build it from its "
+            f"pinned sources with CatalogRegistry().build({name!r}, {version!r}) or "
+            f"'orfdata catalogs build {name} --version {version}'"
+        )
 
     def list(self, *, species=None, taxon_id=None):
         """Return matching versioned manifests without downloading data."""
-        if species is not None:
-            found = species_taxon(species)
-            if found is None:
-                raise ValueError("Unknown species alias; supply its explicit taxon_id")
-            if taxon_id is not None and taxon_id != found:
-                raise ValueError("Species and taxon_id disagree")
-            taxon_id = found
-        return tuple(m for _, m in sorted(self._manifests.items()) if taxon_id is None or m.taxon_id == taxon_id)
-
-    def info(self, name, version=None):
-        return self._manifests[name, self._version(name, version)]
-
-    def download_metadata(self, name, version=None):
-        release = self._definitions[name]["versions"][self._version(name, version)]
-        return json.loads(json.dumps({k: release[k] for k in ("distribution", "assets")}))
+        return self.list_manifests(species=species, taxon_id=taxon_id)
 
     def priority(self, name):
         """Where the catalogue comes when merged: lower first, so its IDs name shared ORFs (default 100)."""
-        if name not in self._definitions:
-            raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
+        self.require_name(name)
         return self._definitions[name].get("priority", 100)
 
     def optional(self, name):
         """Whether the catalogue is used only when asked for (``catalogs="all"`` or its name), not by default."""
-        if name not in self._definitions:
-            raise ValueError(f"Unknown catalogue {name!r}; see 'orfdata catalogs list' or CatalogRegistry().list()")
+        self.require_name(name)
         return self._definitions[name].get("optional", False)
-
-    def published(self, name, version=None):
-        """Whether the release has a published artifact to download; otherwise it is built locally."""
-        version = self._version(name, version)
-        return bool(self._definitions[name]["versions"][version]["assets"])
-
-    def _published(self, name, version):
-        version = self._version(name, version)
-        if not self.published(name, version):
-            raise ValueError(f"The {name} {version} ORF catalogue has no published artifact; build it from its "
-                             f"pinned sources with CatalogRegistry().build({name!r}, {version!r}) or "
-                             f"'orfdata catalogs build {name} --version {version}'")
-        return version
-
-    def _data_registry(self):
-        if self._registry is None:
-            definitions = {}
-            for name, entry in self._definitions.items():
-                published = {v: r["assets"] for v, r in entry["versions"].items() if r["assets"]}
-                if published:  # Every call names its version; the default only has to be a published one.
-                    default = entry["default_version"]
-                    definitions[name] = dict(default_version=default if default in published else min(published),
-                                             versions=published)
-
-            def store_path(name, version):
-                release = self._definitions[name]["versions"][version]
-                return get_data_dir(self._cache_root) / "catalogs" / name / version / content_digest(release)
-
-            self._registry = datacache.VersionedDatasetRegistry(definitions, store_path=store_path)
-        return self._registry
 
     def inspect(self, name, version=None, *, verify_files=True):
         """The installed artifact, or for a release that is only built, its local build."""
         if not self.published(name, version):
             return self.inspect_build(name, version, verify_files=verify_files)
-        return self._data_registry().inspect(name, self._published(name, version), verify_files=verify_files)
+        return self.data_registry().inspect(name, self.require_published(name, version), verify_files=verify_files)
 
     def download(self, name, version=None, *, force=False, source_paths=None, **options):
         """Explicitly install a pinned artifact; accept verified local overrides."""
-        return self._data_registry().download(name, self._published(name, version), force=force,
-                                             source_paths=source_paths, **options)
+        return self.data_registry().download(
+            name, self.require_published(name, version), force=force, source_paths=source_paths, **options
+        )
 
     def open(self, name, version=None, *, verify_files=True):
         """Validate installed bytes and content, then return an offline ORFCatalog.
@@ -202,55 +153,55 @@ class CatalogRegistry:
         if not self.published(name, version):
             return self.open_build(name, version, verify_files=verify_files)
         manifest = self.info(name, version)
-        version = self._published(name, version)
+        version = self.require_published(name, version)
+
         def hint():
             download = install_hint(self, f"download({name!r}, {version!r})", name, "catalog", version)
             if self.inspect_build(name, version, verify_files=False).status == "available":
-                return (f"The {name} {version} ORF catalogue's published artifact is not downloaded, but a local "
-                        f"build is installed: open it with open_build({name!r}, {version!r}) or "
-                        f"'orfdata catalogs query {name} --built', or download the artifact with {download}")
+                return (
+                    f"The {name} {version} ORF catalogue's published artifact is not downloaded, but a local "
+                    f"build is installed: open it with open_build({name!r}, {version!r}) or "
+                    f"'orfdata catalogs query {name} --built', or download the artifact with {download}"
+                )
             return f"The {name} {version} ORF catalogue is not installed; download it with {download}"
 
-        return _open(installed_path(self._data_registry(), name, version, hint, asset=_ASSET,
-                                    verify_files=verify_files), manifest)
+        return _open(
+            installed_path(self.data_registry(), name, version, hint, asset=_ASSET, verify_files=verify_files),
+            manifest,
+        )
 
     def build(self, name, version=None, *, force=False, source_paths=None, download_options=None):
         """Explicitly materialize an allowlisted catalogue source adapter."""
         manifest = self.info(name, version)
-        return build_catalog(manifest, _builder(manifest, for_build=True), cache_root=self._cache_root,
-                             source_paths=source_paths, force=force, download_options=download_options)
+        return build_catalog(
+            manifest,
+            _builder(manifest, for_build=True),
+            cache_root=self._cache_root,
+            source_paths=source_paths,
+            force=force,
+            download_options=download_options,
+        )
 
     def inspect_build(self, name, version=None, *, verify_files=True):
         """Inspect build receipts offline; their hashes are not released-artifact pins."""
-        manifest = self.info(name, version)
-        inspected = datacache.inspect_materialization(_build_store(manifest, self._cache_root),
-                                                     verify_files=verify_files)
-        if inspected.status != "available":
-            return inspected
-        try:
-            expected = {s.asset_id: s for s in manifest.sources}
-            if set(inspected.sources) != set(expected) or set(inspected.files) != {_ASSET}:
-                raise ValueError("Built catalogue source/output inventory disagrees")
-            for name, source in expected.items():
-                recorded = inspected.sources[name]
-                if (recorded["sha256"] != source.sha256 or recorded["size"] != source.size
-                        or recorded["verified"] is not True):
-                    raise ValueError("Built catalogue source integrity pins disagree")
-            if inspected.transform != dict(version=manifest.schema, options=manifest.to_dict()):
-                raise ValueError("Built catalogue transform/manifest disagrees")
-        except (KeyError, TypeError, ValueError) as exc:
-            return replace(inspected, status="invalid", verified=False, error=exc)
-        return inspected
+        return super().inspect_build(name, version, verify_files=verify_files)
 
     def open_build(self, name, version=None, *, verify_files=True):
         """Open the local source build explicitly; never fall back to a download."""
         inspected = self.inspect_build(name, version, verify_files=verify_files)
         if inspected.status == "missing":
-            version = self._version(name, version)
+            version = self.resolve_version(name, version)
             raise NotInstalledError(
                 f"The {name} {version} ORF catalogue has no local build; build it from its pinned sources with "
-                + install_hint(self, f"build({name!r}, {version!r})", name, "catalog", version,
-                               build=self.published(name, version)))
+                + install_hint(
+                    self,
+                    f"build({name!r}, {version!r})",
+                    name,
+                    "catalog",
+                    version,
+                    build=self.published(name, version),
+                )
+            )
         if inspected.status != "available":
             raise datacache.FileValidationError(inspected.path, inspected.status) from inspected.error
         return _open(inspected.files[_ASSET].path, self.info(name, version))
@@ -282,7 +233,12 @@ def build_catalog(manifest, builder, *, cache_root=None, source_paths=None, forc
         _open(outputs[_ASSET], manifest)
 
     paths = datacache.materialize(
-        _build_store(manifest, cache_root), sources,
+        build_store_path(CATALOG_BUILD_AREA, manifest.catalog_id, manifest, cache_root),
+        sources,
         transform=dict(version=manifest.schema, options=manifest.to_dict()),
-        outputs={_ASSET: {}}, builder=build, force=force, download_options=download_options)
+        outputs={_ASSET: {}},
+        builder=build,
+        force=force,
+        download_options=download_options,
+    )
     return _open(paths[_ASSET], manifest)

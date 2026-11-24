@@ -1,6 +1,9 @@
 """The readers return exactly what the writers wrote."""
 
-from orfdata.fasta import read_fasta, write_fasta
+import gzip
+import io
+
+from orfdata.fasta import FastaRecord, iter_fasta_records, read_fasta, write_fasta
 from orfdata.gtf import read_exons, transcript_lines
 
 
@@ -78,6 +81,30 @@ def test_upper_case_is_applied_while_reading(tmp_path):
     path.write_text(">a\nacgt\nnn\n")
     assert read_fasta(path, upper=True) == {"a": "ACGTNN"}
     assert read_fasta(path) == {"a": "acgtnn"}
+
+
+def test_iter_fasta_records_supports_streams_gzip_headers_and_line_numbers(tmp_path):
+    import pytest
+
+    from orfdata.sources.openprot import _fasta as openprot_fasta
+
+    text = ">sp|P1|ONE OX=9606 GN=TP53\nmk\n\nva\n>sp|P2|TWO OX=9606\nMLL\n"
+    records = list(iter_fasta_records(io.StringIO(text), upper=True, source_name="mem.fa"))
+    assert records == [
+        FastaRecord("sp|P1|ONE OX=9606 GN=TP53", "MKVA", 1),
+        FastaRecord("sp|P2|TWO OX=9606", "MLL", 5),
+    ]
+    assert [record.identifier for record in records] == ["sp|P1|ONE", "sp|P2|TWO"]
+
+    gz_path = tmp_path / "records.fa.gz"
+    with gzip.open(gz_path, "wt") as stream:
+        stream.write(text)
+    assert read_fasta(gz_path, upper=True, gzipped=True) == {"sp|P1|ONE": "MKVA", "sp|P2|TWO": "MLL"}
+
+    with pytest.raises(ValueError, match="before the first header"):
+        openprot_fasta("MKVA\n>IP_1\nMLL\n")
+    with pytest.raises(ValueError, match="without an identifier"):
+        openprot_fasta(">\nMLL\n")
 
 
 def test_attribute_values_with_quotes_and_semicolons_survive_a_round_trip(tmp_path):
