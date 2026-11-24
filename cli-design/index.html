@@ -1492,6 +1492,13 @@ draw on OpenVax's OncoRef inventory summaries and MHCtools' shared table formatt
   <code>orfdata.command_parsers</code>, which builds each command's parser, import neither
   pandas, DataCache nor the modules that run commands; those load when a command
   runs. <code>tests/test_tab_completion.py</code> checks both.</li>
+<li>Help and human tables use subtle terminal styling (<code>orfdata.cli_help</code>) only
+  when writing to a TTY and neither <code>NO_COLOR</code> nor <code>TERM=dumb</code> is set: bold
+  cyan headings and table header rows, cyan option flags, bold <code>usage:</code>, dim
+  for absent/not-applicable status values, and yellow for status warnings only
+  (normal values stay plain; no green or red). <code>format_help()</code> and non-TTY
+  output stay plain text, and Python 3.14's built-in multi-color argparse theme
+  is disabled so every supported Python version renders identically.</li>
 <li>Human summaries and tables are the default. <code>--json</code> selects a complete JSON
   document. Export commands also offer explicit formats such as FASTA or JSONL.</li>
 <li>Human tables preview 25 rows; <code>--limit 0</code> shows all rows. Machine exports are
