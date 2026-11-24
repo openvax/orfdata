@@ -18,6 +18,7 @@ from pathlib import Path
 
 from orfdata.cache import file_sha256
 from orfdata.catalog import load_catalog, load_uorf_catalog
+from orfdata.fasta import iter_fasta
 from orfdata.gtf import read_gtf_rows
 from orfdata.initiation_context import InitiationContext
 from orfdata.sequence import translate_reference
@@ -322,24 +323,14 @@ def load_transcript_reference(gtf, fasta, transcript_ids):
             raise ValueError("Conflicting reference transcript identity")
         reference["exons"].append((start, end))
 
-    def keep(header, sequence):
-        tid = header.split(".")[0]
-        if tid in references:
-            reference = references[tid]
-            if header != reference["transcript_id"]:
-                raise ValueError("GTF/cDNA transcript versions disagree")
-            reference["sequence"] = "".join(sequence)
-
     for fasta_path in fasta if isinstance(fasta, (tuple, list)) else [fasta]:
-        header, sequence = "", []
-        with gzip.open(fasta_path, "rt") as stream:
-            for line in stream:
-                if line.startswith(">"):
-                    keep(header, sequence)
-                    header, sequence = line[1:].split()[0], []
-                elif header.split(".")[0] in references:
-                    sequence.append(line.strip().upper())
-            keep(header, sequence)
+        for header, sequence in iter_fasta(fasta_path, upper=True, gzipped=True):
+            tid = header.split(".")[0]
+            if tid in references:
+                reference = references[tid]
+                if header != reference["transcript_id"]:
+                    raise ValueError("GTF/cDNA transcript versions disagree")
+                reference["sequence"] = sequence
     for reference in references.values():
         reference["exons"].sort()
     return references

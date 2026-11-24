@@ -9,6 +9,7 @@ from collections import Counter
 
 from ..dataset import QuantitativeDataset
 from ..datasets import DatasetRegistry, build_dataset
+from ..fasta import iter_fasta_records
 from ..measurements import Assay, Measurement, Sample
 from ..reference import ScopedTarget, species_taxon
 from ..reference_mapping import ReferenceMapping
@@ -80,39 +81,25 @@ def _value(text):
 
 def _fasta(path, taxon):
     records = {}
-    header, sequence = None, []
-
-    def save():
-        if header is None:
-            return
-        fields = header.split()[0].split("|")
+    for record in iter_fasta_records(path):
+        header = record.header.strip()
+        fields = record.identifier.split("|")
         found = re.search(r" OX=(\d+)(?: |$)", header)
         if len(fields) != 3 or found is None or int(found.group(1)) != taxon:
             raise ValueError("Search FASTA identifier/taxon disagrees with the source manifest")
         identifier = fields[1]
-        if identifier in records or not sequence:
+        seq = record.sequence
+        if identifier in records or not seq:
             raise ValueError("Duplicate/empty search FASTA record")
-        seq = "".join(sequence)
         if not re.fullmatch("[A-Z]+", seq):
             raise ValueError("Unexpected search FASTA sequence characters")
         gene = re.search(r" GN=(\S+)", header)
-        records[identifier] = dict(header=header, gene_label=gene.group(1) if gene else None,
-                                   sequence_sha256=hashlib.sha256(seq.encode("ascii")).hexdigest(),
-                                   amino_acids=len(seq))
-
-    with open(path) as handle:
-        for line in handle:
-            line = line.strip()
-            if not line:
-                continue
-            if line.startswith(">"):
-                save()
-                header, sequence = line[1:], []
-            elif header is None:
-                raise ValueError("Search FASTA sequence precedes its header")
-            else:
-                sequence.append(line)
-    save()
+        records[identifier] = dict(
+            header=header,
+            gene_label=gene.group(1) if gene else None,
+            sequence_sha256=hashlib.sha256(seq.encode("ascii")).hexdigest(),
+            amino_acids=len(seq),
+        )
     if not records:
         raise ValueError("Empty search FASTA")
     return records

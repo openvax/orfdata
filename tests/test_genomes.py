@@ -78,11 +78,19 @@ def test_a_damaged_index_or_file_says_how_to_reinstall(tmp_path, monkeypatch):
         load_genome("mouse-slice", cache_root=tmp_path / "root")
     assert install_genome("mouse-slice", force=True, source_paths=paths, cache_root=tmp_path / "root")
     assert load_genome("mouse-slice", cache_root=tmp_path / "root").transcript_by_id("ENSMUST00000109601")
-    # An empty FASTA index, too, says how to repair it rather than raising EOFError.
-    pickled = next(p for p in (tmp_path / "root").rglob("*.pickle") if "cdna" in p.name)
-    pickled.write_bytes(b"")
-    with pytest.raises(ValueError, match="index is damaged"):
-        load_genome("mouse-slice", cache_root=tmp_path / "root").transcript_by_id("ENSMUST00000109601").sequence
+    # An empty FASTA index either says how to repair it (pyensembl < 2.41 pickle
+    # cache) or transparently rebuilds from the intact FASTA (pyensembl >= 2.41
+    # datacache-backed .json.gz cache).
+    fasta_index = next(
+        p for p in (tmp_path / "root").rglob("*")
+        if "cdna" in p.name and (p.name.endswith(".pickle") or p.name.endswith(".json.gz"))
+    )
+    fasta_index.write_bytes(b"")
+    if fasta_index.name.endswith(".pickle"):
+        with pytest.raises(ValueError, match="index is damaged"):
+            load_genome("mouse-slice", cache_root=tmp_path / "root").transcript_by_id("ENSMUST00000109601").sequence
+    else:
+        assert load_genome("mouse-slice", cache_root=tmp_path / "root").transcript_by_id("ENSMUST00000109601").sequence
 
 
 def test_a_genome_installed_under_a_relative_cache_works_from_anywhere(tmp_path, monkeypatch):

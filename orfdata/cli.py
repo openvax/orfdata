@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+import warnings
 from collections.abc import Callable
 from contextlib import redirect_stdout
 from dataclasses import dataclass
@@ -98,6 +99,8 @@ COMMAND_TABLE = {
 COMMAND_ALIASES = {"download": "data", "downloads": "data"}
 # Each command's guide line by name, as before COMMAND_TABLE existed.
 COMMANDS = {name: command.description for name, command in COMMAND_TABLE.items()}
+# Release in which the deprecated 'orfdata --option ...' root-query fallback will be removed.
+ROOT_QUERY_REMOVAL_VERSION = "1.0.0"
 
 
 def command_guide(prog="orfdata", *, parsers=None):
@@ -197,9 +200,9 @@ def run(argv=None, prog=None, *, catalog_loader=None):
     ``help COMMAND`` shows that command's help. A command named in
     :data:`COMMAND_TABLE` or :data:`COMMAND_ALIASES` runs with the arguments
     after its name. Arguments that start with an option, such as
-    ``--gene TP53``, are a ``query``, as they were before ``query`` was a
-    command. When the shell's Tab key runs it, through argcomplete, it prints
-    the completions and exits instead.
+    ``--gene TP53``, still fall through to ``query`` with a deprecation
+    warning until :data:`ROOT_QUERY_REMOVAL_VERSION`. When the shell's Tab key
+    runs it, through argcomplete, it prints the completions and exits instead.
 
     Parameters
     ----------
@@ -238,6 +241,13 @@ def run(argv=None, prog=None, *, catalog_loader=None):
         return
     name, arguments = argv[0], argv[1:]
     if name.startswith("-"):
+        message = (
+            f"Running '{prog} {name} ...' without the 'query' subcommand is deprecated "
+            f"and will be removed in orfdata {ROOT_QUERY_REMOVAL_VERSION}; "
+            f"use '{prog} query ...' instead."
+        )
+        warnings.warn(message, DeprecationWarning, stacklevel=2)
+        print(f"{prog}: warning: {message}", file=sys.stderr)
         return query(argv, prog + " query", catalog_loader=catalog_loader)
     if name == "query":  # The one command that takes a catalogue loader.
         return query(arguments, prog + " query", catalog_loader=catalog_loader)

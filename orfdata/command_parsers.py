@@ -399,7 +399,7 @@ def catalogs_parser(prog=None):
                             prog=prog,
                             epilog="Start with 'orfdata catalogs list', then 'orfdata catalogs info NAME'.\n"
                                    "Use 'orfdata data fetch NAME' to select the published download or source build.")
-    parser.add_argument("--registry", help="Local JSON catalogue registry definitions")
+    parser.add_argument("--registry", help=argparse.SUPPRESS)
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Discover release manifests without downloading")
     listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
@@ -451,7 +451,7 @@ def datasets_parser(prog=None):
     parser = ArgumentParser(description="Discover, download, inspect and query quantitative datasets.", prog=prog,
                             epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
                                    "Queries preserve native units and reference identities.")
-    parser.add_argument("--registry", help="Local registry JSON (otherwise use packaged releases)")
+    parser.add_argument("--registry", help=argparse.SUPPRESS)
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="List published releases and assay coverage")
     listing.add_argument("--species")
