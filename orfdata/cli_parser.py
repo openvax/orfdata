@@ -11,6 +11,7 @@ import os
 import sys
 
 from .cache import DOWNLOAD_TIMEOUT
+from .cli_help import HelpArgumentParser
 from .errors import NotInstalledError
 
 FAILED, USAGE, NOT_INSTALLED = 1, 2, 3
@@ -20,11 +21,10 @@ class UsageError(ValueError):
     """Options that can't be combined, found after parsing; reported like an argparse error."""
 
 
-class ArgumentParser(argparse.ArgumentParser):
+class ArgumentParser(HelpArgumentParser):
     """Show a command guide for bare groups and a useful help pointer on errors."""
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault("formatter_class", argparse.RawDescriptionHelpFormatter)
         super().__init__(*args, **kwargs)
         self.set_defaults(_cli_parser=self)
 

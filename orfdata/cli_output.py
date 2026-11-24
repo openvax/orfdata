@@ -8,6 +8,8 @@ from itertools import islice, zip_longest
 
 import pandas as pd
 
+from .cli_help import classify_status, style_status, style_table_header
+
 
 def records(frame):
     """A data frame's rows as JSON-ready dicts, with its blanks as nulls."""
@@ -104,12 +106,35 @@ def print_table(headings, rows, *, empty="No matching entries", stream=None, lim
         candidates = [index for index in range(len(widths)) if widths[index] > minimum[index]]
         longest = max(candidates or range(len(widths)), key=widths.__getitem__)
         widths[longest] -= 1
-    for row in [tuple(headings), *values]:
+    status_columns = {
+        index for index, heading in enumerate(headings)
+        if heading.strip().upper() == "STATUS"
+    }
+    for row_index, row in enumerate([tuple(headings), *values]):
         cells = [textwrap.wrap(field, width=width, break_on_hyphens=False) or [""]
                  for field, width in zip(row, widths, strict=True)]
+        status_levels = [
+            classify_status(row[col_index]) if row_index > 0 and col_index in status_columns else "plain"
+            for col_index in range(len(widths))
+        ]
         for line in zip_longest(*cells, fillvalue=""):
-            print("  ".join(field.ljust(width) for field, width in zip(line, widths, strict=True)).rstrip(),
-                  file=stream)
+            if row_index == 0:
+                rendered = "  ".join(
+                    field.ljust(width) for field, width in zip(line, widths, strict=True)
+                ).rstrip()
+                rendered = style_table_header(rendered, stream)
+            else:
+                parts = []
+                for col_index, (field, width) in enumerate(zip(line, widths, strict=True)):
+                    padding = " " * max(0, width - len(field))
+                    cell = (
+                        style_status(field, stream, level=status_levels[col_index])
+                        if field and status_levels[col_index] != "plain"
+                        else field
+                    )
+                    parts.append(cell + padding)
+                rendered = "  ".join(parts).rstrip()
+            print(rendered, file=stream)
     if more:
         shown = f"{limit} of {total}" if total is not None else f"the first {limit}"
         print(f"\nShowing {shown} entries. Use --limit 0 for all rows or --json for a complete export.", file=stream)

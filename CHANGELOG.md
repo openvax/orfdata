@@ -1,3 +1,23 @@
+# 0.59.0
+
+- Add shared subtle cyan terminal styling for CLI help, table headers, and
+  status cells in `orfdata.cli_help` (`color_enabled`, `style_help`,
+  `style_table_header`, `style_status`, `classify_status`, `HelpFormatter`,
+  `HelpArgumentParser`) matching the OpenVax CLI theme (#195):
+  - `orfdata.cli_parser.ArgumentParser` inherits from `HelpArgumentParser`,
+    keeping `format_help()` plain text while styling printed help on color
+    terminals (bold `usage:`, bold cyan section headings, cyan option flags)
+    and passing `color=False` on Python 3.14+ for cross-version consistency.
+  - `orfdata.cli_output.print_table` renders table headers in bold cyan and
+    status cells in dim (absent/not-applicable) or yellow (warnings) on
+    color-capable terminals while leaving normal values plain and preserving
+    column alignment.
+  - Styling activates only on TTYs when `NO_COLOR` is unset/empty and
+    `TERM != "dumb"`.
+- Add shell tab completion for `orfdata query --evidence` presets via
+  `orfdata.command_parsers.evidence_completer` and expand completion and
+  help-styling test coverage (#195).
+
 # 0.58.0
 
 - Consolidate shared version resolution, species/taxon filtering, published
