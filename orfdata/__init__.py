@@ -37,8 +37,15 @@ if TYPE_CHECKING:  # What type checkers and IDEs read; at run time, __getattr__ 
     from .data_resources import data_info, data_path, fetch_data
     from .dataset import QuantitativeDataset
     from .datasets import DatasetRegistry, build_dataset
-    from .downloads import DataStatus, list_data
-    from .errors import NotInstalledError
+    from .downloads import (
+        ACQUISITION_ACTIONS,
+        RESOURCE_STATES,
+        DataStatus,
+        acquisition_action,
+        list_data,
+        normalize_status,
+    )
+    from .errors import NotInstalledError, TermsNotAccepted
     from .evidence import MS, EvidenceRule, RiboSeq
     from .evidence_summary import EvidenceSummary
     from .genomes import (
@@ -151,8 +158,15 @@ EXPORTED_FROM = {name: module for module, names in {
     "data_resources": ("data_info", "data_path", "fetch_data"),
     "dataset": ("QuantitativeDataset",),
     "datasets": ("DatasetRegistry", "build_dataset"),
-    "downloads": ("DataStatus", "list_data"),
-    "errors": ("NotInstalledError",),
+    "downloads": (
+        "ACQUISITION_ACTIONS",
+        "RESOURCE_STATES",
+        "DataStatus",
+        "acquisition_action",
+        "list_data",
+        "normalize_status",
+    ),
+    "errors": ("NotInstalledError", "TermsNotAccepted"),
     "evidence": ("MS", "EvidenceRule", "RiboSeq"),
     "evidence_summary": ("EvidenceSummary",),
     "genomes": ("PinnedEnsemblGenome", "PinnedGenome", "install_genome", "load_genome", "pinned_genomes",
@@ -313,12 +327,17 @@ __all__ = [
     "QuantitativeDataset",
     "DatasetRegistry",
     "build_dataset",
+    "ACQUISITION_ACTIONS",
+    "RESOURCE_STATES",
     "DataStatus",
+    "acquisition_action",
     "list_data",
+    "normalize_status",
     "data_info",
     "data_path",
     "fetch_data",
     "NotInstalledError",
+    "TermsNotAccepted",
     "DatasetManifest",
     "SourceAsset",
     "Sample",

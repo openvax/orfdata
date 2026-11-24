@@ -11,11 +11,61 @@ registry construction, and build-receipt verification.
 import json
 from dataclasses import replace
 from importlib.resources import files
+from pathlib import Path
 
 import datacache
 
 from .cache import content_digest, get_data_dir
 from .reference import species_taxon
+
+
+def load_registry(registry_cls, registry_path=None, *, cache_root=None, label=None):
+    """Construct a :class:`ReleaseRegistry`, optionally reading JSON definitions from ``registry_path``.
+
+    JSON syntax and schema errors in a user-supplied ``registry_path`` are
+    reported as ``ValueError`` naming the file, while unexpected errors in the
+    packaged registry keep their traceback.
+
+    Parameters
+    ----------
+    registry_cls : type
+        A :class:`ReleaseRegistry` subclass such as
+        :class:`~orfdata.catalogs.CatalogRegistry` or
+        :class:`~orfdata.datasets.DatasetRegistry`.
+    registry_path : str or os.PathLike, optional
+        Path to a JSON registry definition file. When ``None``, the packaged
+        registry is loaded.
+    cache_root : str or os.PathLike, optional
+        Explicit cache root override forwarded to ``registry_cls``.
+    label : str, optional
+        Human-readable registry kind used in error messages (defaults to
+        ``registry_cls.RESOURCE_KIND``).
+
+    Returns
+    -------
+    ReleaseRegistry
+        Initialized registry instance.
+
+    Raises
+    ------
+    ValueError
+        If ``registry_path`` contains invalid JSON or malformed definitions.
+    """
+    kind_label = label or getattr(registry_cls, "RESOURCE_KIND", "release")
+    definitions = None
+    if registry_path:
+        try:
+            definitions = json.loads(Path(registry_path).read_text())
+        except ValueError as error:
+            raise ValueError(f"Invalid {kind_label} registry {registry_path}: {error}") from error
+    try:
+        return registry_cls(definitions, cache_root=cache_root)
+    except (KeyError, TypeError, AttributeError) as error:
+        if not registry_path:  # The packaged registry: a bug, which keeps its traceback.
+            raise
+        raise ValueError(
+            f"Invalid {kind_label} registry {registry_path}: {type(error).__name__}: {error}"
+        ) from error
 
 
 def resolve_species_taxon(species=None, taxon_id=None):

@@ -1226,19 +1226,47 @@ def _releases(found):
     return chosen
 
 
+def catalog_install_state(choice):
+    """Return ``(status, installed)`` for a registered catalogue release, offline and unhashed.
+
+    ``status`` uses ORFdata's unified local status vocabulary
+    (``"available"``, ``"missing"``, ``"damaged"``, ``"inaccessible"``);
+    ``installed`` retains the origin-specific label (``"downloaded"``,
+    ``"built"``, ``"damaged"``, or ``None``) for :class:`CatalogStatus`.
+
+    Parameters
+    ----------
+    choice : object
+        Internal catalogue choice with ``registry``, ``name``, and ``version``.
+
+    Returns
+    -------
+    tuple of (str, str or None)
+        ``(unified_status, installed_label)``.
+    """
+    from .downloads import normalize_status
+
+    registry, name, version = choice.registry, choice.name, choice.version
+    problem = None
+    if registry.published(name, version):
+        status = normalize_status(registry.inspect(name, version, verify_files=False).status)
+        if status == "available":
+            return "available", "downloaded"
+        if status != "missing":
+            problem = status
+    status = normalize_status(registry.inspect_build(name, version, verify_files=False).status)
+    if status == "available":
+        return "available", "built"
+    if status != "missing":
+        problem = problem or status
+    if problem is not None:
+        return problem, "damaged"
+    return "missing", None
+
+
 def _installed(choice):
     """How a registered release is installed: "downloaded", "built", "damaged" or None. Offline, unhashed."""
-    registry, name, version = choice.registry, choice.name, choice.version
-    damaged = False
-    if registry.published(name, version):
-        status = registry.inspect(name, version, verify_files=False).status
-        if status == "available":
-            return "downloaded"
-        damaged = status != "missing"
-    status = registry.inspect_build(name, version, verify_files=False).status
-    if status == "available":
-        return "built"
-    return "damaged" if damaged or status != "missing" else None
+    return catalog_install_state(choice)[1]
 
 
 def _open_registered(choice, expected_sha256):
@@ -1269,11 +1297,14 @@ class CatalogStatus:
 
     ``selected`` marks the ones ``load_catalog(species=..., genome_build=...)``
     uses, merged, for their species and assembly. ``optional`` marks those it
-    uses only when asked for (``catalogs="all"`` or by name). ``installed`` is ``"bundled"``,
-    ``"downloaded"``, ``"built"``, ``"damaged"`` or None; ``acquire`` names the explicit step
-    that installs a missing one, ``"download"`` or ``"build"``. ``lifts_to``
-    lists the other assemblies the pinned chains reach, each with its chains
-    and whether they are all downloaded.
+    uses only when asked for (``catalogs="all"`` or by name). ``status`` uses
+    ORFdata's unified local status vocabulary (``"bundled"``, ``"available"``,
+    ``"missing"``, ``"damaged"``, or ``"inaccessible"``); ``installed`` retains
+    ``"bundled"``, ``"downloaded"``, ``"built"``, ``"damaged"``, or ``None``;
+    ``acquire`` names the explicit step that installs a missing one,
+    ``"download"`` or ``"build"``. ``lifts_to`` lists the other assemblies the
+    pinned chains reach, each with its chains and whether they are all
+    downloaded.
     """
 
     species: str
@@ -1287,6 +1318,7 @@ class CatalogStatus:
     acquire: Optional[str]
     lifts_to: tuple = ()
     optional: bool = False
+    status: str = "missing"
 
 
 def catalog_status(*, registry=None):
@@ -1325,12 +1357,13 @@ def catalog_status(*, registry=None):
         if c.registry is None:
             manifest = json.loads(files("orfdata").joinpath(f"data/{c.resource}/manifest.json").read_text())
             rows.append(CatalogStatus(c.species, c.genome_build, c.name, manifest["dataset_version"],
-                                      "Bundled ORF catalogue", manifest["statistics"]["records"], selected,
-                                      "bundled", None, lifts))
+                                      "Bundled human GENCODE ORF catalogue", manifest["statistics"]["records"],
+                                      selected, "bundled", None, lifts, status="bundled"))
             continue
         info = c.registry.info(c.name, c.version)
+        unified, legacy_installed = catalog_install_state(c)
         rows.append(CatalogStatus(c.species, c.genome_build, c.name, c.version, info.title, info.coverage["records"],
-                                  selected, _installed(c),
+                                  selected, legacy_installed,
                                   "download" if c.registry.published(c.name, c.version) else "build", lifts,
-                                  c.optional))
+                                  c.optional, status=unified))
     return tuple(rows)

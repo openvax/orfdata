@@ -44,11 +44,13 @@ def test_download_reuse_corruption_and_force_preserve_existing_generation(publis
     assert fetch_data("fixture")["acquired"] == "already installed"
     artifact = registry.open("fixture").path
     _flip_last_byte(artifact)
-    with pytest.raises(ValueError, match="invalid"):
+    with pytest.raises(ValueError, match="damaged"):
         data_path("fixture", verify_files=True)
-    fetch_data("fixture", force=True, show_progress=False)
+    repaired = fetch_data("fixture", force=True, show_progress=False)
+    assert repaired["acquired"] == "repaired"
     assert artifact.exists() and registry.open("fixture").path != artifact
     assert list(registry.open("fixture").measurements()) == list(original.measurements())
+    assert fetch_data("fixture", force=True, show_progress=False)["acquired"] == "replaced"
 
 
 @pytest.mark.parametrize("species", ["homo_sapiens", "mus_musculus", "canis_lupus_familiaris", "saccharomyces_cerevisiae"])
@@ -180,10 +182,12 @@ def test_status_shows_and_fetch_repairs_damaged_files(published, capsys):
     _flip_last_byte(artifact)
     run(["data", "status", "--kind", "dataset", "--verify"])
     output = capsys.readouterr().out
-    assert "invalid" in output and "Damaged; 'data fetch' replaces them:" in output
+    assert "damaged" in output and "Damaged; 'data fetch' replaces them:" in output
     assert "  orfdata data fetch fixture --kind dataset --version " in output
     run(["data", "status", "--kind", "dataset", "--verify", "--json"])
-    assert [row["status"] for row in json.loads(capsys.readouterr().out)] == ["invalid"]
+    status_rows = json.loads(capsys.readouterr().out)
+    assert [row["status"] for row in status_rows] == ["damaged"]
+    assert [row["datacache_status"] for row in status_rows] == ["invalid"]
     repaired = fetch_data("fixture", show_progress=False)
     assert repaired["acquired"] == "repaired" and repaired["installed"]
     assert artifact.exists() and registry.open("fixture").path != artifact
@@ -229,14 +233,15 @@ def test_fetch_repairs_a_damaged_or_incomplete_viral_collection(viral_panel, tmp
     from orfdata.downloads import collection_state
 
     root = tmp_path / "cache"
-    assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "downloaded"
+    assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "built"
     path = data_path("gdc-viruses", cache_root=root)
     (path / "README.md").write_text("changed\n")
-    assert data_info("gdc-viruses", cache_root=root, verify_files=True)["status"] == "corrupt"
+    info = data_info("gdc-viruses", cache_root=root, verify_files=True)
+    assert info["status"] == "damaged" and info["datacache_status"] == "invalid"
     assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "repaired"
     assert data_info("gdc-viruses", cache_root=root, verify_files=True)["status"] == "available"
     (data_path("gdc-viruses", cache_root=root) / "metadata.json").unlink()
-    assert collection_state("gdc-viruses", cache_root=root) == "corrupt"
+    assert collection_state("gdc-viruses", cache_root=root) == "damaged"
     assert fetch_data("gdc-viruses", cache_root=root)["acquired"] == "repaired"
     assert collection_state("gdc-viruses", cache_root=root) == "available"
 
@@ -253,7 +258,9 @@ def test_an_unreadable_viral_collection_is_not_replaced_without_force(viral_pane
         assert collection_state("gdc-viruses", cache_root=root) == "inaccessible"
         with pytest.raises(ValueError, match="can't be read"):
             fetch_data("gdc-viruses", cache_root=root)
-        assert fetch_data("gdc-viruses", cache_root=root, force=True)["acquired"] == "repaired"
+        # Consistent with DataCache bundle/materialization stores for every resource kind.
+        with pytest.raises(PermissionError):
+            fetch_data("gdc-viruses", cache_root=root, force=True)
     finally:
         if metadata.exists():
             metadata.chmod(0o644)
@@ -317,8 +324,8 @@ def test_setup_judges_whichever_catalogue_store_is_damaged():
                                inspect_build=lambda *a, **k: SimpleNamespace(status=build))
 
     assert _damage(registry(True, "missing", "inaccessible"), "c", "1") == "inaccessible"
-    assert _damage(registry(True, "invalid", "missing"), "c", "1") == "invalid"
-    assert _damage(registry(False, "missing", "invalid"), "c", "1") == "invalid"
+    assert _damage(registry(True, "invalid", "missing"), "c", "1") == "damaged"
+    assert _damage(registry(False, "missing", "invalid"), "c", "1") == "damaged"
     assert _damage(registry(True, "available", "missing"), "c", "1") == "missing"
 
 
@@ -384,4 +391,4 @@ def test_viral_fetch_summary_names_the_collection(viral_panel, tmp_path, capsys)
     run(["data", "fetch", "gdc-viruses", "--cache-root", str(tmp_path)])
     output = capsys.readouterr().out
     assert "kind: viral" in output and "name: gdc-viruses" in output
-    assert "version: v" in output and "acquired: downloaded" in output
+    assert "version: v" in output and "acquired: built" in output

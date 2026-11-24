@@ -79,13 +79,46 @@ def _text(value):
     return str(value) or "-"
 
 
-def print_table(headings, rows, *, empty="No matching entries", stream=None, limit=25):
+def print_table(
+    headings,
+    rows,
+    *,
+    empty="No matching entries",
+    stream=None,
+    limit=25,
+    total=None,
+    hidden=None,
+    nowrap=(),
+):
     """Wrap human columns to the terminal; consume at most limit + 1 rows.
 
     A zero limit explicitly requests all rows. Exports bypass this renderer.
+
+    Parameters
+    ----------
+    headings : sequence of str
+        Column header labels.
+    rows : iterable of sequence
+        Row values aligned with ``headings``.
+    empty : str, optional
+        Message printed when ``rows`` is empty.
+    stream : file-like, optional
+        Output stream (defaults to ``sys.stdout``).
+    limit : int, optional
+        Maximum rows to render; ``0`` renders every row.
+    total : int, optional
+        Total unclipped row count when ``rows`` has already been pre-sliced
+        (such as by kind-balanced preview selection).
+    hidden : dict of (str, int), optional
+        Optional breakdown of omitted rows (e.g. ``{"dataset": 4}``) rendered
+        in the single shared truncation footer.
+    nowrap : sequence of (int or str), optional
+        Column indices or case-insensitive heading names (such as ``("NAME",)``)
+        whose tokens must never split mid-token.
     """
     stream = sys.stdout if stream is None else stream
-    total = len(rows) if hasattr(rows, "__len__") else None
+    if total is None and hasattr(rows, "__len__"):
+        total = len(rows)
     values = list(rows if limit == 0 else islice(rows, limit + 1))
     more = limit > 0 and len(values) > limit
     if more:
@@ -94,25 +127,49 @@ def print_table(headings, rows, *, empty="No matching entries", stream=None, lim
     if not values:
         print(empty, file=stream)
         return
+    nowrap_names = {item.strip().upper() for item in nowrap if isinstance(item, str)}
+    nowrap_columns = {
+        index for index, heading in enumerate(headings)
+        if index in nowrap or heading.strip().upper() in nowrap_names
+    }
     widths = [len(heading) for heading in headings]
     for value in values:
         widths = [max(width, len(field)) for width, field in zip(widths, value, strict=True)]
     # Keep identifiers intact when they fit; shrink prose and space-separated
-    # lists first. Very narrow terminals may still need to wrap long tokens.
-    minimum = [min(32, max(len(word) for row in [tuple(headings), *values]
-                          for word in row[index].split())) for index in range(len(widths))]
+    # lists first. Columns listed in ``nowrap`` keep their widest token intact
+    # so names like ``dataset:search.fasta`` never split mid-token.
+    minimum = []
+    for index in range(len(widths)):
+        widest_word = max(len(word) for row in [tuple(headings), *values] for word in row[index].split())
+        minimum.append(widest_word if index in nowrap_columns else min(32, widest_word))
     available = _width() - 2 * (len(widths) - 1)
     while sum(widths) > available and max(widths) > 3:
-        candidates = [index for index in range(len(widths)) if widths[index] > minimum[index]]
-        longest = max(candidates or range(len(widths)), key=widths.__getitem__)
+        candidates = [
+            index for index in range(len(widths))
+            if widths[index] > minimum[index] and index not in nowrap_columns
+        ]
+        if not candidates:
+            if nowrap_columns:
+                break
+            candidates = [index for index in range(len(widths)) if widths[index] > 3]
+        if not candidates:
+            break
+        longest = max(candidates, key=widths.__getitem__)
         widths[longest] -= 1
     status_columns = {
         index for index, heading in enumerate(headings)
         if heading.strip().upper() == "STATUS"
     }
     for row_index, row in enumerate([tuple(headings), *values]):
-        cells = [textwrap.wrap(field, width=width, break_on_hyphens=False) or [""]
-                 for field, width in zip(row, widths, strict=True)]
+        cells = [
+            textwrap.wrap(
+                field,
+                width=width,
+                break_on_hyphens=False,
+                break_long_words=col_index not in nowrap_columns,
+            ) or [""]
+            for col_index, (field, width) in enumerate(zip(row, widths, strict=True))
+        ]
         status_levels = [
             classify_status(row[col_index]) if row_index > 0 and col_index in status_columns else "plain"
             for col_index in range(len(widths))
@@ -135,7 +192,15 @@ def print_table(headings, rows, *, empty="No matching entries", stream=None, lim
                     parts.append(cell + padding)
                 rendered = "  ".join(parts).rstrip()
             print(rendered, file=stream)
-    if more:
+    if hidden:
+        more_kinds = ", ".join(f"{count} {kind}" for kind, count in hidden.items())
+        shown = f"{len(values)} of {total}" if total is not None else f"{len(values)}"
+        print(
+            f"\nShowing {shown} entries; not shown: {more_kinds}. "
+            "Use --limit 0 for all rows or --json for a complete export.",
+            file=stream,
+        )
+    elif more:
         shown = f"{limit} of {total}" if total is not None else f"the first {limit}"
         print(f"\nShowing {shown} entries. Use --limit 0 for all rows or --json for a complete export.", file=stream)
 

@@ -7,7 +7,16 @@ from contextlib import contextmanager, redirect_stdout
 from .cli_output import manifest_summary, print_fields, print_json, print_table
 from .cli_parser import UsageError, parse_source_paths
 from .command_parsers import data_parser
-from .downloads import list_data
+from .downloads import (
+    abbreviate_version,
+    acquisition_action,
+    format_byte_size,
+    format_species_label,
+    list_data,
+    needs_replacement,
+    normalize_status,
+    refuse_unreadable,
+)
 
 
 def _preview(rows, limit):
@@ -34,22 +43,38 @@ def _show(rows, json_output, limit=25):
     if json_output:
         print_json([row.to_dict() for row in rows])
         return
-    headings = ("KIND", "NAME", "VERSION", "STATUS", "ACQUIRE")
+    headings = ("KIND", "NAME", "SPECIES", "VERSION", "SIZE", "STATUS", "ACQUIRE")
     preview, hidden = _preview(rows, limit)
-    values = [(row.kind, row.name, row.version, row.status, row.acquire) for row in preview]
-    print_table(headings, values, empty="No matching resources", limit=0)
-    if hidden:
-        more = ", ".join(f"{count} {kind}" for kind, count in hidden.items())
-        print(f"\nShowing {len(preview)} of {len(rows)} entries; not shown: {more}. Use --limit 0 for all rows.")
+    values = [
+        (
+            row.kind,
+            row.name,
+            format_species_label(row.species),
+            abbreviate_version(row.version),
+            format_byte_size(row.download_size),
+            row.status,
+            row.acquire,
+        )
+        for row in preview
+    ]
+    print_table(
+        headings,
+        values,
+        empty="No matching resources",
+        limit=0,
+        total=len(rows),
+        hidden=hidden or None,
+        nowrap=("KIND", "NAME", "VERSION", "SIZE", "STATUS", "ACQUIRE"),
+    )
     _repair_hints(rows)
     print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
           "Local path: orfdata data path NAME")
-    print("Filter with --species or --kind; use --json for paths and source metadata.")
+    print("Filter with --species, --kind or --all-versions; use --json for paths and source metadata.")
 
 
 def _repair_hints(rows):
     """The exact command for each damaged or unreadable row, which a bare NAME can't give."""
-    damaged = [row for row in rows if row.command and row.status not in ("available", "missing", "inaccessible")]
+    damaged = [row for row in rows if row.command and row.status == "damaged"]
     unreadable = [row for row in rows if row.command and row.status == "inaccessible"]
     for found, heading, suffix in ((damaged, "Damaged; 'data fetch' replaces them:", ""),
                                    (unreadable, "Unreadable; fix their permissions, or replace them:", " --force")):
@@ -69,8 +94,14 @@ def _show_result(result, json_output):
             summary = {key: result[key] for key in
                        ("kind", "name", "version", "title", "status", "acquired", "acquire", "installed",
                         "species", "contexts", "path", "restricted", "command") if key in result}
-            summary["distribution"] = {key: value for key, value in result.get("distribution", {}).items()
-                                       if key in ("access_terms", "redistributable", "download_size", "installed_size")}
+            if result.get("download_size") is not None:
+                summary["download_size"] = format_byte_size(result["download_size"])
+            if result.get("installed_size") is not None:
+                summary["installed_size"] = format_byte_size(result["installed_size"])
+            summary["distribution"] = {
+                key: value for key, value in result.get("distribution", {}).items()
+                if key in ("access_terms", "redistributable")
+            }
             manifest = manifest_summary(result["manifest"])
             summary.update((key, manifest[key]) for key in ("references", "source_assets", "coverage"))
             print_fields(summary)
@@ -78,6 +109,14 @@ def _show_result(result, json_output):
             return
         if "acquired" in result:  # What a fetch did, whatever the kind.
             result = {key: result[key] for key in _FETCH_FIELDS if result.get(key) not in (None, (), [], False)}
+        else:
+            display = dict(result)
+            if display.get("download_size") is not None:
+                display["download_size"] = format_byte_size(display["download_size"])
+            if display.get("installed_size") is not None:
+                display["installed_size"] = format_byte_size(display["installed_size"])
+            display.pop("datacache_status", None)
+            result = display
         print_fields(result)
 
 
@@ -234,15 +273,11 @@ def run(argv=None, prog="orfdata download"):
                     names = list(dict.fromkeys(args.names))
                     if len(names) > 1 and (args.source_path or args.version):
                         raise UsageError("--source-path and --version require exactly one resource")
-                    # Terms are a command-line omission, found without verifying anything.
-                    for name in names:
-                        info = data_info(name, **options)
-                        if info["restricted"] and not args.accept_terms:
-                            raise UsageError(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
                     paths = parse_source_paths(args.source_path)
-                    if len(names) > 1:  # Find every name, terms and permissions problem before downloading anything.
-                        for name in names:
-                            check_fetch(name, **options, force=args.force, accept_terms=args.accept_terms)
+                    # Check every name, restricted terms, source overrides and permissions before downloading.
+                    for name in names:
+                        check_fetch(name, **options, force=args.force, source_paths=paths,
+                                    accept_terms=args.accept_terms)
                     # Source processors may print progress; keep stdout machine-readable.
                     with redirect_stdout(sys.stderr):
                         output = [fetch_data(name, **options, force=args.force, source_paths=paths,
@@ -260,6 +295,7 @@ def run(argv=None, prog="orfdata download"):
                 rows = list_data(
                     kind=args.kind, species=args.species, contexts=args.context,
                     context_match=args.context_match, installed=args.installed, local=args.local,
+                    all_versions=args.all_versions,
                     cache_root=args.cache_root, verify_files=args.verify)
                 _show(rows, args.json, args.limit)
                 return
@@ -289,54 +325,86 @@ def run(argv=None, prog="orfdata download"):
 
                     registry = CatalogRegistry(cache_root=args.cache_root)
                     paths = parse_source_paths(args.source_path)
-                    reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
-                    if registry.published(args.name, args.version):
-                        registry.download(args.name, args.version, force=args.force, source_paths=paths,
+                    before = normalize_status(
+                        registry.inspect(args.name, args.version, verify_files=True).status
+                    )
+                    refuse_unreadable(before, force=args.force, name=args.name)
+                    replace_existing = needs_replacement(before, force=args.force)
+                    published = registry.published(args.name, args.version)
+                    acquire = "download" if published else "build"
+                    if published:
+                        registry.download(args.name, args.version, force=replace_existing, source_paths=paths,
                                           timeout=args.timeout)
                         inspection = registry.inspect(args.name, args.version)
-                        acquired = "downloaded"
                     else:
-                        registry.build(args.name, args.version, force=args.force, source_paths=paths,
+                        registry.build(args.name, args.version, force=replace_existing, source_paths=paths,
                                        download_options={"timeout": args.timeout})
                         inspection = registry.inspect_build(args.name, args.version)
-                        acquired = "built"
                     manifest = registry.info(args.name, args.version)
-                    output = dict(kind="catalog", name=args.name, version=manifest.version, title=manifest.title,
-                                  acquired="already installed" if reused and not args.force else acquired,
-                                  status=inspection.status, path=str(inspection.path))
+                    output = dict(
+                        kind="catalog",
+                        name=args.name,
+                        version=manifest.version,
+                        title=manifest.title,
+                        acquired=acquisition_action(before, acquire=acquire, force=args.force),
+                        status=normalize_status(inspection.status),
+                        datacache_status=inspection.status,
+                        path=str(inspection.path),
+                    )
                 elif args.command == "dataset":
                     from .datasets import DatasetRegistry
 
                     registry = DatasetRegistry(cache_root=args.cache_root)
                     paths = parse_source_paths(args.source_path)
                     options = {"timeout": args.timeout, "show_progress": not args.quiet}
-                    reused = registry.inspect(args.name, args.version, verify_files=False).status == "available"
-                    if registry.published(args.name, args.version):
-                        registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
+                    before = normalize_status(
+                        registry.inspect(args.name, args.version, verify_files=True).status
+                    )
+                    refuse_unreadable(before, force=args.force, name=args.name)
+                    replace_existing = needs_replacement(before, force=args.force)
+                    published = registry.published(args.name, args.version)
+                    acquire = "download" if published else "build"
+                    if published:
+                        registry.download(args.name, args.version, force=replace_existing, source_paths=paths, **options)
                         inspection = registry.inspect(args.name, args.version)
-                        acquired = "downloaded"
                     else:
-                        registry.build(args.name, args.version, force=args.force, source_paths=paths,
+                        registry.build(args.name, args.version, force=replace_existing, source_paths=paths,
                                        download_options=options)
                         inspection = registry.inspect_build(args.name, args.version)
-                        acquired = "built"
                     manifest = registry.info(args.name, args.version)
-                    output = dict(kind="dataset", name=args.name, version=manifest.version, title=manifest.title,
-                                  acquired="already installed" if reused and not args.force else acquired,
-                                  status=inspection.status, path=str(inspection.path))
+                    output = dict(
+                        kind="dataset",
+                        name=args.name,
+                        version=manifest.version,
+                        title=manifest.title,
+                        acquired=acquisition_action(before, acquire=acquire, force=args.force),
+                        status=normalize_status(inspection.status),
+                        datacache_status=inspection.status,
+                        path=str(inspection.path),
+                    )
                 elif args.command == "reference":
+                    from .dataset_cli import validate_search_reference_options
                     from .datasets import DatasetRegistry
 
                     registry = DatasetRegistry(cache_root=args.cache_root)
+                    validate_search_reference_options(
+                        registry, args.dataset, args.version, reference=args.reference, asset_id=args.asset,
+                    )
                     options = {"timeout": args.timeout, "show_progress": not args.quiet}
                     paths = registry.download_reference(
                         args.dataset, args.version, reference=args.reference, asset_id=args.asset,
                         force=args.force, source_path=args.source_path, **options)
                     inspection = registry.inspect_reference(
                         args.dataset, args.version, reference=args.reference, asset_id=args.asset)
-                    output = dict(kind="reference", dataset=args.dataset,
-                                  version=registry.info(args.dataset, args.version).version,
-                                  status=inspection.status, path=str(inspection.path), files=paths)
+                    output = dict(
+                        kind="reference",
+                        dataset=args.dataset,
+                        version=registry.info(args.dataset, args.version).version,
+                        status=normalize_status(inspection.status),
+                        datacache_status=inspection.status,
+                        path=str(inspection.path),
+                        files=paths,
+                    )
                 elif args.command == "genome":
                     from .genomes import install_genome
 
@@ -361,9 +429,6 @@ def run(argv=None, prog="orfdata download"):
                     elif args.target_build is None:
                         raise UsageError("Name both assemblies, FROM and TO, or neither")
                     else:
-                        from .liftover_cli import require_terms
-
-                        require_terms(args.source_build, args.target_build, args.species, args.accept_terms)
                         path = download_chain(
                             args.source_build, args.target_build, species=args.species,
                             accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,

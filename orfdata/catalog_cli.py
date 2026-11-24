@@ -1,10 +1,8 @@
 """Explicit optional catalogue discovery, acquisition and offline queries."""
 
-import json
 import sys
 from contextlib import redirect_stdout
 from dataclasses import asdict
-from pathlib import Path
 
 from .catalog import catalog_status
 from .catalogs import CatalogRegistry
@@ -12,24 +10,15 @@ from .cli import _query
 from .cli_output import manifest_summary, print_result
 from .cli_parser import parse_source_paths
 from .command_parsers import catalogs_parser
+from .downloads import normalize_status
+from .registry import load_registry
 
 
 def run(argv=None, prog=None):
     parser = catalogs_parser(prog)
     args = parser.parse_args(argv)
     try:
-        definitions = None
-        if args.registry:
-            try:
-                definitions = json.loads(Path(args.registry).read_text())
-            except ValueError as error:
-                raise ValueError(f"Invalid catalogue registry {args.registry}: {error}") from error
-        try:
-            registry = CatalogRegistry(definitions, cache_root=args.cache_root)
-        except (KeyError, TypeError, AttributeError) as error:
-            if not args.registry:  # The packaged registry: a bug, which keeps its traceback.
-                raise
-            raise ValueError(f"Invalid catalogue registry {args.registry}: {type(error).__name__}: {error}") from error
+        registry = load_registry(CatalogRegistry, args.registry, cache_root=args.cache_root)
         if args.command == "list":
             output = [m.to_dict() for m in registry.list(species=args.species, taxon_id=args.taxon_id)]
         elif args.command == "status":
@@ -39,7 +28,12 @@ def run(argv=None, prog=None):
         elif args.command == "inspect":
             method = registry.inspect_build if args.built else registry.inspect
             inspection = method(args.name, args.version)
-            output = dict(status=inspection.status, path=str(inspection.path), verified=inspection.verified)
+            output = dict(
+                status=normalize_status(inspection.status),
+                datacache_status=inspection.status,
+                path=str(inspection.path),
+                verified=inspection.verified,
+            )
             if inspection.error is not None:
                 output["error"] = str(inspection.error)
         elif args.command in ("download", "build"):
@@ -53,7 +47,11 @@ def run(argv=None, prog=None):
                     registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
             inspect = registry.inspect_build if args.command == "build" else registry.inspect
             result = inspect(args.name, args.version)
-            output = dict(status=result.status, path=str(result.path))
+            output = dict(
+                status=normalize_status(result.status),
+                datacache_status=result.status,
+                path=str(result.path),
+            )
             if args.command == "download":  # A local build is checked by its receipt, not a published pin.
                 output["verified"] = result.verified
         else:
@@ -63,7 +61,7 @@ def run(argv=None, prog=None):
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.fail(error)
     columns = ("catalog_id", "version", "title") if args.command == "list" else (
-        "species", "name", "version", "genome_build", "installed", "acquire")
+        "species", "name", "version", "genome_build", "status", "acquire")
     if args.command == "info" and not args.json:
         output = manifest_summary(output)
     print_result(output, json_output=args.json, columns=columns, limit=getattr(args, "limit", 25))

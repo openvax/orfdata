@@ -43,11 +43,19 @@ def _bundles(cache_root, only=None):
     found = []
     for collection in (viral_collections() if only is None else (only,)):
         species = canonical_species(collection.target_species)
+        inspected = viral_panel.inspect_viral_collection(
+            collection, species=species, cache_root=cache_root, verify_files=False,
+        )
+        if inspected.status == "missing":
+            continue
+        if inspected.status != "available":
+            warnings.warn(
+                f"Ignoring the installed {collection.name} viral references: {inspected.error or inspected.status}",
+                stacklevel=4,
+            )
+            continue
         try:
-            path = viral_panel._installed_bundle(cache_root, species, collection)
-            if path is None:
-                continue
-            files = viral_panel._existing_bundle(path, species=species, collection=collection)
+            files = viral_panel._existing_bundle(inspected.path, species=species, collection=collection)
         except (ValueError, OSError) as error:
             warnings.warn(f"Ignoring the installed {collection.name} viral references: {error}",
                           stacklevel=4)

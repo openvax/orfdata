@@ -16,6 +16,7 @@ from .cli_parser import (
     add_resume,
     add_timeout,
     share_cache_root,
+    share_option,
 )
 from .evidence import _RENAMED, EVIDENCE_METHODS, SYNONYMS
 
@@ -185,13 +186,15 @@ def add_discovery(parser, *, status=False):
     add_limit(parser)
     parser.add_argument("--verify", action="store_true", help="Hash and validate installed files")
     if status:
-        parser.set_defaults(installed=None, local=True)  # status: anything with local files
+        parser.set_defaults(installed=None, local=True, all_versions=True)  # status: anything with local files
     else:
         selection = parser.add_mutually_exclusive_group()
         selection.add_argument("--installed", dest="installed", action="store_const", const=True,
                                help="Show only locally installed or bundled resources")
         selection.add_argument("--missing", dest="installed", action="store_const", const=False,
-                               help="Show only missing, corrupt or inaccessible resources")
+                               help="Show only missing, damaged or inaccessible resources")
+        parser.add_argument("--all-versions", action="store_true",
+                            help="Include superseded and historical versions in addition to defaults")
         parser.set_defaults(installed=None, local=False)
 
 
@@ -406,7 +409,7 @@ def catalogs_parser(prog=None):
                             prog=prog,
                             epilog="Start with 'orfdata catalogs list', then 'orfdata catalogs info NAME'.\n"
                                    "Use 'orfdata data fetch NAME' to select the published download or source build.")
-    parser.add_argument("--registry", help=argparse.SUPPRESS)
+    share_option(parser, "--registry", help=argparse.SUPPRESS, default=None)
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="Discover release manifests without downloading")
     listing.add_argument("--species", help="Only this species' catalogues, e.g. human or mouse")
@@ -458,7 +461,7 @@ def datasets_parser(prog=None):
     parser = ArgumentParser(description="Discover, download, inspect and query quantitative datasets.", prog=prog,
                             epilog="Start with 'orfdata datasets list', then 'orfdata datasets info NAME'.\n"
                                    "Queries preserve native units and reference identities.")
-    parser.add_argument("--registry", help=argparse.SUPPRESS)
+    share_option(parser, "--registry", help=argparse.SUPPRESS, default=None)
     commands = parser.add_subparsers(dest="command", required=True)
     listing = commands.add_parser("list", help="List published releases and assay coverage")
     listing.add_argument("--species")

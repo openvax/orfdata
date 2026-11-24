@@ -9,10 +9,233 @@ from typing import Optional
 from .cache import DOWNLOAD_TIMEOUT
 from .reference import canonical_species, species_taxon
 
+# Unified local resource states shared by data commands, catalogues, datasets and setup.
+RESOURCE_STATES = ("available", "bundled", "missing", "damaged", "inaccessible")
+
+# Unified acquisition actions shared by data fetch, focused data commands and setup.
+ACQUISITION_ACTIONS = (
+    "downloaded",
+    "built",
+    "repaired",
+    "replaced",
+    "already installed",
+    "skipped",
+    "failed",
+)
+
+_STATUS_MAP = {
+    "available": "available",
+    "bundled": "bundled",
+    "missing": "missing",
+    "invalid": "damaged",
+    "corrupt": "damaged",
+    "damaged": "damaged",
+    "inaccessible": "inaccessible",
+}
+
+_SHORT_SPECIES = {
+    "homo_sapiens": "human",
+    "mus_musculus": "mouse",
+    "canis_lupus_familiaris": "dog",
+    "danio_rerio": "zebrafish",
+    "caenorhabditis_elegans": "worm",
+    "saccharomyces_cerevisiae": "yeast",
+}
+
+
+def normalize_status(status: str, *, bundled: bool = False) -> str:
+    """Map a local or DataCache inspection status to ORFdata's unified status vocabulary.
+
+    ORFdata uses one documented set of local states across ``data`` commands,
+    catalogues, datasets, viral collections and ``setup``: ``"available"``,
+    ``"bundled"``, ``"missing"``, ``"damaged"``, and ``"inaccessible"``.
+    DataCache's ``"invalid"`` and legacy ``"corrupt"`` both map to
+    ``"damaged"``.
+
+    Parameters
+    ----------
+    status : str
+        Raw status string from DataCache or an ORFdata inspector.
+    bundled : bool, optional
+        When ``True``, returns ``"bundled"`` regardless of ``status``.
+
+    Returns
+    -------
+    str
+        One of :data:`RESOURCE_STATES`.
+
+    Raises
+    ------
+    ValueError
+        If ``status`` is not a recognized state.
+    """
+    if bundled:
+        return "bundled"
+    normalized = _STATUS_MAP.get(status)
+    if normalized is None:
+        raise ValueError(
+            f"Unknown resource status {status!r}; expected one of {', '.join(RESOURCE_STATES)}"
+        )
+    return normalized
+
+
+def acquisition_action(before_status: str, *, acquire: str | None, force: bool = False) -> str:
+    """Return the unified acquisition action for installing over ``before_status``.
+
+    Shared by :func:`~orfdata.data_resources.fetch_data`, focused ``data``
+    subcommands, and :func:`~orfdata.install.install_species` so every command
+    reports the same action vocabulary (:data:`ACQUISITION_ACTIONS`).
+
+    Parameters
+    ----------
+    before_status : str
+        Local status observed before acquisition (raw or normalized).
+    acquire : str or None
+        Declared acquisition route: ``"download"``, ``"build"``, or ``None``
+        for bundled resources.
+    force : bool, optional
+        Whether forced replacement was requested.
+
+    Returns
+    -------
+    str
+        One of ``"already installed"``, ``"downloaded"``, ``"built"``,
+        ``"repaired"``, or ``"replaced"``.
+    """
+    state = normalize_status(before_status)
+    if acquire is None or (state in ("available", "bundled") and not force):
+        return "already installed"
+    if state in ("damaged", "inaccessible"):
+        return "repaired"
+    if state in ("available", "bundled") and force:
+        return "replaced"
+    return "downloaded" if acquire == "download" else "built"
+
+
+def abbreviate_version(version: Optional[str], max_length: int = 14) -> str:
+    """Shorten long version identifiers for human tables while leaving short ones intact.
+
+    Parameters
+    ----------
+    version : str or None
+        Full version string (such as a 67-character viral bundle hash).
+    max_length : int, optional
+        Maximum rendered length before truncating with ``"..."`` (default 14).
+
+    Returns
+    -------
+    str
+        Abbreviated version for table display, or ``"-"`` when ``version`` is
+        empty or ``None``.
+    """
+    if not version:
+        return "-"
+    text = str(version)
+    if len(text) <= max_length:
+        return text
+    if max_length <= 3:
+        return text[:max_length]
+    return text[: max_length - 3] + "..."
+
+
+def format_species_label(species: Iterable[str]) -> str:
+    """Format canonical species names compactly for human discovery tables.
+
+    Parameters
+    ----------
+    species : iterable of str
+        Canonical species names such as ``("homo_sapiens",)``.
+
+    Returns
+    -------
+    str
+        Comma-separated common names (e.g. ``"human"``, ``"mouse"``), or
+        ``"-"`` when empty.
+    """
+    labels = [_SHORT_SPECIES.get(name, name) for name in species]
+    return ", ".join(labels) if labels else "-"
+
+
+def format_byte_size(size: Optional[int]) -> str:
+    """Format an optional byte count with DataCache's human-readable units.
+
+    Parameters
+    ----------
+    size : int or None
+        Size in bytes, or ``None`` when unknown.
+
+    Returns
+    -------
+    str
+        Human-readable size string (e.g. ``"87.3 MiB"``) or ``"-"`` when
+        ``size`` is ``None``.
+    """
+    if size is None:
+        return "-"
+    import datacache
+
+    return datacache.format_bytes(size)
+
+
+def release_sizes(registry, name, version, *, published=None):
+    """Return ``(download_size, installed_size)`` in bytes for one registry release.
+
+    Uses explicit ``distribution.download_size`` and
+    ``distribution.installed_size`` when declared; otherwise derives download
+    and installed sizes from pinned assets, archive parts, or build sources.
+
+    Parameters
+    ----------
+    registry : ReleaseRegistry
+        Catalogue or dataset registry owning ``name``.
+    name : str
+        Registered release name.
+    version : str
+        Resolved pinned release version.
+    published : bool, optional
+        Whether the release has a published artifact; queried from ``registry``
+        when omitted.
+
+    Returns
+    -------
+    tuple of (int or None, int or None)
+        ``(download_size, installed_size)`` in bytes.
+    """
+    meta = registry.download_metadata(name, version)
+    distribution = meta.get("distribution", {})
+    is_published = registry.published(name, version) if published is None else published
+    download_size = distribution.get("download_size")
+    installed_size = distribution.get("installed_size")
+
+    if is_published:
+        assets = meta.get("assets", {})
+        archive = meta.get("archive")
+        if download_size is None:
+            if archive and archive.get("parts"):
+                part_sizes = [part.get("size") for part in archive["parts"]]
+                if part_sizes and all(type(value) is int for value in part_sizes):
+                    download_size = sum(part_sizes)
+            elif assets and not any(spec.get("decompress") for spec in assets.values()):
+                asset_sizes = [spec.get("size") for spec in assets.values()]
+                if asset_sizes and all(type(value) is int for value in asset_sizes):
+                    download_size = sum(asset_sizes)
+        if installed_size is None and assets:
+            asset_sizes = [spec.get("size") for spec in assets.values()]
+            if asset_sizes and all(type(value) is int for value in asset_sizes):
+                installed_size = sum(asset_sizes)
+    else:
+        if download_size is None:
+            manifest = registry.info(name, version)
+            source_sizes = [source.size for source in manifest.sources]
+            if source_sizes and all(type(value) is int for value in source_sizes):
+                download_size = sum(source_sizes)
+
+    return download_size, installed_size
+
 
 @dataclass(frozen=True)
 class DataStatus:
-    """Identity, availability and acquisition route for one ORFdata resource."""
+    """Identity, availability, sizes and acquisition route for one ORFdata resource."""
 
     kind: str
     name: str
@@ -27,11 +250,15 @@ class DataStatus:
     acquire: Optional[str]
     command: Optional[str]
     restricted: bool = False
+    default: bool = True
+    download_size: Optional[int] = None
+    installed_size: Optional[int] = None
+    datacache_status: Optional[str] = None
 
     @property
     def installed(self) -> bool:
         """Whether the resource is usable from local files."""
-        return self.status == "available"
+        return self.status in ("available", "bundled")
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-ready representation, as other OpenVax status objects do."""
@@ -114,13 +341,13 @@ def needs_replacement(status: str, *, force: bool = False) -> bool:
     Files that fail verification are replaced; valid ones only with ``force``.
     Check :func:`refuse_unreadable` first: unreadable files aren't replaced unless forced.
     """
-    return force or status not in ("available", "missing")
+    return force or normalize_status(status) not in ("available", "bundled", "missing")
 
 
 def refuse_unreadable(status: str, *, force: bool = False, name: str = "", command: str | None = None) -> None:
     """Raise for unreadable files unless ``force``: replacing them could hide a permissions problem, or fail on
     it halfway through a download. ``command`` is the command line that would replace them with ``--force``."""
-    if status == "inaccessible" and not force:
+    if normalize_status(status) == "inaccessible" and not force:
         retry = f"force=True, or on the command line: {command} --force" if command else "force=True"
         raise ValueError(f"{name or 'The resource'} can't be read; fix its permissions, choose another "
                          f"cache root, or replace it with {retry}")
@@ -133,39 +360,16 @@ def collection_state(
     cache_root: str | PathLike[str] | None = None,
     verify_files: bool = True,
 ) -> str:
-    """Local state of one reference collection: ``available``, ``missing``, ``corrupt`` or ``inaccessible``.
+    """Local state of one reference collection: ``available``, ``missing``, ``damaged`` or ``inaccessible``.
 
     ``verify_files=False`` checks only that the expected files are present,
     without hashing them.
     """
-    from .viral_registry import viral_collection
+    from .viral_panel import inspect_viral_collection
 
-    collection = viral_collection(name, species=species)
-    return _collection_state(collection, cache_root, verify_files)[0]
-
-
-def _collection_state(collection, cache_root, verify_files):
-    """The state of a collection and the directory it describes, resolved once.
-
-    The directory is the installed bundle's, or None when there is none to name.
-    """
-    from .viral_panel import _existing_bundle, _installed_bundle, _verified_existing_bundle
-
-    species = canonical_species(collection.target_species)
-    path = None
-    try:
-        path = _installed_bundle(cache_root, species, collection)
-        if path is None:
-            return "missing", None
-        check = _verified_existing_bundle if verify_files else _existing_bundle
-        check(path, species=species, collection=collection)
-    except FileNotFoundError:
-        return "missing", path
-    except OSError:
-        return "inaccessible", path
-    except ValueError:
-        return "corrupt", path
-    return "available", path
+    return inspect_viral_collection(
+        name, species=species, cache_root=cache_root, verify_files=verify_files,
+    ).status
 
 
 def install_collection(
@@ -175,26 +379,47 @@ def install_collection(
     force: bool = False,
     cache_root: str | PathLike[str] | None = None,
     timeout: float | None = DOWNLOAD_TIMEOUT,
+    source_paths: dict[str, str | PathLike[str]] | None = None,
+    download_options: dict[str, object] | None = None,
 ):
-    """Download one reference collection, as ``orfdata download viral`` does."""
+    """Download or build one reference collection, as ``orfdata data fetch`` does."""
     from .viral_panel import download_viral_references
     from .viral_registry import viral_collection
 
     collection = viral_collection(name, species=species)
-    return download_viral_references(collection=collection,
-                                     cache_root=cache_root, force=force, timeout=timeout)
+    return download_viral_references(
+        collection=collection,
+        cache_root=cache_root,
+        force=force,
+        timeout=timeout,
+        source_paths=source_paths,
+        download_options=download_options,
+    )
 
 
 def _viral(cache_root, verify_files):
     """Every published viral collection, whichever species it targets."""
-    from .viral_panel import _bundle_path, bundle_version
+    from .viral_panel import bundle_version, inspect_viral_collection, viral_store_path
     from .viral_registry import viral_collections
 
     rows = []
     for collection in viral_collections():
         species = canonical_species(collection.target_species)
-        # The directory holding the files, once installed; its store until then.
-        status, path = _collection_state(collection, cache_root, verify_files)
+        inspected = inspect_viral_collection(
+            collection, species=species, cache_root=cache_root, verify_files=verify_files,
+        )
+        acquire = "download" if collection.published else "build"
+        area = "downloads" if collection.published else "collections"
+        download_size = collection.download_size
+        installed_size = collection.installed_size
+        if collection.published and download_size is None:
+            sizes = [spec.get("size") for spec in collection.assets.values()]
+            if sizes and all(type(value) is int for value in sizes):
+                download_size = sum(sizes)
+        if collection.published and installed_size is None:
+            sizes = [spec.get("size") for spec in collection.assets.values()]
+            if sizes and all(type(value) is int for value in sizes):
+                installed_size = sum(sizes)
         rows.append(DataStatus(
             kind="viral",
             name=collection.name,
@@ -203,11 +428,15 @@ def _viral(cache_root, verify_files):
             species=(species,),
             taxon_ids=(collection.target_taxon_id,),
             contexts=collection.contexts,
-            status=status,
-            path=str(path or _bundle_path(cache_root, species, collection)),
-            origin="download" if status == "available" else None,
-            acquire="download",
+            status=inspected.status,
+            path=str(inspected.path or viral_store_path(cache_root, species, collection, area=area)),
+            origin=inspected.origin if inspected.status == "available" else None,
+            acquire=acquire,
             command=None,
+            default=True,
+            download_size=download_size,
+            installed_size=installed_size,
+            datacache_status=inspected.datacache_status,
         ))
     return tuple(rows)
 
@@ -223,10 +452,27 @@ def _catalogs(cache_root, verify_files):
     for item in catalog_status(registry=registry):
         inspection = None
         if item.acquire is None:
-            status = "available"
+            bundled_resource = files("orfdata").joinpath(
+                f"data/{_BUNDLED[item.species, item.genome_build]}/catalog.json.gz"
+            )
+            status = "bundled"
+            datacache_status = None
+            path = str(bundled_resource)
+            origin = "bundled"
+            is_default = True
+            download_size = None
+            try:
+                installed_size = bundled_resource.stat().st_size
+            except (AttributeError, OSError):
+                installed_size = len(bundled_resource.read_bytes())
         else:
             inspection = registry.inspect(item.name, item.version, verify_files=verify_files)
-            status = inspection.status
+            datacache_status = inspection.status
+            status = normalize_status(datacache_status)
+            path = str(inspection.path)
+            origin = item.installed if status == "available" else None
+            is_default = item.version == registry.resolve_version(item.name)
+            download_size, installed_size = release_sizes(registry, item.name, item.version)
         rows.append(DataStatus(
             kind="catalog",
             name=item.name,
@@ -236,11 +482,14 @@ def _catalogs(cache_root, verify_files):
             taxon_ids=(species_taxon(item.species),),
             contexts=(),
             status=status,
-            path=(str(inspection.path) if inspection is not None else
-                  str(files("orfdata").joinpath(f"data/{_BUNDLED[item.species, item.genome_build]}/catalog.json.gz"))),
-            origin=item.installed if status == "available" else None,
+            path=path,
+            origin=origin,
             acquire=item.acquire,
             command=None,
+            default=is_default,
+            download_size=download_size,
+            installed_size=installed_size,
+            datacache_status=datacache_status,
         ))
     return tuple(rows)
 
@@ -254,10 +503,14 @@ def _datasets(cache_root, verify_files):
         name, version = manifest.dataset_id, manifest.version
         published = registry.published(name, version)
         inspection = registry.inspect(name, version, verify_files=verify_files)
+        status = normalize_status(inspection.status)
         species = tuple(sorted({canonical_species(reference.species)
                                 for reference in manifest.references}))
         taxa = tuple(sorted({reference.taxon_id for reference in manifest.references}))
         acquire = "download" if published else "build"
+        download_size, installed_size = release_sizes(
+            registry, name, version, published=published,
+        )
         rows.append(DataStatus(
             kind="dataset",
             name=name,
@@ -266,11 +519,15 @@ def _datasets(cache_root, verify_files):
             species=species,
             taxon_ids=taxa,
             contexts=(),
-            status=inspection.status,
+            status=status,
             path=str(inspection.path),
-            origin=("download" if published else "build") if inspection.status == "available" else None,
+            origin=("download" if published else "build") if status == "available" else None,
             acquire=acquire,
             command=None,
+            default=version == registry.resolve_version(name),
+            download_size=download_size,
+            installed_size=installed_size,
+            datacache_status=inspection.status,
         ))
     return tuple(rows)
 
@@ -281,10 +538,13 @@ def _references(cache_root, verify_files):
     registry = DatasetRegistry(cache_root=cache_root)
     rows = []
     for manifest in registry.list():
+        is_default = manifest.version == registry.resolve_version(manifest.dataset_id)
         for spec in registry.search_references(manifest.dataset_id, manifest.version):
             inspection = registry.inspect_reference(
                 manifest.dataset_id, manifest.version, reference=spec.reference.key,
                 asset_id=spec.source.asset_id, verify_files=verify_files)
+            status = normalize_status(inspection.status)
+            size = spec.source.size if type(spec.source.size) is int else None
             rows.append(DataStatus(
                 kind="reference",
                 name=f"{manifest.dataset_id}:{spec.source.asset_id}",
@@ -293,11 +553,15 @@ def _references(cache_root, verify_files):
                 species=(canonical_species(spec.reference.species),),
                 taxon_ids=(spec.reference.taxon_id,),
                 contexts=(),
-                status=inspection.status,
+                status=status,
                 path=str(inspection.path),
-                origin="download" if inspection.status == "available" else None,
+                origin="download" if status == "available" else None,
                 acquire="download",
                 command=None,
+                default=is_default,
+                download_size=size,
+                installed_size=size,
+                datacache_status=inspection.status,
             ))
     return tuple(rows)
 
@@ -309,6 +573,11 @@ def _genomes(cache_root, verify_files):
     for genome in pinned_genomes():
         inspection = genome_registry(genome, cache_root).inspect(
             genome.name, "1", verify_files=verify_files)
+        status = normalize_status(inspection.status)
+        asset_sizes = [asset.get("size") for asset in genome.assets.values()]
+        download_size = (sum(asset_sizes)
+                         if asset_sizes and all(type(value) is int for value in asset_sizes)
+                         else None)
         rows.append(DataStatus(
             kind="genome",
             name=genome.name,
@@ -317,11 +586,15 @@ def _genomes(cache_root, verify_files):
             species=(genome.species,),
             taxon_ids=(species_taxon(genome.species),),
             contexts=(),
-            status=inspection.status,
+            status=status,
             path=str(inspection.path),
-            origin="download" if inspection.status == "available" else None,
+            origin="download" if status == "available" else None,
             acquire="download",
             command=None,
+            default=True,
+            download_size=download_size,
+            installed_size=None,
+            datacache_status=inspection.status,
         ))
     return tuple(rows)
 
@@ -333,6 +606,8 @@ def _chains(cache_root, verify_files):
     for chain in pinned_chains():
         inspection = chain_registry(chain, cache_root).inspect(
             chain.name, "1", verify_files=verify_files)
+        status = normalize_status(inspection.status)
+        size = chain.size if type(chain.size) is int else None
         rows.append(DataStatus(
             kind="chain",
             name=chain.name,
@@ -341,12 +616,16 @@ def _chains(cache_root, verify_files):
             species=(chain.species,),
             taxon_ids=(species_taxon(chain.species),),
             contexts=(),
-            status=inspection.status,
+            status=status,
             path=str(inspection.path),
-            origin="download" if inspection.status == "available" else None,
+            origin="download" if status == "available" else None,
             acquire="download",
             command=None,
             restricted=chain.restricted,
+            default=True,
+            download_size=size,
+            installed_size=size,
+            datacache_status=inspection.status,
         ))
     return tuple(rows)
 
@@ -358,6 +637,8 @@ def _records(cache_root, verify_files):
     for pin in pinned_records():
         inspection = records_registry(pin, cache_root).inspect(
             pin.name, "1", verify_files=verify_files)
+        status = normalize_status(inspection.status)
+        size = pin.size if type(pin.size) is int else None
         rows.append(DataStatus(
             kind="records",
             name=pin.name,
@@ -366,11 +647,15 @@ def _records(cache_root, verify_files):
             species=(pin.species,),
             taxon_ids=(species_taxon(pin.species),),
             contexts=(),
-            status=inspection.status,
+            status=status,
             path=str(inspection.path),
-            origin="download" if inspection.status == "available" else None,
+            origin="download" if status == "available" else None,
             acquire="download",
             command=None,
+            default=True,
+            download_size=size,
+            installed_size=size,
+            datacache_status=inspection.status,
         ))
     return tuple(rows)
 
@@ -383,6 +668,7 @@ def list_data(
     context_match: str = "any",
     installed: bool | None = None,
     local: bool = False,
+    all_versions: bool = False,
     cache_root: str | PathLike[str] | None = None,
     verify_files: bool = False,
 ) -> tuple[DataStatus, ...]:
@@ -392,8 +678,10 @@ def list_data(
     ``genome``, ``chain`` or ``records``. ``species`` accepts ORFdata's species aliases.
     ``installed`` can be true or false to select usable resources or
     unavailable ones; ``local=True`` selects every resource with local files,
-    usable, damaged or unreadable, as ``orfdata data status`` shows them. ``verify_files=True`` hashes pinned files and
-    validates the viral bundle.
+    usable, damaged or unreadable, as ``orfdata data status`` shows them.
+    By default only each resource's default version is listed; pass
+    ``all_versions=True`` to include superseded and historical versions.
+    ``verify_files=True`` hashes pinned files and validates the viral bundle.
     """
     kinds = ("viral", "catalog", "dataset", "reference", "genome", "chain", "records")
     if kind == "all":
@@ -404,6 +692,8 @@ def list_data(
         raise ValueError("installed must be True, False or None")
     if type(local) is not bool:
         raise ValueError("local must be True or False")
+    if type(all_versions) is not bool:
+        raise ValueError("all_versions must be True or False")
     if contexts is None:
         selected_contexts = ()
     else:
@@ -431,6 +721,8 @@ def list_data(
     rows = []
     for current in kinds if kind is None else (kind,):
         rows.extend(finders[current](cache_root, verify_files))
+    if not all_versions and not local:
+        rows = [row for row in rows if row.default]
     if selected_species is not None:
         rows = [row for row in rows if selected_species in row.species]
     if selected_contexts:

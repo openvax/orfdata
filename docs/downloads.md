@@ -75,25 +75,31 @@ to every resource kind. Focused command groups such as `orfdata viral coverage` 
 `orfdata viral summary` remain useful for domain-specific inspection.
 
 `list` shows every bundled, downloadable or locally buildable primary resource
-and its current state, including native protein search references declared by
-quantitative datasets. `status` shows resources with local files: usable ones
-and damaged or unreadable installs. `data fetch` replaces damaged files;
-unreadable ones are left alone until their permissions are fixed or `--force` is
-given. For catalogues, datasets, search references, genomes and chains, a repair
-installs a fresh generation and leaves the damaged one in place until the cache
-is pruned, as `--force` does; a viral collection is rebuilt in place. Filter either command with `--kind` or `--species`; use `--installed` or
-`--missing` with `list`, `--json` for programs, and `--verify` to hash installed
-files. Discovery and status commands never acquire or repair data.
+and its current state, species, default version, and download size, including
+native protein search references declared by quantitative datasets. Pass
+`--all-versions` to include superseded and historical versions. `status` shows
+resources with local files: usable ones and damaged or unreadable installs.
+`data fetch` replaces damaged files; unreadable ones are left alone until their
+permissions are fixed or another cache root is chosen. For every resource kind
+— catalogues, datasets, search references, genomes, chains, records, and viral
+collections — a repair installs a fresh DataCache generation and leaves the
+previous one in place until the cache is pruned (`orfdata data prune` or
+`prune_viral_references()`). Filter either command with `--kind` or `--species`;
+use `--installed` or `--missing` with `list`, `--json` for programs, and
+`--verify` to hash installed files. Discovery and status commands never acquire
+or repair data.
 
 ```sh
 orfdata download list --kind viral --species human
+orfdata download list --all-versions
 orfdata download list --missing
 orfdata download status --json
 ```
 
-Catalogue and dataset releases that cannot be redistributed are built from
-their pinned sources when selected through `orfdata download`. The listing's
-`ACQUIRE` column says `download` or `build`. Existing focused commands such as
+Catalogue, dataset, and viral collection releases that cannot be redistributed
+(or do not yet publish a prebuilt release artifact) are built from their pinned
+sources when selected through `orfdata data fetch`. The listing's `ACQUIRE`
+column says `download` or `build`. Existing focused commands such as
 `orfdata catalogs download`, `orfdata datasets build`, `orfdata genomes
 install`, and `orfdata chains download` remain available.
 
@@ -103,17 +109,22 @@ The same inventory is available from Python:
 from orfdata import DataStatus, list_data
 
 all_resources: tuple[DataStatus, ...] = list_data()
+all_versions: tuple[DataStatus, ...] = list_data(all_versions=True)
 human_missing: tuple[DataStatus, ...] = list_data(species="human", installed=False)
 installed: tuple[DataStatus, ...] = list_data(installed=True)
 machine_record: dict[str, object] = all_resources[0].to_dict()
 ```
 
-Each `DataStatus` reports its kind, stable name and version, species,
-nonexclusive analysis contexts, local status, acquisition method and equivalent
-command, and resolved cache path. Status values follow DataCache: `available`,
-`missing`, `corrupt`, or `inaccessible`. An unknown kind, species or context is
-an error rather than an empty listing, so a typo never reads as "nothing is
-available".
+Each `DataStatus` reports its kind, stable name and version, whether it is the
+default version, species, download and installed sizes (when known),
+nonexclusive analysis contexts, local status, raw `datacache_status`,
+acquisition method and equivalent command, and resolved cache path. Local
+states use one unified vocabulary (`RESOURCE_STATES`): `available`, `bundled`,
+`missing`, `damaged`, or `inaccessible`. Acquisition actions shared by
+`data fetch` and `setup` use one vocabulary (`ACQUISITION_ACTIONS`):
+`downloaded`, `built`, `repaired`, `replaced`, `already installed`, `skipped`,
+or `failed`. An unknown kind, species or context is an error rather than an
+empty listing, so a typo never reads as "nothing is available".
 
 ## Interrupted downloads
 
@@ -395,7 +406,8 @@ copy it was built from; after a refresh, asking for the same selection builds a
 new one from the current collection rather than reusing one built from the
 replaced copy.
 
-A forced install (`--force`, `force=True`) also repairs a store that lost its
-`.datacache-store.json` marker or whose newest copy isn't a directory. A path
-ORFdata didn't write in the store's place is never removed; the error names it
-so you can remove it yourself.
+A forced install (`--force`, `force=True`) replaces a valid collection or a
+damaged bundle inside a valid DataCache store with a new generation. A
+directory holding files without DataCache's `.datacache-store.json` marker, or
+a non-directory in the store's place, is never taken over or deleted; remove it
+by hand before installing again.

@@ -27,6 +27,7 @@ know which source a reference came from, only what the record says.
 import gzip
 import hashlib
 import json
+import os
 import time
 from dataclasses import dataclass, field
 
@@ -48,6 +49,20 @@ PAVE_SOURCE = "pave"
 _PAVE_TRANSLATION_TABLE = 1
 # Both sources ask that an unauthenticated client stay under three requests a second.
 REQUEST_INTERVAL = 0.34
+# Authenticated NCBI E-utilities clients may send up to ten requests a second.
+AUTHENTICATED_REQUEST_INTERVAL = 0.11
+
+
+def ncbi_api_key():
+    """Return the configured ``NCBI_API_KEY`` environment value, or ``None`` if unset.
+
+    Returns
+    -------
+    str or None
+        Nonempty stripped API key from ``os.environ["NCBI_API_KEY"]``, or
+        ``None`` when unset or blank.
+    """
+    return os.environ.get("NCBI_API_KEY", "").strip() or None
 
 
 @dataclass(frozen=True)
@@ -96,7 +111,13 @@ class ReferenceSource:
     url = ""
     # Which inventory column names an entry at this source.
     inventory_field = ""
+    document_suffix = ""
     batch_size = 1
+
+    @property
+    def request_interval(self):
+        """Minimum delay in seconds between consecutive batch requests to this source."""
+        return REQUEST_INTERVAL
 
     def identifier(self, entry):
         """What this source publishes one inventory entry under, or ``""`` if it names none."""
@@ -127,7 +148,7 @@ class ReferenceSource:
             rows.extend(_ledger_row(entry, identifier, self.name, result, report)
                         for (entry, identifier), result in zip(batch, found, strict=True))
             if start + self.batch_size < len(named):
-                time.sleep(REQUEST_INTERVAL)
+                time.sleep(self.request_interval)
         return ledger_from_rows(rows)
 
     def _attempt(self, identifiers, *, timeout):
@@ -169,21 +190,31 @@ class GenBankSource(ReferenceSource):
     description = "NCBI GenBank nucleotide records"
     url = NCBI_EFETCH_URL
     inventory_field = "genbank"
+    document_suffix = ".gb"
     batch_size = 25
 
     def __init__(self, *, tool="orfdata", email="support@openvax.org"):
         self.tool, self.email = tool, email
 
+    @property
+    def request_interval(self):
+        """Delay between NCBI EFetch batches, shortened when ``NCBI_API_KEY`` is set."""
+        return AUTHENTICATED_REQUEST_INTERVAL if ncbi_api_key() else REQUEST_INTERVAL
+
     def records(self, identifiers, *, timeout):
         identifiers = tuple(identifiers)
-        payload = fetch(self.url, timeout=timeout, description="NCBI EFetch", params={
+        params = {
             "db": "nuccore",
             "id": ",".join(identifiers),
             "rettype": "gbwithparts",
             "retmode": "text",
             "tool": self.tool,
             "email": self.email,
-        })
+        }
+        api_key = ncbi_api_key()
+        if api_key is not None:
+            params["api_key"] = api_key
+        payload = fetch(self.url, timeout=timeout, description="NCBI EFetch", params=params)
         parsed = parse_genbank(payload)
         if len(parsed) != len(identifiers):
             raise ValueError(f"NCBI returned {len(parsed)} records for {len(identifiers)} accessions")
@@ -213,6 +244,7 @@ class PaVESource(ReferenceSource):
     description = "Papillomavirus Episteme (PaVE) reference genomes"
     url = f"{PAVE_API_URL}/genome"
     inventory_field = "pave_id"
+    document_suffix = ".json"
 
     def record(self, identifier, *, timeout):
         document = fetch(f"{self.url}/{identifier}", timeout=timeout,
