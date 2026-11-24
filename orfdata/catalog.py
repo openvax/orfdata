@@ -28,9 +28,15 @@ from .initiation_context import (
     map_initiation_position,
 )
 from .liftover import Liftover
-from .measurements import _plain
-from .model import ORFModel, TranscriptORF, _contig, _id_forms, _species, _transcript_match
-from .reference import ReferenceContext, ScopedTarget
+from .measurements import to_plain_data
+from .model import (
+    ORFModel,
+    TranscriptORF,
+    match_transcript_id,
+    normalize_contig,
+    transcript_id_forms,
+)
+from .reference import ReferenceContext, ScopedTarget, canonical_species
 from .reference_mapping import ReferenceMapping
 from .sequence import genetic_code
 
@@ -177,7 +183,7 @@ class ORFRecord:
             if not mapping.sequence_validated or mapping.validation["sequence"]["source_sha256"] != digest:
                 raise ValueError("ORF reference mapping protein identity disagrees with the records")
             expected = {"source": _placement_position(original), "target": _placement_position(self)}
-            if _plain(mapping.validation.get("position")) != expected:
+            if to_plain_data(mapping.validation.get("position")) != expected:
                 raise ValueError("ORF reference mapping positions disagree with the records")
         if self.members:
             # Each member validated its own summaries against its own identity.
@@ -255,7 +261,7 @@ class ORFRecord:
 
     def to_dict(self):
         """Return a serializable copy of this record."""
-        result = _plain(self)
+        result = to_plain_data(self)
         if not self.summaries:
             result.pop("summaries")
         if self.reference_context is None:
@@ -420,7 +426,7 @@ class ORFCatalog:
             if r.genome_build != self.genome_build or r.strand not in ("+", "-"):
                 raise ValueError(f"Invalid assembly or strand for {r.orf_id}")
             r.model  # Validate identity and geometry, including non-upstream ORFs.
-            if (r.taxon_id, _species(r.species)) != (self.taxon_id, _species(self.species)):
+            if (r.taxon_id, canonical_species(r.species)) != (self.taxon_id, canonical_species(self.species)):
                 raise ValueError("Catalogue and ORF species disagree")
             if (
                 not r.coding_blocks
@@ -434,7 +440,7 @@ class ORFCatalog:
             if (
                 context is not None
                 and context.source_transcript_id is not None
-                and not set(_id_forms(context.source_transcript_id)) & set(_id_forms(r.transcript_id))
+                and not set(transcript_id_forms(context.source_transcript_id)) & set(transcript_id_forms(r.transcript_id))
             ):
                 raise ValueError("Initiation-context transcript identity disagrees with ORF")
             if context is not None and context.genomic_positions:
@@ -537,16 +543,16 @@ class ORFCatalog:
         if transcript.genome.reference_name != self.genome_build:
             raise ValueError("Catalogue transcript assembly mismatch")
         species = getattr(transcript.genome, "species", None)
-        if species is not None and _species(species) != _species(self.species):
+        if species is not None and canonical_species(species) != canonical_species(self.species):
             raise ValueError("Catalogue transcript species mismatch")
         resolved = ReferenceContext.from_genome(transcript.genome, context=context)
         if resolved.taxon_id != self.taxon_id:
             raise ValueError("Catalogue transcript taxon mismatch")
         found = []
         for record in self.query(**filters):
-            if _transcript_match(record.transcript_id, transcript) is not None:
+            if match_transcript_id(record.transcript_id, transcript) is not None:
                 found.append(record.bind(transcript, context=resolved))
-            elif any(_transcript_match(m.transcript_id, transcript) is not None for m in record.members):
+            elif any(match_transcript_id(m.transcript_id, transcript) is not None for m in record.members):
                 # Another source's transcript: it must carry the exact path and protein.
                 found.append(record.bind(transcript, context=resolved, any_transcript=True))
         return tuple(found)
@@ -615,7 +621,7 @@ class ORFCatalog:
             _positive_integer(end, "end")
             if end < start:
                 raise ValueError("end must be >= start")
-            contig = _contig(contig, genome_build)
+            contig = normalize_contig(contig, genome_build)
         if genome_build is not None and genome_build != self.genome_build:
             raise ValueError(f"Expected genome build {self.genome_build}, got {genome_build}")
         rule = evidence_rule(evidence, require_unique=require_unique, require_reviewed=require_reviewed,
@@ -631,7 +637,7 @@ class ORFCatalog:
             and (
                 not locus
                 or (
-                    _contig(r.contig, r.genome_build) == contig
+                    normalize_contig(r.contig, r.genome_build) == contig
                     and (
                         any(a <= end and b >= start for a, b in r.coding_blocks)
                         or (
@@ -661,7 +667,7 @@ def _merge_key(record):
             start = None
     except ValueError:  # An unsupported code keeps its declaration as given.
         pass
-    return (_contig(record.contig, record.genome_build), record.strand, record.coding_blocks, record.protein_sequence,
+    return (normalize_contig(record.contig, record.genome_build), record.strand, record.coding_blocks, record.protein_sequence,
             record.translation_table, start, record.genome_build, record.taxon_id)
 
 
@@ -693,7 +699,7 @@ def _shared_context(primary, members):
     """The first source initiation context that describes the primary record's transcript."""
     return next((m.initiation_context for m in members if m.initiation_context is not None and (
         m.initiation_context.source_transcript_id is None
-        or set(_id_forms(m.initiation_context.source_transcript_id)) & set(_id_forms(primary.transcript_id)))),
+        or set(transcript_id_forms(m.initiation_context.source_transcript_id)) & set(transcript_id_forms(primary.transcript_id)))),
         None)
 
 
@@ -727,8 +733,8 @@ def merge_catalogs(catalogs):
     first = catalogs[0]
     for catalog in catalogs[1:]:
         if (catalog.taxon_id, catalog.genome_build) != (first.taxon_id, first.genome_build):
-            raise ValueError(f"Cannot merge a {_species(catalog.species)} {catalog.genome_build} catalogue "
-                             f"with a {_species(first.species)} {first.genome_build} one")
+            raise ValueError(f"Cannot merge a {canonical_species(catalog.species)} {catalog.genome_build} catalogue "
+                             f"with a {canonical_species(first.species)} {first.genome_build} one")
     # A merged input is merged again from its source records, each source its own input.
     sources = [[m for r in c.records for m in (r.members or (r,))] for c in catalogs]
     # Records join across inputs, never within one; a merged input's sources were separate inputs.
@@ -763,9 +769,9 @@ def merge_catalogs(catalogs):
         later = []
         for passing in (0, 1):
             for record in (records if passing == 0 else later):
-                key, forms = _merge_key(record), set(_id_forms(record.transcript_id))
+                key, forms = _merge_key(record), set(transcript_id_forms(record.transcript_id))
                 eligible = [g for g in by_key.get(key, ()) if origin[id(record)] not in g[0]]
-                group = next((g for g in eligible if any(forms & set(_id_forms(m.transcript_id)) for m in g[1])),
+                group = next((g for g in eligible if any(forms & set(transcript_id_forms(m.transcript_id)) for m in g[1])),
                              None)
                 if group is None and passing == 0 and eligible:
                     later.append(record)
@@ -983,8 +989,8 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         if registry is not None:
             raise ValueError("Pass a catalogue path or a registry, not both")
         catalog = _load_catalog(path, expected_sha256=expected_sha256)
-        if species is not None and _species(species) != _species(catalog.species):
-            raise ValueError(f"{path} is a {_species(catalog.species)} catalogue, not {_species(species)}")
+        if species is not None and canonical_species(species) != canonical_species(catalog.species):
+            raise ValueError(f"{path} is a {canonical_species(catalog.species)} catalogue, not {canonical_species(species)}")
         if genome_build is not None and genome_build != catalog.genome_build:
             raise ValueError(f"{path} is a {catalog.genome_build} catalogue, not {genome_build}")
         if catalogs is not None:
@@ -992,7 +998,7 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
         return catalog
     from .liftover import chain_downloaded, lift_to
 
-    species = _species("human" if species is None else species)
+    species = canonical_species("human" if species is None else species)
     choices = _catalog_choices(registry)
     found = _selected([c for c in choices if c.species == species], catalogs, species)
     builds = sorted({c.genome_build for c in found})
@@ -1205,7 +1211,7 @@ def _catalog_choices(registry):
     priority = getattr(registry, "priority", lambda name: 100)
     optional = getattr(registry, "optional", lambda name: False)
     return [_Choice(s, b, "bundled", resource=r) for (s, b), r in _BUNDLED.items()] + [
-        _Choice(_species(m.references[0].species), m.genome_build, m.catalog_id, registry, version=m.version,
+        _Choice(canonical_species(m.references[0].species), m.genome_build, m.catalog_id, registry, version=m.version,
                 priority=priority(m.catalog_id), optional=optional(m.catalog_id))
         for m in registry.list()]
 

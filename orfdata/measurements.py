@@ -34,22 +34,65 @@ def _freeze(value):
     raise TypeError("Metadata must contain finite JSON values")
 
 
-def _plain(value):
+def to_plain_data(value):
+    """Recursively convert dataclasses, mappings, and sequences into plain JSON-serializable objects.
+
+    Parameters
+    ----------
+    value : object
+        Dataclass instance, mapping, sequence, or scalar value.
+
+    Returns
+    -------
+    object
+        Mutable copy using plain ``dict`` and ``list`` containers.
+    """
     if is_dataclass(value):
-        return {f.name: _plain(getattr(value, f.name)) for f in fields(value)}
+        return {f.name: to_plain_data(getattr(value, f.name)) for f in fields(value)}
     if isinstance(value, Mapping):
-        return {key: _plain(item) for key, item in value.items()}
+        return {key: to_plain_data(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
-        return [_plain(item) for item in value]
+        return [to_plain_data(item) for item in value]
     return value
 
 
-def _identifier(value, name):
+def require_identifier(value, name):
+    """Validate that ``value`` is a non-empty, non-whitespace string identifier.
+
+    Parameters
+    ----------
+    value : object
+        Candidate identifier value.
+    name : str
+        Field label included in the error message.
+
+    Raises
+    ------
+    ValueError
+        If ``value`` is not a ``str`` or contains only whitespace.
+    """
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a nonempty string")
 
 
-def _metadata(instance, *names):
+def freeze_metadata(instance, *names):
+    """Validate and freeze JSON metadata mapping fields on a frozen dataclass instance.
+
+    Parameters
+    ----------
+    instance : object
+        Frozen dataclass instance being initialized.
+    *names : str
+        Attribute names on ``instance`` that must be mappings of finite JSON
+        values; each is replaced in place with an immutable
+        :class:`types.MappingProxyType`.
+
+    Raises
+    ------
+    TypeError
+        If any named attribute is not a mapping or contains non-JSON or
+        non-finite values.
+    """
     for name in names:
         value = getattr(instance, name)
         if not isinstance(value, Mapping):
@@ -61,18 +104,34 @@ def _optional_text(instance, *names):
     for name in names:
         value = getattr(instance, name)
         if value is not None:
-            _identifier(value, name)
+            require_identifier(value, name)
 
 
-def _number(value, name):
+def require_finite_number(value, name):
+    """Validate that ``value`` is a finite real number (excluding booleans).
+
+    Parameters
+    ----------
+    value : object
+        Candidate numeric value.
+    name : str
+        Field label included in the error message.
+
+    Raises
+    ------
+    ValueError
+        If ``value`` is a boolean, not an ``int``/``float``, or is NaN/infinite.
+    """
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
         raise ValueError(f"{name} must be a finite number")
 
 
-class _Record:
+class Record:
+    """Base mixin supplying JSON dictionary serialization for immutable record dataclasses."""
+
     def to_dict(self):
         """Return a mutable JSON copy without exposing stored metadata."""
-        return _plain(self)
+        return to_plain_data(self)
 
     @classmethod
     def from_dict(cls, data):
@@ -98,7 +157,7 @@ class _Record:
 
 
 @dataclass(frozen=True)
-class SourceAsset(_Record):
+class SourceAsset(Record):
     """A pinned original input; hashes and sizes describe its raw bytes."""
 
     asset_id: str
@@ -112,7 +171,7 @@ class SourceAsset(_Record):
 
     def __post_init__(self):
         for name in ("asset_id", "url", "access_terms"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         if not re.fullmatch(r"[0-9a-f]{64}", self.sha256):
             raise ValueError("Source assets require a lowercase SHA-256")
         if type(self.size) is not int or self.size < 0:
@@ -120,11 +179,11 @@ class SourceAsset(_Record):
         if type(self.redistributable) is not bool:
             raise TypeError("redistributable must be an explicit boolean")
         _optional_text(self, "license_url")
-        _metadata(self, "metadata")
+        freeze_metadata(self, "metadata")
 
 
 @dataclass(frozen=True)
-class DatasetManifest(_Record):
+class DatasetManifest(Record):
     """Provenance and measurable coverage for a concrete quantitative release."""
 
     dataset_id: str
@@ -147,7 +206,7 @@ class DatasetManifest(_Record):
 
     def __post_init__(self):
         for name in ("dataset_id", "version", "title"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         for name in ("dataset_id", "version"):
             value = getattr(self, name)
             if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value):
@@ -172,14 +231,14 @@ class DatasetManifest(_Record):
         if any(kind not in ASSAY_KINDS for kind in self.assay_kinds):
             raise ValueError("Unknown dataset assay kind")
         for citation in self.citations:
-            _identifier(citation, "citation")
+            require_identifier(citation, "citation")
         if not self.coverage or not self.processing:
             raise ValueError("Dataset measurable coverage and processing provenance are required")
-        _metadata(self, "coverage", "processing")
+        freeze_metadata(self, "coverage", "processing")
 
 
 @dataclass(frozen=True)
-class Sample(_Record):
+class Sample(Record):
     """One source-defined biological sample or pool within a dataset release.
 
     ``reference`` identifies the coordinate/annotation system used for mapping;
@@ -201,7 +260,7 @@ class Sample(_Record):
     provenance: Mapping = field(default_factory=dict)
 
     def __post_init__(self):
-        _identifier(self.sample_id, "sample_id")
+        require_identifier(self.sample_id, "sample_id")
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("Sample reference must be a ReferenceContext")
         _optional_text(self, "biological_unit_id", "tissue", "cell_type", "condition",
@@ -210,15 +269,15 @@ class Sample(_Record):
             raise TypeError("Pool members must be a sequence of IDs")
         members = tuple(self.pool_members)
         for member in members:
-            _identifier(member, "pool member")
+            require_identifier(member, "pool member")
         if len(set(members)) != len(members):
             raise ValueError("Pool members must be unique")
         object.__setattr__(self, "pool_members", members)
-        _metadata(self, "attributes", "provenance")
+        freeze_metadata(self, "attributes", "provenance")
 
 
 @dataclass(frozen=True)
-class Assay(_Record):
+class Assay(Record):
     """An acquisition/quantification assay, distinct from biological replication."""
 
     assay_id: str
@@ -238,19 +297,19 @@ class Assay(_Record):
     provenance: Mapping = field(default_factory=dict)
 
     def __post_init__(self):
-        _identifier(self.assay_id, "assay_id")
-        _identifier(self.sample_id, "sample_id")
+        require_identifier(self.assay_id, "assay_id")
+        require_identifier(self.sample_id, "sample_id")
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("Assay reference must be a ReferenceContext")
         if self.kind not in ASSAY_KINDS:
             raise ValueError("Unknown assay kind")
         _optional_text(self, "run_id", "technical_replicate", "fraction", "channel", "plex",
                        "bridge", "search_reference")
-        _metadata(self, "normalization", "calibration", "attributes", "provenance")
+        freeze_metadata(self, "normalization", "calibration", "attributes", "provenance")
 
 
 @dataclass(frozen=True)
-class MeasurementReference(_Record):
+class MeasurementReference(Record):
     """An input observation identified across dataset releases and references."""
 
     dataset_id: str
@@ -260,7 +319,7 @@ class MeasurementReference(_Record):
 
     def __post_init__(self):
         for name in ("dataset_id", "dataset_version", "measurement_id"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("Measurement reference requires a ReferenceContext")
 
@@ -277,7 +336,7 @@ class MeasurementReference(_Record):
 
 
 @dataclass(frozen=True)
-class Measurement(_Record):
+class Measurement(Record):
     """A native value with units, missingness, target resolution and provenance.
 
     No unit conversion is implicit. A measured zero remains a zero; censored or
@@ -309,7 +368,7 @@ class Measurement(_Record):
 
     def __post_init__(self):
         for name in ("measurement_id", "sample_id", "assay_id", "unit", "dataset_id", "dataset_version"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         if not isinstance(self.target, ScopedTarget):
             raise TypeError("Measurement target must be a ScopedTarget")
         if self.quantity not in QUANTITIES:
@@ -317,31 +376,31 @@ class Measurement(_Record):
         if self.status not in MEASUREMENT_STATUSES or self.origin not in MEASUREMENT_ORIGINS:
             raise ValueError("Unknown measurement status or origin")
         if self.status == "measured":
-            _number(self.value, "value")
+            require_finite_number(self.value, "value")
         elif self.value is not None:
             raise ValueError("Unmeasured/censored values must be None; retain native sentinels in provenance")
         if self.scale not in ("linear", "log"):
             raise ValueError("Scale must be linear or log")
         if self.scale == "log":
-            _number(self.log_base, "log_base")
+            require_finite_number(self.log_base, "log_base")
             if self.log_base <= 0 or self.log_base == 1:
                 raise ValueError("Logarithm base must be positive and not one")
         elif self.log_base is not None:
             raise ValueError("Linear values cannot have a log base")
         if self.uncertainty is not None:
-            _number(self.uncertainty, "uncertainty")
-            _identifier(self.uncertainty_type, "uncertainty_type")
+            require_finite_number(self.uncertainty, "uncertainty")
+            require_identifier(self.uncertainty_type, "uncertainty_type")
             if self.uncertainty < 0 or not self.uncertainty_type:
                 raise ValueError("Uncertainty needs a nonnegative value and a named definition")
         elif self.uncertainty_type is not None:
             raise ValueError("Uncertainty type requires an uncertainty value")
         if self.detection_limit is not None:
-            _number(self.detection_limit, "detection_limit")
+            require_finite_number(self.detection_limit, "detection_limit")
         if isinstance(self.input_measurements, str):
             raise TypeError("Input measurements must be a sequence of IDs")
         inputs = tuple(self.input_measurements)
         for identifier in inputs:
-            _identifier(identifier, "input measurement")
+            require_identifier(identifier, "input measurement")
         if len(set(inputs)) != len(inputs) or self.measurement_id in inputs:
             raise ValueError("Derived input IDs must be unique and exclude the output")
         object.__setattr__(self, "input_measurements", inputs)
@@ -363,14 +422,14 @@ class Measurement(_Record):
         if self.origin in ("derived", "predicted") and not self.derivation:
             raise ValueError("Derived/predicted values require a named method and assumptions")
         if self.origin in ("derived", "predicted") and isinstance(self.derivation, Mapping):
-            _identifier(self.derivation.get("method"), "derivation method")
+            require_identifier(self.derivation.get("method"), "derivation method")
         if self.origin == "observed" and (inputs or references or self.derivation):
             raise ValueError("An observed value cannot contain a derivation")
-        _metadata(self, "derivation", "provenance")
+        freeze_metadata(self, "derivation", "provenance")
 
 
 @dataclass(frozen=True)
-class TargetMapping(_Record):
+class TargetMapping(Record):
     """Source identity and all supported target assignments, including failures."""
 
     mapping_id: str
@@ -386,7 +445,7 @@ class TargetMapping(_Record):
 
     def __post_init__(self):
         for name in ("mapping_id", "source_namespace", "source_identifier"):
-            _identifier(getattr(self, name), name)
+            require_identifier(getattr(self, name), name)
         if not isinstance(self.reference, ReferenceContext):
             raise TypeError("Mapping reference must be a ReferenceContext")
         _optional_text(self, "method", "reason")
@@ -408,4 +467,4 @@ class TargetMapping(_Record):
         if self.status != "unmapped" and not self.method:
             raise ValueError("Mapped identifiers require an attribution method")
         object.__setattr__(self, "targets", targets)
-        _metadata(self, "evidence", "provenance")
+        freeze_metadata(self, "evidence", "provenance")

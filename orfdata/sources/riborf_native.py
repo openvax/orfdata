@@ -9,12 +9,12 @@ from dataclasses import replace
 from ..catalog import ORFCatalog, ORFEvidence, ORFRecord, _placement_position
 from ..evidence_summary import EvidenceSummary
 from ..fasta import iter_fasta
-from ..model import ORFModel, _contig
+from ..gtf import read_transcript_loci, transcript_interval_blocks
+from ..model import ORFModel, normalize_contig
 from ..reference import ScopedTarget
 from ..reference_mapping import ReferenceMapping
 from ..sequence import genetic_code
-from .ncorf_mammals import _ATTRIBUTE, _blocks
-from .riborf import PRESENCE, STOPS, _parsed, _rows
+from .riborf import PRESENCE, STOPS, parse_riborf_rows, read_riborf_rows
 
 
 def _sha(value):
@@ -23,40 +23,7 @@ def _sha(value):
 
 def _annotations(path, build):
     """Keep full transcript versions and every distinct annotated locus."""
-    groups = {}
-    with gzip.open(path, "rt") as stream:
-        for line in stream:
-            if line.startswith("#"):
-                continue
-            fields = line.rstrip("\n").split("\t")
-            if len(fields) != 9 or fields[2] != "exon":
-                continue
-            attributes = dict(_ATTRIBUTE.findall(fields[8]))
-            name = attributes["transcript_id"]
-            version = attributes.get("transcript_version")
-            if version and "." not in name:
-                name += "." + version
-            key = name, _contig(fields[0], build), fields[6], attributes["gene_id"]
-            entry = groups.setdefault(
-                key,
-                dict(
-                    transcript=name,
-                    contig=key[1],
-                    strand=key[2],
-                    gene_id=key[3],
-                    gene_name=attributes.get("gene_name", ""),
-                    exons=set(),
-                ),
-            )
-            entry["exons"].add((int(fields[3]), int(fields[4])))
-    found = defaultdict(list)
-    for entry in groups.values():
-        entry["exons"] = tuple(sorted(entry["exons"], reverse=entry["strand"] == "-"))
-        ascending = sorted(entry["exons"])
-        if any(b >= c for (_, b), (c, _) in zip(ascending, ascending[1:])):
-            raise ValueError("Overlapping/contradictory reference exons: " + entry["transcript"])
-        found[entry["transcript"]].append(entry)
-    return found
+    return read_transcript_loci(path, genome_build=build)
 
 
 def _fasta(paths):
@@ -90,7 +57,7 @@ def _bed(row, build):
         or (int(row[6]), int(row[7])) != (first, last)
     ):
         raise ValueError("Native BED span, thick span or block order disagree")
-    return _contig(str(row[0]), build), row[5], blocks
+    return normalize_contig(str(row[0]), build), row[5], blocks
 
 
 def _coding(sequence, start, end, start_codon):
@@ -148,7 +115,9 @@ def reconstruct(inputs, manifest):
         by_sequence[_sha(sequence)].append(name)
         by_stable_id[name.rsplit(".", 1)[0]].append(name)
     processing = manifest.processing
-    parsed, source_rows, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
+    parsed, source_rows, short = parse_riborf_rows(
+        processing, read_riborf_rows(inputs["table"], processing["sheet"])
+    )
     records, unresolved, seen = [], [], set()
     source_pins = {name: dict(url=a.url, sha256=a.sha256) for name, a in assets.items()}
     native_valid = 0
@@ -179,13 +148,13 @@ def reconstruct(inputs, manifest):
                 raise ValueError(
                     "Native transcript length disagrees with RNA, annotation or source row"
                 )
-            blocks = _blocks(entry, start, end - 1)
+            blocks = transcript_interval_blocks(entry["exons"], entry["strand"], start, end - 1)
             if _bed(row, source_reference.genome_build) != (entry["contig"], entry["strand"], blocks):
                 raise ValueError(
                     "Native RNA offsets and BED blocks disagree with the source annotation"
                 )
             labels = transcript_label.split(":")
-            if len(labels) != 3 or (_contig(labels[1], source_reference.genome_build), labels[2]) != (
+            if len(labels) != 3 or (normalize_contig(labels[1], source_reference.genome_build), labels[2]) != (
                 entry["contig"],
                 entry["strand"],
             ):
@@ -241,7 +210,9 @@ def reconstruct(inputs, manifest):
                 if sum(b - a + 1 for a, b in target_entry["exons"]) != len(target_sequence):
                     failures.append(name + ": RNA and annotated exon lengths disagree")
                     continue
-                target_blocks = _blocks(target_entry, start, end - 1)
+                target_blocks = transcript_interval_blocks(
+                    target_entry["exons"], target_entry["strand"], start, end - 1
+                )
                 target_coding, target_protein, _ = _coding(target_sequence, start, end, start_codon)
                 if target_coding != coding or target_protein != protein:
                     raise ValueError(

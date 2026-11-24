@@ -42,10 +42,10 @@ from collections import Counter
 
 from ..catalog import ORFCatalog, ORFEvidence, ORFRecord
 from ..evidence_summary import EvidenceSummary
+from ..gtf import read_transcript_exons, transcript_interval_blocks
 from ..model import ORFModel
 from ..reference import ScopedTarget
 from ..sequence import genetic_code, reverse_complement_dna
-from .ncorf_mammals import _blocks, _transcripts
 
 PRESENCE = ("In the source's genome-wide set of RibORF 2.0-identified translated ORFs (Supplementary Data 3), "
             "from the mouse Ribo-seq data of Supplementary Data 1 (224 samples, 26 GEO series). Presence, not a "
@@ -53,7 +53,21 @@ PRESENCE = ("In the source's genome-wide set of RibORF 2.0-identified translated
 STOPS = {"TAA", "TAG", "TGA"}
 
 
-def _rows(path, sheet):
+def read_riborf_rows(path, sheet):
+    """Read non-empty RibORF Supplementary Data 3 rows from an Excel worksheet.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        Path to the source workbook (extensionless cached paths are supported).
+    sheet : str
+        Worksheet name to read.
+
+    Returns
+    -------
+    list of tuple
+        Worksheet rows that have a non-empty fourth column (ORF descriptor).
+    """
     from openpyxl import load_workbook
 
     with open(path, "rb") as handle:  # Cached files have no extension for openpyxl to go by.
@@ -85,12 +99,26 @@ def _versioned(stable, entry):
     return f"{stable}.{entry['version']}" if entry["version"] else stable
 
 
-def _parsed(processing, sheet_rows):
-    """Rows to import and counts before reference validation.
+def parse_riborf_rows(processing, sheet_rows):
+    """Parse RibORF worksheet rows into candidate ORF tuples and summary counts.
 
     RibORF catalogue release 1 used ``min_protein_length`` as an import filter.
     Release 2 reports rows below ``report_protein_lengths_below`` but retains
     them, so consumer-specific peptide length policy does not erase ORF models.
+
+    Parameters
+    ----------
+    processing : Mapping
+        Manifest ``processing`` configuration containing ``skip_types``,
+        ``biotypes``, and optional length-threshold keys.
+    sheet_rows : iterable of tuple
+        Raw worksheet rows as returned by :func:`read_riborf_rows`.
+
+    Returns
+    -------
+    tuple of (list, int, int)
+        ``(parsed, source_rows, short)`` where ``parsed`` contains
+        ``(transcript, length, start, end, orf_type, start_codon, row)`` tuples.
     """
     skip_types, names = set(processing["skip_types"]), processing["biotypes"]
     minimum = processing.get("min_protein_length")
@@ -125,14 +153,16 @@ def import_orfs(inputs, output, manifest):
     # Ensembl IDs carry a version (ENST00000000233.10); C. elegans names have dots of their own (2L52.1a.1).
     versioned = processing.get("versioned_ids", True)
     source_annotation = processing.get("source_annotation", "GENCODE vM25")
-    parsed, source_rows, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
+    parsed, source_rows, short = parse_riborf_rows(
+        processing, read_riborf_rows(inputs["table"], processing["sheet"])
+    )
 
     def stable_id(source_transcript):
         name = source_transcript.split(":")[0]
         return name.split(".")[0] if versioned else name
 
     wanted = {stable_id(p[0]) for p in parsed}
-    transcripts = _transcripts(inputs["gtf"], wanted)
+    transcripts = read_transcript_exons(inputs["gtf"], transcript_ids=wanted)
     sequences = _sequences([inputs["cdna"], inputs["ncrna"]], wanted)
     code = genetic_code(1)
 
@@ -163,7 +193,7 @@ def import_orfs(inputs, output, manifest):
             continue
         declared = None if start_codon in code.start_codons else start_codon
         protein = code.translate(coding, start_codon=declared)[:-1]
-        blocks = _blocks(entry, start, end - 1)
+        blocks = transcript_interval_blocks(entry["exons"], entry["strand"], start, end - 1)
         key = (entry["contig"], entry["strand"], blocks)
         found = paths.setdefault(key, dict(protein=protein, start_codon=declared, rows=[]))
         found["rows"].append((stable, orf_type))
@@ -194,11 +224,15 @@ def import_genome_orfs(inputs, output, manifest):
     lie outside them.
     """
     processing = manifest.processing
-    parsed, source_rows, short = _parsed(processing, _rows(inputs["table"], processing["sheet"]))
+    parsed, source_rows, short = parse_riborf_rows(
+        processing, read_riborf_rows(inputs["table"], processing["sheet"])
+    )
     suffix = processing.get("transcript_suffix", "")
     names = {p[0].split(":")[0] for p in parsed}
     # Ensembl names most yeast transcripts with the suffix, transposable elements without it.
-    transcripts = _transcripts(inputs["gtf"], {name + suffix for name in names} | names)
+    transcripts = read_transcript_exons(
+        inputs["gtf"], transcript_ids={name + suffix for name in names} | names
+    )
     genome = _genome(inputs["genome"], {str(p[6][0]) for p in parsed})
     code = genetic_code(1)
 

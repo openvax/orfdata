@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, replace
 
 from .cache import content_digest
+from .gtf import read_gtf_rows
 from .proteome import Occurrence, ProteinSequence
 from .reference import ReferenceContext
 
@@ -69,38 +70,27 @@ class _Transcript:
 
 def _annotation(path, expected, reference):
     transcripts, products = defaultdict(set), defaultdict(lambda: defaultdict(set))
-    accession = None
+    headers = {}
     with _source(path, expected) as stream:
-        for line in stream:
-            if line.startswith("#!genome-build-accession "):
-                value = line.split()[-1]
-                if accession is not None and accession != value:
-                    raise ValueError("Conflicting Ensembl assembly headers")
-                accession = value
-            if line.startswith("#") or not line.strip():
-                continue
-            fields = line.rstrip("\r\n").split("\t")
-            if len(fields) != 9:
-                raise ValueError("Malformed Ensembl GTF row")
-            if fields[2] not in {"transcript", "CDS"}:
-                continue
-            if (not fields[0] or fields[6] not in {"+", "-"}
-                    or any(not re.fullmatch(r"[1-9][0-9]*", fields[i]) for i in (3, 4))
-                    or int(fields[3]) > int(fields[4])):
+        for seqname, feature, start, end, strand, attributes in read_gtf_rows(
+            stream,
+            features={"transcript", "CDS"},
+            headers=headers,
+            strict_attributes=True,
+            repeated_attribute_keys=("tag",),
+            source_name=path,
+        ):
+            if strand not in {"+", "-"}:
                 raise ValueError("Invalid Ensembl transcript/CDS locus")
-            attributes = {}
-            for key, value in re.findall(r'(\w+) "([^"]*)"', fields[8]):
-                if key != "tag" and key in attributes and attributes[key] != value:
-                    raise ValueError(f"Conflicting Ensembl GTF attribute: {key}")
-                attributes[key] = value
             tid, gene = _versioned(attributes, "transcript"), _versioned(attributes, "gene")
-            start, end = int(fields[3]), int(fields[4])
-            if fields[2] == "transcript":
+            if feature == "transcript":
                 transcripts[tid].add(_Transcript(gene, attributes.get("gene_name"),
-                    attributes.get("transcript_biotype"), fields[0], fields[6], start, end))
+                    attributes.get("transcript_biotype"), seqname, strand, start, end))
             else:
                 pid = _versioned(attributes, "protein")
-                products[pid][(tid, gene, fields[0], fields[6])].add((start, end))
+                products[pid][(tid, gene, seqname, strand)].add((start, end))
+    raw_accession = headers.get("genome-build-accession", "")
+    accession = raw_accession.split()[-1] if raw_accession else None
     if accession != reference.assembly_accession:
         raise ValueError("Ensembl GTF assembly accession disagrees with reference")
     if not transcripts or not products:
