@@ -18,8 +18,10 @@ import pytest
 import orfdata
 from orfdata.cli import COMMAND_ALIASES, COMMAND_TABLE, completion_parser, completion_words
 
-# What a Tab press must not import: the scientific stack, DataCache, and ORFdata's data and command modules.
-HEAVY = ("pandas", "numpy", "pyarrow", "datacache", "pyensembl", "varcode", "biotite", "ahocorasick", "openpyxl",
+# What a Tab press must not import: the scientific stack, DataCache (datacache.cli_help is stdlib-only),
+# and ORFdata's data and command modules.
+HEAVY = ("pandas", "numpy", "pyarrow", "datacache.cache", "datacache.database", "datacache.download",
+         "datacache.fetch", "requests", "urllib3", "pyensembl", "varcode", "biotite", "ahocorasick", "openpyxl",
          "yaml", "orfdata.catalog", "orfdata.catalogs", "orfdata.datasets", "orfdata.proteome", "orfdata.viral",
          "orfdata.viral_panel", "orfdata.viral_coverage", "orfdata.liftover", "orfdata.genomes",
          "orfdata.cli_output", "orfdata.download_cli", "orfdata.catalog_cli", "orfdata.dataset_cli",
