@@ -56,36 +56,69 @@ def _genome():
 
 
 @pytest.mark.parametrize("argv, target, result", [
-    (["genomes", "install", "t2t-chm13"], "orfdata.genomes_cli.install_genome", _genome()),
+    (["genomes", "install", "t2t-chm13"], "orfdata.genomes.install_genome", _genome()),
     (["data", "genome", "t2t-chm13"], "orfdata.genomes.install_genome", _genome()),
-    (["chains", "download", "GRCh38", "GRCh37"], "orfdata.liftover_cli.download_chain", "chain"),
+    (["chains", "download", "GRCh38", "GRCh37"], "orfdata.liftover.download_chain", "chain"),
     (["data", "chains", "GRCh38", "GRCh37"], "orfdata.liftover.download_chain", "chain"),
-    (["chains", "download"], "orfdata.liftover_cli.download_chains", dict(downloaded={}, skipped={})),
+    (["chains", "download", "--species", "human"], "orfdata.liftover.download_chain", "chain"),
 ])
 def test_every_acquisition_command_has_the_same_timeout(argv, target, result, monkeypatch, tmp_path, capsys):
+    from orfdata.resource_kinds import get_resource_kind
+
     calls = _capture(monkeypatch, target, result)
+    # Mark inspection as available right after acquisition so fetch_data's post-check succeeds.
+    kind_name = "genome" if "genome" in argv[0] or "genome" in argv[1] else "chain"
+    handler = get_resource_kind(kind_name)
+    real_inspect = handler.inspect
+    from dataclasses import replace
+
+    state = {"done": False}
+
+    def fake_inspect(name, version=None, *, cache_root=None, verify_files=False, options=None):
+        row = real_inspect(name, version, cache_root=cache_root, verify_files=False, options=options)
+        if state["done"]:
+            return replace(row, status="available", origin="download")
+        return replace(row, status="missing", origin=None)
+
+    def wrapped_capture(*args, **kwargs):
+        calls.append(kwargs)
+        state["done"] = True
+        return result
+
+    calls.clear()
+    monkeypatch.setattr(target, wrapped_capture)
+    monkeypatch.setattr(handler, "inspect", fake_inspect)
+
+    state["done"] = False
     run([*argv, "--json"])
+    first_timeout = calls[-1]["download_options"]["timeout"]
+    calls.clear()
+    state["done"] = False
     run([argv[0], "--cache-root", str(tmp_path), *argv[1:], "--timeout", "5", "--json"])
     capsys.readouterr()
-    assert [call["download_options"]["timeout"] for call in calls] == [60, 5]
-    assert calls[1]["cache_root"] == str(tmp_path)
+    assert [first_timeout, calls[-1]["download_options"]["timeout"]] == [60, 5]
+    assert calls[-1]["cache_root"] == str(tmp_path)
 
 
 def test_dataset_downloads_no_longer_wait_indefinitely(monkeypatch, capsys):
+    from orfdata.data_resources import fetch_data as real_fetch
+
     calls = []
 
-    class Registry:
-        def __init__(self, definitions=None, *, cache_root=None):
-            pass
+    def fake_fetch(name, **options):
+        calls.append(options)
+        return {"kind": "dataset", "name": name, "path": "/tmp/x", "status": "available"}
 
-        def download(self, name, version, **options):
-            calls.append(options)
-            return {}
-
-    monkeypatch.setattr("orfdata.dataset_cli.DatasetRegistry", Registry)
-    run(["datasets", "download", "fixture", "--json"])
+    monkeypatch.setattr("orfdata.data_resources.fetch_data", fake_fetch)
+    monkeypatch.setattr("orfdata.datasets.DatasetRegistry.require_published", lambda self, name, version=None: "1")
+    monkeypatch.setattr(
+        "orfdata.datasets.DatasetRegistry.inspect",
+        lambda self, name, version=None, verify_files=True: SimpleNamespace(status="available", files={}, path="/tmp/x"),
+    )
+    run(["datasets", "download", "copy-yeast-abundance", "--json"])
     capsys.readouterr()
     assert calls[0]["timeout"] == 60
+    assert real_fetch is not None
 
 
 @pytest.mark.parametrize("argv", [
@@ -94,7 +127,7 @@ def test_dataset_downloads_no_longer_wait_indefinitely(monkeypatch, capsys):
     ["viral", "inventory", "download", "--cache-root", "{root}"],
 ])
 def test_viral_inventory_reads_cache_root_at_any_level(argv, monkeypatch, tmp_path, capsys):
-    calls = _capture(monkeypatch, "orfdata.viral_cli.download_viral_inventory", tmp_path / "inventory.tsv")
+    calls = _capture(monkeypatch, "orfdata.viral_cli.fetch_data", {"path": str(tmp_path / "inventory.tsv")})
     run([part.format(root=tmp_path) for part in argv] + ["--json"])
     capsys.readouterr()
     assert calls[0]["cache_root"] == str(tmp_path) and calls[0]["timeout"] == 60
@@ -105,9 +138,9 @@ def test_timeouts_must_be_positive_and_finite_or_none(capsys, monkeypatch):
         with pytest.raises(SystemExit):
             run(["data", "fetch", "bundled", "--timeout", value])
         assert "positive number of seconds, or none" in capsys.readouterr().err
-    calls = _capture(monkeypatch, "orfdata.liftover_cli.download_chain", "chain")
+    calls = _capture(monkeypatch, "orfdata.data_resources.fetch_data", {"path": "chain"})
     run(["chains", "download", "GRCh38", "GRCh37", "--timeout", "none", "--json"])
-    assert calls[0]["download_options"]["timeout"] is None
+    assert calls[0]["timeout"] is None
 
 
 def test_cache_root_is_refused_where_nothing_reads_it(capsys):
@@ -132,39 +165,24 @@ def test_viral_and_dataset_downloads_share_the_default(monkeypatch, capsys):
 
     assert DOWNLOAD_TIMEOUT == 60
     assert download_viral_references.__kwdefaults__["timeout"] == DOWNLOAD_TIMEOUT
-    viral = []
-
-    class Bundle:
-        def to_dict(self):
-            return {}
-
-    monkeypatch.setattr("orfdata.viral_panel.download_viral_references",
-                        lambda **options: viral.append(options) or Bundle())
-    run(["data", "viral", "--json"])
-    assert viral[0]["timeout"] == 60
     calls = []
 
-    class Registry:
-        def __init__(self, definitions=None, *, cache_root=None):
-            pass
+    def fake_fetch(name, **options):
+        calls.append(options)
+        return {"kind": "viral", "name": name, "path": "p", "status": "available"}
 
-        def build(self, name, version, *, download_options, **options):
-            calls.append(download_options)
-            return type("Built", (), dict(path="p", counts={}, manifest=type("M", (), dict(
-                dataset_id=name, version="1"))))
-
-        def download_reference(self, name, version, **options):
-            calls.append(options)
-            return {}
-
-        def search_references(self, name, version):
-            return ()
-
-    monkeypatch.setattr("orfdata.dataset_cli.DatasetRegistry", Registry)
-    run(["datasets", "build", "fixture", "--json"])
-    run(["datasets", "download-reference", "fixture", "--timeout", "7", "--json"])
+    monkeypatch.setattr("orfdata.data_resources.fetch_data", fake_fetch)
+    monkeypatch.setattr(
+        "orfdata.datasets.DatasetRegistry.open_build",
+        lambda self, name, version=None, verify_files=True: SimpleNamespace(
+            path="p", counts={}, manifest=SimpleNamespace(dataset_id=name, version="1"),
+        ),
+    )
+    run(["data", "viral", "--json"])
+    run(["datasets", "build", "peptideatlas-dog-peptides", "--json"])
+    run(["datasets", "download-reference", "pfizer-atlas-dog-protein", "--timeout", "7", "--json"])
     capsys.readouterr()
-    assert [call["timeout"] for call in calls] == [60, 7]
+    assert [call["timeout"] for call in calls] == [60, 60, 7]
 
 
 def test_suppressed_defaults_do_not_leak_into_help():

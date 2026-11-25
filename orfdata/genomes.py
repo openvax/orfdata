@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from ._pinned_genome import PinnedEnsemblGenome as PinnedEnsemblGenome
 
 _ROLES = ("gtf", "transcripts", "proteins")
+GENOME_ROLES = _ROLES
 
 
 @dataclass(frozen=True)
@@ -141,8 +142,13 @@ def _lookup(name):
     return genome, entry
 
 
-def _pinned(name):
+def resolve_pinned_genome(name):
+    """Resolve a genome name, assembly name, accession, or alias to its :class:`PinnedGenome`."""
     return _lookup(name)[0]
+
+
+def _pinned(name):
+    return resolve_pinned_genome(name)
 
 
 def contig_aliases(name):
@@ -250,7 +256,7 @@ def install_genome(name, *, force=False, source_paths=None, cache_root=None, dow
 
 def _install_command(name, cache_root, force=False):
     root = "" if cache_root is None else f" --cache-root {cache_root}"
-    return f"'orfdata genomes{root} install {name}{' --force' if force else ''}'"
+    return f"'orfdata data fetch {name}{root}{' --force' if force else ''}'"
 
 
 def load_genome(name, *, cache_root=None, genome_fasta_path_or_url=None):

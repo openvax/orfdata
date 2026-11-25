@@ -94,6 +94,9 @@ class Occurrence:
     coding_blocks: tuple
     on_source_transcript: bool
 
+    def __post_init__(self):
+        object.__setattr__(self, "coding_blocks", tuple(tuple(block) for block in self.coding_blocks))
+
     @classmethod
     def from_orf(cls, orf):
         transcript = orf.transcript
@@ -286,25 +289,25 @@ def _record_key(record):
                                   for name, value in fields.items() if value is not None)
 
 
-def _freeze_json(value):
-    """Keep caller-owned producer payloads immutable inside a snapshot."""
+def _freeze_json(value, *, label="Producer payload"):
+    """Recursively freeze JSON-compatible metadata so caller or attribute mutations cannot drift."""
     if isinstance(value, Mapping):
         if any(not isinstance(key, str) for key in value):
-            raise TypeError("Producer payload object keys must be strings")
-        return MappingProxyType({key: _freeze_json(item) for key, item in value.items()})
+            raise TypeError(f"{label} object keys must be strings")
+        return MappingProxyType({key: _freeze_json(item, label=label) for key, item in value.items()})
     if isinstance(value, (list, tuple)):
-        return tuple(_freeze_json(item) for item in value)
+        return tuple(_freeze_json(item, label=label) for item in value)
     if value is None or type(value) in (str, int, float, bool):
         if type(value) is float and not (-float("inf") < value < float("inf")):
-            raise ValueError("Producer payload numbers must be finite")
+            raise ValueError(f"{label} numbers must be finite")
         return value
-    raise TypeError(f"Producer payload contains a non-JSON value: {type(value).__name__}")
+    raise TypeError(f"{label} contains a non-JSON value: {type(value).__name__}")
 
 
 def _thaw_json(value):
     if isinstance(value, Mapping):
         return {key: _thaw_json(item) for key, item in value.items()}
-    if isinstance(value, tuple):
+    if isinstance(value, (list, tuple)):
         return [_thaw_json(item) for item in value]
     return value
 
@@ -446,6 +449,15 @@ class ProteinSequence:
     producer: Optional[ProducerInfo] = None
 
     def __post_init__(self):
+        object.__setattr__(self, "evidence", tuple(self.evidence))
+        object.__setattr__(self, "occurrences", tuple(self.occurrences))
+        object.__setattr__(self, "equivalent_ids", tuple(self.equivalent_ids))
+        if self.evidence_detail is not None:
+            object.__setattr__(
+                self,
+                "evidence_detail",
+                _freeze_json(_json(self.evidence_detail), label="Protein evidence metadata"),
+            )
         if self.taxon_id is not None and (type(self.taxon_id) is not int or self.taxon_id < 1):
             raise ValueError("Protein taxon_id must be a positive NCBI taxon ID or None")
         if (self.kind == "derived") != (self.derivation is not None):
@@ -619,7 +631,8 @@ class ProteinSequence:
     def to_dict(self):
         return dict(accession=self.accession, sequence=self.sequence, kind=self.kind,
                     taxon_id=self.taxon_id, source=self.source, orf_type=self.orf_type,
-                    evidence=list(self.evidence), evidence_detail=self.evidence_detail,
+                    evidence=list(self.evidence),
+                    evidence_detail=None if self.evidence_detail is None else _thaw_json(self.evidence_detail),
                     occurrences=[[getattr(o, name) for name in _OCCURRENCE_FIELDS] for o in self.occurrences],
                     source_transcript_id=self.source_transcript_id, source_binding=self.source_binding,
                     **({"equivalent_ids": list(self.equivalent_ids)} if self.equivalent_ids else {}),
@@ -1114,7 +1127,7 @@ class Proteome:
         self.reference = reference
         self.reference_policy = reference_policy
         self.proteins: tuple[ProteinSequence, ...] = tuple(proteins)
-        self.layers = tuple(MappingProxyType(_json(dict(layer))) for layer in layers)
+        self.layers = tuple(_freeze_json(_json(dict(layer)), label="Proteome layer metadata") for layer in layers)
         self.excluded = tuple(excluded)
         self.genome = genome
         self.records = tuple(records)
@@ -1312,7 +1325,7 @@ class Proteome:
         existing_layers = [item for item in self.layers
                            if item.get("role") == "component" and item.get("source") == source]
         if existing_layers:
-            if len(existing_layers) != 1 or dict(existing_layers[0]) != layer:
+            if len(existing_layers) != 1 or _thaw_json(existing_layers[0]) != _json(layer):
                 raise ValueError(f"Conflicting protein set: {proteins.name}")
             existing = self.by_accession()
             if any(entry.accession not in existing
@@ -1391,9 +1404,9 @@ class Proteome:
                 positions[entry.accession] = len(entries)
                 entries.append(entry)
             layers = list(result.layers)
-            layer_keys = {content_digest(dict(layer)) for layer in layers}
+            layer_keys = {content_digest(_thaw_json(layer)) for layer in layers}
             for layer in other.layers:
-                key = content_digest(dict(layer))
+                key = content_digest(_thaw_json(layer))
                 if key not in layer_keys:
                     layers.append(layer)
                     layer_keys.add(key)
@@ -1712,7 +1725,7 @@ class Proteome:
         existing_layers = [item for item in self.layers
                            if item.get("role") == "viral" and item.get("source") == source]
         if existing_layers:
-            if len(existing_layers) != 1 or dict(existing_layers[0]) != layer:
+            if len(existing_layers) != 1 or _thaw_json(existing_layers[0]) != _json(layer):
                 raise ValueError(f"Conflicting viral protein set: {proteins.name}")
             existing = self.by_accession()
             if any(entry.accession not in existing
@@ -1822,13 +1835,13 @@ class Proteome:
             protein_sources=dict(Counter(e.protein_source for e in self.proteins)),
             derived=sum(e.derivation is not None for e in self.proteins),
             producer_records=len(self.records), producer_links=len(self.links),
-            layers=[dict(layer) for layer in self.layers], excluded=len(self.excluded),
+            layers=[_thaw_json(layer) for layer in self.layers], excluded=len(self.excluded),
         )
 
     def _content(self):
         content = dict(
             reference=None if self.reference is None else self.reference.to_dict(),
-            layers=[dict(layer) for layer in self.layers],
+            layers=[_thaw_json(layer) for layer in self.layers],
             entries=[e.to_dict() for e in self.proteins],
             excluded=[asdict(e) for e in self.excluded],
         )
@@ -2394,7 +2407,7 @@ def _annotation_files(genome, *, include_proteins=True):
 
 def _json(value):
     """Plain JSON form, so identities do not depend on tuples versus lists."""
-    return json.loads(json.dumps(value))
+    return json.loads(json.dumps(_thaw_json(value)))
 
 
 def _catalog_identity(catalog):
@@ -2441,7 +2454,7 @@ def _require_installed(genome):
                     pinned_name = found[0].name
                     break
         if pinned_name is not None:
-            install = f"orfdata genomes install {pinned_name} --force"
+            install = f"orfdata data fetch {pinned_name} --force"
         elif getattr(genome, "release", None) is not None and getattr(genome, "species", None) is not None:
             install += f" --release {genome.release} --species {genome.species.latin_name}"
         # Absent, partly downloaded or unindexed annotation is installed by the command; damage is a failure.

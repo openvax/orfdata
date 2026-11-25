@@ -112,6 +112,15 @@ if TYPE_CHECKING:  # What type checkers and IDEs read; at run time, __getattr__ 
     )
     from .reference import ReferenceContext, ScopedTarget
     from .reference_mapping import MappedMeasurement, ReferenceMapping
+    from .resource_kinds import (
+        RESOURCE_KINDS,
+        ResourceKind,
+        ResourceKindRegistry,
+        get_resource_kind,
+        register_resource_kind,
+        registered_resource_kinds,
+        resolve_source_paths,
+    )
     from .rna import IRES, ProteinProduct, RNAFeature, SourceRNA, products_from_uniprot, rfam_ires
     from .search_reference import (
         SearchMembership,
@@ -120,6 +129,7 @@ if TYPE_CHECKING:  # What type checkers and IDEs read; at run time, __getattr__ 
         SearchSequence,
     )
     from .sequence import GeneticCode, genetic_code
+    from .source_store import SourceStore, prune_source_store, source_store_dir
     from .viral import (
         ViralProduct,
         ViralReference,
@@ -130,7 +140,9 @@ if TYPE_CHECKING:  # What type checkers and IDEs read; at run time, __getattr__ 
     )
     from .viral_coverage import (
         download_viral_inventory,
+        inspect_viral_inventory,
         viral_contexts,
+        viral_inventory_path,
         viral_panel_coverage,
     )
     from .viral_panel import (
@@ -194,14 +206,30 @@ EXPORTED_FROM = {name: module for module, names in {
     ),
     "reference": ("ReferenceContext", "ScopedTarget"),
     "reference_mapping": ("MappedMeasurement", "ReferenceMapping"),
+    "resource_kinds": (
+        "RESOURCE_KINDS",
+        "ResourceKind",
+        "ResourceKindRegistry",
+        "get_resource_kind",
+        "register_resource_kind",
+        "registered_resource_kinds",
+        "resolve_source_paths",
+    ),
     "rna": ("IRES", "ProteinProduct", "RNAFeature", "SourceRNA", "products_from_uniprot", "rfam_ires"),
     "search_reference": ("SearchMembership", "SearchReference", "SearchReferenceSpec", "SearchSequence"),
     "sequence": ("GeneticCode", "genetic_code"),
+    "source_store": ("SourceStore", "prune_source_store", "source_store_dir"),
     "viral": (
         "ViralProduct", "ViralReference", "viral_orfs", "viral_reference", "viral_reference_sequence",
         "viral_references",
     ),
-    "viral_coverage": ("download_viral_inventory", "viral_contexts", "viral_panel_coverage"),
+    "viral_coverage": (
+        "download_viral_inventory",
+        "inspect_viral_inventory",
+        "viral_contexts",
+        "viral_inventory_path",
+        "viral_panel_coverage",
+    ),
     "viral_panel": (
         "ViralReferenceFiles", "download_viral_references", "open_viral_references", "prune_viral_references",
         "select_viral_references", "viral_annotation_survey", "viral_genome", "viral_reference_context",
@@ -267,6 +295,8 @@ __all__ = [
     "viral_references",
     "viral_reference_context",
     "download_viral_inventory",
+    "inspect_viral_inventory",
+    "viral_inventory_path",
     "viral_contexts",
     "viral_panel_coverage",
     "viral_subsets",
@@ -336,6 +366,16 @@ __all__ = [
     "data_info",
     "data_path",
     "fetch_data",
+    "RESOURCE_KINDS",
+    "ResourceKind",
+    "ResourceKindRegistry",
+    "registered_resource_kinds",
+    "get_resource_kind",
+    "register_resource_kind",
+    "resolve_source_paths",
+    "SourceStore",
+    "source_store_dir",
+    "prune_source_store",
     "NotInstalledError",
     "TermsNotAccepted",
     "DatasetManifest",

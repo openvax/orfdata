@@ -196,7 +196,7 @@ def fetch_benchmark_csv(target, *, url=BENCHMARK_URL, member=BENCHMARK_MEMBER, t
     return write_verified_file(target, write_member)
 
 
-def prepare_sources(directory, *, all_orfs=False, timeout=120):
+def prepare_sources(directory, *, all_orfs=True, timeout=120):
     """Download ~246 MB via DataCache; extract small tables and stream the count archive."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -393,7 +393,7 @@ def model_initiation_context(model, reference):
     )
 
 
-def build(source_dir, destination, *, all_orfs=False):
+def build(source_dir, destination, *, all_orfs=True):
     import openpyxl
 
     inputs = {**ENSEMBL_INPUTS, **NCRNA_INPUTS} if all_orfs else ENSEMBL_INPUTS
@@ -669,13 +669,18 @@ def main():
 
     parser = HelpArgumentParser(description=__doc__)
     parser.add_argument("--source-dir", type=Path, required=True)
-    parser.add_argument("--all-orfs", action="store_true", help="Include all source ORF classes")
+    parser.add_argument(
+        "--all-orfs",
+        action="store_true",
+        default=True,
+        help="Include all source ORF classes (the default)",
+    )
     parser.add_argument(
         "--prepare-sources",
         action="store_true",
         help="Download checksum-pinned inputs; requires Rscript",
     )
-    parser.add_argument("--output", type=Path, default=Path("orfdata/data/uorf-evidence"))
+    parser.add_argument("--output", type=Path, default=Path("orfdata/data/orf-evidence"))
     args = parser.parse_args()
     if args.prepare_sources:
         prepare_sources(args.source_dir, all_orfs=args.all_orfs)

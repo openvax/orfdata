@@ -217,7 +217,34 @@ def viral_panel_coverage(panel=None, *, collection=None, available=None, virus=N
     return frame[keep]
 
 
-def download_viral_inventory(*, collection=None, cache_root=None, force=False, timeout=DOWNLOAD_TIMEOUT):
+def viral_inventory_path(*, collection=None, cache_root=None):
+    """Return the cached file path for a collection's published viral inventory."""
+    chosen = _collection_for(collection=collection)
+    return get_data_dir(cache_root) / "viral" / "inventories" / chosen.panel / chosen.panel_filename
+
+
+def inspect_viral_inventory(*, collection=None, cache_root=None, verify_files=True):
+    """Inspect a collection's cached published viral inventory offline."""
+    import datacache
+
+    chosen = _collection_for(collection=collection)
+    path = viral_inventory_path(collection=chosen, cache_root=cache_root)
+    return datacache.inspect_file(
+        path,
+        expected_sha256=chosen.panel_sha256 if verify_files else None,
+        expected_size=chosen.panel_size,
+    )
+
+
+def download_viral_inventory(
+    *,
+    collection=None,
+    cache_root=None,
+    force=False,
+    timeout=DOWNLOAD_TIMEOUT,
+    source_path=None,
+    download_options=None,
+):
     """Fetch a collection's own published inventory metadata through DataCache.
 
     This downloads the inventory text the collection follows, not viral genomes
@@ -229,8 +256,14 @@ def download_viral_inventory(*, collection=None, cache_root=None, force=False, t
 
     chosen = _collection_for(collection=collection)
     cache = get_data_dir(cache_root) / "viral" / "inventories" / chosen.panel
+    opts = dict(download_options or {})
+    effective_timeout = opts.get("timeout", timeout)
+    url = Path(source_path).resolve().as_uri() if source_path is not None else chosen.panel_url
+    extra = {}
+    if source_path is None and "resume" in opts:
+        extra["resume"] = opts["resume"]
     return Path(datacache.fetch_file(
-        chosen.panel_url, filename=chosen.panel_filename, cache_root=cache,
+        url, filename=chosen.panel_filename, cache_root=cache,
         expected_sha256=chosen.panel_sha256, expected_size=chosen.panel_size,
         max_bytes=chosen.panel_size, raw=True, record_provenance=True,
-        force=force, timeout=timeout))
+        force=force, timeout=effective_timeout, **extra))

@@ -9,7 +9,7 @@ from orfdata.cli import run
 from orfdata.downloads import collection_state, default_collections
 from orfdata.install import _selected_collections
 
-KINDS = {"viral", "catalog", "dataset", "reference", "genome", "chain", "records"}
+KINDS = {"viral", "inventory", "catalog", "dataset", "reference", "genome", "chain", "records"}
 
 
 def test_every_kind_is_listed_with_an_acquisition_command():
@@ -88,56 +88,134 @@ def test_cli_listings_are_readable_and_machine_readable(capsys):
     assert "Unknown viral context" in capsys.readouterr().err
 
 
-def test_setup_reports_what_each_collection_needed(monkeypatch):
-    from orfdata import downloads
-    from orfdata.install import _install_collections
+def test_setup_reports_what_each_collection_needed(monkeypatch, tmp_path):
+    from orfdata import install_species, liftover
+    from orfdata.resource_kinds import get_resource_kind
 
+    viral_kind = get_resource_kind("viral")
     states = {"gdc-viruses": "missing"}
-    installed, failed = [], []
-    monkeypatch.setattr(downloads, "collection_state", lambda name, **options: states[name])
-    monkeypatch.setattr(downloads, "install_collection",
-                        lambda name, **options: installed.append((name, options["force"])))
+    installed = []
+    real_inspect = viral_kind.inspect
 
-    options = dict(force=False, cache_root=None, timeout=60, failed=failed)
-    assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
-        "gdc-viruses": "built"}
-    # Nothing is replaced when nothing is there.
-    assert installed == [("gdc-viruses", False)] and failed == []
+    def fake_inspect(name, version=None, *, cache_root=None, verify_files=False, options=None):
+        row = real_inspect(name, version, cache_root=cache_root, verify_files=False, options=options)
+        from dataclasses import replace
+
+        return replace(row, status=states[name], origin="build" if states[name] == "available" else None)
+
+    monkeypatch.setattr(viral_kind, "inspect", fake_inspect)
+    monkeypatch.setattr(
+        viral_kind,
+        "acquire",
+        lambda name, version=None, **options: installed.append((name, options["force"])),
+    )
+    monkeypatch.setattr(liftover, "pinned_chains", lambda species=None: ())
+
+    # Mock a single already-installed human catalogue so setup exercises only the viral collection.
+    from orfdata import catalog as catalog_mod
+    from orfdata.catalogs import CatalogRegistry
+
+    registry = CatalogRegistry(cache_root=tmp_path)
+    monkeypatch.setattr(catalog_mod, "catalog_choices", lambda reg=None: [])
+    # Keep bundled human + one fake choice? Simpler: patch install_species chain list to one available chain.
+    from types import SimpleNamespace
+
+    fake_chain = SimpleNamespace(
+        name="GRCh38_to_GRCh37",
+        species="homo_sapiens",
+        source_build="GRCh38",
+        target_build="GRCh37",
+        provider="Ensembl",
+        terms="open",
+        restricted=False,
+    )
+    monkeypatch.setattr(liftover, "pinned_chains", lambda species=None: (fake_chain,))
+    chain_kind = get_resource_kind("chain")
+    monkeypatch.setattr(
+        chain_kind,
+        "inspect",
+        lambda name, version=None, **kw: SimpleNamespace(status="available", acquire="download"),
+    )
+
+    result = install_species("human", cache_root=tmp_path, catalogs=["bundled"], collections=["gdc-viruses"])
+    assert result["collections"] == {"gdc-viruses": "built"}
+    assert installed == [("gdc-viruses", False)]
 
     states["gdc-viruses"] = "available"
-    assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
-        "gdc-viruses": "already installed"}
+    result = install_species("human", cache_root=tmp_path, catalogs=["bundled"], collections=["gdc-viruses"])
+    assert result["collections"] == {"gdc-viruses": "already installed"}
+
     # A forced replacement of a healthy collection is reported as replaced, not repaired.
-    assert _install_collections(["gdc-viruses"], "homo_sapiens", **dict(options, force=True)) == {
-        "gdc-viruses": "replaced"}
+    monkeypatch.setattr(chain_kind, "acquire", lambda *a, **k: None)
+    result = install_species(
+        "human", cache_root=tmp_path, catalogs=["bundled"], collections=["gdc-viruses"], force=True,
+    )
+    assert result["collections"] == {"gdc-viruses": "replaced"}
+
     states["gdc-viruses"] = "damaged"
-    assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
-        "gdc-viruses": "repaired"}
+    result = install_species("human", cache_root=tmp_path, catalogs=["bundled"], collections=["gdc-viruses"])
+    assert result["collections"] == {"gdc-viruses": "repaired"}
     assert installed[-1] == ("gdc-viruses", True)
+
     # Unreadable files are refused, as data fetch refuses them, unless forced.
+    from orfdata.install import InstallError
+
     states["gdc-viruses"] = "inaccessible"
-    result = _install_collections(["gdc-viruses"], "homo_sapiens", **options)
-    assert result["gdc-viruses"].startswith("failed: gdc-viruses can't be read") and failed
-    assert _install_collections(["gdc-viruses"], "homo_sapiens", **dict(options, force=True, failed=[])) == {
-        "gdc-viruses": "repaired"}
+    with pytest.raises(InstallError) as exc:
+        install_species("human", cache_root=tmp_path, catalogs=["bundled"], collections=["gdc-viruses"])
+    assert exc.value.result["collections"]["gdc-viruses"].startswith("failed: gdc-viruses can't be read")
+    result = install_species(
+        "human", cache_root=tmp_path, catalogs=["bundled"], collections=["gdc-viruses"], force=True,
+    )
+    assert result["collections"] == {"gdc-viruses": "repaired"}
+    assert registry is not None
 
 
 @pytest.mark.parametrize("error", [ImportError("missing required dependency"), RuntimeError("NCBI EFetch failed")])
-def test_collection_failures_are_reported_including_missing_required_dependencies(monkeypatch, error):
-    from orfdata import downloads
-    from orfdata.install import InstallError, _install_collections
+def test_collection_failures_are_reported_including_missing_required_dependencies(monkeypatch, tmp_path, error):
+    from dataclasses import replace
+    from types import SimpleNamespace
 
-    monkeypatch.setattr(downloads, "collection_state", lambda name, **options: "missing")
+    from orfdata import install_species, liftover
+    from orfdata.install import InstallError
+    from orfdata.resource_kinds import get_resource_kind
 
-    def refuse(name, **options):
+    fake_chain = SimpleNamespace(
+        name="GRCh38_to_GRCh37",
+        species="homo_sapiens",
+        source_build="GRCh38",
+        target_build="GRCh37",
+        provider="Ensembl",
+        terms="open",
+        restricted=False,
+    )
+    monkeypatch.setattr(liftover, "pinned_chains", lambda species=None: (fake_chain,))
+    chain_kind = get_resource_kind("chain")
+    monkeypatch.setattr(
+        chain_kind,
+        "inspect",
+        lambda name, version=None, **kw: SimpleNamespace(status="available", acquire="download"),
+    )
+
+    viral_kind = get_resource_kind("viral")
+    real_inspect = viral_kind.inspect
+    monkeypatch.setattr(
+        viral_kind,
+        "inspect",
+        lambda name, version=None, *, cache_root=None, verify_files=False, options=None: replace(
+            real_inspect(name, version, cache_root=cache_root, verify_files=False, options=options),
+            status="missing",
+            origin=None,
+        ),
+    )
+
+    def refuse(*args, **options):
         raise error
 
-    failed = []
-    monkeypatch.setattr(downloads, "install_collection", refuse)
-    result = _install_collections(["gdc-viruses"], "homo_sapiens", force=False, cache_root=None,
-                                  timeout=60, failed=failed)
-    assert result["gdc-viruses"] == f"failed: {error}"
-    assert failed == [("gdc-viruses", str(error))]
+    monkeypatch.setattr(viral_kind, "acquire", refuse)
+    with pytest.raises(InstallError) as exc:
+        install_species("human", cache_root=tmp_path, catalogs=["bundled"], collections=["gdc-viruses"])
+    assert exc.value.result["collections"]["gdc-viruses"] == f"failed: {error}"
     assert issubclass(InstallError, ValueError)
 
 

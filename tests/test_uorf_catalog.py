@@ -221,17 +221,19 @@ def test_multiple_I_L_equivalent_intervals_and_invalid_assignments():
 
 
 def test_packaged_dataset_manifest_and_local_replay(catalog, tmp_path):
-    root = files("orfdata").joinpath("data/uorf-evidence")
+    from orfdata import load_catalog
+
+    assert not files("orfdata").joinpath("data/uorf-evidence").is_dir()
+    root = files("orfdata").joinpath("data/orf-evidence")
     raw = root.joinpath("catalog.json.gz").read_bytes()
     manifest = json.loads(root.joinpath("manifest.json").read_text())
+    full = load_catalog()
     assert hashlib.sha256(raw).hexdigest() == manifest["catalog_sha256"]
-    assert manifest["statistics"]["records"] == len(catalog.records) == 3771
-    assert manifest["statistics"]["ms_orfs"] == len(catalog.query(evidence="ms")) == 1219
-    assert (
-        manifest["statistics"]["reviewed_ms_orfs"]
-        == len(catalog.query(evidence="ms", require_reviewed=True))
-        == 16
-    )
+    assert manifest["statistics"]["records"] == len(full.records) == 7264
+    assert len(catalog.records) == 3771
+    assert len(catalog.query(evidence="ms")) == 1219
+    assert len(catalog.query(evidence="ms", require_reviewed=True)) == 16
+    assert catalog.records == tuple(r for r in full.records if r.biotype in ("uORF", "uoORF"))
     local = tmp_path / "copied.json.gz"
     local.write_bytes(raw)
     assert (
@@ -306,6 +308,7 @@ def test_source_preparation_preserves_an_existing_Rdata_file(tmp_path, monkeypat
         "author-hla-counts.json",
         "media-4_with_dot_products.csv",
         *builder.ENSEMBL_INPUTS,
+        *builder.NCRNA_INPUTS,
     ):
         path = tmp_path / name
         path.write_bytes(b"cached")
@@ -367,6 +370,7 @@ def test_interrupted_prepare_sources_leaves_no_truncated_files_and_retries_clean
     payloads = {
         "ensembl101.gtf.gz": gzip.compress(b"#!genome-build GRCh38\n", mtime=0),
         "ensembl101.cdna.fa.gz": gzip.compress(b">ENST1.1\nATG\n", mtime=0),
+        "ensembl101.ncrna.fa.gz": gzip.compress(b">ENST2.1\nATG\n", mtime=0),
         "ncorf_list.xlsx": b"fake-xlsx-content-for-checksum-pin",
         "filtered_peptides.tar.bz2": tar_bz2_bytes("filtered_peptides.Rdata", b"rdata-bytes"),
         "peptide_sample_msrun_counts.tar.bz2": tar_bz2_bytes(
@@ -380,7 +384,7 @@ def test_interrupted_prepare_sources_leaves_no_truncated_files_and_retries_clean
     monkeypatch.setattr(builder, "PINS", pins)
 
     url_map = {
-        **{url: payloads[name] for name, url in builder.ENSEMBL_INPUTS.items()},
+        **{url: payloads[name] for name, url in {**builder.ENSEMBL_INPUTS, **builder.NCRNA_INPUTS}.items()},
         **{
             builder.AUTHOR + name: payloads[name]
             for name in (

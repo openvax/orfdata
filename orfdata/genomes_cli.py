@@ -9,7 +9,8 @@ from dataclasses import asdict
 from .cli_output import print_result
 from .cli_parser import parse_source_paths
 from .command_parsers import genomes_parser
-from .genomes import contig_aliases, install_genome, pinned_genomes, reference_names
+from .data_resources import fetch_data
+from .genomes import contig_aliases, load_genome, pinned_genomes, reference_names
 
 
 def run(argv=None, prog=None):
@@ -22,14 +23,32 @@ def run(argv=None, prog=None):
             frame = reference_names() if args.command == "names" else contig_aliases(args.name)
             output = json.loads(frame.to_json(orient="records"))
         else:
-            paths = parse_source_paths(args.source_path, metavar="ROLE=PATH")
+            paths = parse_source_paths(args.source_path)
             with redirect_stdout(sys.stderr):
-                genome = install_genome(args.name, force=args.force, source_paths=paths,
-                                        cache_root=args.cache_root, genome_fasta_path_or_url=args.genome_fasta,
-                                        download_options=dict(timeout=args.timeout))
-            output = dict(name=args.name, reference_name=genome.reference_name,
-                          annotation=f"{genome.annotation_name} {genome.annotation_version}",
-                          transcripts=len(genome.transcript_ids()))
+                fetched = fetch_data(
+                    args.name,
+                    kind="genome",
+                    cache_root=args.cache_root,
+                    force=args.force,
+                    source_paths=paths,
+                    timeout=args.timeout,
+                    resume=args.resume,
+                    genome_fasta_path_or_url=args.genome_fasta,
+                )
+            try:
+                genome = load_genome(
+                    args.name,
+                    cache_root=args.cache_root,
+                    genome_fasta_path_or_url=args.genome_fasta,
+                )
+                output = dict(
+                    name=args.name,
+                    reference_name=genome.reference_name,
+                    annotation=f"{genome.annotation_name} {genome.annotation_version}",
+                    transcripts=len(genome.transcript_ids()),
+                )
+            except Exception:
+                output = fetched
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.fail(error)
     columns = {"names": ("name", "genome", "mitochondrion", "note"),
@@ -37,5 +56,5 @@ def run(argv=None, prog=None):
         args.command, ("name", "species", "reference_name", "annotation_version"))
     print_result(output, json_output=args.json, columns=columns, limit=getattr(args, "limit", 25))
     if not args.json and args.command == "list":
-        print("\nDetails: orfdata data info NAME\nInstall: orfdata genomes install NAME\n"
+        print("\nDetails: orfdata data info NAME\nInstall: orfdata data fetch NAME\n"
               "Other names, such as hs1: orfdata genomes names")

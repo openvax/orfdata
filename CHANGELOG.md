@@ -1,3 +1,64 @@
+# 0.61.0
+
+- Deduplicate the bundled human upstream-ORF catalogue (`uorf-evidence`) against
+  `orf-evidence` (#201):
+  - `load_uorf_catalog()`, `UORFCatalog`, `UORFRecord`, and `UORFPeptide` now
+    return the 3,771 `uORF`/`uoORF` records as a filtered view over the single
+    bundled `orf-evidence` catalogue while still accepting user-supplied legacy
+    `isovar.uorf_evidence.v1` files.
+  - Deleted `orfdata/data/uorf-evidence/` and removed it from package data,
+    trimming ~672 KB from the wheel. `python -m orfdata.build` now builds the
+    full `orf-evidence` catalogue by default.
+- Recursively freeze nested metadata in `Proteome.layers` and
+  `ProteinSequence.evidence_detail` (#145):
+  - Nested dictionaries become `MappingProxyType` and nested lists become
+    `tuple` on construction, deep-copied from caller inputs so neither external
+    dict/list mutations nor attempted in-place edits on `proteome.layers` or
+    `evidence_detail` can diverge from cached `proteome.identity`.
+  - `save()`, `load()`, `summary()`, `merge()`, and composition helpers retain
+    exact metadata and deterministic identities.
+- Introduce a unified resource-kind protocol and registry (`orfdata.resource_kinds`:
+  `ResourceKind`, `ResourceKindRegistry`, `RESOURCE_KINDS`,
+  `registered_resource_kinds`, `get_resource_kind`, `register_resource_kind`,
+  `resolve_source_paths`) covering every acquirable kind: `viral`, `inventory`,
+  `catalog`, `dataset`, `reference`, `genome`, `chain`, and `records` (#161):
+  - Eliminated per-kind `if/elif` dispatch in `downloads.py`,
+    `data_resources.py`, `download_cli.py`, and `install.py`; `list`, `status`,
+    `info`, `path`, `fetch`, and `setup` run generically over the registry.
+- Consolidate all acquisition commands onto `orfdata data fetch` and unify
+  `--source-path` grammar (#162, #163):
+  - `data fetch` now accepts every kind-specific option (`--genome-fasta` for
+    genomes; `--inventory-molecules`, `--no-annotation-fill`,
+    `--alternate-annotations` for viral collections; `--source-path` for every
+    acquirable kind including chains, search references, records, inventories,
+    and published viral collections), validated per kind before any download.
+  - Focused acquisition commands (`data catalog/dataset/reference/genome/chains/viral`,
+    `catalogs download/build`, `datasets download/build/download-reference`,
+    `genomes install`, `chains download`, `viral inventory download`) are thin
+    compatibility aliases over `fetch_data`.
+  - Unified `--source-path` accepts `ASSET=PATH` everywhere and a bare `PATH`
+    whenever a resource declares a single asset.
+  - Registered the published GDC viral inventory (`gdc-viruses-inventory`,
+    kind `inventory`) as a standard `data list` / `data info` / `data fetch`
+    resource (`inspect_viral_inventory`, `viral_inventory_path`).
+  - Library error hints for missing or damaged genomes, chains, and catalogues
+    now point to `orfdata data fetch NAME`.
+- Add a content-addressed SHA-256 verified source store (`orfdata.source_store`:
+  `SourceStore`, `source_store_dir`, `prune_source_store`) and resumable
+  compressed single-file dataset downloads (#157, #156):
+  - Catalogue builds, dataset builds, and `orfdata setup` reuse verified build
+    inputs from `<orfdata-cache>/sources/<sha256>/` instead of discarding them
+    or staging in a `TemporaryDirectory`, re-verifying SHA-256 before every hit
+    (never trusting bytes by filename) and optionally seeding verified hits from
+    local PyEnsembl caches.
+  - `orfdata data prune --sources` (dry-run by default; `--yes` to delete)
+    prunes cached build source files from `sources/`.
+  - Compressed single-file datasets declared with `decompress: true` (all 11
+    published SQLite `.gz` releases) now support resumable transfers when
+    `--resume` / `resume=True` / `resume="auto"` is enabled: DataCache downloads
+    the raw `.gz` with range resume, verifies the pinned compressed SHA-256 and
+    size, and atomically decompresses and verifies `dataset.sqlite`.
+
 # 0.60.0
 
 - Move viral collections and derived viral selections off private

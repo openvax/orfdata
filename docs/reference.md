@@ -324,8 +324,11 @@ read through, and ORFs on circular or other source RNAs (`SourceRNA`). See the
 edited RNAs and programmed frameshifts in catalogue models need further model
 support, and ORF discovery is outside the current API.
 
-`load_uorf_catalog()` preserves Isovar's upstream-only snapshot: 3,771 models,
-dataset `2026-10-08.2`. New code should use the broader `load_catalog()` API.
+`load_uorf_catalog()` preserves Isovar's upstream-only `UORFCatalog` view (3,771
+`uORF` and `uoORF` models filtered from the single bundled `orf-evidence`
+catalogue, while still reading user-supplied legacy `isovar.uorf_evidence.v1`
+files via `load_uorf_catalog(path)`). New code should use the broader
+`load_catalog()` API.
 
 ## Other species
 

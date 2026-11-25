@@ -40,14 +40,30 @@ asking NCBI or PaVE. `orfdata.source_records.read_records` returns them offline.
 The release check, `pytest tests/test_full_collection.py --real-data`, builds the
 whole collection from them and asserts its published counts.
 
-Use `--kind` to disambiguate colliding resource names. For one resource,
-`--version VERSION` selects a historical release and `--source-path ASSET=PATH`
-provides already downloaded catalogue/dataset sources or genome files. Source
+Use `--kind` to disambiguate colliding resource names (`viral`, `inventory`,
+`catalog`, `dataset`, `reference`, `genome`, `chain`, or `records`). For one
+resource, `--version VERSION` selects a historical release and `--source-path`
+provides already downloaded local files using one grammar everywhere:
+`ASSET=PATH` (repeatable for multi-asset resources), or a bare `PATH` whenever
+the resource declares a single asset (such as a catalogue, dataset, search
+reference, chain, records archive, or viral inventory). `data fetch` also
+accepts kind-specific options (`--genome-fasta` for genomes;
+`--inventory-molecules`, `--no-annotation-fill`, and `--alternate-annotations`
+for viral collections), validated per kind before any download. Source
 overrides remain checksum-checked. `fetch` reuses a valid installation and
 replaces one whose files fail verification, reporting it as `repaired`, as
 `setup` does; `--force` installs a fresh generation even over valid files, and is
 needed to replace files that can't be read.
 Restricted chain downloads require `--accept-terms` after reviewing `info`.
+
+The published GDC viral screening inventory is also registered as a standard
+`data` resource (`gdc-viruses-inventory`, kind `inventory`):
+
+```sh
+orfdata data list --kind inventory
+orfdata data info gdc-viruses-inventory
+orfdata data fetch gdc-viruses-inventory
+```
 
 The same operations are available in Python:
 
@@ -59,7 +75,11 @@ result = fetch_data("openprot-mouse")  # Explicit source download and processing
 path = data_path("openprot-mouse")    # Offline file/directory lookup.
 ```
 
-The focused forms remain available for additional resource-specific options:
+The focused forms (`data viral`, `data catalog`, `data dataset`,
+`data reference`, `data genome`, `data chains`, `catalogs download`/`build`,
+`datasets download`/`build`/`download-reference`, `genomes install`,
+`chains download`, and `viral inventory download`) are thin compatibility
+aliases over `fetch_data` and remain available:
 
 ```sh
 orfdata download viral --species human
@@ -126,17 +146,23 @@ states use one unified vocabulary (`RESOURCE_STATES`): `available`, `bundled`,
 or `failed`. An unknown kind, species or context is an error rather than an
 empty listing, so a typo never reads as "nothing is available".
 
-## Interrupted downloads
+## Interrupted downloads and shared source cache
 
-A published download restarts from the beginning by default. (A local build
-already keeps the source files it finished downloading, so rerunning it fetches
-only what is missing.) On an unreliable connection, add `--resume` to
-`orfdata data fetch` or `orfdata setup` (`resume=True` in `fetch_data` and
-`install_species`, or `resume="auto"` in a registry's download options).
-Rerunning the same command with `--resume` then requests only the bytes not yet
-received for published catalogues, genome and chain files, search references,
-a build's source files, and split archives such as the four parts of
-`pfizer-atlas-dog-peptide-evidence`.
+A published download restarts from the beginning by default. On an unreliable
+connection, add `--resume` to `orfdata data fetch`, `orfdata setup`, or any
+focused acquisition alias (`resume=True` in `fetch_data` and `install_species`,
+or `resume="auto"` in a registry's download options). Rerunning the same
+command with `--resume` then requests only the bytes not yet received for:
+
+- published catalogues, genomes, chains, search references, source-record
+  archives, and viral inventories;
+- split archives such as the four parts of `pfizer-atlas-dog-peptide-evidence`;
+- all eleven compressed single-file datasets (including `pfizer-atlas-mouse-rna`,
+  `pfizer-atlas-dog-rna`, and `wang-human-tissue-abundance`): with `--resume`,
+  ORFdata downloads the raw `.gz` file via DataCache with range resume, verifies
+  its pinned compressed SHA-256 and size, and then decompresses and verifies
+  `dataset.sqlite` atomically;
+- build sources shared across catalogues, datasets, and `orfdata setup`.
 
 Resuming costs disk space, which is why it is off by default:
 
@@ -155,20 +181,37 @@ Resuming costs disk space, which is why it is off by default:
   of the same dataset until it is removed. Installs without `--resume` aren't
   affected.
 
-Datasets published as one compressed SQLite file can't resume: that is every
-published dataset except `pfizer-atlas-dog-peptide-evidence`, including the
-1.27 GB `pfizer-atlas-mouse-rna`. DataCache can't resume a transfer it
-decompresses while downloading, so with `--resume` these still restart, and
-publishing them in a resumable form is tracked in
-[#156](https://github.com/openvax/orfdata/issues/156). Sources that `setup`
-shares between catalogues are staged for one run and restart too. A viral
-collection is fetched record by record and doesn't resume. `--resume` is
-ignored when `--source-path` supplies the files.
+A viral collection built from live NCBI/PaVE records is fetched record by record
+and doesn't resume. `--resume` is ignored when `--source-path` supplies local
+files.
 
 A resumed file is checked against the same pinned SHA-256 and size as a
 complete one. If it doesn't match, DataCache discards the partial and the
 install fails; rerun the same command, with `--resume`, to download that file
 again in full while keeping the other parts already received.
+
+### Content-addressed source store and pruning
+
+Catalogue builds, dataset builds, and `orfdata setup` cache verified pinned
+source files in `<orfdata-cache>/sources/<sha256>/` (`orfdata.SourceStore`).
+Shared sources — such as Ensembl GTF/cDNA files or multi-catalogue
+supplementary tables — are downloaded once and reused across builds and setup
+runs. Every lookup re-verifies the file's SHA-256 digest before use (bytes are
+never trusted by filename alone). When a pinned source is not yet cached in
+ORFdata, `SourceStore` checks existing local PyEnsembl cache directories and
+seeds a verified copy offline if the pinned SHA-256 matches.
+
+To inspect or reclaim disk space held by stale bundle generations and cached
+build sources:
+
+```sh
+orfdata data prune                     # Dry-run: stale bundle generations
+orfdata data prune --yes               # Delete stale bundle generations
+orfdata data prune --sources           # Dry-run: include cached build sources
+orfdata data prune --sources --yes     # Delete stale generations and sources/
+```
+
+In Python, call `orfdata.prune_source_store(cache_root=..., apply=True)`.
 
 ## Viral collections and contexts
 

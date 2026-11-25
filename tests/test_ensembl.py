@@ -147,7 +147,7 @@ def test_absent_untranslated_rna_is_explicit_and_cannot_become_a_protein(tmp_pat
     mutate(paths, "rna", change)
     result = build(paths)
     assert result.proteins == original.proteins
-    assert result.layers[0]["untranslated_transcripts_without_rna"] == removed
+    assert result.layers[0]["untranslated_transcripts_without_rna"] == tuple(removed)
 
 
 def test_repeated_gtf_loci_survive_as_distinct_occurrences_and_spans(tmp_path):
@@ -166,7 +166,7 @@ def test_repeated_gtf_loci_survive_as_distinct_occurrences_and_spans(tmp_path):
     entry = result.by_accession()[PROTEIN]
     assert len(entry.occurrences) == 2
     spans = result.layers[0]["transcript_spans"][PROTEIN]
-    assert spans[1] == [spans[0][0] + 1000000, spans[0][1] + 1000000]
+    assert spans[1] == (spans[0][0] + 1000000, spans[0][1] + 1000000)
     saved = tmp_path / "repeated.json.gz"
     result.save(saved)
     assert Proteome.load(saved).by_accession()[PROTEIN].occurrences == entry.occurrences

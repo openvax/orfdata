@@ -43,9 +43,9 @@ ACQUISITIONS = {
         "t2t-chm13", cache_root=root, download_options=options)),
     "pinned chain": ("bundle", lambda root, options: download_chain(
         "GRCh38", "GRCh37", cache_root=root, download_options=options)),
-    "catalogue build sources": ("materialize", lambda root, options: CatalogRegistry(cache_root=root).build(
+    "catalogue build sources": ("bundle", lambda root, options: CatalogRegistry(cache_root=root).build(
         "openprot-mouse", download_options=options)),
-    "dataset build sources": ("materialize", lambda root, options: DatasetRegistry(cache_root=root).build(
+    "dataset build sources": ("bundle", lambda root, options: DatasetRegistry(cache_root=root).build(
         "peptideatlas-dog-peptides", download_options=options)),
     "archived build source": ("archive", lambda root, options: DatasetRegistry(cache_root=root).build(
         "pfizer-atlas-dog-peptide-evidence", download_options=options)),

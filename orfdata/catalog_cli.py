@@ -37,14 +37,23 @@ def run(argv=None, prog=None):
             if inspection.error is not None:
                 output["error"] = str(inspection.error)
         elif args.command in ("download", "build"):
-            paths = parse_source_paths(args.source_path, metavar="ASSET=PATH")
-            options = dict(timeout=args.timeout)
+            from .data_resources import fetch_data
+
+            paths = parse_source_paths(args.source_path)
+            if args.command == "download":
+                registry.require_published(args.name, args.version)
             with redirect_stdout(sys.stderr):
-                if args.command == "build":
-                    registry.build(args.name, args.version, force=args.force, source_paths=paths,
-                                   download_options=options)
-                else:
-                    registry.download(args.name, args.version, force=args.force, source_paths=paths, **options)
+                fetch_data(
+                    args.name,
+                    kind="catalog",
+                    version=args.version,
+                    cache_root=args.cache_root,
+                    force=args.force,
+                    source_paths=paths,
+                    timeout=args.timeout,
+                    resume=args.resume,
+                    options={"registry": registry, "build": args.command == "build"},
+                )
             inspect = registry.inspect_build if args.command == "build" else registry.inspect
             result = inspect(args.name, args.version)
             output = dict(

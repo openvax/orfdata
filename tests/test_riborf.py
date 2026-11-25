@@ -317,24 +317,31 @@ def test_portable_mapping_conflicts_fail_before_binding(catalog, tmp_path, mutat
         load_catalog(path)
 
 
-def test_setup_reuses_the_shared_target_annotation_once(monkeypatch, tmp_path):
-    from orfdata import install
+def test_setup_reuses_the_shared_target_annotation_once(tmp_path):
+    import hashlib
 
-    fetched = []
-    monkeypatch.setattr(
-        install,
-        "fetch_pinned_file",
-        lambda url, sha256, size, directory, download_options=None: fetched.append(url) or "local",
-    )
+    from orfdata.source_store import SourceStore
+
     registry = CatalogRegistry()
     manifests = [
         registry.info("ncorf-mammals-mouse"),
         registry.info("riborf-mouse"),
         registry.info("openprot-mouse"),
     ]
-    shared = install._shared_sources(manifests, tmp_path, {})
     (gtf,) = (s for s in manifests[1].sources if s.asset_id == "gtf")
-    assert shared == {gtf.sha256: "local"} and fetched == [gtf.url]
+    # Every manifest referencing this GTF shares the same SHA-256 key in SourceStore.
+    shared_digests = [s.sha256 for m in manifests for s in m.sources if s.sha256 == gtf.sha256]
+    assert len(shared_digests) >= 2
+
+    payload = b"shared-gtf-content\n"
+    src_file = tmp_path / "source.gtf.gz"
+    src_file.write_bytes(payload)
+    digest = hashlib.sha256(payload).hexdigest()
+    store = SourceStore(tmp_path / "cache", seed_from_pyensembl=False)
+    first = store.acquire(src_file.as_uri(), digest, len(payload))
+    src_file.unlink()
+    second = store.acquire("https://example.invalid/unreachable.gtf.gz", digest, len(payload))
+    assert first == second and second.read_bytes() == payload
 
 
 @pytest.mark.parametrize("version", ["1", "2"])

@@ -208,12 +208,57 @@ def add_limit(parser):
                         help="Human preview rows (default 25; 0 shows all); exports are always complete")
 
 
-def parse_source_paths(items, *, metavar="NAME=PATH"):
-    """Parse repeated ``NAME=PATH`` overrides into a dict, or ``None`` when none were given."""
+def add_source_path(parser, *, help=None):
+    """Add unified ``--source-path`` accepting ``ASSET=PATH`` or a bare ``PATH`` for single-asset resources."""
+    parser.add_argument(
+        "--source-path",
+        action="append",
+        default=[],
+        metavar="ASSET=PATH",
+        help=help or (
+            "Use a local pinned file instead of downloading (ASSET=PATH, or a bare PATH "
+            "when the resource has one asset); repeat for multiple assets"
+        ),
+    )
+
+
+def parse_source_paths(items, *, assets=None, metavar="ASSET=PATH"):
+    """Parse repeated ``ASSET=PATH`` overrides or one bare ``PATH`` into a dict, str, or ``None``.
+
+    When a single bare ``PATH`` (without ``=``) is supplied:
+
+    - If ``assets`` is given with exactly one asset name, resolves to ``{assets[0]: path}``.
+    - If ``assets`` is given with zero or multiple assets, raises :class:`UsageError`.
+    - If ``assets`` is ``None``, returns the bare path string so the resource handler can
+      resolve it against the resource's declared asset list.
+    """
+    if not items:
+        return None
+    if isinstance(items, (str, os.PathLike)):
+        items = [os.fspath(items)]
     paths = {}
-    for item in items:
-        key, separator, path = item.partition("=")
-        if not separator or not key or not path or key in paths:
-            raise UsageError(f"Source overrides require unique {metavar} entries")
-        paths[key] = path
+    bare = None
+    for raw in items:
+        item = os.fspath(raw)
+        if "=" in item:
+            if bare is not None:
+                raise UsageError(f"Cannot combine a bare PATH with {metavar} entries")
+            key, _, path = item.partition("=")
+            if not key or not path or key in paths:
+                raise UsageError(f"Source overrides require unique {metavar} entries")
+            paths[key] = path
+        else:
+            if not item or paths or bare is not None:
+                raise UsageError(f"A bare --source-path PATH may only be given once and not mixed with {metavar}")
+            bare = item
+    if bare is not None:
+        if assets is None:
+            return bare
+        declared = tuple(assets)
+        if len(declared) != 1:
+            raise UsageError(
+                f"Resource has {len(declared)} asset(s) ({', '.join(declared) or 'none'}); "
+                f"specify {metavar}"
+            )
+        return {declared[0]: bare}
     return paths or None

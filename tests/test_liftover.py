@@ -151,8 +151,8 @@ def test_merged_catalogues_lift_with_their_members(chain):
 
 def test_a_missing_chain_names_the_command_that_downloads_it():
     with pytest.raises(ValueError, match=r"homo_sapiens GRCh37 ORFs need the chain files GRCh38_to_GRCh37 to reach "
-                                         r"GRCh37 by liftover: download them once with 'orfdata chains download "
-                                         r"--species homo_sapiens' or download_chains\(species='homo_sapiens'\)"):
+                                         r"GRCh37 by liftover: download them once with 'orfdata data fetch "
+                                         r"GRCh38_to_GRCh37' or download_chains\(species='homo_sapiens'\)"):
         load_catalog(species="human", genome_build="GRCh37")
 
 
@@ -346,8 +346,8 @@ def test_cli_rejects_a_lift_to_the_same_assembly_or_against_the_pin(chain, pinne
 def test_damaged_and_missing_chains_say_how_to_download_again(chain, pinned, tmp_path):
     cache = tmp_path / "cache"
     with pytest.raises(ValueError, match=rf"download_chain\('GRCm38', 'GRCm39', accept_terms=True, "
-                                         rf"cache_root='{cache}'\) or 'orfdata chains --cache-root {cache} "
-                                         r"download GRCm38 GRCm39 --accept-terms'"):
+                                         rf"cache_root='{cache}'\) or 'orfdata data fetch GRCm38_to_GRCm39 "
+                                         rf"--cache-root {cache} --accept-terms'"):
         load_chain("GRCm38", "GRCm39", cache_root=cache)
     path = download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True, cache_root=cache)
     path.chmod(0o644)
@@ -465,7 +465,7 @@ def test_load_catalog_lifts_catalogues_from_other_assemblies(chain, pinned, geno
     native = make_catalog()
     old = ORFCatalog([shifted(r) for r in native.records], dict(native.metadata, genome_build="GRCm38"))
     with pytest.raises(ValueError, match=r"need the chain files GRCm38_to_GRCm39 to reach GRCm39 by liftover: "
-                                         r"download them once with 'orfdata chains download --species mus_musculus "
+                                         r"download them once with 'orfdata data fetch GRCm38_to_GRCm39 "
                                          r"--accept-terms'"):
         load_catalog(species="mouse", genome_build="GRCm39", registry=Registry(old=old))
     download_chain("GRCm38", "GRCm39", source_path=chain.path, accept_terms=True)

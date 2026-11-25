@@ -9,6 +9,7 @@ from .downloads import install_hint
 from .errors import NotInstalledError
 from .measurements import DatasetManifest
 from .registry import ReleaseRegistry, build_store_path, inspect_build_receipt
+from .source_store import SourceStore
 
 DATASET_ASSET = "dataset.sqlite"
 DATASET_BUILD_AREA = "imports"
@@ -217,6 +218,39 @@ class DatasetRegistry(ReleaseRegistry):
                 validator=validate,
             )
             return {self.OUTPUT_ASSET: path}
+        asset_spec = release["assets"][self.OUTPUT_ASSET]
+        dist = release.get("distribution", {})
+        if (
+            source_paths is None
+            and options.get("resume")
+            and asset_spec.get("decompress")
+            and dist.get("download_sha256")
+            and dist.get("download_size")
+        ):
+            if not force:
+                inspected = self.data_registry().inspect(name, version, verify_files=True)
+                if inspected.status == "available":
+                    return {
+                        self.OUTPUT_ASSET: str(
+                            self.data_registry().local_path(
+                                name, version, asset=self.OUTPUT_ASSET, verify_files=False
+                            )
+                        )
+                    }
+            gz_path = SourceStore(self._cache_root, seed_from_pyensembl=False).acquire(
+                asset_spec["url"],
+                dist["download_sha256"],
+                dist["download_size"],
+                download_options=options,
+            )
+            local_options = {k: v for k, v in options.items() if k != "resume"}
+            return self.data_registry().download(
+                name,
+                version,
+                force=force,
+                source_paths={self.OUTPUT_ASSET: str(gz_path)},
+                **local_options,
+            )
         return self.data_registry().download(
             name, version, force=force, source_paths=source_paths, **options
         )
@@ -326,7 +360,7 @@ def build_dataset(
                 dict(sha256=asset.sha256, size=asset.size),
             )
     destination = build_store_path(DATASET_BUILD_AREA, manifest.dataset_id, manifest, cache_root)
-    if not force and any("archive" in asset.metadata for asset in manifest.sources):
+    if not force:
         cached = inspect_build_receipt(
             destination,
             manifest,
@@ -342,6 +376,7 @@ def build_dataset(
             return dataset
         if cached.status != "missing":
             raise datacache.FileValidationError(cached.path, cached.status) from cached.error
+    store = SourceStore(cache_root)
     sources = {}
     for asset in manifest.sources:
         source = dict(sha256=asset.sha256, size=asset.size)
@@ -361,7 +396,13 @@ def build_dataset(
         elif supplied is not None:
             source["path"] = str(supplied)
         else:
-            source["url"] = asset.url
+            cached_source = store.acquire(
+                asset.url,
+                asset.sha256,
+                asset.size,
+                download_options=download_options,
+            )
+            source["path"] = str(cached_source)
         sources[asset.asset_id] = source
 
     def build(inputs, outputs):
