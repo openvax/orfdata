@@ -1605,7 +1605,7 @@ ORFdata installs.</p>
 <tr>
 <td><code>data</code></td>
 <td>Discover and acquire resources across all sources</td>
-<td><code>list</code>, <code>status</code>, <code>info</code>, <code>path</code>, <code>fetch</code>, <code>catalog</code>, <code>dataset</code>, <code>reference</code>, <code>genome</code>, <code>chains</code>, <code>viral</code></td>
+<td><code>list</code>, <code>status</code>, <code>info</code>, <code>path</code>, <code>fetch</code>, <code>dirs</code>, <code>prune</code>, <code>catalog</code>, <code>dataset</code>, <code>reference</code>, <code>genome</code>, <code>chains</code>, <code>viral</code></td>
 </tr>
 <tr>
 <td><code>query</code></td>
@@ -1662,9 +1662,15 @@ orfdata<span class="w"> </span>datasets<span class="w"> </span>query<span class=
 </code></pre></div>
 <p>Every command that downloads takes <code>--timeout SECONDS</code>: how long a download may
 stall before it is retried, then fails (default 60; <code>--timeout none</code> waits
-indefinitely). The chromosome FASTA that <code>genomes install --genome-fasta</code> passes
-to PyEnsembl is downloaded without a timeout. The hidden <code>--registry</code> option of
-<code>catalogs</code> and <code>datasets</code> works before or after the subcommand.</p>
+indefinitely), <code>--resume</code> to continue interrupted transfers, and <code>--source-path</code>
+using one grammar (<code>ASSET=PATH</code>, or a bare <code>PATH</code> for single-asset resources).
+<code>orfdata data fetch</code> accepts every kind-specific option (<code>--genome-fasta</code>,
+<code>--inventory-molecules</code>, <code>--no-annotation-fill</code>, <code>--alternate-annotations</code>),
+validated per kind; focused acquisition commands remain as thin compatibility
+aliases. The chromosome FASTA that <code>--genome-fasta</code> passes to PyEnsembl is
+downloaded without a timeout. Use <code>orfdata data prune --sources --yes</code> to
+reclaim cached build source files from <code>sources/</code>. The hidden <code>--registry</code>
+option of <code>catalogs</code> and <code>datasets</code> works before or after the subcommand.</p>
 <h2 id="human-previews-and-complete-exports">Human previews and complete exports<a class="headerlink" href="#human-previews-and-complete-exports" title="Permanent link">&para;</a></h2>
 <p>Tables and short field summaries are the default. Tables show up to 25 entries;
 <code>--limit N</code> changes the preview and <code>--limit 0</code> shows every row. Tables wrap to

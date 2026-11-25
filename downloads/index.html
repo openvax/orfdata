@@ -433,13 +433,30 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#interrupted-downloads" class="md-nav__link">
+  <a href="#interrupted-downloads-and-shared-source-cache" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Interrupted downloads
+        Interrupted downloads and shared source cache
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Interrupted downloads and shared source cache">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#content-addressed-source-store-and-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content-addressed source store and pruning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1468,13 +1485,30 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#interrupted-downloads" class="md-nav__link">
+  <a href="#interrupted-downloads-and-shared-source-cache" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Interrupted downloads
+        Interrupted downloads and shared source cache
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Interrupted downloads and shared source cache">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#content-addressed-source-store-and-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content-addressed source store and pruning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1577,14 +1611,27 @@ GitHub data release), so the collection can be rebuilt or checked without
 asking NCBI or PaVE. <code>orfdata.source_records.read_records</code> returns them offline.
 The release check, <code>pytest tests/test_full_collection.py --real-data</code>, builds the
 whole collection from them and asserts its published counts.</p>
-<p>Use <code>--kind</code> to disambiguate colliding resource names. For one resource,
-<code>--version VERSION</code> selects a historical release and <code>--source-path ASSET=PATH</code>
-provides already downloaded catalogue/dataset sources or genome files. Source
+<p>Use <code>--kind</code> to disambiguate colliding resource names (<code>viral</code>, <code>inventory</code>,
+<code>catalog</code>, <code>dataset</code>, <code>reference</code>, <code>genome</code>, <code>chain</code>, or <code>records</code>). For one
+resource, <code>--version VERSION</code> selects a historical release and <code>--source-path</code>
+provides already downloaded local files using one grammar everywhere:
+<code>ASSET=PATH</code> (repeatable for multi-asset resources), or a bare <code>PATH</code> whenever
+the resource declares a single asset (such as a catalogue, dataset, search
+reference, chain, records archive, or viral inventory). <code>data fetch</code> also
+accepts kind-specific options (<code>--genome-fasta</code> for genomes;
+<code>--inventory-molecules</code>, <code>--no-annotation-fill</code>, and <code>--alternate-annotations</code>
+for viral collections), validated per kind before any download. Source
 overrides remain checksum-checked. <code>fetch</code> reuses a valid installation and
 replaces one whose files fail verification, reporting it as <code>repaired</code>, as
 <code>setup</code> does; <code>--force</code> installs a fresh generation even over valid files, and is
 needed to replace files that can't be read.
 Restricted chain downloads require <code>--accept-terms</code> after reviewing <code>info</code>.</p>
+<p>The published GDC viral screening inventory is also registered as a standard
+<code>data</code> resource (<code>gdc-viruses-inventory</code>, kind <code>inventory</code>):</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>data<span class="w"> </span>list<span class="w"> </span>--kind<span class="w"> </span>inventory
+orfdata<span class="w"> </span>data<span class="w"> </span>info<span class="w"> </span>gdc-viruses-inventory
+orfdata<span class="w"> </span>data<span class="w"> </span>fetch<span class="w"> </span>gdc-viruses-inventory
+</code></pre></div>
 <p>The same operations are available in Python:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_info</span><span class="p">,</span> <span class="n">data_path</span><span class="p">,</span> <span class="n">fetch_data</span>
 
@@ -1592,7 +1639,11 @@ Restricted chain downloads require <code>--accept-terms</code> after reviewing <
 <span class="n">result</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="p">(</span><span class="s2">"openprot-mouse"</span><span class="p">)</span>  <span class="c1"># Explicit source download and processing.</span>
 <span class="n">path</span> <span class="o">=</span> <span class="n">data_path</span><span class="p">(</span><span class="s2">"openprot-mouse"</span><span class="p">)</span>    <span class="c1"># Offline file/directory lookup.</span>
 </code></pre></div>
-<p>The focused forms remain available for additional resource-specific options:</p>
+<p>The focused forms (<code>data viral</code>, <code>data catalog</code>, <code>data dataset</code>,
+<code>data reference</code>, <code>data genome</code>, <code>data chains</code>, <code>catalogs download</code>/<code>build</code>,
+<code>datasets download</code>/<code>build</code>/<code>download-reference</code>, <code>genomes install</code>,
+<code>chains download</code>, and <code>viral inventory download</code>) are thin compatibility
+aliases over <code>fetch_data</code> and remain available:</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>download<span class="w"> </span>viral<span class="w"> </span>--species<span class="w"> </span>human
 orfdata<span class="w"> </span>download<span class="w"> </span>catalog<span class="w"> </span>NAME
 orfdata<span class="w"> </span>download<span class="w"> </span>dataset<span class="w"> </span>NAME
@@ -1647,16 +1698,23 @@ states use one unified vocabulary (<code>RESOURCE_STATES</code>): <code>availabl
 <code>downloaded</code>, <code>built</code>, <code>repaired</code>, <code>replaced</code>, <code>already installed</code>, <code>skipped</code>,
 or <code>failed</code>. An unknown kind, species or context is an error rather than an
 empty listing, so a typo never reads as "nothing is available".</p>
-<h2 id="interrupted-downloads">Interrupted downloads<a class="headerlink" href="#interrupted-downloads" title="Permanent link">&para;</a></h2>
-<p>A published download restarts from the beginning by default. (A local build
-already keeps the source files it finished downloading, so rerunning it fetches
-only what is missing.) On an unreliable connection, add <code>--resume</code> to
-<code>orfdata data fetch</code> or <code>orfdata setup</code> (<code>resume=True</code> in <code>fetch_data</code> and
-<code>install_species</code>, or <code>resume="auto"</code> in a registry's download options).
-Rerunning the same command with <code>--resume</code> then requests only the bytes not yet
-received for published catalogues, genome and chain files, search references,
-a build's source files, and split archives such as the four parts of
-<code>pfizer-atlas-dog-peptide-evidence</code>.</p>
+<h2 id="interrupted-downloads-and-shared-source-cache">Interrupted downloads and shared source cache<a class="headerlink" href="#interrupted-downloads-and-shared-source-cache" title="Permanent link">&para;</a></h2>
+<p>A published download restarts from the beginning by default. On an unreliable
+connection, add <code>--resume</code> to <code>orfdata data fetch</code>, <code>orfdata setup</code>, or any
+focused acquisition alias (<code>resume=True</code> in <code>fetch_data</code> and <code>install_species</code>,
+or <code>resume="auto"</code> in a registry's download options). Rerunning the same
+command with <code>--resume</code> then requests only the bytes not yet received for:</p>
+<ul>
+<li>published catalogues, genomes, chains, search references, source-record
+  archives, and viral inventories;</li>
+<li>split archives such as the four parts of <code>pfizer-atlas-dog-peptide-evidence</code>;</li>
+<li>all eleven compressed single-file datasets (including <code>pfizer-atlas-mouse-rna</code>,
+  <code>pfizer-atlas-dog-rna</code>, and <code>wang-human-tissue-abundance</code>): with <code>--resume</code>,
+  ORFdata downloads the raw <code>.gz</code> file via DataCache with range resume, verifies
+  its pinned compressed SHA-256 and size, and then decompresses and verifies
+  <code>dataset.sqlite</code> atomically;</li>
+<li>build sources shared across catalogues, datasets, and <code>orfdata setup</code>.</li>
+</ul>
 <p>Resuming costs disk space, which is why it is off by default:</p>
 <ul>
 <li>Partial downloads and their staging stay in the cache after a failure, in
@@ -1674,19 +1732,30 @@ a build's source files, and split archives such as the four parts of
   of the same dataset until it is removed. Installs without <code>--resume</code> aren't
   affected.</li>
 </ul>
-<p>Datasets published as one compressed SQLite file can't resume: that is every
-published dataset except <code>pfizer-atlas-dog-peptide-evidence</code>, including the
-1.27 GB <code>pfizer-atlas-mouse-rna</code>. DataCache can't resume a transfer it
-decompresses while downloading, so with <code>--resume</code> these still restart, and
-publishing them in a resumable form is tracked in
-<a href="https://github.com/openvax/orfdata/issues/156">#156</a>. Sources that <code>setup</code>
-shares between catalogues are staged for one run and restart too. A viral
-collection is fetched record by record and doesn't resume. <code>--resume</code> is
-ignored when <code>--source-path</code> supplies the files.</p>
+<p>A viral collection built from live NCBI/PaVE records is fetched record by record
+and doesn't resume. <code>--resume</code> is ignored when <code>--source-path</code> supplies local
+files.</p>
 <p>A resumed file is checked against the same pinned SHA-256 and size as a
 complete one. If it doesn't match, DataCache discards the partial and the
 install fails; rerun the same command, with <code>--resume</code>, to download that file
 again in full while keeping the other parts already received.</p>
+<h3 id="content-addressed-source-store-and-pruning">Content-addressed source store and pruning<a class="headerlink" href="#content-addressed-source-store-and-pruning" title="Permanent link">&para;</a></h3>
+<p>Catalogue builds, dataset builds, and <code>orfdata setup</code> cache verified pinned
+source files in <code>&lt;orfdata-cache&gt;/sources/&lt;sha256&gt;/</code> (<code>orfdata.SourceStore</code>).
+Shared sources — such as Ensembl GTF/cDNA files or multi-catalogue
+supplementary tables — are downloaded once and reused across builds and setup
+runs. Every lookup re-verifies the file's SHA-256 digest before use (bytes are
+never trusted by filename alone). When a pinned source is not yet cached in
+ORFdata, <code>SourceStore</code> checks existing local PyEnsembl cache directories and
+seeds a verified copy offline if the pinned SHA-256 matches.</p>
+<p>To inspect or reclaim disk space held by stale bundle generations and cached
+build sources:</p>
+<div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>data<span class="w"> </span>prune<span class="w">                     </span><span class="c1"># Dry-run: stale bundle generations</span>
+orfdata<span class="w"> </span>data<span class="w"> </span>prune<span class="w"> </span>--yes<span class="w">               </span><span class="c1"># Delete stale bundle generations</span>
+orfdata<span class="w"> </span>data<span class="w"> </span>prune<span class="w"> </span>--sources<span class="w">           </span><span class="c1"># Dry-run: include cached build sources</span>
+orfdata<span class="w"> </span>data<span class="w"> </span>prune<span class="w"> </span>--sources<span class="w"> </span>--yes<span class="w">     </span><span class="c1"># Delete stale generations and sources/</span>
+</code></pre></div>
+<p>In Python, call <code>orfdata.prune_source_store(cache_root=..., apply=True)</code>.</p>
 <h2 id="viral-collections-and-contexts">Viral collections and contexts<a class="headerlink" href="#viral-collections-and-contexts" title="Permanent link">&para;</a></h2>
 <p>The Python API uses the same collection object for discovery, inventory reads,
 source summaries, downloads and offline opens. The target species comes from the

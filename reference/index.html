@@ -1957,8 +1957,11 @@ read through, and ORFs on circular or other source RNAs (<code>SourceRNA</code>)
 <a href="../examples/">examples</a>. The bundled catalogue contains none of these. Fusions,
 edited RNAs and programmed frameshifts in catalogue models need further model
 support, and ORF discovery is outside the current API.</p>
-<p><code>load_uorf_catalog()</code> preserves Isovar's upstream-only snapshot: 3,771 models,
-dataset <code>2026-10-08.2</code>. New code should use the broader <code>load_catalog()</code> API.</p>
+<p><code>load_uorf_catalog()</code> preserves Isovar's upstream-only <code>UORFCatalog</code> view (3,771
+<code>uORF</code> and <code>uoORF</code> models filtered from the single bundled <code>orf-evidence</code>
+catalogue, while still reading user-supplied legacy <code>isovar.uorf_evidence.v1</code>
+files via <code>load_uorf_catalog(path)</code>). New code should use the broader
+<code>load_catalog()</code> API.</p>
 <h2 id="other-species">Other species<a class="headerlink" href="#other-species" title="Permanent link">&para;</a></h2>
 <p><a href="../species/">ReferenceContext and ScopedTarget</a> keep taxa, strains, assemblies
 and annotation versions separate. Custom genomes without species/taxonomy need
