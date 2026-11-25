@@ -1,6 +1,5 @@
 """Discover, download, inspect and query quantitative datasets."""
 
-import json
 import sqlite3
 import sys
 from contextlib import redirect_stdout
@@ -9,7 +8,9 @@ from .cli_output import manifest_summary, print_fields, print_record_stream, pri
 from .cli_parser import UsageError, parse_source_paths
 from .command_parsers import datasets_parser
 from .datasets import DatasetRegistry
+from .downloads import normalize_status
 from .reference import ScopedTarget
+from .registry import load_registry
 
 
 def _download_options(args):
@@ -25,14 +26,46 @@ def _reference(references, key, option):
     return references[key]
 
 
-def _check_search_reference(registry, args):
-    """A usage error for a --reference or --asset that none of the dataset's search references has."""
-    specs = registry.search_references(args.name, args.version)
-    for option, value, choices in (("--reference", args.reference, [s.reference.key for s in specs]),
-                                   ("--asset", args.asset, [s.source.asset_id for s in specs])):
+def validate_search_reference_options(registry, name, version=None, *, reference=None, asset_id=None):
+    """Validate ``--reference`` and ``--asset`` individually and as a pair against a dataset's search references.
+
+    Raises :class:`~orfdata.cli_parser.UsageError` (CLI exit status 2) when
+    either value is unknown or when both are supplied and do not match the same
+    declared search reference.
+
+    Parameters
+    ----------
+    registry : DatasetRegistry
+        Dataset registry containing ``name``.
+    name : str
+        Dataset identifier.
+    version : str, optional
+        Dataset release version (defaults to the registered default).
+    reference : str, optional
+        Exact native reference context key supplied via ``--reference``.
+    asset_id : str, optional
+        Declared source asset ID supplied via ``--asset``.
+    """
+    specs = registry.search_references(name, version)
+    for option, value, choices in (("--reference", reference, [s.reference.key for s in specs]),
+                                   ("--asset", asset_id, [s.source.asset_id for s in specs])):
         if value is not None and value not in choices:
             raise UsageError(f"{option} {value!r} is not a search reference of this dataset; choose from "
                              f"{', '.join(dict.fromkeys(choices)) or 'none'}")
+    if reference is not None and asset_id is not None:
+        if not any(s.reference.key == reference and s.source.asset_id == asset_id for s in specs):
+            pairs = ", ".join(f"{s.reference.key} ({s.source.asset_id})" for s in specs) or "none"
+            raise UsageError(
+                f"--reference {reference!r} and --asset {asset_id!r} do not match the same search reference "
+                f"of this dataset; available pairs: {pairs}"
+            )
+
+
+def _check_search_reference(registry, args):
+    """A usage error for an unknown or mismatched --reference / --asset pair."""
+    validate_search_reference_options(
+        registry, args.name, args.version, reference=args.reference, asset_id=args.asset,
+    )
 
 
 def _check_query(registry, args, parser):
@@ -67,19 +100,7 @@ def run(argv=None, prog=None):
     parser = datasets_parser(prog)
     args = parser.parse_args(argv)
     try:
-        definitions = None
-        if args.registry:
-            with open(args.registry) as handle:
-                try:
-                    definitions = json.load(handle)
-                except ValueError as error:
-                    raise ValueError(f"Invalid dataset registry {args.registry}: {error}") from error
-        try:
-            registry = DatasetRegistry(definitions, cache_root=args.cache_root)
-        except (KeyError, TypeError, AttributeError) as error:
-            if not args.registry:  # The packaged registry: a bug, which keeps its traceback.
-                raise
-            raise ValueError(f"Invalid dataset registry {args.registry}: {type(error).__name__}: {error}") from error
+        registry = load_registry(DatasetRegistry, args.registry, cache_root=args.cache_root)
         if args.command in ("inspect-reference", "download-reference", "query-reference"):
             _check_search_reference(registry, args)
         if args.command == "list":
@@ -92,8 +113,12 @@ def run(argv=None, prog=None):
             result = [spec.to_dict() for spec in registry.search_references(args.name, args.version)]
         elif args.command == "inspect-reference":
             inspected = registry.inspect_reference(args.name, args.version, reference=args.reference, asset_id=args.asset)
-            result = dict(status=inspected.status, path=str(inspected.path),
-                          error=str(inspected.error) if inspected.error else None)
+            result = dict(
+                status=normalize_status(inspected.status),
+                datacache_status=inspected.status,
+                path=str(inspected.path),
+                error=str(inspected.error) if inspected.error else None,
+            )
         elif args.command == "download-reference":
             with redirect_stdout(sys.stderr):
                 result = registry.download_reference(args.name, args.version, reference=args.reference, asset_id=args.asset,
@@ -110,8 +135,12 @@ def run(argv=None, prog=None):
         elif args.command == "inspect":
             inspect = registry.inspect_build if args.built else registry.inspect
             inspected = inspect(args.name, args.version)
-            result = dict(status=inspected.status, path=str(inspected.path),
-                          error=str(inspected.error) if inspected.error else None)
+            result = dict(
+                status=normalize_status(inspected.status),
+                datacache_status=inspected.status,
+                path=str(inspected.path),
+                error=str(inspected.error) if inspected.error else None,
+            )
             if args.built or not registry.published(args.name, args.version):
                 result.update(origin="source_build", verified=inspected.verified)
         elif args.command == "download":

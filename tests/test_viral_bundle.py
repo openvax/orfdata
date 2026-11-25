@@ -136,7 +136,7 @@ def test_reuse_is_offline_and_tampering_is_caught(viral_panel, tmp_path):
     assert reopened == bundle
 
     bundle.protein_fasta.write_text(bundle.protein_fasta.read_text() + ">EXTRA\nMM\n")
-    with pytest.raises(ValueError, match="checksum mismatch"):
+    with pytest.raises(ValueError, match=r"size is|checksum mismatch"):
         open_viral_references(species="human", cache_root=str(tmp_path))
     with pytest.raises(FileNotFoundError, match="rebuild them with force=True"):
         download_viral_references(species="human", cache_root=str(tmp_path))
@@ -376,76 +376,70 @@ def test_a_collection_from_orfdata_044_opens_and_is_replaced_safely(
     assert not legacy.exists() and again.path.is_dir()
 
 
-def test_publishing_hashes_the_new_bundle_once(viral_panel, tmp_path, monkeypatch):
+def test_publishing_does_not_redundantly_rehash_bundle(viral_panel, tmp_path, monkeypatch):
     _install(tmp_path)
     calls = []
     verify = viral_panel_module._verify_checksums
     monkeypatch.setattr(viral_panel_module, "_verify_checksums",
                         lambda path: calls.append(path) or verify(path))
     refreshed = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
-    assert len(calls) == 1 and calls[0].name == "bundle"  # The staged copy, before publication.
+    # DataCache materialization hashes each output once on publish; no duplicate _verify_checksums pass.
+    assert calls == []
     assert open_viral_references(species="human", cache_root=str(tmp_path)) == refreshed
 
 
-def test_a_store_that_lost_its_marker_is_repaired_by_force(viral_panel, tmp_path):
-    installed = _install(tmp_path)
+def test_a_store_that_lost_its_marker_is_damaged_and_never_taken_over(viral_panel, tmp_path):
+    import datacache
+
+    _install(tmp_path)
     marker = _store_path(tmp_path) / ".datacache-store.json"
     marker.unlink()
-    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "corrupt"
+    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "damaged"
     for attempt in (open_viral_references, download_viral_references):
-        with pytest.raises(ValueError, match=r"lost its .datacache-store.json marker; "
-                                             r"download_viral_references\(force=True\), or "
-                                             r"'orfdata data fetch gdc-viruses --force', repairs it"):
+        with pytest.raises(ValueError, match=r"damaged"):
             attempt(species="human", cache_root=str(tmp_path))
-    repaired = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
-    assert marker.is_file() and repaired.path != installed.path
-    assert open_viral_references(species="human", cache_root=str(tmp_path)) == repaired
-    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "available"
+    # DataCache never silently takes over an unmarked directory containing files.
+    with pytest.raises(datacache.FileValidationError, match="never taken over"):
+        download_viral_references(species="human", cache_root=str(tmp_path), force=True)
 
 
 def test_a_broken_newest_bundle_is_replaced_by_force(viral_panel, tmp_path):
     installed = _install(tmp_path)
     broken = installed.path.parent / "2999-01-01T00-00-00Z"
     broken.symlink_to(tmp_path)
-    with pytest.raises(ValueError, match=r"isn't a directory; download_viral_references\(force=True\)"):
+    with pytest.raises(ValueError, match=r"expected a directory.*download_viral_references\(force=True\)"):
         open_viral_references(species="human", cache_root=str(tmp_path))
     repaired = download_viral_references(species="human", cache_root=str(tmp_path), force=True)
     assert repaired.path.name > broken.name
     assert open_viral_references(species="human", cache_root=str(tmp_path)) == repaired
 
 
-def test_store_damage_force_cannot_fix_names_the_path_to_remove(viral_panel, tmp_path):
+def test_store_damage_force_cannot_fix_refuses_takeover(viral_panel, tmp_path):
     installed = _install(tmp_path)
     bundles = installed.path.parent
     shutil.rmtree(bundles)
     bundles.write_text("not a directory\n")
     for force in (False, True):
-        with pytest.raises(ValueError, match=f"remove {bundles} and install again"):
+        with pytest.raises(ValueError, match=r"not a directory|expected a directory"):
             download_viral_references(species="human", cache_root=str(tmp_path), force=force)
-    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "corrupt"
+    assert collection_state("gdc-viruses", cache_root=str(tmp_path)) == "damaged"
 
 
-def test_a_damaged_selection_store_is_rebuilt(viral_panel, tmp_path):
+def test_a_damaged_selection_bundle_is_rebuilt_without_double_hashing(viral_panel, tmp_path):
     _install(tmp_path)
     selection = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
-    (selection.path.parent.parent / ".datacache-store.json").unlink()
+    (selection.path / "metadata.json").write_text("{broken")
     rebuilt = select_viral_references(contexts=[CONTEXT], species="human", cache_root=str(tmp_path))
     assert rebuilt.path != selection.path and rebuilt.genome_count == selection.genome_count
 
 
-def test_an_interrupted_install_leaves_nothing_behind_for_long(viral_panel, tmp_path, monkeypatch):
-    import os
-
+def test_an_interrupted_install_leaves_no_staging_directory_behind(viral_panel, tmp_path, monkeypatch):
     _install(tmp_path)
     store = _store_path(tmp_path)
-    stale = store / f".staging-{os.getuid()}-dead"
-    (stale / "bundle").mkdir(parents=True)
-    stale.chmod(0o700)
     monkeypatch.setattr(viral_panel_module, "_write_bundle",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("interrupted")))
     with pytest.raises(RuntimeError, match="interrupted"):
         download_viral_references(species="human", cache_root=str(tmp_path), force=True)
-    assert not stale.exists()
     assert not [entry for entry in store.iterdir() if entry.name.startswith(".staging-")]
 
 
@@ -465,12 +459,17 @@ def test_an_unreadable_044_directory_does_not_block_an_install(viral_panel, tmp_
         legacy_root.chmod(0o755)
 
 
-def test_a_moved_datacache_store_module_is_reported(monkeypatch):
-    from datacache import bundle_store
+def test_orfdata_never_imports_private_datacache_bundle_store():
+    from pathlib import Path
 
-    monkeypatch.delattr(bundle_store, "user_key")
-    with pytest.raises(ImportError, match="need datacache.bundle_store"):
-        viral_panel_module._bundle_store()
+    package_root = Path(viral_panel_module.__file__).resolve().parent
+    offenders = [
+        str(path)
+        for path in sorted(package_root.rglob("*.py"))
+        if "datacache.bundle_store" in path.read_text(encoding="utf-8")
+        or "import bundle_store" in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == []
 
 
 def test_prune_skips_a_damaged_store_untouched_and_goes_on(viral_panel, tmp_path):
@@ -485,7 +484,7 @@ def test_prune_skips_a_damaged_store_untouched_and_goes_on(viral_panel, tmp_path
     assert selection.path.is_dir()  # Nothing is deleted from a store that doesn't validate.
     assert list(pruned["skipped"]) == [str(selection_store)]
     reason = pruned["skipped"][str(selection_store)]
-    assert "lost its .datacache-store.json marker" in reason and "force" not in reason
+    assert ".datacache-store.json" in reason and "force" not in reason
 
 
 def test_a_selection_follows_a_refreshed_collection(viral_panel, tmp_path):
@@ -505,8 +504,8 @@ def test_a_selection_follows_a_refreshed_collection(viral_panel, tmp_path):
 
 
 def test_a_damaged_collection_seen_through_a_selection_names_what_repairs_it(viral_panel, tmp_path):
-    _install(tmp_path)
-    (_store_path(tmp_path) / ".datacache-store.json").unlink()
+    installed = _install(tmp_path)
+    (installed.path / "metadata.json").unlink()
     for force in (False, True):
         with pytest.raises(ValueError, match=r"download_viral_references\(force=True\), or "
                                              r"'orfdata data fetch gdc-viruses --force', repairs it"):

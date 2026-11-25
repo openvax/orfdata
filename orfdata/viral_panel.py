@@ -23,6 +23,7 @@ import json
 import os
 import shutil
 import stat
+import tempfile
 import time
 from collections import Counter, defaultdict
 from collections.abc import Iterable
@@ -30,9 +31,8 @@ from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from os import PathLike
 from pathlib import Path
-from uuid import uuid4
 
-from .cache import DOWNLOAD_TIMEOUT, file_sha256, get_data_dir
+from .cache import DOWNLOAD_TIMEOUT, file_sha256, get_data_dir, pinned_registry
 from .errors import NotInstalledError
 from .fasta import write_fasta
 from .record_sources import REQUEST_INTERVAL
@@ -214,7 +214,8 @@ def _primary_ledger(collection, inventory):
 def _write_checksums(path):
     with (path / _CHECKSUMS).open("w") as stream:
         for file_path in sorted((item for item in path.rglob("*") if item.is_file()
-                                 and item.name != _CHECKSUMS),
+                                 and item.name != _CHECKSUMS
+                                 and not item.name.startswith(".datacache-")),
                                 key=lambda item: item.relative_to(path).as_posix()):
             stream.write(f"{file_sha256(file_path)}  {file_path.relative_to(path).as_posix()}\n")
 
@@ -325,7 +326,10 @@ def _verify_checksums(path):
         raise
     except OSError as error:
         raise ValueError(f"Missing viral reference checksums: {sums_path}") from error
-    expected_files = _installed_files(path) - {_CHECKSUMS}
+    expected_files = {
+        relative for relative in _installed_files(path)
+        if relative != _CHECKSUMS and not Path(relative).name.startswith(".datacache-")
+    }
     if (len(sums) != len(expected_files) or any(len(parts) != 2 for parts in sums)
             or {relative for _, relative in sums} != expected_files):
         raise ValueError(f"Invalid viral reference checksum manifest: {sums_path}")
@@ -523,7 +527,7 @@ def _write_bundle(path, collection, inventory, primaries, *, timeout,
                   prefer_alternate_annotation=False):
     """Fetch every reference once and write the three layers, with their provenance."""
     records_directory = path / _RECORD_DIRECTORY
-    records_directory.mkdir()
+    records_directory.mkdir(exist_ok=True)
     source = collection.source()
     ledger = (collection.source_summary(collection.alternate_source)
               if collection.alternate_source else empty_ledger())
@@ -531,6 +535,7 @@ def _write_bundle(path, collection, inventory, primaries, *, timeout,
     primaries = [row for _, row in primaries.iterrows()]
     pinned = {primary["identifier"]: primary for primary in primaries}
     downloaded, batch_size = {}, getattr(source, "batch_size", 1)
+    request_interval = getattr(source, "request_interval", REQUEST_INTERVAL)
     for start_index in range(0, len(primaries), batch_size):
         batch = primaries[start_index:start_index + batch_size]
         for record in source.records([item["identifier"] for item in batch], timeout=timeout):
@@ -541,7 +546,7 @@ def _write_bundle(path, collection, inventory, primaries, *, timeout,
             # Every source is checked against its own ledger, primary or not.
             downloaded[record.identifier] = verify_record(pinned[record.identifier], record)
         if start_index + batch_size < len(primaries):
-            time.sleep(REQUEST_INTERVAL)  # Respect the source's unauthenticated request rate.
+            time.sleep(request_interval)  # Respect the source's request rate.
     if set(downloaded) != set(pinned):
         missing = sorted(set(pinned) - set(downloaded))
         extra = sorted(set(downloaded) - set(pinned))
@@ -669,51 +674,126 @@ def _bundle_readme(collection, genome_rows, transcript_rows, complete, retrieved
     )
 
 
-# Collections and selections are published the way DataCache publishes its own
-# bundles. Each version has a store directory holding complete bundles under
-# bundles/, the newest of which is current. An install builds a whole new bundle
-# beside the current one, under the store's lock, and renames it into place, so a
-# reader finds the old bundle or the new one, never a missing or partial one.
-# Replaced bundles are kept, as DataCache keeps its own, because a running
-# program may still be reading them; prune_viral_references removes them. ORFdata
-# 0.43 and earlier kept one plain directory per version, under "references" and
-# "indexes"; such a directory is still read while the store has no bundle, and
-# counts as the oldest bundle.
-_STORE_KIND = "orfdata-viral"
+# Collections and selections are published through DataCache's public registries
+# and materialization stores (VersionedDatasetRegistry for published release
+# artifacts; datacache.materialize for local builds and derived selections).
+# Each version has a DataCache store holding immutable bundles under bundles/,
+# the newest of which is current. Replaced bundles remain for running readers
+# until prune_viral_references() or 'orfdata data prune' removes them. ORFdata
+# 0.43 and earlier kept one plain directory per version under "references" and
+# "indexes"; such a directory is still read while no DataCache bundle exists.
 _COLLECTIONS, _LEGACY_COLLECTIONS = "collections", "references"
+_DOWNLOADS = "downloads"
 _SELECTIONS, _LEGACY_SELECTIONS = "selections", "indexes"
+_BASE_OUTPUTS = (
+    _GENOME_FASTA,
+    _TRANSCRIPT_FASTA,
+    _PROTEIN_FASTA,
+    _ANNOTATION_GTF,
+    _GENOME_TABLE,
+    _TRANSCRIPT_TABLE,
+    _METADATA,
+    "README.md",
+    _CHECKSUMS,
+)
 
 
-def _bundle_store():
-    """DataCache's store primitives: its lock, bundle naming and private working directories.
+@dataclass(frozen=True)
+class ViralInspection:
+    """Read-only inspection result for a viral collection.
 
-    ``datacache.bundle_store`` is not part of DataCache's exported API, so a
-    DataCache release could move it; this is the one place ORFdata imports it,
-    and it fails naming the cause. Publishing viral collections through
-    DataCache's public registries (#159) removes the dependency.
+    Attributes
+    ----------
+    status : str
+        Normalized local status: ``"available"``, ``"missing"``,
+        ``"damaged"``, or ``"inaccessible"``.
+    path : pathlib.Path or None
+        Resolved bundle directory when available, or store/bundle path when
+        damaged or inaccessible; ``None`` when missing.
+    origin : str or None
+        ``"download"`` for a published DataCache artifact, ``"build"`` for a
+        local DataCache materialization (or 0.43 directory), or ``None`` when
+        not available.
+    datacache_status : str or None
+        Raw underlying DataCache inspection status (``"available"``,
+        ``"missing"``, ``"invalid"``, or ``"inaccessible"``), or ``None`` for a
+        legacy 0.43 directory.
+    error : Exception or None
+        Underlying error when ``status`` is ``"damaged"`` or
+        ``"inaccessible"``.
     """
-    try:
-        from datacache import bundle_store
 
-        for name in ("BundleStore", "FORMAT", "MARKER", "private_directory",
-                     "discard_private_directory", "user_key"):
-            getattr(bundle_store, name)
-    except (ImportError, AttributeError) as error:
-        raise ImportError(
-            "ORFdata's viral collections need datacache.bundle_store, as DataCache 1.29.3 "
-            f"provides it, and the installed DataCache doesn't ({error})") from error
-    return bundle_store
+    status: str
+    path: Path | None
+    origin: str | None = None
+    datacache_status: str | None = None
+    error: Exception | None = None
 
 
-def _bundle_path(cache_root, species, collection, *, area=_COLLECTIONS):
-    """The store a collection's version is published in; ``area`` selects the 0.43 directory."""
+def viral_store_path(cache_root, species, collection, *, area=_COLLECTIONS):
+    """Return the DataCache store directory for a viral collection version.
+
+    Parameters
+    ----------
+    cache_root : str or os.PathLike, optional
+        Explicit cache root override.
+    species : str
+        Canonical target species name.
+    collection : ViralCollection or str
+        Published collection object or name.
+    area : str, optional
+        Cache area under ``viral/`` (``"collections"`` for local builds,
+        ``"downloads"`` for published artifacts, or ``"references"`` for legacy
+        0.43 directories).
+
+    Returns
+    -------
+    pathlib.Path
+        Versioned store path.
+    """
     collection = viral_collection(collection)
     return (get_data_dir(cache_root) / "viral" / area / species /
             collection.name / bundle_version(collection))
 
 
-def _store(path):
-    return _bundle_store().BundleStore(path, _STORE_KIND)
+_bundle_path = viral_store_path
+
+
+def viral_download_registry(collection, cache_root=None):
+    """Return the DataCache :class:`~datacache.VersionedDatasetRegistry` for a published viral collection.
+
+    Parameters
+    ----------
+    collection : ViralCollection or str
+        Published collection declaring checksummed ``assets``.
+    cache_root : str or os.PathLike, optional
+        Explicit cache root override.
+
+    Returns
+    -------
+    datacache.VersionedDatasetRegistry
+        Registry installing the collection's published artifact into its
+        ``viral/downloads/`` store.
+
+    Raises
+    ------
+    ValueError
+        If ``collection`` has no published artifact registered.
+    """
+    collection = viral_collection(collection)
+    if not collection.published:
+        raise ValueError(
+            f"The {collection.name} viral collection has no published artifact; "
+            "it is built locally from pinned source ledgers"
+        )
+    species = canonical_species(collection.target_species)
+    assets = {name: dict(spec) for name, spec in collection.assets.items()}
+    return pinned_registry(
+        collection.name,
+        bundle_version(collection),
+        assets,
+        viral_store_path(cache_root, species, collection, area=_DOWNLOADS),
+    )
 
 
 def _is_directory(path):
@@ -732,160 +812,352 @@ def _legacy_directory(path):
         return False
 
 
-# Store damage a forced install repairs; anything else is never taken over.
-_LOST_MARKER, _BROKEN_NEWEST = "lost-marker", "broken-newest"
-
-
-def _store_problem(store):
-    """What keeps a store from being read, as ``(code, reason, target)``; None when it reads.
-
-    A forced install repairs a store whose marker is lost but which holds only
-    what a viral store keeps, and one whose newest bundle isn't a directory,
-    by publishing a newer bundle. Anything else is never taken over: the
-    ``target`` path has to be removed by hand. An unreadable store raises.
-    """
-    path, marker = store.path, store.path / _bundle_store().MARKER
-    try:
-        info = path.lstat()
-    except FileNotFoundError:
-        return None
-    if not stat.S_ISDIR(info.st_mode):
-        return "not-directory", "is not a directory", path
-    entries = [entry.name for entry in path.iterdir()]
-    try:
-        found = json.loads(marker.read_text())
-    except FileNotFoundError:
-        if all(name.startswith(".datacache-") for name in entries):
-            return None  # Empty: the first install creates the store here.
-        found = None
-    except IsADirectoryError:
-        return "marker-not-file", "keeps its marker in something that isn't a file", marker
-    except (ValueError, RecursionError):
-        found = None
-    if found !={"format": _bundle_store().FORMAT, "kind": _STORE_KIND}:
-        ours = all(name in ("bundles", marker.name) or name.startswith((".staging-", ".datacache-"))
-                   for name in entries)
-        if found is None and ours:
-            return _LOST_MARKER, f"has lost its {marker.name} marker", path
-        return "foreign", "is not an ORFdata viral store", path
-    try:
-        bundles = store.bundles.lstat()
-    except FileNotFoundError:
-        return None
-    if not stat.S_ISDIR(bundles.st_mode):
-        return "bundles-not-directory", "keeps its bundles in something that isn't a directory", store.bundles
-    names = store.bundle_names()
-    if names and not _is_directory(store.bundles / names[-1]):
-        return _BROKEN_NEWEST, f"has a newest bundle, {names[-1]}, that isn't a directory", path
-    return None
-
-
-def _damaged(store, problem, repair):
-    """The error for a damaged store: ``repair`` says what repairs it, if a forced install can."""
-    code, reason, target = problem
-    remedy = (repair if code in (_LOST_MARKER, _BROKEN_NEWEST) else
-              f"ORFdata never takes over or deletes such a path; remove {target} and install again")
-    return ValueError(f"The viral reference store {store.path} {reason}; {remedy}")
-
-
 def _collection_repair(collection):
     name = viral_collection(collection).name
     return f"download_viral_references(force=True), or 'orfdata data fetch {name} --force', repairs it"
 
 
-_SELECTION_REPAIR = "select_viral_references rebuilds it"
+def _validate_bundle_path(bundle_dir, *, species, collection, origin, verify_files):
+    """Validate an installed bundle directory and return a :class:`ViralInspection`."""
+    check = _verified_existing_bundle if verify_files else _existing_bundle
+    try:
+        check(bundle_dir, species=species, collection=collection)
+    except PermissionError as error:
+        return ViralInspection(
+            status="inaccessible", path=bundle_dir, origin=None,
+            datacache_status="inaccessible", error=error,
+        )
+    except OSError as error:
+        return ViralInspection(
+            status="inaccessible", path=bundle_dir, origin=None,
+            datacache_status="inaccessible", error=error,
+        )
+    except ValueError as error:
+        return ViralInspection(
+            status="damaged", path=bundle_dir, origin=None,
+            datacache_status="invalid", error=error,
+        )
+    return ViralInspection(
+        status="available", path=bundle_dir, origin=origin,
+        datacache_status="available", error=None,
+    )
 
 
-def _current(path, legacy, repair):
-    """The directory holding a store's current bundle, else a 0.43 directory, else None.
+def inspect_viral_collection(
+    collection: ViralCollection | str | None = None,
+    *,
+    species: str | int | None = None,
+    cache_root: str | PathLike[str] | None = None,
+    verify_files: bool = True,
+) -> ViralInspection:
+    """Inspect a viral collection's local DataCache stores offline without writing or downloading.
 
-    A damaged store raises ValueError naming what fixes it (``repair`` when a
-    forced install can), an unreadable one its OSError. An unreadable 0.43
-    directory counts as absent.
+    Checks the published artifact store (when the collection is published),
+    then the local build materialization store, and finally any legacy ORFdata
+    0.43 directory.
+
+    Parameters
+    ----------
+    collection : ViralCollection or str, optional
+        Collection object, name, alias, or panel; defaults to the sole
+        collection for ``species``.
+    species : str or int, optional
+        Target species alias or NCBI taxon ID.
+    cache_root : str or os.PathLike, optional
+        Explicit cache root override.
+    verify_files : bool, optional
+        When ``True``, verify file hashes and bundle counts against the
+        DataCache receipt and ``SHA256SUMS``.
+
+    Returns
+    -------
+    ViralInspection
+        Normalized status (``"available"``, ``"missing"``, ``"damaged"``, or
+        ``"inaccessible"``), resolved path, origin, and raw DataCache status.
     """
-    store = _store(path)
-    problem = _store_problem(store)
-    if problem is not None:
-        raise _damaged(store, problem, repair)
-    current = store.current_bundle()
-    if current is None and _legacy_directory(legacy):
-        return legacy
-    return current
+    import datacache
+
+    species, collection = _selection(species, collection)
+    first_problem = None
+
+    if collection.published:
+        dl_store = viral_store_path(cache_root, species, collection, area=_DOWNLOADS)
+        dl_inspected = viral_download_registry(collection, cache_root).inspect(
+            collection.name, bundle_version(collection), verify_files=verify_files,
+        )
+        if dl_inspected.status == "available":
+            bundle_dir = Path(dl_inspected.bundle)
+            checked = _validate_bundle_path(
+                bundle_dir, species=species, collection=collection,
+                origin="download", verify_files=verify_files,
+            )
+            if checked.status == "available":
+                return checked
+            first_problem = checked
+        elif dl_inspected.status != "missing":
+            status = "inaccessible" if dl_inspected.status == "inaccessible" else "damaged"
+            target = Path(dl_inspected.bundle) if dl_inspected.bundle else dl_store
+            first_problem = ViralInspection(
+                status=status, path=target, origin=None,
+                datacache_status=dl_inspected.status, error=dl_inspected.error,
+            )
+
+    build_store = viral_store_path(cache_root, species, collection, area=_COLLECTIONS)
+    build_inspected = datacache.inspect_materialization(build_store, verify_files=verify_files)
+    if build_inspected.status == "available":
+        bundle_dir = Path(build_inspected.bundle)
+        checked = _validate_bundle_path(
+            bundle_dir, species=species, collection=collection,
+            origin="build", verify_files=verify_files,
+        )
+        if checked.status == "available":
+            return checked
+        first_problem = first_problem or checked
+    elif build_inspected.status != "missing":
+        status = "inaccessible" if build_inspected.status == "inaccessible" else "damaged"
+        target = Path(build_inspected.bundle) if build_inspected.bundle else build_store
+        first_problem = first_problem or ViralInspection(
+            status=status, path=target, origin=None,
+            datacache_status=build_inspected.status, error=build_inspected.error,
+        )
+
+    if first_problem is not None:
+        return first_problem
+
+    legacy = viral_store_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS)
+    if _legacy_directory(legacy):
+        checked = _validate_bundle_path(
+            legacy, species=species, collection=collection,
+            origin="build", verify_files=verify_files,
+        )
+        return replace(checked, datacache_status=None)
+
+    return ViralInspection(status="missing", path=None, origin=None, datacache_status="missing")
 
 
 def _installed_bundle(cache_root, species, collection):
     """The directory holding the installed collection, or None when it isn't installed."""
-    return _current(_bundle_path(cache_root, species, collection),
-                    _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS),
-                    _collection_repair(collection))
+    inspected = inspect_viral_collection(
+        collection, species=species, cache_root=cache_root, verify_files=False,
+    )
+    if inspected.status == "available":
+        return inspected.path
+    if inspected.status == "missing":
+        return None
+    if inspected.status == "inaccessible":
+        raise inspected.error or PermissionError(f"Cannot read viral collection at {inspected.path}")
+    raise ValueError(
+        f"The viral reference store {inspected.path} is damaged ({inspected.error}); "
+        f"{_collection_repair(collection)}"
+    ) from inspected.error
 
 
-def _repair(store):
-    """Make a damaged store installable again, if a forced install can; otherwise raise."""
-    problem = _store_problem(store)
-    if problem is None:
-        return
-    if problem[0] not in (_LOST_MARKER, _BROKEN_NEWEST):
-        raise _damaged(store, problem, None)
-    marker = store.path / _bundle_store().MARKER
-    if problem[0] == _LOST_MARKER:
-        # A lost marker is rewritten; the bundle published next replaces a broken newest one.
-        temporary = store.path / f".datacache-json-{uuid4().hex}"
-        temporary.write_text(json.dumps({"format": _bundle_store().FORMAT, "kind": _STORE_KIND}))
-        temporary.replace(marker)
-
-
-def _publish(path, legacy, build, verify, describe, reuse, *, force, repair, rebuild_damaged=False):
-    """Build a bundle with ``build(directory)`` and make it the store's current one.
-
-    ``reuse(current)`` returns the installed bundle to keep, or None to build a
-    new one. It is asked once without the lock, so a cache hit writes nothing,
-    and again under it, since another install may have finished meanwhile.
-    ``force`` builds a new bundle whatever is installed, repairing the store
-    where it can; ``rebuild_damaged`` does that only for a damaged store, and
-    ``repair`` says what repairs a damaged store when a caller has to.
-    Installs into one store take turns. ``verify`` checks the staged bundle,
-    hashing it, and ``describe`` returns the published one without hashing it
-    again.
-    """
-    store = _store(path)
-    if not force:
-        try:
-            current = _current(path, legacy, repair)
-        except ValueError:
-            if not rebuild_damaged:
-                raise
-            force = True
+def _predict_record_outputs(collection, inventory, primaries, *, prefer_reference_molecule):
+    """Return the expected relative ``records/*.gz`` paths for a collection build."""
+    primary_source = collection.source()
+    primary_suffix = getattr(primary_source, "document_suffix", ".gb")
+    alt_source = collection.source(collection.alternate_source) if collection.alternate_source else None
+    alt_suffix = getattr(alt_source, "document_suffix", ".json") if alt_source is not None else ""
+    alt_ledger = (collection.source_summary(collection.alternate_source)
+                  if collection.alternate_source else empty_ledger())
+    outputs = []
+    for entry, (_, primary) in zip(inventory.itertuples(index=False), primaries.iterrows(), strict=True):
+        alternate = ledger_row(alt_ledger, entry.abbreviation)
+        use_alternate = (
+            prefer_reference_molecule
+            and published(alternate)
+            and alternate["sequence_sha256"] != primary["sequence_sha256"]
+        )
+        if use_alternate:
+            filename = (
+                f"{safe_token(entry.abbreviation)}__{alternate['source']}"
+                f"__{safe_token(alternate['identifier'])}{alt_suffix}.gz"
+            )
         else:
-            if current is not None and (found := reuse(current)) is not None:
-                return found
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tools = _bundle_store()
-    with store.lock():
-        if force:
-            _repair(store)
-        store.create()
-        if not force:
-            current = _current(path, legacy, repair)
-            if current is not None and (found := reuse(current)) is not None:
-                return found
-        # Installs hold the lock, so a working directory of this user's found
-        # here was left by one that died; it is swept before this one starts.
-        prefix = f".staging-{tools.user_key()}-"
-        for stale in path.glob(prefix + "*"):
-            tools.discard_private_directory(stale)
-        working = tools.private_directory(path / f"{prefix}{uuid4().hex}")
+            filename = (
+                f"{safe_token(entry.abbreviation)}__{collection.primary_source}"
+                f"__{safe_token(primary['identifier'])}{primary_suffix}.gz"
+            )
+        outputs.append(f"{_RECORD_DIRECTORY}/{filename}")
+    return outputs
+
+
+class _DegradedOutputs(Exception):
+    """Raised internally when an alternate source fell back to the primary document name."""
+
+    def __init__(self, actual_files, fallback_dir):
+        super().__init__("alternate degraded to primary record")
+        self.actual_files = actual_files
+        self.fallback_dir = fallback_dir
+
+
+def _build_collection_bundle(
+    store_path,
+    collection,
+    species,
+    *,
+    timeout,
+    force,
+    prefer_reference_molecule,
+    annotate_from_alternate,
+    prefer_alternate_annotation,
+):
+    """Build and atomically publish a viral collection via :func:`datacache.materialize`."""
+    import datacache
+
+    inventory = viral_panel_coverage(collection=collection.name, installed=False)
+    primaries = _primary_ledger(collection, inventory)
+    predicted_records = _predict_record_outputs(
+        collection, inventory, primaries, prefer_reference_molecule=prefer_reference_molecule,
+    )
+    declared_outputs = {name: {} for name in (*_BASE_OUTPUTS, *predicted_records)}
+    transform = {
+        "version": BUNDLE_SCHEMA,
+        "options": {
+            "collection": collection.name,
+            "bundle_version": bundle_version(collection),
+            "prefer_reference_molecule": prefer_reference_molecule,
+            "annotate_from_alternate": annotate_from_alternate,
+            "prefer_alternate_annotation": prefer_alternate_annotation,
+        },
+    }
+    spec_payload = json.dumps({
+        "collection": collection.name,
+        "bundle_version": bundle_version(collection),
+        "panel": collection.panel,
+        "primary_source": collection.primary_source,
+        "alternate_source": collection.alternate_source,
+    }, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    spec_sha256 = hashlib.sha256(spec_payload).hexdigest()
+
+    with tempfile.TemporaryDirectory(prefix="orfdata-viral-spec-") as spec_dir:
+        spec_file = Path(spec_dir) / "collection_spec.json"
+        spec_file.write_bytes(spec_payload)
+        sources = {
+            "collection_spec.json": {
+                "path": str(spec_file),
+                "sha256": spec_sha256,
+                "size": len(spec_payload),
+                "source_identity": {
+                    "collection": collection.name,
+                    "bundle_version": bundle_version(collection),
+                },
+            }
+        }
+
+        def builder(_source_paths, output_paths):
+            staged_dir = Path(output_paths[_METADATA]).parent
+            _write_bundle(
+                staged_dir, collection, inventory, primaries, timeout=timeout,
+                prefer_reference_molecule=prefer_reference_molecule,
+                annotate_from_alternate=annotate_from_alternate,
+                prefer_alternate_annotation=prefer_alternate_annotation,
+            )
+            actual_files = _installed_files(staged_dir)
+            if actual_files != set(output_paths):
+                fallback_dir = Path(tempfile.mkdtemp(prefix="orfdata-viral-fallback-"))
+                shutil.copytree(staged_dir, fallback_dir / "bundle")
+                raise _DegradedOutputs(actual_files, fallback_dir)
+            result = _existing_bundle(staged_dir, species=species, collection=collection)
+            _verify_counts(result)
+
         try:
-            # The working directory is private; the bundle inside it takes the
-            # cache's normal sharing mode, so others can read it once published.
-            staged = working / "bundle"
-            staged.mkdir()
-            build(staged)
-            verify(staged)
-            published = store.publish(staged)
-        finally:
-            tools.discard_private_directory(working)
-    return describe(published)
+            paths = datacache.materialize(
+                store_path,
+                sources,
+                transform=transform,
+                outputs=declared_outputs,
+                builder=builder,
+                force=force,
+                verify_files=False,
+                download_options={"show_progress": False},
+            )
+        except _DegradedOutputs as degraded:
+            fallback_dir = degraded.fallback_dir
+            actual_outputs = {name: {} for name in sorted(degraded.actual_files)}
+            try:
+                def copy_degraded(_source_paths, output_paths):
+                    staged_dir = Path(output_paths[_METADATA]).parent
+                    src_root = fallback_dir / "bundle"
+                    for rel_path, target in output_paths.items():
+                        shutil.copy2(src_root / rel_path, target)
+                    result = _existing_bundle(staged_dir, species=species, collection=collection)
+                    _verify_counts(result)
+
+                paths = datacache.materialize(
+                    store_path,
+                    sources,
+                    transform=transform,
+                    outputs=actual_outputs,
+                    builder=copy_degraded,
+                    force=True,
+                    verify_files=False,
+                    download_options={"show_progress": False},
+                )
+            finally:
+                shutil.rmtree(fallback_dir, ignore_errors=True)
+
+    published = Path(paths[_METADATA]).parent
+    return _existing_bundle(published, species=species, collection=collection)
+
+
+def _is_store_level_error(inspected, store_path):
+    """Whether ``inspected.error`` reflects structural store damage rather than bundle tampering."""
+    message = str(inspected.error or "")
+    return any(token in message for token in (
+        "not a datacache",
+        "not a directory",
+        "expected a directory",
+        ".datacache-store.json",
+    ))
+
+
+def _discover_viral_stores(root, *, depth):
+    """Discover candidate store directories at ``depth`` under ``root``, plus any readable DataCache stores."""
+    from datacache.cli import find_bundle_stores
+
+    stores = []
+    skipped = {}
+    if not _legacy_directory(root):
+        return stores, skipped
+    seen = set()
+    for store_dir in find_bundle_stores(str(root)):
+        path = Path(store_dir)
+        seen.add(path)
+        stores.append(path)
+
+    # Also detect directories at the store depth that lost their marker or cannot be read.
+    frontier = [root]
+    for _ in range(depth):
+        next_level = []
+        for parent in frontier:
+            if not _legacy_directory(parent):
+                continue
+            try:
+                entries = sorted(parent.iterdir(), key=lambda entry: entry.name)
+            except OSError as error:
+                skipped[str(parent)] = f"can't be listed: {error}"
+                continue
+            for entry in entries:
+                if entry.name.startswith("."):
+                    continue
+                next_level.append(entry)
+        frontier = next_level
+    for candidate in frontier:
+        if candidate not in seen:
+            stores.append(candidate)
+    return sorted(stores), skipped
+
+
+def _bundle_count(store_dir):
+    """Count bundle directories currently present under a validated DataCache store."""
+    bundles_dir = store_dir / "bundles"
+    if not _is_directory(bundles_dir):
+        return 0
+    try:
+        return sum(1 for entry in bundles_dir.iterdir() if _is_directory(entry))
+    except OSError:
+        return 0
 
 
 def prune_viral_references(
@@ -900,61 +1172,91 @@ def prune_viral_references(
     A refresh keeps the bundle it replaces, as DataCache keeps its own,
     because a running program may still be reading it; nothing is pruned
     automatically. Paths into deleted bundles stop working, so prune only
-    when no program still uses them. A directory installed by ORFdata 0.43 or
-    earlier counts as the oldest bundle. The PyEnsembl indexes
-    :func:`viral_genome` built under ``cache_root`` for deleted bundles are
-    removed too.
+    when no program still uses them. Reaches every bundle version and selection
+    schema under the collection's DataCache stores, using DataCache's own
+    locked pruning. A directory installed by ORFdata 0.43 or earlier counts as
+    the oldest bundle. The PyEnsembl indexes :func:`viral_genome` built under
+    ``cache_root`` for deleted bundles are removed too.
 
     Returns ``{"deleted": (bundle, ...), "skipped": {path: reason}}``. A store
     that can't be read or doesn't validate is skipped untouched, with the
     reason, and pruning goes on with the rest; so is a 0.43 directory that is
     a link, and a bundle that can't be removed.
     """
+    import datacache
+    from datacache.cli import prune_root
+
     if isinstance(keep, bool) or not isinstance(keep, int) or keep < 1:
         raise ValueError("keep must be a positive integer; the current bundle is always kept")
     species, collection = _selection(species, collection)
-    stores = [(_bundle_path(cache_root, species, collection),
-               _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS))]
-    selections = _bundle_path(cache_root, species, collection, area=_SELECTIONS)
-    legacy_selections = _bundle_path(cache_root, species, collection, area=_LEGACY_SELECTIONS)
-    names, skipped = set(), {}
-    for parent in (selections, legacy_selections):
-        if _legacy_directory(parent):
-            try:
-                names.update(entry.name for entry in parent.iterdir() if not entry.name.startswith("."))
-            except OSError as error:
-                skipped[str(parent)] = f"can't be listed: {error}"
-    stores.extend((selections / name, legacy_selections / name) for name in sorted(names))
+    viral_root = get_data_dir(cache_root) / "viral"
     deleted = []
-    for path, legacy in stores:
-        store = _store(path)
+    skipped = {}
+
+    area_specs = (
+        (viral_root / _COLLECTIONS / species / collection.name, 1, "materialization"),
+        (viral_root / _DOWNLOADS / species / collection.name, 1, "bundle"),
+        (viral_root / _SELECTIONS / species / collection.name, 2, "materialization"),
+    )
+    for area_root, depth, store_kind in area_specs:
+        stores, area_skipped = _discover_viral_stores(area_root, depth=depth)
+        skipped.update(area_skipped)
+        for store_dir in stores:
+            if store_kind == "bundle":
+                inspected = datacache.inspect_bundle(store_dir, verify_files=False)
+            else:
+                inspected = datacache.inspect_materialization(store_dir, verify_files=False)
+            if inspected.status == "inaccessible":
+                skipped[str(store_dir)] = f"can't be read: {inspected.error}"
+                continue
+            if inspected.status == "invalid":
+                skipped[str(store_dir)] = str(inspected.error)
+                continue
+            if inspected.status == "missing":
+                continue
+            try:
+                results = prune_root(str(store_dir), keep=keep, apply=True)
+            except (OSError, ValueError) as error:
+                skipped[str(store_dir)] = f"couldn't be pruned: {error}"
+                continue
+            for entry in results:
+                for removed in entry["removed"]:
+                    bundle = Path(removed)
+                    shutil.rmtree(_annotation_index(cache_root, collection, bundle), ignore_errors=True)
+                    deleted.append(bundle)
+
+    # Prune legacy 0.43 directories once the corresponding modern store has at least ``keep`` bundles.
+    legacy_pairs = [
+        (viral_store_path(cache_root, species, collection, area=_COLLECTIONS),
+         viral_store_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS)),
+    ]
+    legacy_selections_root = viral_store_path(cache_root, species, collection, area=_LEGACY_SELECTIONS)
+    modern_selections_root = viral_store_path(cache_root, species, collection, area=_SELECTIONS)
+    if _legacy_directory(legacy_selections_root):
         try:
-            problem = _store_problem(store)
+            for entry in sorted(legacy_selections_root.iterdir(), key=lambda item: item.name):
+                if not entry.name.startswith("."):
+                    legacy_pairs.append((modern_selections_root / entry.name, entry))
         except OSError as error:
-            skipped[str(path)] = f"can't be read: {error}"
+            skipped[str(legacy_selections_root)] = f"can't be listed: {error}"
+
+    for modern_store, legacy in legacy_pairs:
+        if not _legacy_directory(legacy):
             continue
-        if problem is not None:
-            skipped[str(path)] = problem[1]
+        if _bundle_count(modern_store) < keep:
             continue
-        if not _is_directory(path):
-            continue  # At most a 0.43 directory: the current bundle, which is kept.
-        with store.lock():
-            bundles = [legacy] if _legacy_directory(legacy) else []
-            if _is_directory(store.bundles):
-                bundles += [store.bundles / name for name in store.bundle_names()]
-            for bundle in bundles[:-keep]:
-                if not _is_directory(bundle):
-                    if bundle == legacy:
-                        skipped[str(bundle)] = "is a link to a 0.43 directory; remove it by hand"
-                    continue  # Never follow a link out of the store.
-                index = _annotation_index(cache_root, collection, bundle)
-                try:
-                    shutil.rmtree(bundle)
-                except OSError as error:
-                    skipped[str(bundle)] = f"couldn't be removed: {error}"
-                    continue
-                shutil.rmtree(index, ignore_errors=True)
-                deleted.append(bundle)
+        if not _is_directory(legacy):
+            skipped[str(legacy)] = "is a link to a 0.43 directory; remove it by hand"
+            continue
+        index = _annotation_index(cache_root, collection, legacy)
+        try:
+            shutil.rmtree(legacy)
+        except OSError as error:
+            skipped[str(legacy)] = f"couldn't be removed: {error}"
+            continue
+        shutil.rmtree(index, ignore_errors=True)
+        deleted.append(legacy)
+
     return dict(deleted=tuple(deleted), skipped=skipped)
 
 
@@ -979,7 +1281,8 @@ def open_viral_references(
 
     ``download_if_missing=True`` calls :func:`download_viral_references` when
     needed; otherwise this performs an offline, checksummed cache lookup.
-    ``force=True`` explicitly refreshes or repairs the cache, which downloads.
+    ``force=True`` explicitly refreshes or repairs the cache, which downloads
+    a published artifact or rebuilds from pinned sources.
     ``species`` describes the target analysis species and ``collection`` names
     one of the published collections, which :func:`viral_collections` lists.
     Analysis contexts are nonexclusive metadata and never determine cache
@@ -996,7 +1299,7 @@ def open_viral_references(
     if path is None:
         raise NotInstalledError(
             f"The {collection.name} viral references are not installed; run "
-            f"'orfdata download viral --collection {collection.name}', or pass "
+            f"'orfdata data fetch {collection.name}', or pass "
             "download_if_missing=True."
         )
     return _verified_existing_bundle(path, species=species, collection=collection)
@@ -1012,8 +1315,18 @@ def download_viral_references(
     prefer_reference_molecule: bool = True,
     annotate_from_alternate: bool = True,
     prefer_alternate_annotation: bool = False,
+    source_paths: dict[str, str | PathLike[str]] | None = None,
+    download_options: dict[str, object] | None = None,
 ) -> ViralReferenceFiles:
     """Install a viral genome, transcript and protein collection for an analysis target.
+
+    Downloads a pinned release artifact through DataCache's
+    :class:`~datacache.VersionedDatasetRegistry` when one is registered and
+    default content options are used; otherwise builds the collection locally
+    from pinned source ledgers and publishes it atomically through
+    :func:`datacache.materialize`. Passing any option that changes content
+    (``prefer_reference_molecule=False``, ``annotate_from_alternate=False``,
+    or ``prefer_alternate_annotation=True``) selects the local build route.
 
     :func:`viral_collections` lists what can be installed; the one published
     today is ``gdc-viruses``, the 200-reference GDC screen for human
@@ -1023,27 +1336,13 @@ def download_viral_references(
     create a filtered derived set, use :func:`select_viral_references`. The
     collection is stored under ``ORFDATA_CACHE`` (or the normal OpenVax cache);
     a verified cache is reused and ``force=True`` refreshes or repairs it. A
-    refresh is built beside the installed collection and switched in with one
-    rename, so a reader finds the old files or the new ones, never a gap; the
-    current directory therefore changes with each refresh. Replaced copies
+    refresh is published beside the installed collection as a new DataCache
+    generation, so a reader finds the old files or the new ones, never a gap;
+    the current directory therefore changes with each refresh. Replaced copies
     stay for programs still reading them until :func:`prune_viral_references`
-    removes them, and installs of one collection take turns. A request that
-    stalls for ``timeout`` seconds is retried, then fails; ``timeout=None``
-    waits.
-
-    An inventory can name an entry at two sources whose molecules differ. With
-    ``prefer_reference_molecule=True`` (the default) the collection carries the
-    one the reference it follows was built from — for GDC's viral decoys the
-    alternate source's, which is checkable for HPV16 — and records
-    ``genome_source`` on every genome. With
-    ``annotate_from_alternate=True`` (the default) an entry whose own record
-    annotates nothing takes its coding features from the alternate, when that
-    is the identical molecule, and ``prefer_alternate_annotation=True`` widens
-    that to every entry the alternate annotates at least as fully, trading
-    each submission's own gene naming for one source's uniform models. All three
-    verify against packaged checksums before anything is written, and all
-    three degrade to the primary record, with the reason recorded, rather than
-    discarding a download.
+    or ``orfdata data prune`` removes them, and installs of one collection take
+    turns. A request that stalls for ``timeout`` seconds is retried, then
+    fails; ``timeout=None`` waits.
 
     This source-record collection is separate from the curated
     :func:`viral_references` catalogue.
@@ -1055,34 +1354,111 @@ def download_viral_references(
                                 or isinstance(timeout, bool) or timeout <= 0):
         raise ValueError("timeout must be a positive number of seconds, or None to wait")
 
-    def reuse(current):
-        try:
-            return _verified_existing_bundle(current, species=species, collection=collection)
-        except PermissionError as error:
-            raise ValueError(
-                f"The {collection.name} viral references at {current} can't be read ({error}); fix their "
-                "permissions, or replace them with force=True (--force on the command line)"
-            ) from error
-        except (OSError, ValueError) as error:
-            raise FileNotFoundError(
-                f"The {collection.name} viral references at {current} are incomplete or invalid; "
-                "rebuild them with force=True (--force on the command line)"
-            ) from error
+    default_content = (
+        prefer_reference_molecule
+        and annotate_from_alternate
+        and not prefer_alternate_annotation
+    )
+    use_download = collection.published and default_content
 
-    def build(directory):
-        inventory = viral_panel_coverage(collection=collection.name, installed=False)
-        primaries = _primary_ledger(collection, inventory)
-        _write_bundle(directory, collection, inventory, primaries, timeout=timeout,
-                      prefer_reference_molecule=prefer_reference_molecule,
-                      annotate_from_alternate=annotate_from_alternate,
-                      prefer_alternate_annotation=prefer_alternate_annotation)
+    if use_download:
+        registry = viral_download_registry(collection, cache_root)
+        version = bundle_version(collection)
+        dl_store = viral_store_path(cache_root, species, collection, area=_DOWNLOADS)
+        if not force:
+            inspected = inspect_viral_collection(
+                collection, species=species, cache_root=cache_root, verify_files=True,
+            )
+            if inspected.status == "available":
+                return _existing_bundle(inspected.path, species=species, collection=collection)
+            if inspected.status == "inaccessible":
+                raise ValueError(
+                    f"The {collection.name} viral references at {inspected.path} can't be read "
+                    f"({inspected.error}); fix their permissions, or replace them with force=True "
+                    "(--force on the command line)"
+                ) from inspected.error
+            if inspected.status == "damaged":
+                if _is_store_level_error(inspected, dl_store):
+                    raise ValueError(
+                        f"The viral reference store {dl_store} is damaged ({inspected.error}); "
+                        f"{_collection_repair(collection)}"
+                    ) from inspected.error
+                raise FileNotFoundError(
+                    f"The {collection.name} viral references at {inspected.path} are incomplete or invalid; "
+                    "rebuild them with force=True (--force on the command line)"
+                ) from inspected.error
+        opts = dict(download_options or {})
+        opts.setdefault("timeout", timeout)
+        overrides = None if source_paths is None else {k: str(v) for k, v in source_paths.items()}
+        registry.download(collection.name, version, force=force, source_paths=overrides, **opts)
+        after = registry.inspect(collection.name, version, verify_files=False)
+        return _existing_bundle(Path(after.bundle), species=species, collection=collection)
 
-    return _publish(
-        _bundle_path(cache_root, species, collection),
-        _bundle_path(cache_root, species, collection, area=_LEGACY_COLLECTIONS), build,
-        lambda path: _verified_existing_bundle(path, species=species, collection=collection),
-        lambda path: _existing_bundle(path, species=species, collection=collection),
-        reuse, force=force, repair=_collection_repair(collection))
+    build_store = viral_store_path(cache_root, species, collection, area=_COLLECTIONS)
+    materialize_force = force
+    if not force:
+        if default_content:
+            inspected = inspect_viral_collection(
+                collection, species=species, cache_root=cache_root, verify_files=True,
+            )
+            if inspected.status == "available":
+                return _existing_bundle(inspected.path, species=species, collection=collection)
+            if inspected.status == "inaccessible":
+                raise ValueError(
+                    f"The {collection.name} viral references at {inspected.path} can't be read "
+                    f"({inspected.error}); fix their permissions, or replace them with force=True "
+                    "(--force on the command line)"
+                ) from inspected.error
+            if inspected.status == "damaged":
+                if _is_store_level_error(inspected, build_store):
+                    raise ValueError(
+                        f"The viral reference store {build_store} is damaged ({inspected.error}); "
+                        f"{_collection_repair(collection)}"
+                    ) from inspected.error
+                raise FileNotFoundError(
+                    f"The {collection.name} viral references at {inspected.path} are incomplete or invalid; "
+                    "rebuild them with force=True (--force on the command line)"
+                ) from inspected.error
+        else:
+            import datacache
+
+            desired_options = {
+                "collection": collection.name,
+                "bundle_version": bundle_version(collection),
+                "prefer_reference_molecule": prefer_reference_molecule,
+                "annotate_from_alternate": annotate_from_alternate,
+                "prefer_alternate_annotation": prefer_alternate_annotation,
+            }
+            existing = datacache.inspect_materialization(build_store, verify_files=True)
+            if existing.status == "available":
+                if (isinstance(existing.transform, dict)
+                        and existing.transform.get("options") == desired_options):
+                    return _verified_existing_bundle(
+                        Path(existing.bundle), species=species, collection=collection,
+                    )
+                materialize_force = True
+            elif existing.status == "inaccessible":
+                raise ValueError(
+                    f"The {collection.name} viral references at {build_store} can't be read "
+                    f"({existing.error}); fix their permissions, or replace them with force=True "
+                    "(--force on the command line)"
+                ) from existing.error
+            elif existing.status == "invalid":
+                raise FileNotFoundError(
+                    f"The {collection.name} viral references at {build_store} are incomplete or invalid; "
+                    "rebuild them with force=True (--force on the command line)"
+                ) from existing.error
+
+    return _build_collection_bundle(
+        build_store,
+        collection,
+        species,
+        timeout=timeout,
+        force=materialize_force,
+        prefer_reference_molecule=prefer_reference_molecule,
+        annotate_from_alternate=annotate_from_alternate,
+        prefer_alternate_annotation=prefer_alternate_annotation,
+    )
 
 
 def _copy_fasta(source, destination, keys):
@@ -1249,6 +1625,8 @@ def select_viral_references(
     Each rebuild is a new bundle, so the selection's directory changes, and
     replaced ones stay until :func:`prune_viral_references` removes them.
     """
+    import datacache
+
     contexts = normalize_viral_contexts(contexts)
     excluded_contexts = normalize_viral_contexts(exclude_contexts)
     subsets = normalize_viral_subsets(subsets)
@@ -1268,34 +1646,72 @@ def select_viral_references(
                 excluded_contexts, context_match, subsets, genome_ids)
     identity = dict(bundle=bundle, contexts=contexts, excluded_contexts=excluded_contexts,
                     context_match=context_match, subsets=subsets)
+    store_path = _index_path(*location)
+    legacy = _index_path(*location, area=_LEGACY_SELECTIONS)
 
-    def reuse(current):
-        try:
-            return _verified_existing_index(current, **identity)
-        except (OSError, ValueError):
-            return None  # A derived index is rebuilt from the local bundle, not repaired by hand.
+    if not force:
+        inspected = datacache.inspect_materialization(store_path, verify_files=True)
+        if inspected.status == "available":
+            try:
+                return _index_result(Path(inspected.bundle), **identity)
+            except (OSError, ValueError):
+                pass
+        elif inspected.status == "missing" and _legacy_directory(legacy):
+            try:
+                return _verified_existing_index(legacy, **identity)
+            except (OSError, ValueError):
+                pass
 
-    def build(staging):
-        transcripts = [row for row in _read_table(bundle.transcript_table)
+    sources = {
+        _GENOME_FASTA: {"path": str(bundle.genome_fasta)},
+        _TRANSCRIPT_FASTA: {"path": str(bundle.transcript_fasta)},
+        _PROTEIN_FASTA: {"path": str(bundle.protein_fasta)},
+        _ANNOTATION_GTF: {"path": str(bundle.annotation_gtf)},
+        _GENOME_TABLE: {"path": str(bundle.genome_table)},
+        _TRANSCRIPT_TABLE: {"path": str(bundle.transcript_table)},
+    }
+    version = bundle_version(viral_collection(bundle.collection))
+    transform = {
+        "version": INDEX_SCHEMA,
+        "options": {
+            "bundle_version": version,
+            "collection": bundle.collection,
+            "target_species": bundle.target_species,
+            "target_taxon_id": bundle.target_taxon_id,
+            "contexts": list(contexts),
+            "excluded_contexts": list(excluded_contexts),
+            "context_match": context_match,
+            "subsets": list(subsets),
+            "genome_ids": list(genome_ids),
+            "source_bundle": str(bundle.path),
+        },
+    }
+    declared_outputs = {name: {} for name in _BASE_OUTPUTS}
+
+    def build(source_paths, output_paths):
+        staging = Path(output_paths[_METADATA]).parent
+        transcript_table = Path(source_paths[_TRANSCRIPT_TABLE])
+        genome_table = Path(source_paths[_GENOME_TABLE])
+        transcripts = [row for row in _read_table(transcript_table)
                        if row["genome_id"] in selected]
-        genome_count = _copy_fasta(bundle.genome_fasta, staging / _GENOME_FASTA, selected)
+        genome_count = _copy_fasta(Path(source_paths[_GENOME_FASTA]), staging / _GENOME_FASTA, selected)
         transcript_count = _copy_fasta(
-            bundle.transcript_fasta, staging / _TRANSCRIPT_FASTA,
+            Path(source_paths[_TRANSCRIPT_FASTA]), staging / _TRANSCRIPT_FASTA,
             {row["transcript_id"] for row in transcripts})
         protein_count = _copy_fasta(
-            bundle.protein_fasta, staging / _PROTEIN_FASTA,
+            Path(source_paths[_PROTEIN_FASTA]), staging / _PROTEIN_FASTA,
             {row["protein_id"] for row in transcripts})
-        genome_rows = _copy_table(bundle.genome_table, staging / _GENOME_TABLE,
+        genome_rows = _copy_table(genome_table, staging / _GENOME_TABLE,
                                   "genome_id", selected)
-        transcript_rows = _copy_table(bundle.transcript_table, staging / _TRANSCRIPT_TABLE,
+        transcript_rows = _copy_table(transcript_table, staging / _TRANSCRIPT_TABLE,
                                       "genome_id", selected)
-        _copy_gtf(bundle.annotation_gtf, staging / _ANNOTATION_GTF, selected)
+        _copy_gtf(Path(source_paths[_ANNOTATION_GTF]), staging / _ANNOTATION_GTF, selected)
         if (genome_count != genome_rows or genome_count != len(selected)
                 or transcript_count != transcript_rows or protein_count != transcript_rows):
             raise ValueError("Viral reference index counts disagree")
         (staging / _METADATA).write_text(json.dumps({
             "schema": INDEX_SCHEMA,
-            "bundle_version": bundle_version(viral_collection(bundle.collection)),
+            "bundle_version": version,
             "collection": bundle.collection,
             "target_species": bundle.target_species,
             "target_taxon_id": bundle.target_taxon_id,
@@ -1318,18 +1734,26 @@ def select_viral_references(
             f"Named subsets: {', '.join(subsets) or 'none'}\n\n"
             f"Genome, transcriptome and proteome layers for {genome_count} of the "
             f"{bundle.genome_count} references in the `{bundle.collection}` collection, "
-            f"version `{bundle_version(viral_collection(bundle.collection))}`, with the same "
+            f"version `{version}`, with the same "
             "identifiers and the matching GTF rows. Context, subset and collection membership "
             "are evidence associations and do not alter identity.\n",
             encoding="utf-8",
         )
         _write_checksums(staging)
+        result = _index_result(staging, **identity)
+        _verify_counts(result)
 
-    return _publish(
-        _index_path(*location), _index_path(*location, area=_LEGACY_SELECTIONS), build,
-        lambda path: _verified_existing_index(path, **identity),
-        lambda path: _index_result(path, **identity), reuse, force=force, repair=_SELECTION_REPAIR,
-        rebuild_damaged=True)
+    paths = datacache.materialize(
+        store_path,
+        sources,
+        transform=transform,
+        outputs=declared_outputs,
+        builder=build,
+        force=True,
+        verify_files=False,
+        download_options={"show_progress": False},
+    )
+    return _index_result(Path(paths[_METADATA]).parent, **identity)
 
 
 def viral_reference_summary(*, contexts=None, exclude_contexts=None, context_match="any",

@@ -93,7 +93,7 @@ def test_summary_describes_the_installed_layers(viral_panel, tmp_path, capsys):
 def test_summary_without_an_installed_collection_says_how_to_get_one(tmp_path, capsys):
     with pytest.raises(SystemExit):
         run(["viral", "summary", "--cache-root", str(tmp_path)])
-    assert "orfdata download viral" in capsys.readouterr().err
+    assert "orfdata data fetch gdc-viruses" in capsys.readouterr().err
 
 
 def test_download_viral_builds_the_collection_then_a_selection(viral_panel, tmp_path, capsys):
@@ -154,4 +154,4 @@ def test_completeness_surveys_each_installed_genome(viral_panel, tmp_path, capsy
 def test_completeness_without_an_installed_collection_says_how_to_get_one(tmp_path, capsys):
     with pytest.raises(SystemExit):
         run(["viral", "completeness", "--cache-root", str(tmp_path)])
-    assert "orfdata download viral" in capsys.readouterr().err
+    assert "orfdata data fetch gdc-viruses" in capsys.readouterr().err

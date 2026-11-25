@@ -54,6 +54,11 @@ class ViralCollection:
     alternate_note: str = ""
     expected_sequences: tuple[ExpectedSequence, ...] = ()
     aliases: tuple[str, ...] = field(default=(), repr=False)
+    assets: Mapping[str, Mapping[str, object]] = field(
+        default_factory=dict, repr=False, hash=False
+    )
+    download_size: Optional[int] = None
+    installed_size: Optional[int] = None
 
     def __post_init__(self):
         """Reject incomplete declarations before any download can use them."""
@@ -63,6 +68,10 @@ class ViralCollection:
             raise ValueError("references must be a positive row count")
         if type(self.panel_size) is not int or self.panel_size < 1:
             raise ValueError("panel_size must be a positive byte count")
+        for field_name in ("download_size", "installed_size"):
+            value = getattr(self, field_name)
+            if value is not None and (type(value) is not int or value < 0):
+                raise ValueError(f"{field_name} must be a nonnegative integer byte count")
         try:
             digest_is_hex = len(self.panel_sha256) == 64 and int(self.panel_sha256, 16) >= 0
         except (TypeError, ValueError):
@@ -82,10 +91,20 @@ class ViralCollection:
             raise ValueError(
                 f"Expected sequence sources have no summary: {', '.join(unknown_checks)}"
             )
+        frozen_assets = MappingProxyType({
+            str(name): MappingProxyType(dict(spec))
+            for name, spec in dict(self.assets).items()
+        })
         object.__setattr__(self, "source_files", MappingProxyType(sources))
+        object.__setattr__(self, "assets", frozen_assets)
         object.__setattr__(self, "contexts", tuple(self.contexts))
         object.__setattr__(self, "expected_sequences", tuple(self.expected_sequences))
         object.__setattr__(self, "aliases", tuple(self.aliases))
+
+    @property
+    def published(self) -> bool:
+        """Whether this collection has a published artifact downloadable via DataCache."""
+        return bool(self.assets)
 
     def source(self, name=None):
         """One of this collection's sources: its primary one by default."""
@@ -149,6 +168,10 @@ class ViralCollection:
                              for name, table in sorted(self.source_files.items())},
             "expected_sequences": [expected.to_dict() for expected in self.expected_sequences],
             "aliases": list(self.aliases),
+            "published": self.published,
+            "download_size": self.download_size,
+            "installed_size": self.installed_size,
+            "assets": {name: dict(spec) for name, spec in sorted(self.assets.items())},
         }
 
 

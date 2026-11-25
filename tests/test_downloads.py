@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from orfdata import list_data
+from orfdata import RESOURCE_STATES, list_data
 from orfdata.cli import run
 from orfdata.downloads import collection_state, default_collections
 from orfdata.install import _selected_collections
@@ -18,7 +18,9 @@ def test_every_kind_is_listed_with_an_acquisition_command():
     # A bundled resource needs no command; everything acquirable names one.
     assert all(row.command for row in rows if row.acquire is not None)
     assert all(row.acquire is not None or row.installed for row in rows)
-    assert all(row.status in ("available", "missing", "corrupt", "inaccessible") for row in rows)
+    assert all(row.status in RESOURCE_STATES for row in rows)
+    assert all(row.default for row in rows)
+    assert len(list_data(all_versions=True)) > len(rows)
     assert [row.name for row in list_data(kind="viral")] == ["gdc-viruses"]
     assert list_data(kind="all") == rows
 
@@ -98,17 +100,17 @@ def test_setup_reports_what_each_collection_needed(monkeypatch):
 
     options = dict(force=False, cache_root=None, timeout=60, failed=failed)
     assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
-        "gdc-viruses": "downloaded"}
+        "gdc-viruses": "built"}
     # Nothing is replaced when nothing is there.
     assert installed == [("gdc-viruses", False)] and failed == []
 
     states["gdc-viruses"] = "available"
     assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
         "gdc-viruses": "already installed"}
-    # A forced reinstall of a healthy collection is not a repair.
+    # A forced replacement of a healthy collection is reported as replaced, not repaired.
     assert _install_collections(["gdc-viruses"], "homo_sapiens", **dict(options, force=True)) == {
-        "gdc-viruses": "reinstalled"}
-    states["gdc-viruses"] = "corrupt"
+        "gdc-viruses": "replaced"}
+    states["gdc-viruses"] = "damaged"
     assert _install_collections(["gdc-viruses"], "homo_sapiens", **options) == {
         "gdc-viruses": "repaired"}
     assert installed[-1] == ("gdc-viruses", True)

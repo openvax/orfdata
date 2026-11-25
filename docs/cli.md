@@ -60,9 +60,8 @@ orfdata datasets query pfizer-atlas-dog-protein --cache-root /path/to/cache
 Every command that downloads takes `--timeout SECONDS`: how long a download may
 stall before it is retried, then fails (default 60; `--timeout none` waits
 indefinitely). The chromosome FASTA that `genomes install --genome-fasta` passes
-to PyEnsembl is downloaded without a timeout. The `--registry` option of
-`catalogs` and `datasets` stays before the subcommand:
-`orfdata catalogs --registry registry.json list`.
+to PyEnsembl is downloaded without a timeout. The hidden `--registry` option of
+`catalogs` and `datasets` works before or after the subcommand.
 
 ## Human previews and complete exports
 

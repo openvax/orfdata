@@ -25,7 +25,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from .cache import content_digest, get_data_dir, pinned_registry
-from .errors import NotInstalledError
+from .errors import NotInstalledError, TermsNotAccepted
 
 
 @dataclass(frozen=True)
@@ -290,8 +290,10 @@ def download_chain(source_build, target_build, *, species=None, accept_terms=Fal
     """
     chain = _pinned(source_build, target_build, species)
     if chain.restricted and accept_terms is not True:
-        raise ValueError(f"{chain.filename} comes from {chain.provider} with these terms: {chain.terms} "
-                         f"({chain.terms_url}). Pass accept_terms=True (or --accept-terms) to download it.")
+        raise TermsNotAccepted(
+            f"{chain.filename} comes from {chain.provider} with these terms: {chain.terms} "
+            f"({chain.terms_url}). Pass accept_terms=True (or --accept-terms) to download it."
+        )
     registry = chain_registry(chain, cache_root)
     try:
         registry.download(chain.name, "1", force=force,

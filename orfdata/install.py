@@ -42,9 +42,15 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     """
     import tempfile
 
-    from .catalog import _catalog_choices, _installed, _plan, _selected
+    from .catalog import _catalog_choices, _plan, _selected, catalog_install_state
     from .catalogs import CatalogRegistry
-    from .downloads import default_collections, needs_replacement, refuse_unreadable
+    from .downloads import (
+        acquisition_action,
+        default_collections,
+        needs_replacement,
+        normalize_status,
+        refuse_unreadable,
+    )
     from .liftover import chain_registry, download_chain, pinned_chains
     from .reference import canonical_species
 
@@ -74,9 +80,9 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     if type(resume) is not bool:
         raise ValueError("resume must be True or False")
     options = ({} if timeout is None else dict(timeout=timeout)) | ({"resume": "auto"} if resume else {})
-    states = {key: _installed(choice) for key, choice in needed.items()}
+    states = {key: catalog_install_state(choice)[0] for key, choice in needed.items()}
     for key in sorted(needed):
-        if states[key] in ("downloaded", "built") and not force:
+        if states[key] == "available" and not force:
             result["catalogs"][f"{key[0]} {key[1]}"] = "already installed"
     builds = [key for key in sorted(needed) if f"{key[0]} {key[1]}" not in result["catalogs"]
               and not registry.published(*key)]
@@ -88,19 +94,17 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
                 continue
             state = states[name, version]
             try:
-                # The shared policy needs the damaged store's own status: replaced if invalid, refused if unreadable.
-                status = _damage(registry, name, version) if state == "damaged" else "missing"
+                status = _damage(registry, name, version) if state in ("damaged", "inaccessible") else state
                 refuse_unreadable(status, force=force, name=label, command=retry)
                 repair = needs_replacement(status, force=force)
-                if (name, version) in builds:
+                acquire = "build" if (name, version) in builds else "download"
+                if acquire == "build":
                     paths = {s.asset_id: shared[s.sha256] for s in registry.info(name, version).sources
                              if s.sha256 in shared}
                     registry.build(name, version, force=repair, source_paths=paths or None, download_options=options)
-                    verb = "built"
                 else:
                     registry.download(name, version, force=repair, **options)
-                    verb = "downloaded"
-                result["catalogs"][label] = "repaired" if state == "damaged" else verb
+                result["catalogs"][label] = acquisition_action(status, acquire=acquire, force=force)
             except Exception as error:  # Reported with the rest, after everything else is tried.
                 result["catalogs"][label] = f"failed: {error}"
                 failed.append((label, str(error)))
@@ -110,15 +114,17 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
                                             f"(--accept-terms): {chain.terms}")
             continue
         try:
-            state = chain_registry(chain, root).inspect(chain.name, "1", verify_files=False).status
+            state = normalize_status(
+                chain_registry(chain, root).inspect(chain.name, "1", verify_files=False).status
+            )
             if state == "available" and not force:
-                result["chains"][chain.name] = "already downloaded"
+                result["chains"][chain.name] = "already installed"
                 continue
             refuse_unreadable(state, force=force, name=chain.name, command=retry)
             download_chain(chain.source_build, chain.target_build, species=chain.species, accept_terms=accept_terms,
                            force=needs_replacement(state, force=force), cache_root=root,
                            download_options=options)
-            result["chains"][chain.name] = {"missing": "downloaded", "available": "reinstalled"}.get(state, "repaired")
+            result["chains"][chain.name] = acquisition_action(state, acquire="download", force=force)
         except Exception as error:
             result["chains"][chain.name] = f"failed: {error}"
             failed.append((chain.name, str(error)))
@@ -135,24 +141,28 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
 def _install_collections(names, species, *, force, cache_root, timeout, failed, retry=None):
     """Install each reference collection, reporting what every one needed."""
     from .downloads import (
+        acquisition_action,
         collection_state,
         install_collection,
         needs_replacement,
+        normalize_status,
         refuse_unreadable,
     )
+    from .viral_registry import viral_collection
 
     installed = {}
     for name in names:
         try:
-            state = collection_state(name, species=species, cache_root=cache_root)
+            state = normalize_status(collection_state(name, species=species, cache_root=cache_root))
             if state == "available" and not force:
                 installed[name] = "already installed"
                 continue
             refuse_unreadable(state, force=force, name=name, command=retry)
+            collection = viral_collection(name, species=species)
+            acquire = "download" if collection.published else "build"
             install_collection(name, species=species, force=needs_replacement(state, force=force),
                                cache_root=cache_root, timeout=timeout)
-            installed[name] = {"missing": "downloaded",
-                               "available": "reinstalled"}.get(state, "repaired")
+            installed[name] = acquisition_action(state, acquire=acquire, force=force)
         except Exception as error:  # Reported with the rest, after everything else is tried.
             installed[name] = f"failed: {error}"
             failed.append((name, str(error)))
@@ -160,10 +170,12 @@ def _install_collections(names, species, *, force, cache_root, timeout, failed, 
 
 
 def _damage(registry, name, version):
-    """The status of whichever of a release's stores is damaged: its download, else its local build."""
-    statuses = [registry.inspect_build(name, version, verify_files=False).status]
+    """The unified status of whichever of a release's stores is damaged or inaccessible."""
+    from .downloads import normalize_status
+
+    statuses = [normalize_status(registry.inspect_build(name, version, verify_files=False).status)]
     if registry.published(name, version):
-        statuses.insert(0, registry.inspect(name, version, verify_files=False).status)
+        statuses.insert(0, normalize_status(registry.inspect(name, version, verify_files=False).status))
     return next((status for status in statuses if status not in ("available", "missing")), "missing")
 
 

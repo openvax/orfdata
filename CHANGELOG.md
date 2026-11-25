@@ -1,3 +1,56 @@
+# 0.60.0
+
+- Move viral collections and derived viral selections off private
+  `datacache.bundle_store` onto DataCache's public download/build split
+  (`VersionedDatasetRegistry` for published artifacts, `datacache.materialize`
+  and `datacache.inspect_materialization` for local builds and selections, and
+  `datacache.cli.prune_root` for pruning) (#159, #173):
+  - `orfdata` now has zero imports of `datacache.bundle_store`; viral stores
+    participate in `orfdata data prune` automatically and share DataCache's
+    locking, atomic publication, and takeover-refusal semantics across all
+    bundle versions and selection schemas.
+  - `ViralCollection` supports optional published `assets`, `download_size`,
+    and `installed_size` metadata (`ViralCollection.published`,
+    `viral_download_registry`, `inspect_viral_collection`, `viral_store_path`).
+    `orfdata data fetch` downloads a pinned artifact when registered and builds
+    locally otherwise; content-changing options (`--inventory-molecules`,
+    `--no-annotation-fill`, `--alternate-annotations`) select the build route.
+  - `orfdata.net.fetch` honours `Retry-After` headers (seconds or HTTP-date
+    via `parse_retry_after`), respects `DATACACHE_OFFLINE` / `OPENVAX_OFFLINE`,
+    and uses a generic `orfdata/<version>` `User-Agent`. `GenBankSource`
+    supports `NCBI_API_KEY` (`ncbi_api_key`) with authenticated rate intervals.
+- Show species, download/installed sizes, and default versions in `orfdata data
+  list` and `orfdata data info` (#160):
+  - `data list` now displays `SPECIES` and `SIZE` columns, lists default
+    versions only unless `--all-versions` (`list_data(all_versions=True)`) is
+    passed, abbreviates long viral hashes in human tables while preserving
+    complete versions in `--json`, and keeps names intact without mid-token
+    wrapping.
+  - `data info` displays human-formatted `download size` and `installed size`
+    for every kind where known (with exact integer bytes in `--json`), and the
+    bundled catalogue title now identifies it as the human GENCODE catalogue.
+- Unify local status and acquisition action vocabularies across `data`
+  commands, catalogues, datasets, viral collections, and `setup` (#164):
+  - Documented states (`RESOURCE_STATES`, `normalize_status`): `available`,
+    `bundled`, `missing`, `damaged`, `inaccessible` (mapping DataCache's
+    `invalid` and legacy `corrupt` to `damaged`, while preserving
+    `datacache_status` in JSON).
+  - Documented actions (`ACQUISITION_ACTIONS`, `acquisition_action`):
+    `downloaded`, `built`, `repaired`, `replaced`, `already installed`,
+    `skipped`, `failed`.
+- Resolve deferred CLI and exit-status review findings (#173):
+  - Raise `orfdata.TermsNotAccepted(ValueError)` from `download_chain` and
+    `check_fetch`/`fetch_data`, mapped to exit status 2 by
+    `ArgumentParser.fail`.
+  - Validate paired `--reference` and `--asset` options in
+    `validate_search_reference_options` so mismatched valid pairs exit 2.
+  - Share registry JSON loading in `orfdata.registry.load_registry`.
+  - Propagate `share_cache_root` and `share_option` (including hidden
+    `--registry`) automatically to subcommands added before or after the call.
+  - Consolidate `data list` truncation footers inside `cli_output.print_table`
+    and enable automatic repair of damaged installs in focused `data catalog`
+    and `data dataset` commands.
+
 # 0.59.0
 
 - Add shared subtle cyan terminal styling for CLI help, table headers, and
