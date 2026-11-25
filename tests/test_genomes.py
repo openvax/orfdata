@@ -39,7 +39,7 @@ def test_a_pinned_annotation_installs_from_local_copies_and_opens_offline(tmp_pa
 
     paths, pins = slice_pins(tmp_path)
     monkeypatch.setattr(genomes, "_pins", lambda: pins)
-    with pytest.raises(ValueError, match="not installed; install it once with install_genome.*orfdata genomes install"):
+    with pytest.raises(ValueError, match="not installed; install it once with install_genome.*orfdata data fetch"):
         load_genome("mouse-slice")
     with pytest.raises(ValueError, match="mismatch"):
         install_genome("mouse-slice", source_paths=dict(paths, gtf=paths["transcripts"]))
@@ -73,8 +73,8 @@ def test_a_damaged_index_or_file_says_how_to_reinstall(tmp_path, monkeypatch):
     index, = (tmp_path / "root").rglob("*.db")
     index.write_bytes(b"not a database")
     # The command to run names the same cache.
-    with pytest.raises(ValueError, match=r"index is damaged .*'orfdata genomes --cache-root \S+root install "
-                                         r"mouse-slice --force'"):
+    with pytest.raises(ValueError, match=r"index is damaged .*'orfdata data fetch mouse-slice "
+                                         r"--cache-root \S+root --force'"):
         load_genome("mouse-slice", cache_root=tmp_path / "root")
     assert install_genome("mouse-slice", force=True, source_paths=paths, cache_root=tmp_path / "root")
     assert load_genome("mouse-slice", cache_root=tmp_path / "root").transcript_by_id("ENSMUST00000109601")
@@ -280,7 +280,7 @@ def test_a_t2t_name_that_is_not_installed_names_the_pins_install_command(tmp_pat
     with pytest.raises(NotInstalledError) as error:
         load_genome("chm13v2.0_maskedY_rCRS", cache_root=tmp_path)
     assert str(error.value).startswith("The t2t-chm13 annotation (for chm13v2.0_maskedY_rCRS) is not installed")
-    assert f"'orfdata genomes --cache-root {tmp_path} install t2t-chm13'" in str(error.value)
+    assert f"'orfdata data fetch t2t-chm13 --cache-root {tmp_path}'" in str(error.value)
     assert isinstance(error.value, FileNotFoundError) and isinstance(error.value, ValueError)
 
 

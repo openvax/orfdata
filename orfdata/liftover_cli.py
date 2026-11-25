@@ -14,8 +14,6 @@ from .command_parsers import chains_parser, lift_parser
 from .liftover import (
     ChainFile,
     chain_downloaded,
-    download_chain,
-    download_chains,
     lift_catalog,
     lift_to,
     pinned_chains,
@@ -70,6 +68,8 @@ def require_terms(source_build, target_build, species, accept_terms):
 
 
 def chains(argv=None, prog=None):
+    from .download_cli import _fetch_chains
+
     parser = chains_parser(prog)
     args = parser.parse_args(argv)
     try:
@@ -78,25 +78,13 @@ def chains(argv=None, prog=None):
             for chain in pinned_chains(species=args.species):
                 downloaded = chain_downloaded(chain, cache_root=args.cache_root)
                 output.append(dict(asdict(chain), downloaded=downloaded))
-        elif args.source_build is None:
-            if args.source_path:
-                raise UsageError("--source-path installs one chain; name it with FROM TO")
-            with redirect_stdout(sys.stderr):
-                result = download_chains(species=args.species, accept_terms=args.accept_terms, force=args.force,
-                                         cache_root=args.cache_root, download_options=dict(timeout=args.timeout))
-            output = dict(downloaded={k: str(v) for k, v in result["downloaded"].items()}, skipped=result["skipped"])
-        elif args.target_build is None:
-            raise UsageError("Name both assemblies, FROM and TO, or neither to download every pinned chain")
         else:
             with redirect_stdout(sys.stderr):
-                output = dict(path=str(download_chain(args.source_build, args.target_build, species=args.species,
-                                                      accept_terms=args.accept_terms, force=args.force,
-                                                      source_path=args.source_path, cache_root=args.cache_root,
-                                                      download_options=dict(timeout=args.timeout))))
+                output = _fetch_chains(args)
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         parser.fail(error)
     print_result(output, json_output=args.json,
                  columns=("source_build", "target_build", "species", "provider", "downloaded", "restricted"),
                  limit=getattr(args, "limit", 25))
     if not args.json and args.command == "list":
-        print("\nInstall: orfdata chains download FROM TO\nRestricted chains require --accept-terms.")
+        print("\nInstall: orfdata data fetch CHAIN\nRestricted chains require --accept-terms.")

@@ -14,11 +14,25 @@ from .cli_parser import (
     add_json,
     add_limit,
     add_resume,
+    add_source_path,
     add_timeout,
     share_cache_root,
     share_option,
 )
 from .evidence import _RENAMED, EVIDENCE_METHODS, SYNONYMS
+
+# Registered resource kinds (kept in sync with orfdata.resource_kinds.RESOURCE_KINDS
+# without importing data modules at parse/tab-completion time).
+RESOURCE_KIND_CHOICES = (
+    "viral",
+    "inventory",
+    "catalog",
+    "dataset",
+    "reference",
+    "genome",
+    "chain",
+    "records",
+)
 
 
 def data_parser(prog="orfdata download"):
@@ -53,14 +67,19 @@ def data_parser(prog="orfdata download"):
                               ("fetch", "Install named resources, downloading or building as needed")):
         command = commands.add_parser(verb, help=description)
         command.add_argument("names", metavar="NAME", nargs="+" if verb == "fetch" else None)
-        command.add_argument("--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain", "records"))
+        command.add_argument("--kind", choices=RESOURCE_KIND_CHOICES)
         command.add_argument("--version", help="Exact resource version; defaults to its registered version")
         add_json(command, help="Write machine-readable JSON")
         if verb == "fetch":
             add_force_timeout(command)
-            command.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
+            add_source_path(command)
             command.add_argument("--quiet", action="store_true")
             command.add_argument("--accept-terms", action="store_true")
+            command.add_argument(
+                "--genome-fasta",
+                help="Explicit chromosome FASTA path or URL to install through PyEnsembl (genome resources only)",
+            )
+            add_viral_content_options(command)
             add_resume(command)
         else:
             command.add_argument("--verify", action="store_true", help="Hash and validate installed files")
@@ -70,13 +89,15 @@ def data_parser(prog="orfdata download"):
     add_json(dirs, help="Write machine-readable JSON")
 
     prune = commands.add_parser(
-        "prune", help="Remove stale bundle generations from ORFdata's cache (dry-run by default)")
+        "prune", help="Remove stale bundle generations (and optionally cached build sources) from ORFdata's cache")
     prune.add_argument("--keep", type=int, default=1, help="Generations to keep per store (default: 1)")
+    prune.add_argument("--sources", action="store_true",
+                       help="Also remove cached build source files under sources/ (dry-run unless --yes)")
     prune.add_argument("--yes", action="store_true", help="Actually delete stale generations (default is dry-run)")
     add_json(prune, help="Write machine-readable JSON")
 
     viral = commands.add_parser(
-        "viral", help="Download the current human-targeted viral collection and paired FASTAs")
+        "viral", help="Compatibility alias for 'data fetch gdc-viruses' (with optional selection index)")
     viral.add_argument("--species", default="human",
                        help="Target analysis species (currently human; future collections may differ)")
     viral.add_argument(
@@ -90,64 +111,81 @@ def data_parser(prog="orfdata download"):
                        help="Match any selected context (default) or require all")
     viral.add_argument("--subset", action="append",
                        help="Build an index for this named viral subset; repeat for a union")
-    viral.add_argument("--inventory-molecules", dest="prefer_reference_molecule",
-                       action="store_false",
-                       help="Carry the molecule each inventory row names first, even where the "
-                            "reference the collection follows was built from the other one")
-    viral.add_argument("--no-annotation-fill", dest="annotate_from_alternate",
-                       action="store_false",
-                       help="Keep strictly to each entry's own record, leaving one whose source "
-                            "annotates nothing without transcripts")
-    viral.add_argument("--alternate-annotations", dest="prefer_alternate_annotation",
-                       action="store_true",
-                       help="Take the alternate source's coding features wherever it publishes "
-                            "the same molecule and annotates at least as much of it, for "
-                            "uniform gene models in place of each submission's own")
+    add_viral_content_options(viral)
+    add_source_path(viral)
     add_force_timeout(viral)
+    add_resume(viral)
     add_json(viral, help="Write machine-readable JSON")
 
-    catalog = commands.add_parser("catalog", help="Download or build a registered ORF catalogue")
+    catalog = commands.add_parser(
+        "catalog", help="Compatibility alias for 'data fetch NAME --kind catalog'")
     catalog.add_argument("name")
     catalog.add_argument("--version")
-    catalog.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
+    add_source_path(catalog)
     add_force_timeout(catalog)
+    add_resume(catalog)
     add_json(catalog, help="Write machine-readable JSON")
 
-    dataset = commands.add_parser("dataset", help="Download or build a registered quantitative dataset")
+    dataset = commands.add_parser(
+        "dataset", help="Compatibility alias for 'data fetch NAME --kind dataset'")
     dataset.add_argument("name")
     dataset.add_argument("--version")
-    dataset.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH")
+    add_source_path(dataset)
     dataset.add_argument("--quiet", action="store_true")
     add_force_timeout(dataset)
+    add_resume(dataset)
     add_json(dataset, help="Write machine-readable JSON")
 
-    reference = commands.add_parser("reference", help="Download a dataset's native protein search FASTA")
+    reference = commands.add_parser(
+        "reference", help="Compatibility alias for 'data fetch DATASET:ASSET --kind reference'")
     reference.add_argument("dataset")
     reference.add_argument("--version")
     reference.add_argument("--reference", help="Exact native reference context key")
     reference.add_argument("--asset", help="Declared source asset ID")
-    reference.add_argument("--source-path", metavar="FILE")
+    add_source_path(reference)
     reference.add_argument("--quiet", action="store_true")
     add_force_timeout(reference)
+    add_resume(reference)
     add_json(reference, help="Write machine-readable JSON")
 
-    genome = commands.add_parser("genome", help="Download and index a pinned PyEnsembl annotation")
+    genome = commands.add_parser(
+        "genome", help="Compatibility alias for 'data fetch NAME --kind genome'")
     genome.add_argument("name")
-    genome.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH")
+    genome.add_argument("--genome-fasta", help="Explicit chromosome FASTA path or URL to install through PyEnsembl")
+    add_source_path(genome)
     add_force_timeout(genome)
+    add_resume(genome)
     add_json(genome, help="Write machine-readable JSON")
 
-    chains = commands.add_parser("chains", help="Download pinned assembly chain files")
+    chains = commands.add_parser(
+        "chains", help="Compatibility alias for 'data fetch CHAIN --kind chain'")
     chains.add_argument("source_build", metavar="FROM", nargs="?")
     chains.add_argument("target_build", metavar="TO", nargs="?")
     chains.add_argument("--species")
     chains.add_argument("--accept-terms", action="store_true")
-    chains.add_argument("--source-path", metavar="FILE")
+    add_source_path(chains)
     add_force_timeout(chains)
+    add_resume(chains)
     add_json(chains, help="Write machine-readable JSON")
 
     share_cache_root(parser)
     return parser
+
+
+def add_viral_content_options(parser):
+    """Add viral collection molecule and annotation selection options."""
+    parser.add_argument("--inventory-molecules", dest="prefer_reference_molecule",
+                        action="store_false",
+                        help="Carry the molecule each inventory row names first, even where the "
+                             "reference the collection follows was built from the other one (viral only)")
+    parser.add_argument("--no-annotation-fill", dest="annotate_from_alternate",
+                        action="store_false",
+                        help="Keep strictly to each entry's own record, leaving one whose source "
+                             "annotates nothing without transcripts (viral only)")
+    parser.add_argument("--alternate-annotations", dest="prefer_alternate_annotation",
+                        action="store_true",
+                        help="Take the alternate source's coding features wherever it publishes "
+                             "the same molecule and annotates at least as much of it (viral only)")
 
 
 def add_force_timeout(parser):
@@ -175,8 +213,7 @@ def add_discovery(parser, *, status=False):
         True for ``status``, which shows anything with local files; False
         for ``list``, which also takes ``--installed`` or ``--missing``.
     """
-    parser.add_argument(
-        "--kind", choices=("viral", "catalog", "dataset", "reference", "genome", "chain", "records"))
+    parser.add_argument("--kind", choices=RESOURCE_KIND_CHOICES)
     parser.add_argument("--species", help="Only resources for this species, e.g. human or mouse")
     parser.add_argument("--context", action="append",
                         help="Only resources in this context; repeat for a union")
@@ -433,9 +470,9 @@ def catalogs_parser(prog=None):
             subparser.add_argument("--built", action="store_true", help="Select a local source build explicitly")
         if command in ("download", "build"):
             subparser.add_argument("--force", action="store_true", help="Replace an existing installation")
-            subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
-                                   help="Use this local copy of a pinned source asset instead of downloading it")
+            add_source_path(subparser)
             add_timeout(subparser)
+            add_resume(subparser)
         if command == "query":
             add_query_arguments(subparser, catalog_path=False)
         else:
@@ -500,8 +537,9 @@ def datasets_parser(prog=None):
         if command in ("download", "download-reference"):
             subparser.add_argument("--force", action="store_true")
             add_timeout(subparser)
+            add_resume(subparser)
             subparser.add_argument("--quiet", action="store_true")
-            subparser.add_argument("--source-path", help="Use a local pinned file (compressed when declared)")
+            add_source_path(subparser)
         if command in ("download-reference", "inspect-reference", "query-reference"):
             subparser.add_argument("--reference", help="Exact native reference context key")
             subparser.add_argument("--asset", help="Declared source asset ID")
@@ -512,9 +550,9 @@ def datasets_parser(prog=None):
         if command == "build":
             subparser.add_argument("--force", action="store_true")
             add_timeout(subparser)
+            add_resume(subparser)
             subparser.add_argument("--quiet", action="store_true")
-            subparser.add_argument("--source-path", action="append", default=[], metavar="ASSET=PATH",
-                                   help="Use a local pinned source; repeat for each input asset")
+            add_source_path(subparser)
         if command == "query":
             subparser.add_argument("--reference", help="Exact ref:SHA256 context key")
             subparser.add_argument("--sample")
@@ -566,11 +604,11 @@ def proteome_parser(prog=None):
         description="Write a proteome from selected host protein sources and optional viruses.", prog=prog,
         epilog="The PyEnsembl annotation must already be installed, e.g. "
                "'pyensembl install --release 115 --species human', or, for --genome, with "
-               "'orfdata genomes install NAME'.")
+               "'orfdata data fetch NAME'.")
     parser.add_argument("--species", help="PyEnsembl species, e.g. human, mouse or dog")
     parser.add_argument("--release", type=int, help="Ensembl release")
     parser.add_argument("--genome", metavar="NAME",
-                        help="A pinned annotation installed with 'orfdata genomes install', e.g. t2t-chm13, "
+                        help="A pinned annotation installed with 'orfdata data fetch', e.g. t2t-chm13, "
                              "instead of --species and --release")
     parser.add_argument("--isoforms", choices=("all", "longest"), default="all",
                         help="Reference CDS isoforms: all (default), or the longest protein per gene")
@@ -617,7 +655,7 @@ def viral_parser(prog="orfdata viral"):
     """
     parser = ArgumentParser(prog=prog, description=(
         "Inspect GDC viral coverage, contexts, subsets and installed reference layers.\n\n"
-        "Acquisition lives in 'orfdata download viral'; this command describes what is\n"
+        "Acquisition lives in 'orfdata data fetch'; this command describes what is\n"
         "published and what is installed.\n"))
     commands = parser.add_subparsers(dest="command", required=True)
     coverage = commands.add_parser("coverage", help="List all GDC human-screen rows and coding-reference status")
@@ -665,9 +703,14 @@ def viral_parser(prog="orfdata viral"):
 
     inventory = commands.add_parser("inventory", help="Manage the published GDC inventory metadata")
     inventory_commands = inventory.add_subparsers(dest="inventory_command", required=True)
-    download = inventory_commands.add_parser("download", help="Download the pinned inventory via DataCache")
+    download = inventory_commands.add_parser(
+        "download",
+        help="Compatibility alias for 'orfdata data fetch gdc-viruses-inventory'",
+    )
     download.add_argument("--force", action="store_true", help="Replace the cached copy from the pinned source")
+    add_source_path(download)
     add_timeout(download)
+    add_resume(download)
 
     add_json(download)
     share_cache_root(parser)
@@ -720,14 +763,20 @@ def genomes_parser(prog=None):
     contigs.add_argument("name", help="Any name 'orfdata genomes names' lists with a genome, e.g. hs1")
     add_json(contigs)
     add_limit(contigs)
-    install = commands.add_parser("install", help="Download, check and index a pinned annotation")
+    install = commands.add_parser(
+        "install",
+        help="Compatibility alias for 'orfdata data fetch NAME --kind genome'",
+    )
     install.add_argument("name", help="Annotation name, as 'orfdata genomes list' shows it, e.g. t2t-chm13; "
                                       "any name 'orfdata genomes names' lists with a genome works too")
     install.add_argument("--force", action="store_true", help="Download again even when present")
     install.add_argument("--genome-fasta", help="Explicit chromosome FASTA path or URL to install through PyEnsembl")
-    install.add_argument("--source-path", action="append", default=[], metavar="ROLE=PATH",
-                         help="Install a local copy of the gtf, transcripts or proteins file instead of downloading")
+    add_source_path(
+        install,
+        help="Install a local copy of the gtf, transcripts or proteins file instead of downloading (ASSET=PATH)",
+    )
     add_timeout(install, note="; PyEnsembl downloads --genome-fasta without one")
+    add_resume(install)
     add_json(install)
     share_cache_root(parser)
     return parser
@@ -748,7 +797,7 @@ def lift_parser(prog=None):
     parser = ArgumentParser(
         description="Lift an ORF catalogue to another assembly of its species with a chain file.", prog=prog,
         epilog="Without --chain, the pinned chain files, in as many hops as needed, must already be downloaded "
-               "with 'orfdata chains download'. Placement on the new assembly's annotation re-checks each ORF's "
+               "with 'orfdata data fetch CHAIN'. Placement on the new assembly's annotation re-checks each ORF's "
                "coding path and protein.")
     parser.add_argument("--to", required=True, metavar="BUILD", help="Target assembly, e.g. GRCh37")
     parser.add_argument("--catalog", help="Local JSON/JSON.gz catalogue to lift instead of a species' catalogue")
@@ -789,16 +838,18 @@ def chains_parser(prog=None):
     add_json(listing)
     add_limit(listing)
     download = commands.add_parser(
-        "download", help="Download every pinned chain file (or a species', or one FROM TO) and verify checksums")
+        "download",
+        help="Compatibility alias for 'orfdata data fetch CHAIN' (or all pinned chains for a species)",
+    )
     download.add_argument("source_build", metavar="FROM", nargs="?", help="Assembly the chain maps from, e.g. GRCh38")
     download.add_argument("target_build", metavar="TO", nargs="?", help="Assembly the chain maps to, e.g. GRCh37")
     download.add_argument("--species", help="Only this species' chains, or the species when names are shared")
     download.add_argument("--accept-terms", action="store_true",
                           help="Accept the provider's usage terms, required for restricted files such as UCSC's")
     download.add_argument("--force", action="store_true", help="Download again even when present")
-    download.add_argument("--source-path", metavar="FILE",
-                          help="Install this local copy instead of downloading; it must match the pin")
+    add_source_path(download)
     add_timeout(download)
+    add_resume(download)
     add_json(download)
     share_cache_root(parser)
     return parser

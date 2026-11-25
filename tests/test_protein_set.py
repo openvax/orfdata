@@ -75,7 +75,7 @@ def test_donor_set_keeps_its_source_separate_from_its_target(human, mouse, tmp_p
     assert all(protein.taxon_id == 9606 for protein in combined.proteins)
     layer = combined.layers[-1]
     assert layer["source_reference"] == human.key
-    assert layer["target_taxon_ids"] == [10090]
+    assert layer["target_taxon_ids"] == (10090,)
     assert layer["target_source"] == "mouse line manifest 3"
     assert layer["source_sha256"] == "b" * 64
 

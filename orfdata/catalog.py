@@ -15,6 +15,7 @@ from copy import copy, deepcopy
 from dataclasses import asdict, dataclass, field, replace
 from importlib.resources import files
 from pathlib import Path
+from types import MappingProxyType
 from typing import NamedTuple, Optional
 from urllib.parse import quote
 
@@ -948,14 +949,19 @@ UORFPeptide = PeptideEvidence
 
 
 def load_uorf_catalog(path=None, *, expected_sha256=None):
-    """Load the released human upstream-ORF API; use load_catalog for all ORFs."""
-    catalog = _load_catalog(path, expected_sha256=expected_sha256, resource="uorf-evidence")
+    """Upstream ORFs (uORF, uoORF) from the bundled catalogue, or from a local file."""
+    catalog = _load_catalog(path, expected_sha256=expected_sha256)
     records = tuple(r for r in catalog.records if r.biotype in ("uORF", "uoORF"))
     return UORFCatalog(records, catalog.metadata)
 
 
 # Catalogues shipped in the package, by species and assembly.
 _BUNDLED = {("homo_sapiens", "GRCh38"): "orf-evidence"}
+
+
+def bundled_catalogs():
+    """Return a read-only mapping of ``(species, genome_build)`` to packaged catalogue resource name."""
+    return MappingProxyType(_BUNDLED)
 
 
 def load_catalog(path=None, *, species=None, genome_build=None, registry=None, expected_sha256=None,
@@ -1036,8 +1042,9 @@ def load_catalog(path=None, *, species=None, genome_build=None, registry=None, e
     cli_root = "" if root is None else f" --cache-root {root}"
     if missing:
         accept = " --accept-terms" if any(c.restricted for c in missing) else ""
+        names = " ".join(c.name for c in missing)
         needs.append(f"the chain files {', '.join(c.name for c in missing)} to reach {genome_build} by liftover: "
-                     f"download them once with 'orfdata chains{cli_root} download --species {species}{accept}' or "
+                     f"download them once with 'orfdata data fetch {names}{accept}{cli_root}' or "
                      f"download_chains(species={species!r}{', accept_terms=True' if accept else ''}"
                      f"{'' if root is None else f', cache_root={str(root)!r}'})")
     if needs:
@@ -1201,6 +1208,21 @@ class _Choice(NamedTuple):
     @property
     def label(self):
         return self.name if self.version is None else f"{self.name} {self.version}"
+
+
+def select_catalogs(found, catalogs, species):
+    """Select the requested subset of a species' available catalogues."""
+    return _selected(found, catalogs, species)
+
+
+def plan_catalogs(found, species, genome_build):
+    """Return the ordered ``(choice, chain_route)`` plan for ``species`` on ``genome_build``."""
+    return _plan(found, species, genome_build)
+
+
+def catalog_choices(registry=None):
+    """Return every bundled and registered catalogue choice."""
+    return _catalog_choices(registry)
 
 
 def _catalog_choices(registry):

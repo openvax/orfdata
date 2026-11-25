@@ -9,13 +9,9 @@ from .cli_parser import UsageError, parse_source_paths
 from .command_parsers import data_parser
 from .downloads import (
     abbreviate_version,
-    acquisition_action,
     format_byte_size,
     format_species_label,
     list_data,
-    needs_replacement,
-    normalize_status,
-    refuse_unreadable,
 )
 
 
@@ -216,16 +212,18 @@ def _show_dirs(cache_root, json_output):
         )
 
 
-def _show_prune(cache_root, keep, apply, json_output):
+def _show_prune(cache_root, keep, apply, sources, json_output):
     import datacache
     from datacache.cli import prune_root
 
     from .cache import get_data_dir
+    from .source_store import prune_source_store
 
     data_dir = str(get_data_dir(override=cache_root))
     results = prune_root(data_dir, keep=keep, apply=apply)
     removed_count = sum(r["removed_count"] for r in results)
     reclaimable = sum(r["reclaimable_bytes"] or 0 for r in results)
+    source_summary = prune_source_store(cache_root=cache_root, apply=apply) if sources else None
     payload = dict(
         cache_root=data_dir,
         dry_run=not apply,
@@ -234,10 +232,13 @@ def _show_prune(cache_root, keep, apply, json_output):
         reclaimable_bytes=reclaimable,
         stores=results,
     )
+    if source_summary is not None:
+        payload["sources"] = source_summary
     if json_output:
         print_json(payload)
         return
-    if removed_count == 0:
+    source_removed = 0 if source_summary is None else source_summary["removed_count"]
+    if removed_count == 0 and source_removed == 0:
         print(f"Nothing to prune under {data_dir}.")
         return
     verb = "Removed" if apply else "Would remove"
@@ -245,8 +246,106 @@ def _show_prune(cache_root, keep, apply, json_output):
         if r["removed_count"]:
             size_text = datacache.format_bytes(r["reclaimable_bytes"] or 0)
             print(f"{verb} {r['removed_count']} stale generation(s) ({size_text}) from {r['store']}")
+    if source_summary is not None and source_removed:
+        size_text = datacache.format_bytes(source_summary["reclaimable_bytes"])
+        print(f"{verb} {source_removed} cached build source(s) ({size_text}) from {source_summary['path']}")
     if not apply:
         print("\nDry run only. Pass --yes to delete these stale generations.")
+
+
+def _fetch_chains(args):
+    """Compatibility helper shared by ``data chains`` and ``chains download``."""
+    from .data_resources import fetch_data
+    from .liftover import find_pinned_chain, pinned_chains
+
+    paths = parse_source_paths(args.source_path)
+    if args.source_build is None:
+        if paths:
+            raise UsageError("--source-path installs one chain; name it with FROM TO")
+        pins = pinned_chains(species=args.species)
+        if not pins:
+            raise ValueError(
+                f"No chain files are pinned for {args.species}; "
+                f"pinned species: {', '.join(sorted({c.species for c in pinned_chains()}))}"
+            )
+        downloaded, skipped = {}, {}
+        for chain in pins:
+            if chain.restricted and not args.accept_terms:
+                skipped[chain.name] = (
+                    f"{chain.provider}'s terms need accept_terms=True (--accept-terms): {chain.terms}"
+                )
+                continue
+            result = fetch_data(
+                chain.name,
+                kind="chain",
+                cache_root=args.cache_root,
+                force=args.force,
+                timeout=args.timeout,
+                accept_terms=args.accept_terms,
+                resume=args.resume,
+            )
+            downloaded[chain.name] = result["path"]
+        return dict(downloaded=downloaded, skipped=skipped)
+    if args.target_build is None:
+        raise UsageError("Name both assemblies, FROM and TO, or neither")
+    chain = find_pinned_chain(args.source_build, args.target_build, species=args.species)
+    result = fetch_data(
+        chain.name,
+        kind="chain",
+        cache_root=args.cache_root,
+        force=args.force,
+        source_paths=paths,
+        timeout=args.timeout,
+        accept_terms=args.accept_terms,
+        resume=args.resume,
+    )
+    from .liftover import chain_registry
+
+    try:
+        file_path = str(
+            chain_registry(chain, args.cache_root).local_path(
+                chain.name, "1", asset=chain.filename, verify_files=False,
+            )
+        )
+    except Exception:
+        file_path = result["path"]
+    return dict(result, path=file_path)
+
+
+def _fetch_reference(args, *, registry=None):
+    """Compatibility helper shared by ``data reference`` and ``datasets download-reference``."""
+    from .data_resources import fetch_data
+    from .dataset_cli import validate_search_reference_options
+    from .datasets import DatasetRegistry
+
+    reg = DatasetRegistry(cache_root=args.cache_root) if registry is None else registry
+    dataset_name = getattr(args, "dataset", None) or args.name
+    validate_search_reference_options(
+        reg, dataset_name, args.version, reference=args.reference, asset_id=args.asset,
+    )
+    specs = [
+        spec for spec in reg.search_references(dataset_name, args.version)
+        if (args.reference is None or spec.reference.key == args.reference)
+        and (args.asset is None or spec.source.asset_id == args.asset)
+    ]
+    if not specs:
+        raise ValueError("No declared native search reference matches this dataset/context/asset")
+    if len(specs) != 1:
+        raise ValueError("Select an exact reference context and source asset")
+    spec = specs[0]
+    paths = parse_source_paths(args.source_path)
+    return fetch_data(
+        f"{dataset_name}:{spec.source.asset_id}",
+        kind="reference",
+        version=args.version,
+        cache_root=args.cache_root,
+        force=args.force,
+        source_paths=paths,
+        timeout=args.timeout,
+        show_progress=not args.quiet,
+        resume=args.resume,
+        options={"registry": reg} if registry is not None else None,
+    )
 
 
 def run(argv=None, prog="orfdata download"):
@@ -258,7 +357,7 @@ def run(argv=None, prog="orfdata download"):
                 _show_dirs(args.cache_root, args.json)
                 return
             if args.command == "prune":
-                _show_prune(args.cache_root, args.keep, args.yes, args.json)
+                _show_prune(args.cache_root, args.keep, args.yes, args.sources, args.json)
                 return
             if args.command in ("info", "path", "fetch"):
                 from .data_resources import check_fetch, data_info, data_path, fetch_data
@@ -274,15 +373,38 @@ def run(argv=None, prog="orfdata download"):
                     if len(names) > 1 and (args.source_path or args.version):
                         raise UsageError("--source-path and --version require exactly one resource")
                     paths = parse_source_paths(args.source_path)
+                    fetch_extras = dict(
+                        genome_fasta_path_or_url=args.genome_fasta,
+                        prefer_reference_molecule=args.prefer_reference_molecule,
+                        annotate_from_alternate=args.annotate_from_alternate,
+                        prefer_alternate_annotation=args.prefer_alternate_annotation,
+                    )
                     # Check every name, restricted terms, source overrides and permissions before downloading.
                     for name in names:
-                        check_fetch(name, **options, force=args.force, source_paths=paths,
-                                    accept_terms=args.accept_terms)
+                        check_fetch(
+                            name,
+                            **options,
+                            force=args.force,
+                            source_paths=paths,
+                            accept_terms=args.accept_terms,
+                            **fetch_extras,
+                        )
                     # Source processors may print progress; keep stdout machine-readable.
                     with redirect_stdout(sys.stderr):
-                        output = [fetch_data(name, **options, force=args.force, source_paths=paths,
-                                             timeout=args.timeout, show_progress=not args.quiet and not args.json,
-                                             accept_terms=args.accept_terms, resume=args.resume) for name in names]
+                        output = [
+                            fetch_data(
+                                name,
+                                **options,
+                                force=args.force,
+                                source_paths=paths,
+                                timeout=args.timeout,
+                                show_progress=not args.quiet and not args.json,
+                                accept_terms=args.accept_terms,
+                                resume=args.resume,
+                                **fetch_extras,
+                            )
+                            for name in names
+                        ]
                     if args.json:
                         print_json(output)
                     else:
@@ -299,16 +421,27 @@ def run(argv=None, prog="orfdata download"):
                     cache_root=args.cache_root, verify_files=args.verify)
                 _show(rows, args.json, args.limit)
                 return
+
+            from .data_resources import fetch_data
+
             with redirect_stdout(sys.stderr):
                 if args.command == "viral":
-                    from .viral_panel import download_viral_references, select_viral_references
+                    from .viral_panel import open_viral_references, select_viral_references
 
-                    bundle = download_viral_references(
-                        species=args.species, collection=args.collection, cache_root=args.cache_root,
-                        force=args.force, timeout=args.timeout,
+                    paths = parse_source_paths(args.source_path)
+                    fetched = fetch_data(
+                        args.collection,
+                        kind="viral",
+                        cache_root=args.cache_root,
+                        force=args.force,
+                        source_paths=paths,
+                        timeout=args.timeout,
+                        resume=args.resume,
                         prefer_reference_molecule=args.prefer_reference_molecule,
                         annotate_from_alternate=args.annotate_from_alternate,
-                        prefer_alternate_annotation=args.prefer_alternate_annotation)
+                        prefer_alternate_annotation=args.prefer_alternate_annotation,
+                        options={"species": args.species},
+                    )
                     if args.context or args.exclude_context or args.subset:
                         indexed = select_viral_references(
                             contexts=args.context, exclude_contexts=args.exclude_context,
@@ -317,123 +450,55 @@ def run(argv=None, prog="orfdata download"):
                             cache_root=args.cache_root, force=args.force, timeout=args.timeout)
                         output = dict(indexed.to_dict(), kind="viral-selection", status="available")
                     else:
-                        output = dict(bundle.to_dict(), kind="viral", status="available")
-                    if not args.json:
+                        try:
+                            bundle = open_viral_references(
+                                species=args.species,
+                                collection=args.collection,
+                                cache_root=args.cache_root,
+                            )
+                            output = dict(bundle.to_dict(), kind="viral", status=fetched["status"])
+                        except Exception:
+                            output = fetched
+                    if not args.json and "collection" in output:
                         output = {key: value for key, value in output.items() if key in _COLLECTION_FIELDS}
                 elif args.command == "catalog":
-                    from .catalogs import CatalogRegistry
-
-                    registry = CatalogRegistry(cache_root=args.cache_root)
-                    paths = parse_source_paths(args.source_path)
-                    before = normalize_status(
-                        registry.inspect(args.name, args.version, verify_files=True).status
-                    )
-                    refuse_unreadable(before, force=args.force, name=args.name)
-                    replace_existing = needs_replacement(before, force=args.force)
-                    published = registry.published(args.name, args.version)
-                    acquire = "download" if published else "build"
-                    if published:
-                        registry.download(args.name, args.version, force=replace_existing, source_paths=paths,
-                                          timeout=args.timeout)
-                        inspection = registry.inspect(args.name, args.version)
-                    else:
-                        registry.build(args.name, args.version, force=replace_existing, source_paths=paths,
-                                       download_options={"timeout": args.timeout})
-                        inspection = registry.inspect_build(args.name, args.version)
-                    manifest = registry.info(args.name, args.version)
-                    output = dict(
+                    output = fetch_data(
+                        args.name,
                         kind="catalog",
-                        name=args.name,
-                        version=manifest.version,
-                        title=manifest.title,
-                        acquired=acquisition_action(before, acquire=acquire, force=args.force),
-                        status=normalize_status(inspection.status),
-                        datacache_status=inspection.status,
-                        path=str(inspection.path),
+                        version=args.version,
+                        cache_root=args.cache_root,
+                        force=args.force,
+                        source_paths=parse_source_paths(args.source_path),
+                        timeout=args.timeout,
+                        resume=args.resume,
                     )
                 elif args.command == "dataset":
-                    from .datasets import DatasetRegistry
-
-                    registry = DatasetRegistry(cache_root=args.cache_root)
-                    paths = parse_source_paths(args.source_path)
-                    options = {"timeout": args.timeout, "show_progress": not args.quiet}
-                    before = normalize_status(
-                        registry.inspect(args.name, args.version, verify_files=True).status
-                    )
-                    refuse_unreadable(before, force=args.force, name=args.name)
-                    replace_existing = needs_replacement(before, force=args.force)
-                    published = registry.published(args.name, args.version)
-                    acquire = "download" if published else "build"
-                    if published:
-                        registry.download(args.name, args.version, force=replace_existing, source_paths=paths, **options)
-                        inspection = registry.inspect(args.name, args.version)
-                    else:
-                        registry.build(args.name, args.version, force=replace_existing, source_paths=paths,
-                                       download_options=options)
-                        inspection = registry.inspect_build(args.name, args.version)
-                    manifest = registry.info(args.name, args.version)
-                    output = dict(
+                    output = fetch_data(
+                        args.name,
                         kind="dataset",
-                        name=args.name,
-                        version=manifest.version,
-                        title=manifest.title,
-                        acquired=acquisition_action(before, acquire=acquire, force=args.force),
-                        status=normalize_status(inspection.status),
-                        datacache_status=inspection.status,
-                        path=str(inspection.path),
+                        version=args.version,
+                        cache_root=args.cache_root,
+                        force=args.force,
+                        source_paths=parse_source_paths(args.source_path),
+                        timeout=args.timeout,
+                        show_progress=not args.quiet,
+                        resume=args.resume,
                     )
                 elif args.command == "reference":
-                    from .dataset_cli import validate_search_reference_options
-                    from .datasets import DatasetRegistry
-
-                    registry = DatasetRegistry(cache_root=args.cache_root)
-                    validate_search_reference_options(
-                        registry, args.dataset, args.version, reference=args.reference, asset_id=args.asset,
-                    )
-                    options = {"timeout": args.timeout, "show_progress": not args.quiet}
-                    paths = registry.download_reference(
-                        args.dataset, args.version, reference=args.reference, asset_id=args.asset,
-                        force=args.force, source_path=args.source_path, **options)
-                    inspection = registry.inspect_reference(
-                        args.dataset, args.version, reference=args.reference, asset_id=args.asset)
-                    output = dict(
-                        kind="reference",
-                        dataset=args.dataset,
-                        version=registry.info(args.dataset, args.version).version,
-                        status=normalize_status(inspection.status),
-                        datacache_status=inspection.status,
-                        path=str(inspection.path),
-                        files=paths,
-                    )
+                    output = _fetch_reference(args)
                 elif args.command == "genome":
-                    from .genomes import install_genome
-
-                    paths = parse_source_paths(args.source_path)
-                    installed = install_genome(args.name, force=args.force, source_paths=paths,
-                                               cache_root=args.cache_root,
-                                               download_options=dict(timeout=args.timeout))
-                    output = dict(kind="genome", name=args.name, reference_name=installed.reference_name,
-                                  annotation=f"{installed.annotation_name} {installed.annotation_version}",
-                                  transcripts=len(installed.transcript_ids()))
+                    output = fetch_data(
+                        args.name,
+                        kind="genome",
+                        cache_root=args.cache_root,
+                        force=args.force,
+                        source_paths=parse_source_paths(args.source_path),
+                        timeout=args.timeout,
+                        resume=args.resume,
+                        genome_fasta_path_or_url=args.genome_fasta,
+                    )
                 else:
-                    from .liftover import download_chain, download_chains
-
-                    if args.source_build is None:
-                        if args.source_path:
-                            raise UsageError("--source-path installs one chain; name it with FROM TO")
-                        result = download_chains(species=args.species, accept_terms=args.accept_terms,
-                                                 force=args.force, cache_root=args.cache_root,
-                                                 download_options=dict(timeout=args.timeout))
-                        output = dict(downloaded={key: str(path) for key, path in result["downloaded"].items()},
-                                      skipped=result["skipped"])
-                    elif args.target_build is None:
-                        raise UsageError("Name both assemblies, FROM and TO, or neither")
-                    else:
-                        path = download_chain(
-                            args.source_build, args.target_build, species=args.species,
-                            accept_terms=args.accept_terms, force=args.force, source_path=args.source_path,
-                            cache_root=args.cache_root, download_options=dict(timeout=args.timeout))
-                        output = dict(path=str(path))
+                    output = _fetch_chains(args)
     except (ImportError, RuntimeError, ValueError, OSError) as error:
         parser.fail(error)
     _show_result(output, args.json)

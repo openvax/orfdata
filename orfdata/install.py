@@ -1,8 +1,9 @@
 """Install everything orfdata uses for one species' extra ORFs, in one explicit step."""
 
+from dataclasses import dataclass
 from shlex import join
 
-from .cache import DOWNLOAD_TIMEOUT, fetch_pinned_file
+from .cache import DOWNLOAD_TIMEOUT
 
 
 class InstallError(ValueError):
@@ -11,6 +12,21 @@ class InstallError(ValueError):
     def __init__(self, message, result):
         super().__init__(message)
         self.result = result
+
+
+@dataclass(frozen=True)
+class _SetupItem:
+    """One planned resource acquisition item in :func:`install_species`."""
+
+    bucket: str
+    label: str
+    kind: str
+    name: str
+    version: str | None
+    restricted: bool = False
+    skip_reason: str | None = None
+    options: dict | None = None
+    state_override: str | None = None
 
 
 def install_species(species, *, accept_terms=False, force=False, cache_root=None, registry=None, timeout=DOWNLOAD_TIMEOUT,
@@ -26,33 +42,31 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
     ``accept_terms=True``. A download that stalls for ``timeout`` seconds is
     retried, then fails, rather than waiting forever (``None`` waits). A
     source file several catalogues pin, such as an Ensembl GTF, is downloaded
-    once. ``catalogs`` chooses which of the species' catalogues, as in
-    ``load_catalog``: its default set unless ``"all"`` or names are given.
+    once into ORFdata's content-addressed SHA-256 source store and reused across
+    builds and setup runs. ``catalogs`` chooses which of the species' catalogues,
+    as in ``load_catalog``: its default set unless ``"all"`` or names are given.
 
-    ``resume=True`` lets an interrupted catalogue, chain or source download
-    continue where it stopped, as in :func:`~orfdata.fetch_data`. Sources
-    shared between catalogues are staged for one run, so those restart.
+    ``resume=True`` lets an interrupted catalogue, chain or build-source
+    download continue where it stopped, as in :func:`~orfdata.fetch_data`.
 
     Human setup also installs the default GDC viral reference collection.
 
-    The returned mapping adds ``"viral"`` for a human setup. Every item is
-    tried; if any fails, :class:`InstallError`
+    The returned mapping adds ``"collections"`` when reference collections are
+    selected. Every item is tried; if any fails, :class:`InstallError`
     (a ``ValueError``) names each failure after the rest are installed, and
     carries the same result.
     """
-    import tempfile
-
-    from .catalog import _catalog_choices, _plan, _selected, catalog_install_state
+    from .catalog import catalog_choices, catalog_install_state, plan_catalogs, select_catalogs
     from .catalogs import CatalogRegistry
     from .downloads import (
         acquisition_action,
         default_collections,
         needs_replacement,
-        normalize_status,
         refuse_unreadable,
     )
-    from .liftover import chain_registry, download_chain, pinned_chains
+    from .liftover import pinned_chains
     from .reference import canonical_species
+    from .resource_kinds import get_resource_kind
 
     species = canonical_species(species)
     collections = _selected_collections(default_collections(species), collections, species)
@@ -60,113 +74,117 @@ def install_species(species, *, accept_terms=False, force=False, cache_root=None
         raise ValueError("Pass a registry or a cache_root, not both; the registry has its own cache root")
     registry = CatalogRegistry(cache_root=cache_root) if registry is None else registry
     root = getattr(registry, "_cache_root", cache_root)
-    found = _selected([c for c in _catalog_choices(registry) if c.species == species], catalogs, species)
+    found = select_catalogs([c for c in catalog_choices(registry) if c.species == species], catalogs, species)
     chains = pinned_chains(species=species)
     if not any(c.registry is not None for c in found) and not chains:
-        ready = sorted({c.species for c in _catalog_choices(registry) if c.registry is not None}
+        ready = sorted({c.species for c in catalog_choices(registry) if c.registry is not None}
                        | {c.species for c in pinned_chains()})
         raise ValueError(f"orfdata has no ORF catalogue or chain file to install for {species}; "
                          f"it has them for {', '.join(ready)}")
-    # The releases load_catalog uses on each assembly a catalogue is on or the chains reach.
-    builds = {c.genome_build for c in found} | {b for c in chains for b in (c.source_build, c.target_build)}
-    needed = {}
-    for build in sorted(builds):
-        for choice, _ in _plan(found, species, build):
-            if choice.registry is not None:
-                needed.setdefault((choice.name, choice.version), choice)
-    result, failed = dict(species=species, catalogs={}, chains={}), []
-    retry = join(["orfdata", "setup", "--species", species] + ([] if root is None else
-                                                                ["--cache-root", str(root)]))
     if type(resume) is not bool:
         raise ValueError("resume must be True or False")
-    options = ({} if timeout is None else dict(timeout=timeout)) | ({"resume": "auto"} if resume else {})
-    states = {key: catalog_install_state(choice)[0] for key, choice in needed.items()}
-    for key in sorted(needed):
-        if states[key] == "available" and not force:
-            result["catalogs"][f"{key[0]} {key[1]}"] = "already installed"
-    builds = [key for key in sorted(needed) if f"{key[0]} {key[1]}" not in result["catalogs"]
-              and not registry.published(*key)]
-    with tempfile.TemporaryDirectory(prefix="orfdata-setup-") as staging:
-        shared = _shared_sources([registry.info(*key) for key in builds], staging, options)
-        for (name, version) in sorted(needed):
-            label = f"{name} {version}"
-            if label in result["catalogs"]:
-                continue
-            state = states[name, version]
-            try:
-                status = _damage(registry, name, version) if state in ("damaged", "inaccessible") else state
-                refuse_unreadable(status, force=force, name=label, command=retry)
-                repair = needs_replacement(status, force=force)
-                acquire = "build" if (name, version) in builds else "download"
-                if acquire == "build":
-                    paths = {s.asset_id: shared[s.sha256] for s in registry.info(name, version).sources
-                             if s.sha256 in shared}
-                    registry.build(name, version, force=repair, source_paths=paths or None, download_options=options)
-                else:
-                    registry.download(name, version, force=repair, **options)
-                result["catalogs"][label] = acquisition_action(status, acquire=acquire, force=force)
-            except Exception as error:  # Reported with the rest, after everything else is tried.
-                result["catalogs"][label] = f"failed: {error}"
-                failed.append((label, str(error)))
-    for chain in chains:
-        if chain.restricted and accept_terms is not True:
-            result["chains"][chain.name] = (f"skipped: {chain.provider}'s terms need accept_terms=True "
-                                            f"(--accept-terms): {chain.terms}")
-            continue
-        try:
-            state = normalize_status(
-                chain_registry(chain, root).inspect(chain.name, "1", verify_files=False).status
+
+    # Build one unified plan across catalogues, chains and reference collections.
+    builds = {c.genome_build for c in found} | {b for c in chains for b in (c.source_build, c.target_build)}
+    needed_catalogs = {}
+    for build in sorted(builds):
+        for choice, _ in plan_catalogs(found, species, build):
+            if choice.registry is not None:
+                needed_catalogs.setdefault((choice.name, choice.version), choice)
+
+    plan: list[_SetupItem] = []
+    for (name, version), choice in sorted(needed_catalogs.items()):
+        state = catalog_install_state(choice)[0]
+        if state in ("damaged", "inaccessible"):
+            state = _damage(registry, name, version)
+        plan.append(
+            _SetupItem(
+                bucket="catalogs",
+                label=f"{name} {version}",
+                kind="catalog",
+                name=name,
+                version=version,
+                options={"registry": registry},
+                state_override=state,
             )
-            if state == "available" and not force:
-                result["chains"][chain.name] = "already installed"
-                continue
-            refuse_unreadable(state, force=force, name=chain.name, command=retry)
-            download_chain(chain.source_build, chain.target_build, species=chain.species, accept_terms=accept_terms,
-                           force=needs_replacement(state, force=force), cache_root=root,
-                           download_options=options)
-            result["chains"][chain.name] = acquisition_action(state, acquire="download", force=force)
-        except Exception as error:
-            result["chains"][chain.name] = f"failed: {error}"
-            failed.append((chain.name, str(error)))
+        )
+    for chain in chains:
+        skip = (
+            f"skipped: {chain.provider}'s terms need accept_terms=True (--accept-terms): {chain.terms}"
+            if chain.restricted and accept_terms is not True
+            else None
+        )
+        plan.append(
+            _SetupItem(
+                bucket="chains",
+                label=chain.name,
+                kind="chain",
+                name=chain.name,
+                version="1",
+                restricted=chain.restricted,
+                skip_reason=skip,
+            )
+        )
+    for collection_name in collections:
+        plan.append(
+            _SetupItem(
+                bucket="collections",
+                label=collection_name,
+                kind="viral",
+                name=collection_name,
+                version=None,
+                options={"species": species},
+            )
+        )
+
+    result = dict(species=species, catalogs={}, chains={})
     if collections:
-        result["collections"] = _install_collections(
-            collections, species, force=force, cache_root=root, timeout=timeout, failed=failed, retry=retry)
+        result["collections"] = {}
+    failed = []
+    retry = join(["orfdata", "setup", "--species", species] + ([] if root is None else ["--cache-root", str(root)]))
+    download_options = ({} if timeout is None else dict(timeout=timeout)) | ({"resume": "auto"} if resume else {})
+
+    # Generic acquisition loop over the resource-kind registry: no per-kind branches.
+    for item in plan:
+        if item.skip_reason is not None:
+            result[item.bucket][item.label] = item.skip_reason
+            continue
+        handler = get_resource_kind(item.kind)
+        try:
+            row = handler.inspect(
+                item.name,
+                item.version,
+                cache_root=root,
+                verify_files=False,
+                options=item.options,
+            )
+            state = item.state_override if item.state_override is not None else row.status
+            if state == "available" and not force:
+                result[item.bucket][item.label] = "already installed"
+                continue
+            refuse_unreadable(state, force=force, name=item.label, command=retry)
+            repair = needs_replacement(state, force=force)
+            handler.acquire(
+                item.name,
+                item.version,
+                cache_root=root,
+                force=repair,
+                accept_terms=accept_terms,
+                download_options=download_options,
+                options=item.options,
+            )
+            result[item.bucket][item.label] = acquisition_action(state, acquire=row.acquire, force=force)
+        except Exception as error:  # Reported with the rest, after everything else is tried.
+            result[item.bucket][item.label] = f"failed: {error}"
+            failed.append((item.label, str(error)))
+
     if failed:
         raise InstallError(
             f"Could not install {', '.join(name for name, _ in failed)} for {species}: "
-            + "; ".join(f"{name}: {message}" for name, message in failed), result)
+            + "; ".join(f"{name}: {message}" for name, message in failed),
+            result,
+        )
     return result
-
-
-def _install_collections(names, species, *, force, cache_root, timeout, failed, retry=None):
-    """Install each reference collection, reporting what every one needed."""
-    from .downloads import (
-        acquisition_action,
-        collection_state,
-        install_collection,
-        needs_replacement,
-        normalize_status,
-        refuse_unreadable,
-    )
-    from .viral_registry import viral_collection
-
-    installed = {}
-    for name in names:
-        try:
-            state = normalize_status(collection_state(name, species=species, cache_root=cache_root))
-            if state == "available" and not force:
-                installed[name] = "already installed"
-                continue
-            refuse_unreadable(state, force=force, name=name, command=retry)
-            collection = viral_collection(name, species=species)
-            acquire = "download" if collection.published else "build"
-            install_collection(name, species=species, force=needs_replacement(state, force=force),
-                               cache_root=cache_root, timeout=timeout)
-            installed[name] = acquisition_action(state, acquire=acquire, force=force)
-        except Exception as error:  # Reported with the rest, after everything else is tried.
-            installed[name] = f"failed: {error}"
-            failed.append((name, str(error)))
-    return installed
 
 
 def _damage(registry, name, version):
@@ -192,24 +210,6 @@ def _selected_collections(available, chosen, species):
     if unknown:
         raise ValueError(
             f"orfdata has no reference collection {', '.join(map(repr, unknown))} for {species}; "
-            f"it has {', '.join(available) or 'none'}")
+            f"it has {', '.join(available) or 'none'}"
+        )
     return tuple(dict.fromkeys(names))
-
-
-def _shared_sources(manifests, staging, options):
-    """Download once each source two or more of these builds pin; ``{sha256: path}``.
-
-    A source that fails here is left for each build to download, and to
-    report, itself.
-    """
-    from collections import Counter
-
-    uses = Counter(key for m in manifests for key in {(s.url, s.sha256, s.size) for s in m.sources})
-    shared = {}
-    for (url, sha256, size), count in sorted(uses.items()):
-        if count > 1:
-            try:
-                shared[sha256] = fetch_pinned_file(url, sha256, size, staging, download_options=options)
-            except Exception:
-                continue
-    return shared

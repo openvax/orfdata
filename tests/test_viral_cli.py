@@ -36,14 +36,22 @@ def test_inventory_download_routes_to_api(monkeypatch, capsys):
 
     called = {}
 
-    def fake_download(**options):
-        called.update(options)
-        return "/cache/gdc-inventory.txt"
+    def fake_fetch(name, **options):
+        called.update(name=name, **options)
+        return {"path": "/cache/gdc-inventory.txt"}
 
-    monkeypatch.setattr(viral_cli, "download_viral_inventory", fake_download)
+    monkeypatch.setattr(viral_cli, "fetch_data", fake_fetch)
     run(["viral", "inventory", "download", "--cache-root", "/cache", "--force"])
     assert capsys.readouterr().out.strip() == "/cache/gdc-inventory.txt"
-    assert called == {"cache_root": "/cache", "force": True, "timeout": 60}
+    assert called == {
+        "name": "gdc-viruses-inventory",
+        "kind": "inventory",
+        "cache_root": "/cache",
+        "force": True,
+        "source_paths": None,
+        "timeout": 60,
+        "resume": False,
+    }
 
     with pytest.raises(SystemExit):
         run(["viral", "coverage", "--available", "--missing"])

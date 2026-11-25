@@ -9,118 +9,72 @@ from .downloads import (
     acquisition_action,
     list_data,
     needs_replacement,
-    normalize_status,
     refuse_unreadable,
-    release_sizes,
 )
 from .errors import NotInstalledError, TermsNotAccepted
+from .resource_kinds import get_resource_kind
 
 
-def _registry(kind, cache_root):
-    from .catalogs import CatalogRegistry
-    from .datasets import DatasetRegistry
+def _kind_options(
+    *,
+    genome_fasta_path_or_url=None,
+    prefer_reference_molecule=True,
+    annotate_from_alternate=True,
+    prefer_alternate_annotation=False,
+    extra_options=None,
+):
+    """Collect any non-default kind-specific acquisition options into a dict."""
+    options = dict(extra_options or {})
+    if genome_fasta_path_or_url is not None:
+        options["genome_fasta_path_or_url"] = genome_fasta_path_or_url
+    if prefer_reference_molecule is not True:
+        options["prefer_reference_molecule"] = prefer_reference_molecule
+    if annotate_from_alternate is not True:
+        options["annotate_from_alternate"] = annotate_from_alternate
+    if prefer_alternate_annotation is not False:
+        options["prefer_alternate_annotation"] = prefer_alternate_annotation
+    return options
 
-    return {"catalog": CatalogRegistry, "dataset": DatasetRegistry}[kind](cache_root=cache_root)
+
+def _resolve_kind(name, kind, cache_root, options=None):
+    """Determine the single registered kind owning ``name`` without per-kind branching."""
+    if kind is not None:
+        get_resource_kind(kind)  # Validates kind name immediately.
+        if options and options.get("registry") is not None:
+            return kind
+    rows = [
+        row for row in list_data(kind=kind, cache_root=cache_root, verify_files=False, all_versions=True)
+        if row.name == name
+    ]
+    if rows:
+        kinds = {row.kind for row in rows}
+        if len(kinds) != 1:
+            raise ValueError(f"Ambiguous data resource {name!r}; select --kind")
+        return next(iter(kinds))
+    if kind is not None:
+        # Allow kind-specific alias resolution (e.g. genome aliases such as 'hs1' or custom names).
+        try:
+            get_resource_kind(kind).inspect(name, None, cache_root=cache_root, verify_files=False, options=options)
+            return kind
+        except ValueError:
+            pass
+    raise ValueError(f"Unknown data resource {name!r}; see 'orfdata data list'")
 
 
-def _resolve(name, kind, version, cache_root, verify_files):
-    rows = [r for r in list_data(kind=kind, cache_root=cache_root, verify_files=False, all_versions=True)
-            if r.name == name]
-    if not rows:
-        raise ValueError(f"Unknown data resource {name!r}; see 'orfdata data list'")
-    if len({r.kind for r in rows}) != 1:
-        raise ValueError(f"Ambiguous data resource {name!r}; select --kind")
-    row = next((r for r in rows if r.default), rows[0])
-    if row.kind in ("dataset", "catalog") and row.acquire is not None:
-        registry = _registry(row.kind, cache_root)
-        manifest = registry.info(name, version)
-        inspection = registry.inspect(name, manifest.version, verify_files=verify_files)
-        status = normalize_status(inspection.status)
-        published = registry.published(name, manifest.version)
-        acquire = "download" if published else "build"
-        download_size, installed_size = release_sizes(
-            registry, name, manifest.version, published=published,
-        )
-        row = replace(
-            row,
-            version=manifest.version,
-            title=manifest.title,
-            status=status,
-            datacache_status=inspection.status,
-            path=str(inspection.path),
-            acquire=acquire,
-            origin=acquire if status == "available" else None,
-            default=manifest.version == registry.resolve_version(name),
-            download_size=download_size,
-            installed_size=installed_size,
-        )
-    elif row.kind == "reference":
-        from .datasets import DatasetRegistry
-
-        registry = DatasetRegistry(cache_root=cache_root)
-        dataset, asset = name.split(":", 1)
-        manifest = registry.info(dataset, version)
-        inspection = registry.inspect_reference(dataset, manifest.version, asset_id=asset,
-                                                verify_files=verify_files)
-        status = normalize_status(inspection.status)
-        spec = next(
-            (s for s in registry.search_references(dataset, manifest.version) if s.source.asset_id == asset),
-            None,
-        )
-        size = spec.source.size if spec is not None and type(spec.source.size) is int else row.download_size
-        row = replace(
-            row,
-            version=manifest.version,
-            status=status,
-            datacache_status=inspection.status,
-            path=str(inspection.path),
-            origin="download" if status == "available" else None,
-            default=manifest.version == registry.resolve_version(dataset),
-            download_size=size,
-            installed_size=size,
-        )
-    else:
-        if version is not None and version != row.version:
-            raise ValueError(f"{name!r} has version {row.version!r}, not {version!r}")
-        if verify_files:
-            row = next(r for r in list_data(kind=row.kind, cache_root=cache_root, verify_files=True, all_versions=True)
-                       if r.name == name and r.version == row.version)
+def _resolve(name, kind, version, cache_root, verify_files, options=None):
+    resolved_kind = _resolve_kind(name, kind, cache_root, options=options)
+    handler = get_resource_kind(resolved_kind)
+    row = handler.inspect(name, version, cache_root=cache_root, verify_files=verify_files, options=options)
     return replace(row, command=_fetch_command(row, cache_root))
 
 
 def data_info(name, *, kind=None, version=None, cache_root=None, verify_files=False):
     """Describe a named resource, its pins and acquisition route, entirely offline."""
-    row = _resolve(name, kind, version, cache_root, verify_files)
-    result = row.to_dict()
-    if row.kind in ("catalog", "dataset") and row.acquire is not None:
-        registry = _registry(row.kind, cache_root)
-        result["manifest"] = registry.info(name, row.version).to_dict()
-        result.update(registry.download_metadata(name, row.version))
-    elif row.kind == "reference":
-        from .datasets import DatasetRegistry
-
-        dataset, asset = name.split(":", 1)
-        registry = DatasetRegistry(cache_root=cache_root)
-        result["sources"] = [s.source.to_dict() for s in registry.search_references(dataset, row.version)
-                             if s.source.asset_id == asset]
-    elif row.kind == "records":
-        from dataclasses import asdict
-
-        from .source_records import pinned_records
-
-        result["source"] = asdict(next(r for r in pinned_records() if r.name == name))
-    elif row.kind == "chain":
-        from dataclasses import asdict
-
-        from .liftover import pinned_chains
-
-        result["source"] = asdict(next(c for c in pinned_chains() if c.name == name))
-    elif row.kind == "genome":
-        from dataclasses import asdict
-
-        from .genomes import pinned_genomes
-
-        result["source"] = asdict(next(g for g in pinned_genomes() if g.name == name))
+    resolved_kind = _resolve_kind(name, kind, cache_root)
+    handler = get_resource_kind(resolved_kind)
+    row = handler.inspect(name, version, cache_root=cache_root, verify_files=verify_files)
+    result = handler.info(name, row.version, cache_root=cache_root, verify_files=verify_files)
+    result["command"] = _fetch_command(row, cache_root)
     return result
 
 
@@ -137,33 +91,66 @@ def data_path(name, *, kind=None, version=None, cache_root=None, verify_files=Fa
     return Path(info["path"])
 
 
-def check_fetch(name, *, kind=None, version=None, cache_root=None, force=False, source_paths=None,
-                accept_terms=False):
+def check_fetch(
+    name,
+    *,
+    kind=None,
+    version=None,
+    cache_root=None,
+    force=False,
+    source_paths=None,
+    accept_terms=False,
+    genome_fasta_path_or_url=None,
+    prefer_reference_molecule=True,
+    annotate_from_alternate=True,
+    prefer_alternate_annotation=False,
+    options=None,
+):
     """Verify a resource and raise whatever would stop :func:`fetch_data`, before anything downloads.
 
     Returns the verified status row. Batch callers check every name first.
     Restricted resources raise :class:`~orfdata.errors.TermsNotAccepted` before
-    file verification when ``accept_terms`` is false.
+    file verification when ``accept_terms`` is false. Kind-specific options and
+    ``--source-path`` overrides are validated against the resource's handler.
     """
-    unverified = _resolve(name, kind, version, cache_root, False)
+    kind_opts = _kind_options(
+        genome_fasta_path_or_url=genome_fasta_path_or_url,
+        prefer_reference_molecule=prefer_reference_molecule,
+        annotate_from_alternate=annotate_from_alternate,
+        prefer_alternate_annotation=prefer_alternate_annotation,
+        extra_options=options,
+    )
+    unverified = _resolve(name, kind, version, cache_root, False, options=kind_opts or None)
     if unverified.restricted and not accept_terms:
         raise TermsNotAccepted(f"{name!r} requires --accept-terms; see 'orfdata data info {name}'")
-    if source_paths is not None and not (
-        unverified.kind in ("catalog", "dataset", "genome")
-        or (unverified.kind == "viral" and unverified.acquire == "download")
-    ):
-        raise ValueError(
-            "Source overrides here require a catalogue, dataset, genome or published viral collection; "
-            "use the focused command for other kinds"
-        )
-    row = _resolve(name, kind, version, cache_root, True)
+    handler = get_resource_kind(unverified.kind)
+    handler.validate_options(
+        unverified, cache_root=cache_root, source_paths=source_paths, options=kind_opts or None,
+    )
+    row = _resolve(name, unverified.kind, unverified.version, cache_root, True, options=kind_opts or None)
     if row.acquire is not None and not (row.installed and not force):
         refuse_unreadable(row.status, force=force, name=f"{name!r} at {row.path}", command=row.command)
     return row
 
 
-def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
-               source_paths=None, timeout=DOWNLOAD_TIMEOUT, show_progress=True, accept_terms=False, resume=False):
+def fetch_data(
+    name,
+    *,
+    kind=None,
+    version=None,
+    cache_root=None,
+    force=False,
+    source_paths=None,
+    timeout=DOWNLOAD_TIMEOUT,
+    show_progress=True,
+    accept_terms=False,
+    resume=False,
+    genome_fasta_path_or_url=None,
+    prefer_reference_molecule=True,
+    annotate_from_alternate=True,
+    prefer_alternate_annotation=False,
+    options=None,
+):
     """Install one resource and return its status, downloading or building as declared.
 
     Downloads retain their checksum validation. Builds use the same pinned source
@@ -173,14 +160,38 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
     too (``acquired="replaced"``). Discovery and ordinary queries never
     invoke this function implicitly.
 
+    ``source_paths`` accepts either a mapping of ``{asset: path}`` or a single
+    bare path when the resource declares exactly one asset.
+
     ``resume=True`` keeps partial downloads so an interrupted one continues
     where it stopped (DataCache's ``resume="auto"``). Partials and staging then
     stay on disk after a failure, and an archive keeps every part until it is
     installed.
     """
-    row = check_fetch(name, kind=kind, version=version, cache_root=cache_root, force=force,
-                      source_paths=source_paths, accept_terms=accept_terms)
-    if row.acquire is None or (row.installed and not force):
+    kind_opts = _kind_options(
+        genome_fasta_path_or_url=genome_fasta_path_or_url,
+        prefer_reference_molecule=prefer_reference_molecule,
+        annotate_from_alternate=annotate_from_alternate,
+        prefer_alternate_annotation=prefer_alternate_annotation,
+        extra_options=options,
+    )
+    row = check_fetch(
+        name,
+        kind=kind,
+        version=version,
+        cache_root=cache_root,
+        force=force,
+        source_paths=source_paths,
+        accept_terms=accept_terms,
+        options=kind_opts or None,
+    )
+    needs_extra_action = bool(
+        kind_opts.get("genome_fasta_path_or_url") is not None
+        or kind_opts.get("prefer_reference_molecule") is False
+        or kind_opts.get("annotate_from_alternate") is False
+        or kind_opts.get("prefer_alternate_annotation") is True
+    )
+    if row.acquire is None or (row.installed and not force and not needs_extra_action):
         return dict(row.to_dict(), acquired="already installed")
     acquired = acquisition_action(row.status, acquire=row.acquire, force=force)
     replace_existing = needs_replacement(row.status, force=force)
@@ -188,42 +199,23 @@ def fetch_data(name, *, kind=None, version=None, cache_root=None, force=False,
         raise ValueError("resume must be True or False")
     # Nothing to resume when local files stand in for the downloads.
     resumable = resume and not source_paths
-    options = dict(timeout=timeout, show_progress=show_progress, **({"resume": "auto"} if resumable else {}))
-    if row.kind in ("catalog", "dataset"):
-        registry = _registry(row.kind, cache_root)
-        if row.acquire == "download":
-            registry.download(name, row.version, force=replace_existing, source_paths=source_paths, **options)
-        else:
-            registry.build(name, row.version, force=replace_existing, source_paths=source_paths,
-                           download_options=options)
-    elif row.kind == "reference":
-        from .datasets import DatasetRegistry
-
-        dataset, asset = name.split(":", 1)
-        DatasetRegistry(cache_root=cache_root).download_reference(
-            dataset, row.version, asset_id=asset, force=replace_existing, **options)
-    elif row.kind == "genome":
-        from .genomes import install_genome
-
-        install_genome(name, cache_root=cache_root, force=replace_existing, source_paths=source_paths,
-                       download_options=options)
-    elif row.kind == "chain":
-        from .liftover import download_chain, pinned_chains
-
-        chain = next(c for c in pinned_chains() if c.name == name)
-        download_chain(chain.source_build, chain.target_build, species=chain.species,
-                       cache_root=cache_root, force=replace_existing, accept_terms=accept_terms,
-                       download_options=options)
-    elif row.kind == "records":
-        from .source_records import install_records
-
-        install_records(name, cache_root=cache_root, force=replace_existing, download_options=options)
-    elif row.kind == "viral":
-        from .downloads import install_collection
-
-        install_collection(name, cache_root=cache_root, force=replace_existing, timeout=timeout,
-                           source_paths=source_paths, download_options=options)
-    result = _resolve(name, row.kind, row.version, cache_root, False)
+    download_opts = dict(
+        timeout=timeout,
+        show_progress=show_progress,
+        **({"resume": "auto"} if resumable else {}),
+    )
+    handler = get_resource_kind(row.kind)
+    handler.acquire(
+        row.name,
+        row.version,
+        cache_root=cache_root,
+        force=replace_existing,
+        source_paths=source_paths,
+        accept_terms=accept_terms,
+        download_options=download_opts,
+        options=kind_opts or None,
+    )
+    result = _resolve(row.name, row.kind, row.version, cache_root, False, options=kind_opts or None)
     if not result.installed:
         raise RuntimeError(f"{name!r} installation finished with status {result.status}")
     return dict(result.to_dict(), acquired=acquired)

@@ -145,13 +145,20 @@ def audit_cases(tmp_path, monkeypatch, paired, chain, pinned, genome, viral_pane
     search = SearchReference(paths["search.fasta"], reference_target)
     accession = next(search.entries()).target.identifier
 
-    from orfdata import genomes, proteome_cli, viral_cli
+    from orfdata import genomes, proteome_cli, viral_coverage
     genome_paths, genome_pins = slice_pins(tmp_path)
     monkeypatch.setattr(genomes, "_pins", lambda: genome_pins)
     monkeypatch.setattr(proteome_cli, "_ensembl_genome", lambda *args: genome)
     inventory = tmp_path / "inventory.txt"
     inventory.write_text("fixture inventory\n")
-    monkeypatch.setattr(viral_cli, "download_viral_inventory", lambda **kwargs: inventory)
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(viral_coverage, "download_viral_inventory", lambda **kwargs: inventory)
+    monkeypatch.setattr(
+        viral_coverage,
+        "inspect_viral_inventory",
+        lambda **kwargs: SimpleNamespace(status="available", path=inventory),
+    )
     genome_args = [arg for key, path in genome_paths.items() for arg in ("--source-path", f"{key}={path}")]
     chain_args = ["GRCm38", "GRCm39", "--accept-terms", "--source-path", str(chain.path)]
     native = make_catalog()
@@ -330,16 +337,17 @@ def test_aliases_produce_identical_results(capsys):
 
 
 @pytest.mark.parametrize("argv,target", [
-    (["catalogs", "download", "fixture"], "orfdata.catalogs.CatalogRegistry.download"),
-    (["catalogs", "build", "fixture"], "orfdata.catalogs.CatalogRegistry.build"),
-    (["datasets", "download", "fixture"], "orfdata.datasets.DatasetRegistry.download"),
-    (["datasets", "build", "fixture"], "orfdata.datasets.DatasetRegistry.build"),
-    (["genomes", "install", "fixture"], "orfdata.genomes_cli.install_genome"),
-    (["chains", "download", "GRCm38", "GRCm39", "--accept-terms"], "orfdata.liftover_cli.download_chain"),
+    (["catalogs", "download", "riborf-mouse"], "orfdata.catalogs.CatalogRegistry.download"),
+    (["catalogs", "build", "openprot-mouse"], "orfdata.catalogs.CatalogRegistry.build"),
+    (["datasets", "download", "copy-yeast-abundance"], "orfdata.datasets.DatasetRegistry.download"),
+    (["datasets", "build", "peptideatlas-dog-peptides"], "orfdata.datasets.DatasetRegistry.build"),
+    (["genomes", "install", "t2t-chm13"], "orfdata.genomes.install_genome"),
+    (["chains", "download", "GRCm38", "GRCm39", "--accept-terms"], "orfdata.liftover.download_chain"),
     (["setup", "--species", "mouse"], "orfdata.install.install_species"),
-    (["viral", "inventory", "download"], "orfdata.viral_cli.download_viral_inventory"),
+    (["viral", "inventory", "download"], "orfdata.viral_coverage.download_viral_inventory"),
 ])
-def test_acquisition_failures_show_actionable_errors(argv, target, monkeypatch, capsys):
+def test_acquisition_failures_show_actionable_errors(argv, target, monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("ORFDATA_CACHE", str(tmp_path / "isolated-cache"))
     def fail(*args, **kwargs):
         raise RuntimeError("Source unavailable; retry after checking your connection")
     monkeypatch.setattr(target, fail)

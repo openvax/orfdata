@@ -37,7 +37,7 @@ ORFdata installs.
 
 | Command | Purpose | Subcommands |
 | --- | --- | --- |
-| `data` | Discover and acquire resources across all sources | `list`, `status`, `info`, `path`, `fetch`, `catalog`, `dataset`, `reference`, `genome`, `chains`, `viral` |
+| `data` | Discover and acquire resources across all sources | `list`, `status`, `info`, `path`, `fetch`, `dirs`, `prune`, `catalog`, `dataset`, `reference`, `genome`, `chains`, `viral` |
 | `query` | Preview or export ORF records | Use `--gene`, `--transcript`, `--orf-id`, `--species`, or `--catalog` |
 | `catalogs` | Manage optional ORF catalogues | `list`, `status`, `info`, `inspect`, `download`, `build`, `query` |
 | `datasets` | Manage quantitative measurements and their source references | `list`, `info`, `inspect`, `download`, `build`, `query`, `pairs`, `references`, `download-reference`, `inspect-reference`, `query-reference` |
@@ -59,9 +59,15 @@ orfdata datasets query pfizer-atlas-dog-protein --cache-root /path/to/cache
 
 Every command that downloads takes `--timeout SECONDS`: how long a download may
 stall before it is retried, then fails (default 60; `--timeout none` waits
-indefinitely). The chromosome FASTA that `genomes install --genome-fasta` passes
-to PyEnsembl is downloaded without a timeout. The hidden `--registry` option of
-`catalogs` and `datasets` works before or after the subcommand.
+indefinitely), `--resume` to continue interrupted transfers, and `--source-path`
+using one grammar (`ASSET=PATH`, or a bare `PATH` for single-asset resources).
+`orfdata data fetch` accepts every kind-specific option (`--genome-fasta`,
+`--inventory-molecules`, `--no-annotation-fill`, `--alternate-annotations`),
+validated per kind; focused acquisition commands remain as thin compatibility
+aliases. The chromosome FASTA that `--genome-fasta` passes to PyEnsembl is
+downloaded without a timeout. Use `orfdata data prune --sources --yes` to
+reclaim cached build source files from `sources/`. The hidden `--registry`
+option of `catalogs` and `datasets` works before or after the subcommand.
 
 ## Human previews and complete exports
 

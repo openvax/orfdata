@@ -320,7 +320,7 @@ def test_ncorf_sources_accept_dataset_names_and_union_presets(genome, catalog, m
     cached = build(["first", "ribosome"], cache=True, cache_root=tmp_path)
     assert cached.identity == build(["ribosome", "first"], cache=True, cache_root=tmp_path).identity
     assert [f.orf_id for f in cached.excluded] == ["changed-orf"]
-    assert cached.layers[-1]["selection"]["complete_sources"] == ["first"]
+    assert cached.layers[-1]["selection"]["complete_sources"] == ("first",)
     assert cached.layers[-1]["selection"]["evidence"] == RiboSeq().to_dict()
     path = tmp_path / "selection.json.gz"
     cached.save(path)
@@ -740,7 +740,7 @@ def test_extra_orfs_follow_separate_ribo_seq_and_ms_rules(genome, catalog):
     assert added(MS(methods="proteomics")) == ["absent-orf", "ms-orf"]
     assert added(RiboSeq() | MS()) == ["absent-orf", "ms-orf", "ribo-orf"] and added(RiboSeq() & MS()) == []
     layer = base.with_extra_orfs(RiboSeq() | MS(), catalog=catalog).layers[-1]
-    assert layer["evidence"] == {"any": [MS().to_dict(), RiboSeq().to_dict()]}
+    assert layer["evidence"] == {"any": (MS().to_dict(), RiboSeq().to_dict())}
     assert extra_orfs(genome, RiboSeq() | MS(), catalog=catalog).evidence == RiboSeq() | MS()
     with pytest.raises(ValueError, match="on the rule itself"):
         base.with_extra_orfs(MS(), catalog=catalog, require_unique=True)
@@ -797,7 +797,7 @@ def test_viral_proteins_require_a_recorded_host(genome):
     entry = proteome.proteins[-1]
     assert (entry.accession, entry.kind, entry.taxon_id, entry.source) == ("virus-protein", "viral", 999999, "viral:synthetic-virus")
     layer = dict(proteome.layers[-1])
-    assert layer["host_taxon_ids"] == [10090] and layer["host_source"] == "test-declared host range"
+    assert layer["host_taxon_ids"] == (10090,) and layer["host_source"] == "test-declared host range"
     for bad in (dict(hosts=()), dict(hosts=("mouse",))):
         with pytest.raises(ValueError):
             with_virus(base, **bad)

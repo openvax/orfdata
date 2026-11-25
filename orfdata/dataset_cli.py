@@ -120,9 +120,12 @@ def run(argv=None, prog=None):
                 error=str(inspected.error) if inspected.error else None,
             )
         elif args.command == "download-reference":
+            from .download_cli import _fetch_reference
+
             with redirect_stdout(sys.stderr):
-                result = registry.download_reference(args.name, args.version, reference=args.reference, asset_id=args.asset,
-                                                     force=args.force, source_path=args.source_path, **_download_options(args))
+                fetched = _fetch_reference(args, registry=registry)
+            spec = registry._search_reference(args.name, args.version, args.reference, args.asset)
+            result = {spec.source.asset_id: fetched["path"]}
         elif args.command == "query-reference":
             reference = registry.open_reference(args.name, args.version, reference=args.reference, asset_id=args.asset)
             target = ScopedTarget(reference.reference, args.kind, args.target, args.namespace or reference.spec.namespace)
@@ -144,15 +147,45 @@ def run(argv=None, prog=None):
             if args.built or not registry.published(args.name, args.version):
                 result.update(origin="source_build", verified=inspected.verified)
         elif args.command == "download":
-            sources = {"dataset.sqlite": args.source_path} if args.source_path else None
+            from .data_resources import fetch_data
+            from .datasets import DATASET_ASSET
+
+            paths = parse_source_paths(args.source_path)
+            registry.require_published(args.name, args.version)
             with redirect_stdout(sys.stderr):
-                result = registry.download(args.name, args.version, force=args.force,
-                                           source_paths=sources, **_download_options(args))
+                fetched = fetch_data(
+                    args.name,
+                    kind="dataset",
+                    version=args.version,
+                    cache_root=args.cache_root,
+                    force=args.force,
+                    source_paths=paths,
+                    timeout=args.timeout,
+                    show_progress=not args.quiet,
+                    resume=args.resume,
+                    options={"registry": registry},
+                )
+            inspected = registry.inspect(args.name, args.version, verify_files=False)
+            asset_path = inspected.files[DATASET_ASSET].path if inspected.files and DATASET_ASSET in inspected.files else fetched["path"]
+            result = {DATASET_ASSET: str(asset_path)}
         elif args.command == "build":
-            sources = parse_source_paths(args.source_path, metavar="ASSET=PATH")
+            from .data_resources import fetch_data
+
+            sources = parse_source_paths(args.source_path)
             with redirect_stdout(sys.stderr):
-                dataset = registry.build(args.name, args.version, force=args.force,
-                                         source_paths=sources, download_options=_download_options(args))
+                fetch_data(
+                    args.name,
+                    kind="dataset",
+                    version=args.version,
+                    cache_root=args.cache_root,
+                    force=args.force,
+                    source_paths=sources,
+                    timeout=args.timeout,
+                    show_progress=not args.quiet,
+                    resume=args.resume,
+                    options={"registry": registry, "build": True},
+                )
+            dataset = registry.open_build(args.name, args.version, verify_files=False)
             result = dict(path=str(dataset.path), counts=dataset.counts,
                           dataset_id=dataset.manifest.dataset_id, version=dataset.manifest.version)
         elif args.command == "pairs":

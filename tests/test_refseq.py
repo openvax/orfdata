@@ -50,7 +50,7 @@ def test_refseq_keeps_all_gene_occurrences_and_offline_provenance(tmp_path, comp
     assert all((o.start, o.end, o.coding_blocks, o.transcript_biotype) == (None, None, (), None)
                for o in entry.occurrences)
     assert dict(result.layers[0]['content_provenance']) == args[3]
-    assert result.layers[0]['genomic_spans']['XP_123.1'] == [[1, 200], [2, 201]]
+    assert result.layers[0]['genomic_spans']['XP_123.1'] == ((1, 200), (2, 201))
     saved = tmp_path / 'proteome.json.gz'
     result.save(saved)
     args[0].unlink()
@@ -69,7 +69,7 @@ def test_refseq_preserves_repeated_placements_and_untranslated_cds_count(tmp_pat
     result = build(source(tmp_path, rows=rows))
     assert len(result.proteins[0].occurrences) == 3
     assert result.layers[0]['cds_without_protein'] == 1
-    assert result.layers[0]['genomic_spans']['XP_123.1'] == [[1, 200], [1001, 1200], [2, 201]]
+    assert result.layers[0]['genomic_spans']['XP_123.1'] == ((1, 200), (1001, 1200), (2, 201))
 
 
 @pytest.mark.parametrize('change', [dict(assembly='GCF_011100685.2'), dict(GeneID='GENE'),

@@ -10,10 +10,14 @@ from .catalog import ORFCatalog, load_catalog
 from .catalog_manifest import CatalogManifest
 from .downloads import install_hint
 from .errors import NotInstalledError
-from .registry import ReleaseRegistry, build_store_path
+from .registry import ReleaseRegistry, build_store_path, inspect_build_receipt
+from .source_store import SourceStore
 
 CATALOG_ASSET = "catalog.json.gz"
 CATALOG_BUILD_AREA = "catalog-imports"
+CATALOG_BUILD_INVENTORY_ERROR = "Built catalogue source/output inventory disagrees"
+CATALOG_BUILD_INTEGRITY_ERROR = "Built catalogue source integrity pins disagree"
+CATALOG_BUILD_TRANSFORM_ERROR = "Built catalogue transform/manifest disagrees"
 _ASSET = CATALOG_ASSET
 
 
@@ -92,9 +96,9 @@ class CatalogRegistry(ReleaseRegistry):
     ACCESS_TERMS_ERROR = "Catalogue artifact access terms are required"
     REDISTRIBUTABLE_ERROR = "Catalogue artifact redistribution must be explicit"
     UNKNOWN_NAME_HINT = "see 'orfdata catalogs list' or CatalogRegistry().list()"
-    BUILD_INVENTORY_ERROR = "Built catalogue source/output inventory disagrees"
-    BUILD_INTEGRITY_ERROR = "Built catalogue source integrity pins disagree"
-    BUILD_TRANSFORM_ERROR = "Built catalogue transform/manifest disagrees"
+    BUILD_INVENTORY_ERROR = CATALOG_BUILD_INVENTORY_ERROR
+    BUILD_INTEGRITY_ERROR = CATALOG_BUILD_INTEGRITY_ERROR
+    BUILD_TRANSFORM_ERROR = CATALOG_BUILD_TRANSFORM_ERROR
 
     def validate_entry(self, name, entry):
         """Validate catalogue-specific ``priority`` and ``optional`` flags."""
@@ -115,8 +119,7 @@ class CatalogRegistry(ReleaseRegistry):
         """Return the build guidance error message for an unpublished catalogue release."""
         return (
             f"The {name} {version} ORF catalogue has no published artifact; build it from its "
-            f"pinned sources with CatalogRegistry().build({name!r}, {version!r}) or "
-            f"'orfdata catalogs build {name} --version {version}'"
+            f"pinned sources with " + install_hint(self, f"build({name!r}, {version!r})", name, "catalog", version)
         )
 
     def list(self, *, species=None, taxon_id=None):
@@ -219,13 +222,35 @@ def build_catalog(manifest, builder, *, cache_root=None, source_paths=None, forc
     source_paths = {} if source_paths is None else dict(source_paths)
     if set(source_paths) - {s.asset_id for s in manifest.sources}:
         raise ValueError("Unknown local catalogue source asset override")
+    destination = build_store_path(CATALOG_BUILD_AREA, manifest.catalog_id, manifest, cache_root)
+    if not force:
+        cached = inspect_build_receipt(
+            destination,
+            manifest,
+            _ASSET,
+            inventory_error=CATALOG_BUILD_INVENTORY_ERROR,
+            integrity_error=CATALOG_BUILD_INTEGRITY_ERROR,
+            transform_error=CATALOG_BUILD_TRANSFORM_ERROR,
+        )
+        if cached.status == "available":
+            return _open(cached.files[_ASSET].path, manifest)
+        if cached.status != "missing":
+            raise datacache.FileValidationError(cached.path, cached.status) from cached.error
+
+    store = SourceStore(cache_root)
     sources = {}
     for asset in manifest.sources:
         source = dict(sha256=asset.sha256, size=asset.size)
         if asset.asset_id in source_paths:
             source["path"] = str(source_paths[asset.asset_id])
         else:
-            source["url"] = asset.url
+            cached_source = store.acquire(
+                asset.url,
+                asset.sha256,
+                asset.size,
+                download_options=download_options,
+            )
+            source["path"] = str(cached_source)
         sources[asset.asset_id] = source
 
     def build(inputs, outputs):
@@ -233,7 +258,7 @@ def build_catalog(manifest, builder, *, cache_root=None, source_paths=None, forc
         _open(outputs[_ASSET], manifest)
 
     paths = datacache.materialize(
-        build_store_path(CATALOG_BUILD_AREA, manifest.catalog_id, manifest, cache_root),
+        destination,
         sources,
         transform=dict(version=manifest.schema, options=manifest.to_dict()),
         outputs={_ASSET: {}},

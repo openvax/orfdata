@@ -179,6 +179,11 @@ def pinned_chains(*, species=None):
     return found if species is None else tuple(c for c in found if c.species == canonical_species(species))
 
 
+def find_pinned_chain(source_build, target_build, *, species=None):
+    """Return the :class:`PinnedChain` mapping ``source_build`` to ``target_build``."""
+    return _pinned(source_build, target_build, species)
+
+
 def _pinned(source_build, target_build, species):
     found = [c for c in pinned_chains(species=species) if (c.source_build, c.target_build) == (source_build, target_build)]
     if not found:
@@ -313,8 +318,8 @@ def _download_hint(chain, cache_root, *, force=False):
     flags = (", force=True", " --force") if force else ("", "")
     terms = (", accept_terms=True", " --accept-terms") if chain.restricted else ("", "")
     return (f"download it again with download_chain({chain.source_build!r}, {chain.target_build!r}"
-            f"{terms[0]}{flags[0]}{root}) or 'orfdata chains{cli_root} download {chain.source_build} "
-            f"{chain.target_build}{terms[1]}{flags[1]}'")
+            f"{terms[0]}{flags[0]}{root}) or 'orfdata data fetch {chain.name}{cli_root}"
+            f"{terms[1]}{flags[1]}'")
 
 
 def load_chain(source_build, target_build, *, species=None, cache_root=None):

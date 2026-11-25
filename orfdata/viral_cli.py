@@ -1,6 +1,6 @@
 """Inspect GDC viral coverage, contexts, subsets and installed reference layers.
 
-Acquisition lives in 'orfdata download viral'; this command describes what is
+Acquisition lives in 'orfdata data fetch'; this command describes what is
 published and what is installed.
 """
 
@@ -8,8 +8,10 @@ import sys
 from pathlib import Path
 
 from .cli_output import print_fields, print_json, print_table, records
+from .cli_parser import parse_source_paths
 from .command_parsers import viral_parser
-from .viral_coverage import PANEL, download_viral_inventory, viral_contexts, viral_panel_coverage
+from .data_resources import fetch_data
+from .viral_coverage import PANEL, viral_contexts, viral_panel_coverage
 from .viral_panel import viral_annotation_survey, viral_reference_summary
 from .viral_subsets import viral_subsets
 
@@ -63,10 +65,19 @@ def run(argv=None, prog="orfdata viral"):
         return
 
     try:
-        path = download_viral_inventory(cache_root=args.cache_root, force=args.force,
-                                        timeout=args.timeout)
+        paths = parse_source_paths(args.source_path)
+        fetched = fetch_data(
+            "gdc-viruses-inventory",
+            kind="inventory",
+            cache_root=args.cache_root,
+            force=args.force,
+            source_paths=paths,
+            timeout=args.timeout,
+            resume=args.resume,
+        )
     except (ImportError, ValueError, OSError, RuntimeError) as error:
         parser.fail(error)
+    path = fetched["path"]
     print_json(dict(path=str(path))) if args.json else print(path)
 
 
