@@ -1,3 +1,10 @@
+# 0.62.0
+
+- Deduplicate `orfdata/cli_help.py` onto the shared `datacache.cli_help` module
+  (requiring `datacache>=1.38.0,<2`) while preserving ORFdata's status
+  classification and compact subcommand formatting.
+- Enable `strict: true` in `mkdocs.yml`.
+
 # 0.61.0
 
 - Deduplicate the bundled human upstream-ORF catalogue (`uorf-evidence`) against
