@@ -4,6 +4,7 @@ site_url: https://openvax.github.io/orfdata/
 repo_url: https://github.com/openvax/orfdata
 repo_name: openvax/orfdata
 edit_uri: edit/main/docs/
+strict: true
 theme:
   name: material
   font: false
