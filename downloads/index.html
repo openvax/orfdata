@@ -1604,38 +1604,49 @@ orfdata<span class="w"> </span>download<span class="w"> </span>chains<span class
 to every resource kind. Focused command groups such as <code>orfdata viral coverage</code> and
 <code>orfdata viral summary</code> remain useful for domain-specific inspection.</p>
 <p><code>list</code> shows every bundled, downloadable or locally buildable primary resource
-and its current state, including native protein search references declared by
-quantitative datasets. <code>status</code> shows resources with local files: usable ones
-and damaged or unreadable installs. <code>data fetch</code> replaces damaged files;
-unreadable ones are left alone until their permissions are fixed or <code>--force</code> is
-given. For catalogues, datasets, search references, genomes and chains, a repair
-installs a fresh generation and leaves the damaged one in place until the cache
-is pruned, as <code>--force</code> does; a viral collection is rebuilt in place. Filter either command with <code>--kind</code> or <code>--species</code>; use <code>--installed</code> or
-<code>--missing</code> with <code>list</code>, <code>--json</code> for programs, and <code>--verify</code> to hash installed
-files. Discovery and status commands never acquire or repair data.</p>
+and its current state, species, default version, and download size, including
+native protein search references declared by quantitative datasets. Pass
+<code>--all-versions</code> to include superseded and historical versions. <code>status</code> shows
+resources with local files: usable ones and damaged or unreadable installs.
+<code>data fetch</code> replaces damaged files; unreadable ones are left alone until their
+permissions are fixed or another cache root is chosen. For every resource kind
+— catalogues, datasets, search references, genomes, chains, records, and viral
+collections — a repair installs a fresh DataCache generation and leaves the
+previous one in place until the cache is pruned (<code>orfdata data prune</code> or
+<code>prune_viral_references()</code>). Filter either command with <code>--kind</code> or <code>--species</code>;
+use <code>--installed</code> or <code>--missing</code> with <code>list</code>, <code>--json</code> for programs, and
+<code>--verify</code> to hash installed files. Discovery and status commands never acquire
+or repair data.</p>
 <div class="highlight"><pre><span></span><code>orfdata<span class="w"> </span>download<span class="w"> </span>list<span class="w"> </span>--kind<span class="w"> </span>viral<span class="w"> </span>--species<span class="w"> </span>human
+orfdata<span class="w"> </span>download<span class="w"> </span>list<span class="w"> </span>--all-versions
 orfdata<span class="w"> </span>download<span class="w"> </span>list<span class="w"> </span>--missing
 orfdata<span class="w"> </span>download<span class="w"> </span>status<span class="w"> </span>--json
 </code></pre></div>
-<p>Catalogue and dataset releases that cannot be redistributed are built from
-their pinned sources when selected through <code>orfdata download</code>. The listing's
-<code>ACQUIRE</code> column says <code>download</code> or <code>build</code>. Existing focused commands such as
+<p>Catalogue, dataset, and viral collection releases that cannot be redistributed
+(or do not yet publish a prebuilt release artifact) are built from their pinned
+sources when selected through <code>orfdata data fetch</code>. The listing's <code>ACQUIRE</code>
+column says <code>download</code> or <code>build</code>. Existing focused commands such as
 <code>orfdata catalogs download</code>, <code>orfdata datasets build</code>, <code>orfdata genomes
 install</code>, and <code>orfdata chains download</code> remain available.</p>
 <p>The same inventory is available from Python:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">orfdata</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataStatus</span><span class="p">,</span> <span class="n">list_data</span>
 
 <span class="n">all_resources</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">DataStatus</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">list_data</span><span class="p">()</span>
+<span class="n">all_versions</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">DataStatus</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">list_data</span><span class="p">(</span><span class="n">all_versions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">human_missing</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">DataStatus</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">list_data</span><span class="p">(</span><span class="n">species</span><span class="o">=</span><span class="s2">"human"</span><span class="p">,</span> <span class="n">installed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">installed</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">DataStatus</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">list_data</span><span class="p">(</span><span class="n">installed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">machine_record</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="n">all_resources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 </code></pre></div>
-<p>Each <code>DataStatus</code> reports its kind, stable name and version, species,
-nonexclusive analysis contexts, local status, acquisition method and equivalent
-command, and resolved cache path. Status values follow DataCache: <code>available</code>,
-<code>missing</code>, <code>corrupt</code>, or <code>inaccessible</code>. An unknown kind, species or context is
-an error rather than an empty listing, so a typo never reads as "nothing is
-available".</p>
+<p>Each <code>DataStatus</code> reports its kind, stable name and version, whether it is the
+default version, species, download and installed sizes (when known),
+nonexclusive analysis contexts, local status, raw <code>datacache_status</code>,
+acquisition method and equivalent command, and resolved cache path. Local
+states use one unified vocabulary (<code>RESOURCE_STATES</code>): <code>available</code>, <code>bundled</code>,
+<code>missing</code>, <code>damaged</code>, or <code>inaccessible</code>. Acquisition actions shared by
+<code>data fetch</code> and <code>setup</code> use one vocabulary (<code>ACQUISITION_ACTIONS</code>):
+<code>downloaded</code>, <code>built</code>, <code>repaired</code>, <code>replaced</code>, <code>already installed</code>, <code>skipped</code>,
+or <code>failed</code>. An unknown kind, species or context is an error rather than an
+empty listing, so a typo never reads as "nothing is available".</p>
 <h2 id="interrupted-downloads">Interrupted downloads<a class="headerlink" href="#interrupted-downloads" title="Permanent link">&para;</a></h2>
 <p>A published download restarts from the beginning by default. (A local build
 already keeps the source files it finished downloading, so rerunning it fetches
@@ -1905,10 +1916,11 @@ reason, and the others are still pruned. A selection records the collection
 copy it was built from; after a refresh, asking for the same selection builds a
 new one from the current collection rather than reusing one built from the
 replaced copy.</p>
-<p>A forced install (<code>--force</code>, <code>force=True</code>) also repairs a store that lost its
-<code>.datacache-store.json</code> marker or whose newest copy isn't a directory. A path
-ORFdata didn't write in the store's place is never removed; the error names it
-so you can remove it yourself.</p>
+<p>A forced install (<code>--force</code>, <code>force=True</code>) replaces a valid collection or a
+damaged bundle inside a valid DataCache store with a new generation. A
+directory holding files without DataCache's <code>.datacache-store.json</code> marker, or
+a non-directory in the store's place, is never taken over or deleted; remove it
+by hand before installing again.</p>
 
 
 

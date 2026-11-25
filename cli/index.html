@@ -1663,9 +1663,8 @@ orfdata<span class="w"> </span>datasets<span class="w"> </span>query<span class=
 <p>Every command that downloads takes <code>--timeout SECONDS</code>: how long a download may
 stall before it is retried, then fails (default 60; <code>--timeout none</code> waits
 indefinitely). The chromosome FASTA that <code>genomes install --genome-fasta</code> passes
-to PyEnsembl is downloaded without a timeout. The <code>--registry</code> option of
-<code>catalogs</code> and <code>datasets</code> stays before the subcommand:
-<code>orfdata catalogs --registry registry.json list</code>.</p>
+to PyEnsembl is downloaded without a timeout. The hidden <code>--registry</code> option of
+<code>catalogs</code> and <code>datasets</code> works before or after the subcommand.</p>
 <h2 id="human-previews-and-complete-exports">Human previews and complete exports<a class="headerlink" href="#human-previews-and-complete-exports" title="Permanent link">&para;</a></h2>
 <p>Tables and short field summaries are the default. Tables show up to 25 entries;
 <code>--limit N</code> changes the preview and <code>--limit 0</code> shows every row. Tables wrap to
