@@ -1,3 +1,9 @@
+# 0.63.0
+
+- Deduplicate `orfdata/fasta.py` onto the shared `datacache.fasta` module
+  (requiring `datacache>=1.39.0,<2`) while preserving ORFdata's public FASTA
+  API and explicit `gzipped=False` defaults.
+
 # 0.62.0
 
 - Deduplicate `orfdata/cli_help.py` onto the shared `datacache.cli_help` module

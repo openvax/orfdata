@@ -34,8 +34,10 @@ SCRIPT = "import sys\nfrom orfdata.cli import run\nsys.exit(run())"
 
 def run_python(code, **environ):
     """Run ``code`` in a fresh interpreter importing this checkout, and return its standard output."""
+    existing = os.environ.get("PYTHONPATH")
+    pythonpath = os.pathsep.join([SOURCE, existing]) if existing else SOURCE
     return subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True,
-                          env=dict(os.environ, PYTHONPATH=SOURCE, **environ)).stdout
+                          env=dict(os.environ, PYTHONPATH=pythonpath, **environ)).stdout
 
 
 def modules_loaded_by(code):
