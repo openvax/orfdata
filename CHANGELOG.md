@@ -1,3 +1,9 @@
+# 0.63.1
+
+- Restore self-contained stdlib FASTA parsing in `orfdata/fasta.py` and lower
+  the `datacache` floor back to `datacache>=1.38.0,<2` (keeping bioinformatics
+  FASTA parsing out of generic `datacache`).
+
 # 0.63.0
 
 - Deduplicate `orfdata/fasta.py` onto the shared `datacache.fasta` module
